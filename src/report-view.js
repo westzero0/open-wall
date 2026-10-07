@@ -12,6 +12,7 @@ if (dlg) {
   const set = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode: no cooldown */ } };
   let wallName = '';
   const nameEl = dlg.querySelector('.rp-name');
+  const chatNameEl = dlg.querySelector('.rp-chat-name'); // the suggested room name, one tap selects it
   const say = (msg) => { status.textContent = msg; };
 
   f.elements.body.maxLength = MAX_BODY;
@@ -41,6 +42,7 @@ if (dlg) {
     if (pick) pick.checked = true;
     syncKind();
     wallName = name; nameEl.textContent = name; // read-only text, never typed
+    chatNameEl.textContent = `[해벽] ${name} 모임`;
     f.elements.send.disabled = false;
     alt.hidden = true;
     say('');

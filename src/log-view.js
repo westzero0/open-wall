@@ -6,6 +6,7 @@ import { hasHours, openIntervals } from './hours.js';
 import { axisFrac, formatRanges, orderForPick } from './viewmodel.js';
 import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
+import { inkStamp } from './stamp.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, stampLook, timeOfMin,
@@ -414,13 +415,14 @@ export function createLogView({
     });
   }
 
-  // the 해벽 mark as an ink stamp (css mask), tilted/inked per date; decoration only
-  function stamp(date, cls) {
+  // the 해벽 mark as an ink stamp (css mask), tilted/inked per date; decoration only. A wall with its own stamp artwork
+  // (src/stamp.js) is drawn from that file; `wallName` is the record's wall (a calendar day shows its first record's).
+  function stamp(date, cls, wallName) {
     const { tilt, ink } = stampLook(date);
     const s = el('span', { class: cls, 'aria-hidden': 'true' });
     s.style.setProperty('--tilt', `${tilt}deg`);
     s.style.setProperty('--ink', String(ink));
-    return s;
+    return inkStamp(s, getWalls().find((w) => w.name === wallName));
   }
 
   function progress() {
@@ -500,7 +502,7 @@ export function createLogView({
         type: 'button', class: 'cal-day', 'data-date': c.date, tabindex: c.date === focusDay ? '0' : '-1',
         'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}`,
         'aria-current': c.date === t ? 'date' : null,
-      }, n ? stamp(c.date, c.date === stamped ? 'stamp cal-stamp stamp-in' : 'stamp cal-stamp') : null,
+      }, n ? stamp(c.date, c.date === stamped ? 'stamp cal-stamp stamp-in' : 'stamp cal-stamp', byDay.get(c.date)[0].wall) : null,
       el('span', { class: 'cal-n', 'aria-hidden': 'true' }, String(c.day)),
       n > 1 ? el('span', { class: 'cal-badge', 'aria-hidden': 'true' }, `+${n - 1}`) : null);
       if (c.date > t) b.classList.add('future');
@@ -570,7 +572,7 @@ export function createLogView({
         open.addEventListener('click', () => reveal(r.wall));
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
-        return el('li', {}, stamp(r.date, 'stamp rec-stamp'), open, del);
+        return el('li', {}, stamp(r.date, 'stamp rec-stamp', r.wall), open, del);
       })) : null,
       add,
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
