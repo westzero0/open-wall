@@ -7,8 +7,8 @@ import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
-  axisFrac, barSegments, cleanRegions, cleanVenue, dayBar, dayLine, dayText, durText, emptyText, endingSoon, filterRows, filtersActive, fmtMin, formatDistance, formatRanges,
-  breakRanges, groupRows, hasParking, memoFacts, monthStrip, NTH_KO, parkingNames, regionActive, regionGroups, regionLabel, regionList, scopeRows, seasonSun, unknownText,
+  axisFrac, barSegments, cleanRegions, cleanVenue, dayBar, dayLine, dayText, emptyText, endingSoon, filterRows, filtersActive, fmtMin, formatDistance, formatRanges,
+  breakRanges, groupRows, hasParking, memoFacts, splitInfo, NTH_KO, parkingNames, regionActive, regionGroups, regionLabel, regionList, scopeRows, seasonSun, unknownText, winterSpan,
   isLivePick, mapPins, memoLines, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowBar, rowLeft,
   sheetCount, shortName, sliderValue, sortRows, staleness, summaryLead, sunTag, timeLabel, wallPosition, weeklyHours, withDistance,
 } from './viewmodel.js';
@@ -260,16 +260,16 @@ const gridSeason = new Map(); // wall name → the season being previewed ('summ
 function hoursGrid(wall, at) {
   const wk = weeklyHours(wall, at, gridSeason.get(wall.name));
   if (!wk.rows.length) return null;
-  const strip = monthStrip(wall, at);
+  const ws = winterSpan(wall);
   const live = !wk.preview;
   const nowMin = minuteOf(at);
   const bar = live ? dayBar(wall, at) : null;
   const sunOn = bar?.sun ? overlapOf(bar.open, bar.sun) : [];
   const sec = el('section', { class: 'hgrid', 'aria-label': '요일별 운영시간' });
 
-  const seg = wk.hasWinter && strip ? el('div', { class: 'g-seg', role: 'group', 'aria-label': '계절 운영시간' },
-    ...[['summer', `하계 ${strip.summer ?? ''}`], ['winter', `동계 ${strip.winter}${strip.closed ? ' 휴장' : ''}`]].map(([k, label]) => {
-      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k) }, label.trim());
+  const seg = wk.hasWinter && ws ? el('div', { class: 'g-seg', role: 'group', 'aria-label': '계절 운영시간' },
+    ...[['summer', '하계'], ['winter', '동계']].map(([k, label]) => {
+      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k) }, label);
       b.addEventListener('click', () => {
         const current = weeklyHours(wall, at).season;
         if (k === current) gridSeason.delete(wall.name);
@@ -280,6 +280,10 @@ function hoursGrid(wall, at) {
       });
       return b;
     })) : null;
+  // the winter months in words beside the switch (month granularity: from_month/to_month); 외벽 휴장 stands out
+  const months = ws ? el('p', { class: `g-months${ws.closed ? ' shut' : ''}` },
+    ws.closed ? `동절기 외벽 휴장 ${ws.winter}` : `동계 ${ws.winter}`) : null;
+  const segRow = seg || months ? el('div', { class: 'g-segrow' }, seg, months) : null;
 
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
@@ -329,7 +333,7 @@ function hoursGrid(wall, at) {
     wall.holiday === 'weekend' ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
   ].filter(Boolean);
   const hatched = wk.rows.some((r) => r.closed || r.breaks.length);
-  sec.append(...[seg, lead, gridAxis(live ? nowMin : null), body,
+  sec.append(...[segRow, lead, gridAxis(live ? nowMin : null), body,
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-bar' }), '운영'),
       hatched ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)') : null,
@@ -340,24 +344,23 @@ function hoursGrid(wall, at) {
   return sec;
 }
 
-// Seasonal sun: 여름 / 봄·가을 / 겨울 on one axis, against the same weekday's hours in that season.
+// Seasonal sun: 여름 / 봄·가을 / 겨울, each "여름 6/21 · 12:40–19:40" over a bar against the same weekday's hours
+// in that season (solid where they meet). One legend line under the rows.
 function seasonSunBlock(wall, at, d) {
   if (noSunMath(d)) return null;
   const rows = seasonSun(wall, at);
-  return el('section', { class: 'ssun', 'aria-label': '계절마다 양달인 시간' },
-    el('h4', { class: 'h4s' }, `계절마다 양달인 시간 · ${DAY_KO[at.getDay()]}요일 운영시간과 겹치는 부분만 진하게`),
+  return el('section', { class: 'ssun', 'aria-label': `계절마다 양달인 시간, ${DAY_KO[at.getDay()]}요일 운영시간 기준` },
     gridAxis(null),
     ...rows.map((s) => {
       const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
         ...clipDay(s.open).map(([a, b]) => span('s-open', a, b)),
         ...clipDay(s.windows).map(([a, b]) => span('g-sun', a, b)),
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
-      const sub = s.onMin ? `운영 중 ${durText(s.onMin)}` : s.closed ? '휴무' : s.unknown ? '시간 미입력' : s.windows.length ? '운영과 안 겹침' : '';
       const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
-      return el('div', { class: `s-row${s.current ? ' cur' : ''}`, role: 'group', 'aria-label': `${s.name}(${s.date}) 양달 ${sunText}${sub ? `, ${sub}` : ''}` },
-        el('span', { class: 'g-lab', 'aria-hidden': 'true' }, s.name, el('small', {}, s.current ? '지금' : s.date)),
-        trk,
-        el('span', { class: 's-rng', 'aria-hidden': 'true' }, sunText, sub ? el('small', {}, sub) : null));
+      const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
+      return el('div', { class: `s-row${s.current ? ' cur' : ''}` },
+        el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · ${sunText}${hint}`),
+        trk);
     }),
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
@@ -365,31 +368,72 @@ function seasonSunBlock(wall, at, d) {
       el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')));
 }
 
-// 1–12 month strip of the winter rule; no rule = no strip (not "the same all year").
-function monthBlock(strip) {
-  if (!strip) return null;
-  const cur = strip.months.find((m) => m.current);
-  return el('section', { class: 'mstrip', 'aria-label': '하계·동계 달' },
-    el('h4', { class: 'h4s' }, '하계·동계'),
-    el('ol', { class: 'months' }, ...strip.months.map((m) => el('li', {
-      class: `mo ${m.winter ? 'winter' : 'summer'}${m.closed ? ' closed' : ''}${m.current ? ' cur' : ''}`,
-      'aria-label': `${m.m}월 ${m.winter ? `동계${m.closed ? ' 외벽 휴장' : ''}` : '하계'}${m.current ? ', 이번 달' : ''}`,
-    }, el('b', { 'aria-hidden': 'true' }, String(m.m)), el('span', { 'aria-hidden': 'true' }, m.winter ? '동' : '하')))),
-    el('ul', { class: 'g-key m-key' },
-      strip.summer ? el('li', {}, el('i', { class: 'k-summer' }), `하계 ${strip.summer}`) : null,
-      el('li', {}, el('i', { class: `k-winter${strip.closed ? ' closed' : ''}` }), `동계 ${strip.winter}${strip.closed ? ' · 외벽 휴장(빗금)' : ''}`),
-      el('li', {}, el('i', { class: 'k-cur' }), `테두리 = 이번 달(${cur.m}월)`)),
-    el('p', { class: 'g-fine' }, '달 단위로만 알아요. 시작·끝 날짜는 공지를 확인하세요.'));
+// The folded part: one picture at a time, [운영시간] [계절별 양달] tabs (arrows/Home/End move). Starts on 운영시간
+// each time the row opens (moreTab resets with moreOpen); the switch is instant, no motion.
+let moreTab = 0;
+function moreTabs(wall, at, d, id) {
+  const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)]].filter(([, p]) => p);
+  if (panes.length < 2) return panes.map(([, p]) => p);
+  const tabs = panes.map(([label], i) => el('button', {
+    type: 'button', role: 'tab', id: `${id}-t${i}`, 'aria-controls': `${id}-p${i}`,
+  }, label));
+  const panels = panes.map(([, p], i) => el('div', { role: 'tabpanel', id: `${id}-p${i}`, 'aria-labelledby': `${id}-t${i}`, class: 'm-panel' }, p));
+  const pick = (n, focus) => {
+    moreTab = n;
+    tabs.forEach((t, i) => {
+      t.setAttribute('aria-selected', String(i === n));
+      t.tabIndex = i === n ? 0 : -1;
+      panels[i].hidden = i !== n;
+    });
+    if (focus) tabs[n].focus();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => pick(i, false));
+    t.addEventListener('keydown', (e) => {
+      const n = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (n === undefined) return;
+      e.preventDefault();
+      pick((n + tabs.length) % tabs.length, true);
+    });
+  });
+  pick(Math.min(moreTab, tabs.length - 1), false);
+  return [el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels];
 }
 
-// Memo sorted out: address (copy), size chips, weekly closures from the hours, then the lines left.
-function memoBlock(wall) {
-  const f = memoFacts(wall);
+// First view under the chips: 안내 (status notes, then the memo lines: closures/warnings, hours, the rest),
+// parking names, the address with a copy button. Weekly closures are a 안내 line and the hatched grid rows.
+function infoBlock(wall, f, notes) {
   const parts = [];
+  const lines = [...notes.filter((n) => n.key), ...f.rest, ...notes.filter((n) => !n.key)];
+  const { shown, folded } = splitInfo(lines);
+  const li = (l) => el('li', { class: l.key ? 'key' : null },
+    l.label ? el('span', { class: 'mk' }, l.label) : null,
+    el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
+  if (shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...shown.map(li)));
+  if (folded.length) { // lines 4+: folded under the same list; the warning lines never land here
+    const fid = `info-more-${++rowSeq}`;
+    const inner = el('ul', { class: 'memo-list info' }, ...folded.map(li));
+    const fold = el('div', { class: 'info-fold', id: fid }, el('div', { class: 'info-fold-in' }, inner));
+    const btn = el('button', { type: 'button', class: 'info-more', 'aria-controls': fid }, '');
+    const sync = () => {
+      btn.setAttribute('aria-expanded', String(infoOpen));
+      btn.textContent = infoOpen ? '접기' : `안내 ${folded.length}줄 더 보기`;
+      fold.classList.toggle('open', infoOpen);
+      fold.inert = !infoOpen;
+    };
+    btn.addEventListener('click', () => { infoOpen = !infoOpen; sync(); });
+    sync();
+    parts.push(fold, btn);
+  }
+  const names = parkingNames(wall.parking); // the 주차 chip says the status; the names once, here
+  if (names.length) {
+    parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
+      el('ul', { class: 'pnames' }, ...names.map((n) => el('li', {}, n)))));
+  }
   if (f.address) {
     const text = el('p', { class: 'addr-t' }, f.address);
     const say = el('span', { class: 'addr-say', 'aria-live': 'polite' });
-    const btn = el('button', { type: 'button', class: 'btn' }, '복사');
+    const btn = el('button', { type: 'button', class: 'btn', 'aria-label': '주소 복사' }, '복사');
     btn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(f.address);
@@ -402,33 +446,9 @@ function memoBlock(wall) {
         say.textContent = '주소를 선택했어요. 길게 눌러 복사하세요';
       }
     });
-    parts.push(el('h4', { class: 'h4s' }, '주소'), el('div', { class: 'addr' }, text, btn), say);
-  }
-  if (f.sizes.length) {
-    parts.push(el('h4', { class: 'h4s' }, '벽 크기'), el('div', { class: 'nchips' },
-      ...f.sizes.map((s) => el('span', { class: 'nchip' }, s.label, el('b', {}, `${s.value}${s.unit}`)))));
-  }
-  if (f.days.length) {
-    parts.push(el('h4', { class: 'h4s' }, '정기휴무'), el('ul', { class: 'odays' }, ...f.days.map((d) => el('li', {
-      class: d.off ? 'off' : d.nth ? 'nth' : d.unknown ? 'unk' : null,
-      'aria-label': `${d.label} ${d.off ? '휴무' : d.nth ? `${d.nth} 휴무` : d.unknown ? '시간 미입력' : '운영'}`,
-    }, el('span', { 'aria-hidden': 'true' }, d.label),
-    d.off || d.nth ? el('small', { 'aria-hidden': 'true' }, d.off ? '휴무' : d.nth) : null))));
-  }
-  if (f.rest.length) {
-    parts.push(el('h4', { class: 'h4s' }, '안내'), el('ul', { class: 'memo-list', 'aria-label': '메모' }, ...f.rest.map((l) => el('li', { class: l.key ? 'key' : null },
-      l.label ? el('span', { class: 'mk' }, l.label) : null,
-      el('span', { class: l.label ? 'mv' : 'mv free' }, l.value)))));
+    parts.push(el('div', { class: 'irow addr' }, el('span', { class: 'mk' }, '주소'), text, btn), say);
   }
   return parts;
-}
-
-function parkingBlock(wall) {
-  const p = parkingLabel(wall.parking);
-  const names = parkingNames(wall.parking);
-  return [el('h4', { class: 'h4s' }, '주차'),
-    el('div', { class: 'nchips' }, el('span', { class: `nchip pk ${p.tone}` }, el('b', { 'aria-hidden': 'true' }, 'P'), p.text)),
-    names.length ? el('ul', { class: 'plist' }, ...names.map((n) => el('li', {}, n))) : null];
 }
 
 // The open row is rebuilt on every slider move, so a 양달↔응달 flip is marked on the new SVG
@@ -484,6 +504,7 @@ function memoList(memo) {
     el('span', { class: l.label ? 'mv' : 'mv free' }, l.value))));
 }
 
+let infoOpen = false; // the 안내 overflow: folded again whenever a card is (re)opened
 let moreOpen = false; // the open row's "더 보기" survives re-renders (slider)
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -496,23 +517,17 @@ function rowDetails(row, at, id) {
   const dial =dialModel(wall, at, { isNow: live, dayLabel: ymd(at) === ymd(new Date()) ? '오늘' : dayText(at) });
   const day = dayLine(wall, at);
   const where = [wall.region, row.distanceKm != null ? `직선 ${formatDistance(row.distanceKm)}` : null, BASIS[wall.timeBasis]].filter(Boolean).join(' · ');
-  const notes = [
-    status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null,
-    wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null,
-    pos?.approx ? '위치 추정(확인 전)' : null,
+  const notes = [ // 안내 lines ahead of the memo's; status warnings are drawn like closure lines
+    status.winterNote ? { value: `❄ 동절기 · ${status.winterNote}`, key: true } : null,
+    wall.exceptions?.rain_rule ? { value: '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요', key: true } : null,
+    pos?.approx ? { value: '위치 추정(확인 전)' } : null,
   ].filter(Boolean);
+  const facts = memoFacts(wall);
   const sumState = el('span', { class: 'sum-s' }, moreOpen ? '접기' : '더 보기');
+  // folded: the pictures only, one at a time (hours grid | seasonal sun)
   const more = el('details', { class: 'more2' },
-    el('summary', {}, el('span', { class: 'sum-t' }, '시간표 · 계절 · 정보'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
-    hoursGrid(wall, at),
-    seasonSunBlock(wall, at, dial),
-    monthBlock(monthStrip(wall, at)),
-    ...memoBlock(wall),
-    ...parkingBlock(wall),
-    ...notes.map((n) => el('p', { class: 'note' }, n)),
-    moreLinks(wall),
-    rowButtons(wall.name,
-      config.reportEndpoint ? el('button', { type: 'button', 'data-act': 'report', 'data-name': wall.name }, '정보가 달라요') : null));
+    el('summary', {}, el('span', { class: 'sum-t' }, '시간표 · 계절'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
+    ...moreTabs(wall, at, dial, id));
   more.open = moreOpen;
   // one control opens the folded part: its summary row (the old "자세히" button did the same)
   more.addEventListener('toggle', () => {
@@ -523,6 +538,8 @@ function rowDetails(row, at, id) {
     class: 'btn', target: '_blank', rel: 'noopener noreferrer',
     href: `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}`,
   }, '길찾기');
+  const report = config.reportEndpoint
+    ? el('button', { type: 'button', class: 'btn sub', 'data-act': 'report', 'data-name': wall.name }, '정보가 달라요') : null;
   return [
     el('div', { class: 'herowrap' }, hero(wall), creditChip(wall)),
     el('div', { class: 'm-cols' },
@@ -535,11 +552,16 @@ function rowDetails(row, at, id) {
         el('div', { class: 'tags' },
           ...breakRanges(wall, at).map((r) => el('span', { class: 'tag brk' }, `휴게 ${formatRanges([r])}`)), // as on the map card
           el('span', { class: `tag pk ${parking.tone}` }, parking.text),
-          ...(wall.tags ?? []).filter((t) => !isFee(t)).map((t) => el('span', { class: 'tag' }, t))),
+          ...(wall.tags ?? []).filter((t) => !isFee(t)).map((t) => el('span', { class: 'tag' }, t)),
+          ...facts.sizes.map((s) => el('span', { class: 'tag' }, `${s.label} ${s.value}${s.unit}`))),
+        ...infoBlock(wall, facts, notes),
         el('p', { class: 'checked' }, wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음')),
       sunBox(dial, wall.name, day.closed)),
-    go ? el('div', { class: 'acts' }, go) : null,
-    more,
+    go || report ? el('div', { class: 'acts' }, go, report) : null,
+    moreLinks(wall),
+    rowButtons(wall.name),
+    // 내 후기 링크가 들어올 자리: acts 아래, 접힘 줄 위
+    more.childElementCount > 1 ? more : null,
   ];
 }
 
@@ -609,6 +631,8 @@ function toggleRow(li) {
   openName = opening ? li.wallName : null;
   openState = opening ? li.state : null;
   moreOpen = false;
+  infoOpen = false;
+  moreTab = 0;
   gridSeason.clear(); // a reopened row starts on the picked day's season
   if (!opening) return;
   li.fill();
@@ -675,6 +699,8 @@ function render() {
   if (openName && !all.some((r) => r.wall.name === openName && r.status.state === openState)) {
     openName = null;
     moreOpen = false;
+    infoOpen = false;
+    moreTab = 0;
   }
   const groups = groupRows(all);
   const needOrigin = ui.sortMode === 'distance' && !origin;
