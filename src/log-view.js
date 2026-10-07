@@ -3,11 +3,13 @@
 import { el } from './dom.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
-import { axisFrac, formatRanges } from './viewmodel.js';
+import { axisFrac, formatRanges, orderForPick } from './viewmodel.js';
+import { formatDistance } from './card-model.js';
+import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import {
-  MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
+  MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, stampLook, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitedCount,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -15,7 +17,7 @@ const today = () => ymd(new Date());
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const newId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-// ---- toast: one line at the foot of the screen, optionally with 실행 취소 (kept while it has focus) ----
+// ---- toast: one line at the foot of the screen, optionally with one action (실행 취소, ♥ 추가; kept while it has focus) ----
 const box = $('toast');
 const msgEl = $('toast-msg');
 const act = $('toast-act');
@@ -33,9 +35,10 @@ const armToast = () => {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hideToast, undoFn ? 3000 : 2500);
 };
-export function toast(msg, undo = null) {
+export function toast(msg, undo = null, label = '실행 취소') {
   undoFn = undo;
   msgEl.textContent = msg;
+  act.textContent = label;
   act.hidden = !undo;
   box.classList.add('on');
   armToast();
@@ -57,8 +60,14 @@ box.addEventListener('focusout', armToast);
  * reveal(name): open that wall's card in the list. showList(): go to the 목록 tab.
  * crowdAsk(wall, date, time) → null | canReport's {ok: false, reason, waitMin} | 'ask': whether the sheet asks how crowded that visit was (app.js).
  * sendCrowd(wall, level, date, time) → Promise<boolean>: the 혼잡도 report (app.js; the record itself stays here).
+ * getRegions(): 내 지역 (picker order). getOrigin(): {lat, lng} already in memory, or null — never asks for it.
+ * requestLocate() → Promise<string>: asks for the position (only from the sheet's 내 위치로 정렬); '' on success, else the reason.
+ * addFav(name): ♥ a wall (the ♥ 추천 toast's button).
  */
-export function createLogView({ storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false }) {
+export function createLogView({
+  storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
+  getRegions = () => [], getOrigin = () => null, requestLocate = async () => '위치를 쓸 수 없어요.', addFav = () => {},
+}) {
   const panel = $('panel-log');
   let log = loadLog(storage, today(), nowMin());
   // the calendar: the month in view, the picked day, the day that holds the grid's tab stop
@@ -92,17 +101,44 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
   let choice = null;
   let opener = null;
 
+  const locBtn = dlg.querySelector('.la-locate');
+  const locNote = dlg.querySelector('.la-locate-note');
+  // order: orderForPick (내 지역 → 최근 기록 → 기록 많은 순 → ♥ → 가까운 순/목록 순); a search only filters that order
   function drawPicks() {
     const q = form.elements.q.value.trim().normalize('NFC').toLowerCase();
     const favs = getFavs();
-    const walls = getWalls().filter((w) => !q || w.name.toLowerCase().includes(q) || (w.region ?? '').toLowerCase().includes(q))
-      .sort((a, b) => Number(favs.includes(b.name)) - Number(favs.includes(a.name))); // ♥ first, list order otherwise (stable sort)
-    picks.replaceChildren(...(walls.length ? walls.map((w) => {
+    const origin = getOrigin();
+    locBtn.hidden = Boolean(origin);
+    const walls = getWalls().filter((w) => !q || w.name.toLowerCase().includes(q) || (w.region ?? '').toLowerCase().includes(q));
+    const items = orderForPick(walls, { favs, regions: getRegions(), origin, visits: visitStats(log), today: today() });
+    const row = ({ wall: w, km }) => {
       const input = el('input', { type: 'radio', name: 'pick', value: w.name });
       input.checked = w.name === choice;
-      return el('li', {}, el('label', {}, input, el('span', { class: 'pn' }, favs.includes(w.name) ? el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥ ') : null, w.name), w.region ? el('span', { class: 'pr' }, w.region) : null));
-    }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
+      return el('li', {}, el('label', {}, input,
+        el('span', { class: 'pn' }, favs.includes(w.name) ? el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥ ') : null, w.name),
+        km != null ? el('span', { class: 'pd' }, formatDistance(km)) : null,
+        w.region ? el('span', { class: 'pr' }, w.region) : null));
+    };
+    const mine = items.filter((x) => x.mine);
+    const rest = items.filter((x) => !x.mine);
+    const group = (label, list) => el('li', { class: 'la-grp', role: 'group', 'aria-label': label },
+      el('p', { class: 'la-grp-hd', 'aria-hidden': 'true' }, label), el('ul', {}, ...list.map(row)));
+    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]
+      : mine.length && rest.length ? [group('내 지역', mine), group('그 밖', rest)]
+        : items.map(row)));
   }
+  // 내 위치로 정렬: the only place this sheet asks for the position; the answer stays in app.js memory
+  locBtn.addEventListener('click', async () => {
+    locBtn.disabled = true;
+    locNote.hidden = false;
+    locNote.textContent = '내 위치를 확인하는 중이에요…';
+    const why = await requestLocate();
+    locBtn.disabled = false;
+    if (!dlg.open) return;
+    locNote.textContent = why || '내 위치에서 가까운 순으로 정렬했어요. 직선거리예요.';
+    drawPicks();
+    if (!why) (picks.querySelector('input:checked') ?? picks.querySelector('input'))?.focus(); // the button is gone
+  });
   // ---- 방문 시각: the wall's hours of the picked day on the 06–24 axis, and an invisible range input over them ----
   const timeIn = $('la-time-in');
   const timeSay = $('la-time-say');
@@ -277,6 +313,8 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     pickErr.hidden = true;
     dateErr.hidden = true;
     timeErr.hidden = true;
+    locNote.hidden = true;
+    locNote.textContent = '';
     timeTouched = false;
     crowdLevel = null;
     drawDay();
@@ -323,7 +361,16 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     stamped = stampedWall = null;
     // no 실행 취소 here: an undo could drop the record but not a 혼잡도 report already sent. A mistaken record is
     // deleted from the 기록 tab (that one keeps its undo).
-    toast(level ? `${wall} 기록했어요 · 혼잡도 제보 고마워요` : `${wall} 기록했어요`);
+    const saved = level ? `${wall} 기록했어요 · 혼잡도 제보 고마워요` : `${wall} 기록했어요`;
+    // ♥ 추천: on a wall's 3rd record, once per wall — the same toast, with ♥ 추가 instead of nothing
+    const asked = loadFavAsked(storage);
+    if (shouldAskFav(wall, countFor(log, wall), getFavs(), asked)) {
+      saveFavAsked(storage, [...asked, wall]);
+      toast(`${saved} · 자주 가시네요 · ♥ 즐겨찾기에 추가할까요?`, () => {
+        addFav(wall);
+        toast(`${wall} ♥ 즐겨찾기에 추가했어요`);
+      }, '♥ 추가');
+    } else toast(saved);
     if (level) {
       sendCrowd(wall, level, res.record.date, time).then((ok) => ok || toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'));
     }

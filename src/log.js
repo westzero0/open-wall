@@ -218,6 +218,21 @@ export function visitedCount(log, names) {
   return { visited, total: known.size, outside: walls.size - visited };
 }
 
+/** visitStats(log) → Map wall name → {last: the newest record date, count: records (several on one day count each)}. */
+export function visitStats(log) {
+  const m = new Map();
+  for (const r of log) {
+    if (typeof r?.wall !== 'string' || !r.wall) continue;
+    const s = m.get(r.wall);
+    if (!s) m.set(r.wall, { last: r.date, count: 1 });
+    else {
+      s.count += 1;
+      if (r.date > s.last) s.last = r.date;
+    }
+  }
+  return m;
+}
+
 export const countFor = (log, wall) => log.filter((r) => r.wall === wall).length;
 export const recentFor = (log, wall, n = 3) => log.filter((r) => r.wall === wall).sort(newestFirst).slice(0, n);
 

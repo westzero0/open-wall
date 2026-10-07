@@ -221,6 +221,47 @@ main { padding-bottom: 48px; }
 .fav-item.open .fav-status { color: var(--open); }
 .fav-item:active { background: var(--sunken); }
 .fav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band holding one raised card, a picture and a
+   sentence, where the list is flat rows with bars). Folded: thumbnail, wall, reason. Every control is at least --tap high. */
+.pick { --pad: 16px; margin: 10px -16px 0; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-block: 1px solid var(--line); }
+.pick-sum { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px var(--pad); list-style: none; cursor: pointer; }
+.pick-sum::-webkit-details-marker { display: none; }
+.pick-sum::after { content: ""; flex: none; width: 9px; height: 9px; margin: -4px 4px 0 0; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform var(--dur-ui) var(--ease-out); }
+.pick[open] > .pick-sum::after { transform: translateY(5px) rotate(-135deg); }
+.pick-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pick-thumb { flex: none; width: 40px; height: 40px; border-radius: var(--r-md); overflow: hidden; }
+.pick-sumtext { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pick-eyebrow { font-size: var(--fs-xs); font-weight: 700; color: var(--accent); }
+.pick-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-media { position: relative; display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; background: var(--sunken); }
+.pick-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pick-mono { width: 22px; height: 22px; background: var(--muted); opacity: .55; -webkit-mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; }
+.pick-media.big { align-items: flex-end; justify-content: space-between; padding: 12px 16px; }
+.pick-media.big .pick-mono { width: 56px; height: 56px; align-self: flex-start; margin-left: auto; order: 2; }
+.pick-height { font-size: 2.25rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--fg); }
+.pick-body { padding: 4px var(--pad) 0; }
+.pick-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.pick-hero { position: relative; height: 120px; }
+.pick-chip { position: absolute; left: 12px; top: 12px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; }
+.pick-text { padding: 12px 16px 16px; }
+.pick-name { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.pick-why { margin: 4px 0 0; font-size: .9375rem; }
+.pick-cta { width: 100%; min-height: var(--tap); margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: transparent; color: var(--fg); font: inherit; font-size: .9375rem; font-weight: 600; }
+.pick-cta:active, .pick-line:active { background: var(--sunken); }
+.pick-next { list-style: none; margin: 8px 0 0; padding: 0; }
+.pick-next li + li { border-top: 1px solid var(--hair); }
+.pick-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--tap); padding: 0 2px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; }
+.pick-line-name { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pick-line-why { flex: none; max-width: 55%; font-size: var(--fs-sm); color: var(--muted); text-align: right; }
+.pick-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin-top: 4px; }
+.pick-link { min-height: var(--tap); padding: 0 2px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; }
+.pick-segs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 3px; background: var(--sunken); border-radius: var(--radius); }
+.pick-seg { min-height: var(--tap); border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.pick-seg[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+:is(.pick-cta, .pick-line, .pick-link, .pick-seg):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pick-basis { margin: 8px 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.pick-empty { margin: 0; padding: 12px 0; color: var(--muted); font-size: var(--fs-sm); }
+.pick-note { margin: 0; padding: 8px 0 12px; color: var(--muted); font-size: var(--fs-xs); }
 .card.no-photo { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: no-preference) {
   #pin-card.enter .card { animation: pin-in var(--dur-ui) var(--ease-out); }
@@ -871,6 +912,12 @@ dialog::backdrop { background: var(--scrim); }
 .la-picks label:has(:checked) .pn { font-weight: 700; }
 .la-picks label:has(:checked) .pn::before { content: "✓ "; content: "✓ " / ""; color: var(--accent); }
 .la-picks label:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
+.la-picks ul { list-style: none; margin: 0; padding: 0; }
+.la-grp + .la-grp { border-top: 1px solid var(--line); }
+.la-grp-hd { position: sticky; top: 0; z-index: 1; margin: 0; padding: 6px 12px; background: var(--sunken); font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.la-near { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+.la-near .la-locate-note { flex: 1 1 12rem; }
 .la-picks .none { padding: 12px; font-size: var(--fs-sm); color: var(--muted); }
 .la-err { flex-basis: 100%; margin-top: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--warn); }
 .la-err::before { content: "! "; }
