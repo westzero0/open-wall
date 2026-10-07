@@ -8,7 +8,7 @@ import { dialModel, seasonWindows } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, emptyText, endingSoon, filterRows, fmtMin, formatDistance, formatRanges,
-  groupRows, hasParking, isLivePick, mapPins, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowLeft,
+  breakRanges, groupRows, hasParking, isLivePick, mapPins, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowLeft,
   shortName, sliderValue, sortRows, staleness, timeLabel, wallPosition, weeklyHours, withDistance,
 } from './viewmodel.js';
 
@@ -29,7 +29,7 @@ const whenText = (d, base) => (ymd(d) === ymd(base) ? hhmm(d) : `${dayText(d)} $
 const SUN_FILTERS = ['any', 'sun', 'shade'];
 
 // ---- UI state: filters persist in localStorage, location stays in memory ----
-const ui = { minHours: '0', sun: 'any', parkingOnly: false, sortMode: 'time', tab: 'list' };
+const ui = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list' };
 try {
   const saved = JSON.parse(storage.getItem(UI_KEY));
   if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.assign(ui, saved);
@@ -39,6 +39,7 @@ if (!SUN_FILTERS.includes(ui.sun)) ui.sun = 'any';
 ui.minHours = migrateMinHours(ui.minHours); // 1h/2h choices from before 3·5·8
 if (!['time', 'distance'].includes(ui.sortMode)) ui.sortMode = 'time';
 ui.parkingOnly = ui.parkingOnly === true;
+ui.withBreaks = ui.withBreaks === true;
 const saveUi = () => {
   try {
     storage.setItem(UI_KEY, JSON.stringify(ui));
@@ -172,6 +173,7 @@ function card(row, at) {
     status.state === 'unknown' ? null : dayBarBlock(wall, at),
     el('div', { class: 'chips' },
       ...(wall.tags ?? []).map((t) => el('span', { class: 'chip' }, t)),
+      ...breakRanges(wall, at).map((r) => el('span', { class: 'chip break' }, `휴게 ${formatRanges([r])}`)),
       el('span', { class: `chip parking ${parking.tone}`, title: parking.note || null }, parking.text)),
     old.stale ? el('p', { class: 'note stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
     ...notes.map((n) => el('p', { class: 'note' }, n)),
@@ -457,7 +459,7 @@ function render() {
   const canPark = state.walls.some(hasParking);
   $('parkRow').hidden = !canPark;
   const parkOnly = ui.parkingOnly && canPark;
-  let rows = buildList(state.walls, at, { minHours: Number(ui.minHours) });
+  let rows = buildList(state.walls, at, { minHours: Number(ui.minHours), withBreaks: ui.withBreaks });
   const openTotal = rows.filter((r) => r.status.state === 'open').length;
   if (parkOnly) rows = rows.filter((r) => hasParking(r.wall));
   const all = withDistance(filterRows(rows, ui.sun), origin);
@@ -472,7 +474,7 @@ function render() {
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
 
   for (const [id, on] of [['sunOnly', ui.sun === 'sun'], ['shadeOnly', ui.sun === 'shade'],
-    ['longOnly', ui.minHours === '3'], ['nearFirst', ui.sortMode === 'distance'], ['parkingOnly', ui.parkingOnly]]) {
+    ['longOnly', ui.minHours === '3'], ['nearFirst', ui.sortMode === 'distance'], ['parkingOnly', ui.parkingOnly], ['withBreaks', ui.withBreaks]]) {
     $(id).setAttribute('aria-pressed', String(on));
   }
   // any minimum stay or parking marks the sheet's button, so a shorter list is explained
@@ -613,6 +615,7 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
 });
 $('parkingOnly').addEventListener('click', () => setUi('parkingOnly', !ui.parkingOnly));
+$('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBreaks));
 
 for (const k of tabs) $(`tab-${k}`).addEventListener('click', () => showTab(k));
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {

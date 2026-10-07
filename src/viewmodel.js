@@ -23,6 +23,12 @@ export function dayBar(wall, at) {
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
+// Gaps between today's open intervals (lunch break etc.), as [start, end] minutes.
+export function breakRanges(wall, at) {
+  const open = openIntervals(wall, at);
+  return open.slice(1).map(([a], i) => [open[i][1], a]).filter(([x, y]) => y > x);
+}
+
 export function groupRows(rows) {
   return {
     open: rows.filter((r) => r.status.state === 'open'),

@@ -114,6 +114,11 @@
             <label><input type="radio" name="minHours" value="8">8시간+</label>
           </div>
         </fieldset>
+        <div class="sh-row" id="breakRow">
+          <span class="sh-label" id="break-label">휴게시간</span>
+          <button type="button" class="sh-toggle" id="withBreaks" aria-pressed="false" aria-describedby="break-label">휴게 뒤 시간도 합산</button>
+          <p class="sh-hint">꺼 두면 쉬지 않고 이어서 탈 수 있는 시간만 세요.</p>
+        </div>
         <div class="sh-row" id="parkRow">
           <span class="sh-label" id="park-label">주차</span>
           <button type="button" class="sh-toggle" id="parkingOnly" aria-pressed="false" aria-describedby="park-label">주차 가능한 곳만</button>
