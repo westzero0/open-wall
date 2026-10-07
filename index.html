@@ -23,7 +23,7 @@
 <body>
   <header class="top">
     <div class="wrap">
-      <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="22" height="22"></picture><strong>해벽</strong><small>지금 열린 외벽</small></h1>
+      <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
       <p id="summary" role="status"></p>
     </div>
   </header>
@@ -36,9 +36,6 @@
         <button type="button" class="pill toggle" id="shadeOnly" aria-pressed="false">응달</button>
         <button type="button" class="pill toggle" id="longOnly" aria-pressed="false">3시간+</button>
         <button type="button" class="pill toggle" id="nearFirst" aria-pressed="false">가까운 순</button>
-        <label class="pill venue-pill"><span>구분</span><select id="venueQuick">
-          <option value="any">구분없음</option><option value="indoor">실내</option><option value="outdoor">실외</option>
-        </select></label>
         <button type="button" class="pill quiet" id="moreFilters" aria-haspopup="dialog">조건 ▾</button>
       </div>
       <p id="locateMsg" hidden></p>
@@ -126,11 +123,6 @@
           <h2 id="conditions-title">조건</h2>
           <button class="sh-done">닫기</button>
         </div>
-        <fieldset class="sh-row" id="regionRow">
-          <legend>내 지역</legend>
-          <p class="sh-hint">여러 곳을 고를 수 있어요. 고르지 않으면 전국이에요.</p>
-          <div id="regionOpts"></div>
-        </fieldset>
         <fieldset class="sh-row">
           <legend>구분</legend>
           <div class="segs">
@@ -169,6 +161,12 @@
           <span class="sh-label">내 위치</span>
           <button type="button" class="sh-toggle" id="locate">내 위치 찾기</button>
         </div>
+        <fieldset class="sh-row" id="regionRow">
+          <legend>내 지역</legend>
+          <p class="sh-hint">여러 곳을 고를 수 있어요. 고르지 않으면 전국이에요.</p>
+          <button type="button" class="sh-toggle" id="regionClear" hidden>선택 해제</button>
+          <div id="regionOpts"></div>
+        </fieldset>
       </form>
     </dialog>
     <dialog id="report" class="sheet" aria-labelledby="report-title">

@@ -7,15 +7,14 @@ import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
-  axisFrac, barSegments, cleanRegions, cleanVenue, dayBar, dayLine, dayText, emptyText, endingSoon, filterRows, filtersActive, fmtMin, formatDistance, formatRanges,
-  blogLabel, blogMoreLabel, blogPosts, breakRanges, groupRows, hasParking, memoFacts, splitInfo, NTH_KO, parkingNames, regionActive, regionGroups, regionLabel, regionList, scopeRows, seasonSun, unknownText, winterSpan,
-  isLivePick, mapPins, memoLines, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowBar, rowLeft,
-  sheetCount, shortName, sliderValue, sortRows, staleness, summaryLead, sunTag, timeLabel, wallPosition, weeklyHours, withDistance,
+  axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, isLivePick, mapPins, NTH_KO,
+  regionGroups, regionList, scopeRows, seasonSun, sliderValue, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
+import { cardModel } from './card-model.js';
+import { CLEARED, cleanRegions, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, skipTick } from './ui-state.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
-const UI_KEY = 'open-wall:ui';
 
 const el = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -23,30 +22,11 @@ const el = (tag, attrs = {}, ...kids) => {
   e.append(...kids.filter((k) => k !== null && k !== undefined && k !== false));
   return e;
 };
-const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
 const pct = (min) => `${(min / 1440) * 100}%`;
-const whenText = (d, base) => (ymd(d) === ymd(base) ? hhmm(d) : `${dayText(d)} ${hhmm(d)}`);
-const SUN_FILTERS = ['any', 'sun', 'shade'];
 
-// ---- UI state: filters persist in localStorage, location stays in memory ----
-const ui = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any' };
-try {
-  const saved = JSON.parse(storage.getItem(UI_KEY));
-  if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.assign(ui, saved);
-} catch { /* bad JSON or no storage: defaults */ }
-// `sun` used to be a sort preference ('sun'/'shade' first); the same values now mean the 양달/응달 filter.
-if (!SUN_FILTERS.includes(ui.sun)) ui.sun = 'any';
-ui.minHours = migrateMinHours(ui.minHours); // 1h/2h choices from before 3·5·8
-if (!['time', 'distance'].includes(ui.sortMode)) ui.sortMode = 'time';
-ui.parkingOnly = ui.parkingOnly === true;
-ui.withBreaks = ui.withBreaks === true;
-ui.regions = cleanRegions(ui.regions); // pruned to existing regions once the list loads (syncRegions)
-ui.venue = cleanVenue(ui.venue);
-const saveUi = () => {
-  try {
-    storage.setItem(UI_KEY, JSON.stringify(ui));
-  } catch { /* storage full or blocked: keep in memory */ }
-};
+// ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
+const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
+const saveUi = () => storeUi(storage, ui);
 let origin = null; // {lat, lng} after "내 위치"
 let locateNote = '';
 let live = true; // date/time follow the clock until the user picks another moment
@@ -57,31 +37,19 @@ let mapApi = null; // created the first time the map tab opens
 let mapFailed = false;
 
 // ---- card ----
-// which timetable a 'both' wall is read on (viewOf); indoor-missing already says so in its status
-const BASIS = { outdoor: '실외 시간 기준', indoor: '실내 시간 기준' };
-const basisTag = (wall) => (BASIS[wall.timeBasis] ? el('span', { class: 'basis' }, BASIS[wall.timeBasis]) : null);
-function statusText(status, at, wall) {
-  if (status.state === 'unknown') return unknownText(wall);
-  if (status.state === 'closed') {
-    if (status.onBreak && status.nextOpenAt) return `휴게 중 · ${whenText(status.nextOpenAt, at)} 재개`;
-    return status.nextOpenAt ? `닫힘 · 다음 오픈 ${whenText(status.nextOpenAt, at)}` : '닫힘 · 다음 오픈 정보 없음';
-  }
-  const h = Math.floor(status.remainingMin / 60);
-  const m = status.remainingMin % 60;
-  return `${h ? `${h}시간 ` : ''}${m || !h ? `${m}분 ` : ''}남음 · ${whenText(status.closeAt, at)} ${status.endKind === 'break' ? '휴게 시작' : '마감'}`;
-}
+// Every value below comes from cardModel (card-model.js); these functions only draw it.
+const basisTag = (m) => (m.basis ? el('span', { class: 'basis' }, m.basis) : null);
+const feeChip = (m) => (m.fee ? el('span', { class: 'fee' }, m.fee) : null);
 
-function placeholder(wall) {
-  const { primary, secondary } = placeholderText(wall);
+function placeholder({ primary, secondary }) {
   return el('div', { class: 'thumb placeholder', 'aria-hidden': 'true' },
     el('span', { class: 'ph-primary' }, primary), secondary ? el('span', { class: 'ph-secondary' }, secondary) : null);
 }
 
-function thumb(wall) {
-  const src = photoSrc(wall);
-  if (!src) return placeholder(wall);
-  const img = el('img', { class: 'thumb', src, loading: 'lazy', decoding: 'async', width: 72, height: 72, alt: `${wall.name} 외벽` });
-  img.addEventListener('error', () => img.replaceWith(placeholder(wall)), { once: true });
+function thumb(m) {
+  if (!m.photo) return placeholder(m.placeholder);
+  const img = el('img', { class: 'thumb', src: m.photo, loading: 'lazy', decoding: 'async', width: 72, height: 72, alt: `${m.name} 외벽` });
+  img.addEventListener('error', () => img.replaceWith(placeholder(m.placeholder)), { once: true });
   return img;
 }
 
@@ -95,7 +63,7 @@ function segments(cls, ranges) {
 }
 
 // The same day as the list row's bar: a closed wall opening on a later day shows that day, without a now line.
-function dayBarBlock(bar, wall) {
+function dayBarBlock(bar) {
   const now = bar.ahead ? null : el('span', { class: 'now' });
   now?.style.setProperty('left', pct(bar.nowMin));
   return el('div', { class: 'daybar-wrap' },
@@ -105,31 +73,15 @@ function dayBarBlock(bar, wall) {
       now),
     el('div', { class: 'ticks', 'aria-hidden': 'true' },
       ...[0, 6, 12, 18, 24].map((t) => el('span', {}, String(t)))),
-    bar.ahead || !bar.sun ? el('p', { class: 'nosun' },
-      [bar.ahead ? `${dayText(bar.ahead)} 운영` : null, bar.sun ? null : wall.venue === 'indoor' ? '실내' : '양달 정보 없음'].filter(Boolean).join(' · ')) : null);
+    bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
 }
 
-function sunNote(row) {
-  if (row.wall.venue === 'indoor') return '실내 · 양달/응달 해당 없음';
-  if (row.lit === null) return '벽 방향 미입력';
-  const label = row.lit ? '☀ 양달' : row.reason === 'terrain' ? '☁ 응달 · 산에 가려짐' : '☁ 응달';
-  return `${label}${row.method === 'azimuth' ? ' · 방위각 기준' : row.method === 'override' ? ' · 직접 입력' : ''}`;
-}
-
-function actionLinks(wall) {
-  const c = wall.contact ?? {};
-  const pos = wallPosition(wall);
-  const links = [
-    c.phone && ['전화', `tel:${c.phone.replace(/[^\d+]/g, '')}`],
-    c.instagram && ['인스타 공지', `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/`],
-    safeUrl(c.naver_map) && ['네이버지도', c.naver_map],
-    safeUrl(c.notice_url) && ['공지 사이트', c.notice_url],
-    pos && ['길찾기', `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}`, 'primary'],
-  ].filter(Boolean);
+// contact links; the expanded row leaves out 길찾기 (primary), it has its own button
+function actionLinks(links) {
   if (!links.length) return null;
   return el('div', { class: 'actions' },
-    ...links.map(([label, href, kind]) =>
-      el('a', { class: `btn${kind ? ` ${kind}` : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, label)));
+    ...links.map(({ label, href, primary }) =>
+      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, label)));
 }
 
 const rowButtons = (name, ...extra) => {
@@ -143,52 +95,42 @@ const rowButtons = (name, ...extra) => {
   return kids.length ? el('div', { class: 'row-actions' }, ...kids) : null;
 };
 
-function more(wall) {
-  const src = photoSrc(wall);
-  const pos = wallPosition(wall);
-  const photo = src ? el('img', { class: 'photo', src, loading: 'lazy', decoding: 'async', alt: `${wall.name} 외벽 사진` }) : null;
+function more(m) {
+  const photo = m.photo ? el('img', { class: 'photo', src: m.photo, loading: 'lazy', decoding: 'async', alt: `${m.name} 외벽 사진` }) : null;
   photo?.addEventListener('error', () => photo.remove(), { once: true });
   return el('details', { class: 'more' },
     el('summary', {}, '자세히'),
     photo,
-    memoList(wall.memo),
-    el('p', { class: 'meta' }, wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음'),
-    pos?.approx ? el('p', { class: 'meta' }, '위치 추정(확인 전)') : null,
-    wall.parking?.note ? el('p', { class: 'meta' }, `주차 메모 · ${wall.parking.note}`) : null,
-    rowButtons(wall.name,
-      config.reportEndpoint ? el('button', { type: 'button', 'data-act': 'report', 'data-name': wall.name }, '정보가 달라요') : null));
+    memoList(m.memo),
+    el('p', { class: 'meta' }, m.checked),
+    m.approxNote ? el('p', { class: 'meta' }, m.approxNote) : null,
+    m.parkingMemo ? el('p', { class: 'meta' }, m.parkingMemo) : null,
+    rowButtons(m.name,
+      config.reportEndpoint ? el('button', { type: 'button', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요') : null));
 }
 
-// One card for any row (list groups now, the map's selected pin later).
+// The map's selected pin.
 function card(row, at) {
-  const { wall, status, short } = row;
-  const parking = parkingLabel(wall.parking);
-  const old = staleness(wall, at);
-  const bar = status.state === 'unknown' ? null : rowBar(wall, status, at);
-  const notes = [
-    status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null,
-    wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null,
-    sunNote(row),
-  ].filter(Boolean);
-  return el('li', { class: `card ${status.state}${short ? ' short' : ''}${old.stale ? ' stale' : ''}` },
-    thumb(wall),
+  const m = cardModel(row, at);
+  return el('li', { class: `card ${m.state}${m.short ? ' short' : ''}${m.stale ? ' stale' : ''}` },
+    thumb(m),
     el('div', { class: 'head' },
-      el('h3', { class: 'name' }, wall.name, feeChip(wall, 'fee')),
+      el('h3', { class: 'name' }, m.name, feeChip(m)),
       el('p', { class: 'where' },
-        wall.region ? el('small', {}, wall.region) : null,
-        row.distanceKm != null ? el('span', { class: 'dist' }, `직선 ${formatDistance(row.distanceKm)}`) : null,
-        basisTag(wall)),
-      el('p', { class: `status${endingSoon(row) ? ' soon' : ''}` }, statusText(status, at, wall))),
-    bar ? dayBarBlock(bar, wall) : null,
+        m.region ? el('small', {}, m.region) : null,
+        m.distLine ? el('span', { class: 'dist' }, m.distLine) : null,
+        basisTag(m)),
+      el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.statusText)),
+    m.bar ? dayBarBlock(m.bar) : null,
     el('div', { class: 'chips' },
-      ...(wall.tags ?? []).filter((t) => !isFee(t)).map((t) => el('span', { class: 'chip' }, t)),
-      ...breakRanges(wall, bar?.ahead ?? at).map((r) => el('span', { class: 'chip break' }, `휴게 ${formatRanges([r])}`)),
-      el('span', { class: `chip parking ${parking.tone}`, title: parking.note || null }, parking.text)),
-    old.stale ? el('p', { class: 'note stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
-    ...notes.map((n) => el('p', { class: 'note' }, n)),
-    actionLinks(wall),
-    blogBox(wall, false),
-    more(wall));
+      ...m.tags.map((t) => el('span', { class: 'chip' }, t)),
+      ...m.barBreaks.map((t) => el('span', { class: 'chip break' }, t)),
+      el('span', { class: `chip parking ${m.parking.tone}`, title: m.parking.note || null }, m.parking.text)),
+    m.staleNote ? el('p', { class: 'note stale-note' }, m.staleNote) : null,
+    ...m.notes.map((n) => el('p', { class: 'note' }, n)),
+    actionLinks(m.links),
+    blogBox(m.blog, false),
+    more(m));
 }
 
 function safeCard(row, at) {
@@ -213,22 +155,18 @@ const span = (cls, a, b) => {
 };
 
 // bottom-right chip on the photo; the credit comes from data, so it goes in as text only
-function creditChip(wall) {
-  const c = wall.photo_credit;
-  if (!c || !photoSrc(wall)) return null;
-  const text = `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`;
+function creditChip(c) {
+  if (!c) return null;
   return c.url
-    ? el('a', { class: 'credit', href: c.url, target: '_blank', rel: 'noopener noreferrer' }, text)
-    : el('span', { class: 'credit' }, text);
+    ? el('a', { class: 'credit', href: c.url, target: '_blank', rel: 'noopener noreferrer' }, c.text)
+    : el('span', { class: 'credit' }, c.text);
 }
 
-function hero(wall) {
+function hero(m) {
   // no photo: a low band instead of a big grey box ("높이 15.5m · 사진 준비 중")
-  const ph = () => el('div', { class: 'hero ph', 'aria-hidden': 'true' },
-    el('span', {}, `${wall.height_m ? `높이 ${wall.height_m}m · ` : ''}사진 준비 중`));
-  const src = photoSrc(wall);
-  if (!src) return ph();
-  const img = el('img', { class: 'hero', src, decoding: 'async', alt: `${wall.name} 외벽 사진` });
+  const ph = () => el('div', { class: 'hero ph', 'aria-hidden': 'true' }, el('span', {}, m.heroText));
+  if (!m.photo) return ph();
+  const img = el('img', { class: 'hero', src: m.photo, decoding: 'async', alt: `${m.name} 외벽 사진` });
   img.addEventListener('error', () => img.replaceWith(ph()), { once: true });
   return img;
 }
@@ -403,22 +341,22 @@ function moreTabs(wall, at, d, id) {
 
 // First view under the chips: 안내 (status notes, then the memo lines: closures/warnings, hours, the rest),
 // parking names, the address with a copy button. Weekly closures are a 안내 line and the hatched grid rows.
-function infoBlock(wall, f, notes) {
+const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
+  l.label ? el('span', { class: 'mk' }, l.label) : null,
+  el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
+
+function infoBlock(m) {
   const parts = [];
-  const lines = [...notes.filter((n) => n.key), ...f.rest, ...notes.filter((n) => !n.key)];
-  const { shown, folded } = splitInfo(lines);
-  const li = (l) => el('li', { class: l.key ? 'key' : null },
-    l.label ? el('span', { class: 'mk' }, l.label) : null,
-    el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
-  if (shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...shown.map(li)));
+  const { shown, folded, moreLabel } = m.info;
+  if (shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...shown.map(memoItem)));
   if (folded.length) { // lines 4+: folded under the same list; the warning lines never land here
     const fid = `info-more-${++rowSeq}`;
-    const inner = el('ul', { class: 'memo-list info' }, ...folded.map(li));
+    const inner = el('ul', { class: 'memo-list info' }, ...folded.map(memoItem));
     const fold = el('div', { class: 'info-fold', id: fid }, el('div', { class: 'info-fold-in' }, inner));
     const btn = el('button', { type: 'button', class: 'info-more', 'aria-controls': fid }, '');
     const sync = () => {
       btn.setAttribute('aria-expanded', String(infoOpen));
-      btn.textContent = infoOpen ? '접기' : `안내 ${folded.length}줄 더 보기`;
+      btn.textContent = infoOpen ? '접기' : moreLabel;
       fold.classList.toggle('open', infoOpen);
       fold.inert = !infoOpen;
     };
@@ -426,18 +364,13 @@ function infoBlock(wall, f, notes) {
     sync();
     parts.push(fold, btn);
   }
-  const names = parkingNames(wall.parking); // the 주차 chip says the status; the names once, here
-  if (names.length) {
-    parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
-      el('ul', { class: 'pnames' }, ...names.map((n) => el('li', {}, n)))));
-  }
-  if (f.address) {
-    const text = el('p', { class: 'addr-t' }, f.address);
+  if (m.address) {
+    const text = el('p', { class: 'addr-t' }, m.address);
     const say = el('span', { class: 'addr-say', 'aria-live': 'polite' });
     const btn = el('button', { type: 'button', class: 'btn', 'aria-label': '주소 복사' }, '복사');
     btn.addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText(f.address);
+        await navigator.clipboard.writeText(m.address);
         say.textContent = '주소를 복사했어요';
       } catch { // no clipboard (http, old browser, denied): select the text so it can be copied by hand
         const r = document.createRange();
@@ -449,6 +382,11 @@ function infoBlock(wall, f, notes) {
     });
     parts.push(el('div', { class: 'irow addr' }, el('span', { class: 'mk' }, '주소'), text, btn), say);
   }
+  // status, then the wall's own lot, then "주변" lots on a line of their own (the status is no longer a chip as well)
+  const { onsite, nearby } = m.parkingWhere;
+  parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
+    el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '',
+      nearby.length ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '주변'), nearby.join(' · ')) : null)));
   return parts;
 }
 
@@ -483,47 +421,16 @@ function sunBox(d, name, closedDay) {
       el('p', { class: 'dwhen' }, el('b', {}, d.windows.length ? `양달 시간 ${formatRanges(d.windows)}` : `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달이에요`))));
 }
 
-const moreLinks = (wall) => { // contact links; 길찾기 stays in the first view
-  const box = actionLinks(wall);
-  box?.querySelector('.primary')?.remove();
-  return box?.childElementCount ? box : null;
-};
-
-// "오늘 운영 10:00–21:00" / "10/9(금) 임시 휴장 · 휴무": the picked day as getStatus sees it.
-function dayLineParts({ season, closed, text }, at) {
-  const day = ymd(at) === ymd(new Date()) ? '오늘' : dayText(at);
-  const plain = closed || /시간 미입력$/.test(text); // not "오늘 운영 운영시간 미입력"
-  return [el('span', {}, `${season ? `${season} · ` : ''}${day}${plain ? '' : ' 운영'}`), el('b', {}, text)];
-}
-
-// Memo as "라벨 : 값" lines (memoLines, viewmodel.js), the same in the list and the map card.
-function memoList(memo) {
-  const lines = memoLines(memo);
-  if (!lines.length) return null;
-  return el('ul', { class: 'memo-list', 'aria-label': '메모' }, ...lines.map((l) => el('li', { class: l.key ? 'key' : null },
-    l.label ? el('span', { class: 'mk' }, l.label) : null,
-    el('span', { class: l.label ? 'mv' : 'mv free' }, l.value))));
-}
+// Memo as "라벨 : 값" lines (the map card's 자세히).
+const memoList = (lines) => (lines.length ? el('ul', { class: 'memo-list', 'aria-label': '메모' }, ...lines.map(memoItem)) : null);
 
 let infoOpen = false; // the 안내 overflow: folded again whenever a card is (re)opened
 let moreOpen = false; // the open row's "더 보기" survives re-renders (slider)
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Expanded row (v6): what decides the visit first, the rest folded in "더 보기".
-function rowDetails(row, at, id) {
-  const { wall, status } = row;
-  const parking = parkingLabel(wall.parking);
-  const old = staleness(wall, at);
-  const pos = wallPosition(wall);
-  const dial =dialModel(wall, at, { isNow: live, dayLabel: ymd(at) === ymd(new Date()) ? '오늘' : dayText(at) });
-  const day = dayLine(wall, at);
-  const where = [wall.region, row.distanceKm != null ? `직선 ${formatDistance(row.distanceKm)}` : null, BASIS[wall.timeBasis]].filter(Boolean).join(' · ');
-  const notes = [ // 안내 lines ahead of the memo's; status warnings are drawn like closure lines
-    status.winterNote ? { value: `❄ 동절기 · ${status.winterNote}`, key: true } : null,
-    wall.exceptions?.rain_rule ? { value: '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요', key: true } : null,
-    pos?.approx ? { value: '위치 추정(확인 전)' } : null,
-  ].filter(Boolean);
-  const facts = memoFacts(wall);
+function rowDetails(m, wall, at, id) {
+  const dial = dialModel(wall, at, { isNow: live, dayLabel: m.dayLabel });
   const sumState = el('span', { class: 'sum-s' }, moreOpen ? '접기' : '더 보기');
   // folded: the pictures only, one at a time (hours grid | seasonal sun)
   const more = el('details', { class: 'more2' },
@@ -535,97 +442,91 @@ function rowDetails(row, at, id) {
     if (more.closest('.row.is-open')) moreOpen = more.open; // a row being closed doesn't speak for the open one
     sumState.textContent = more.open ? '접기' : '더 보기';
   });
-  const go = pos && el('a', {
-    class: 'btn', target: '_blank', rel: 'noopener noreferrer',
-    href: `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}`,
-  }, '길찾기');
+  const go = m.route && el('a', { class: 'btn', target: '_blank', rel: 'noopener noreferrer', href: m.route }, '길찾기');
   const report = config.reportEndpoint
-    ? el('button', { type: 'button', class: 'btn sub', 'data-act': 'report', 'data-name': wall.name }, '정보가 달라요') : null;
+    ? el('button', { type: 'button', class: 'btn sub', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요') : null;
   return [
-    el('div', { class: 'herowrap' }, hero(wall), creditChip(wall)),
+    el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit)),
     el('div', { class: 'm-cols' },
       el('div', { class: 'm-info' },
-        el('h3', { class: 'x-name' }, wall.name, feeChip(wall, 'fee')),
-        el('p', { class: 'x-sub' }, [where, statusText(status, at, wall)].filter(Boolean).join(' · ')),
-        el('p', { class: 'today' }, ...dayLineParts(day, at)),
-        day.holiday ? el('p', { class: 'hol-note' }, day.holiday) : null,
-        old.stale ? el('p', { class: 'stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
+        el('h3', { class: 'x-name' }, m.name, feeChip(m)),
+        el('p', { class: 'x-sub' }, m.sub),
+        el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
+        m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
+        m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
-          ...breakRanges(wall, at).map((r) => el('span', { class: 'tag brk' }, `휴게 ${formatRanges([r])}`)), // as on the map card
-          el('span', { class: `tag pk ${parking.tone}` }, parking.text),
-          ...(wall.tags ?? []).filter((t) => !isFee(t)).map((t) => el('span', { class: 'tag' }, t)),
-          ...facts.sizes.map((s) => el('span', { class: 'tag' }, `${s.label} ${s.value}${s.unit}`))),
-        ...infoBlock(wall, facts, notes),
-        el('p', { class: 'checked' }, wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음')),
-      sunBox(dial, wall.name, day.closed)),
+          ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t)),
+          ...m.tags.map((t) => el('span', { class: 'tag' }, t)),
+          ...m.sizes.map((t) => el('span', { class: 'tag' }, t))),
+        ...infoBlock(m),
+        el('p', { class: 'checked' }, m.checked)),
+      more.childElementCount > 1 ? more : null, // hours / season tabs sit above the compass
+      sunBox(dial, m.name, m.closedDay)),
     go || report ? el('div', { class: 'acts' }, go, report) : null,
-    moreLinks(wall),
-    blogBox(wall),
-    rowButtons(wall.name),
-    more.childElementCount > 1 ? more : null,
+    actionLinks(m.links.filter((l) => !l.primary)), // 길찾기 is the button above
+    blogBox(m.blog),
+    rowButtons(m.name),
   ];
 }
 
-// 내 후기: latest post as a link; "외 N개" unfolds the rest in the same place (folded again on reopen, see toggleRow).
+// 내 후기: a small list (newest first, 3 shown, "외 N개" unfolds the rest in place); the map card keeps one link.
 // Titles and dates only via textContent; the urls were checked in normalizeWall (BLOG_URL_RE).
-function blogBox(wall, withList = true) {
-  const posts = blogPosts(wall);
-  if (!posts.length) return null;
-  const link = (p, label) => el('a', { class: 'btn sub blog-link', href: p.url, target: '_blank', rel: 'noopener noreferrer' }, label);
-  const moreLabel = withList ? blogMoreLabel(wall) : null;
-  const list = moreLabel ? el('ul', { class: 'blog-list', id: `blog-${++rowSeq}` },
-    ...posts.map((p) => el('li', {}, el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer' },
-      el('span', { class: 'bt' }, p.title), el('span', { class: 'bd' }, p.date))))) : null;
-  if (list) list.hidden = true;
-  const more = list && el('button', { type: 'button', class: 'btn sub blog-more', 'aria-expanded': 'false', 'aria-controls': list.id }, moreLabel);
+const BLOG_SHOWN = 3;
+function blogBox(blog, withList = true) {
+  if (!blog) return null;
+  const { posts, first } = blog;
+  if (!withList) {
+    return el('div', { class: 'blog' }, el('div', { class: 'blog-row' },
+      el('a', { class: 'btn sub blog-link', href: first.url, target: '_blank', rel: 'noopener noreferrer' }, first.label)));
+  }
+  const item = (p) => el('li', {}, el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer' },
+    el('span', { class: 'bt' }, p.title), el('span', { class: 'bd' }, p.date)));
+  const rest = posts.slice(BLOG_SHOWN);
+  const restList = rest.length ? el('ul', { class: 'blog-list', id: `blog-${++rowSeq}` }, ...rest.map(item)) : null;
+  if (restList) restList.hidden = true;
+  const more = restList && el('button', { type: 'button', class: 'blog-more', 'aria-expanded': 'false', 'aria-controls': restList.id }, `외 ${rest.length}개 더 보기`);
   more?.addEventListener('click', () => {
     const on = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(on));
-    list.hidden = !on;
+    more.textContent = on ? '접기' : `외 ${rest.length}개 더 보기`;
+    restList.hidden = !on;
   });
   return el('div', { class: 'blog' },
-    el('div', { class: 'blog-row' }, link(posts[0], blogLabel(posts[0])), more),
-    list,
-    withList ? el('p', { class: 'blog-note' }, '참고용 후기 · 운영시간은 앱 정보가 기준') : null);
+    el('p', { class: 'blog-h' }, el('b', {}, '내 후기'), ' 참고용 · 운영시간은 앱 정보가 기준'),
+    el('ul', { class: 'blog-list' }, ...posts.slice(0, BLOG_SHOWN).map(item)),
+    restList, more);
 }
-
-// 무료/유료 tags mean the entrance fee: shown beside the name, not among the chips (parking has its own).
-const isFee = (t) => t === '무료' || t === '유료';
-const feeChip = (wall, cls) => {
-  const t = (wall.tags ?? []).find(isFee);
-  return t ? el('span', { class: cls }, `입장 ${t}`) : null;
-};
 
 let rowSeq = 0;
 function timeRow(row, at) {
-  const { wall, status } = row;
-  const bar = rowBar(wall, status, at); // "내일 10:00 오픈" draws tomorrow's hours, without a now tick
+  const m = cardModel(row, at);
+  const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
   const id = `row-x-${++rowSeq}`;
-  const isOpen = openName === wall.name;
-  const meta = [wall.region, row.distanceKm != null ? formatDistance(row.distanceKm) : null].filter(Boolean).join(' · ');
-  const tick = bar.ahead ? null : el('span', { class: 'tick' });
+  const isOpen = openName === m.name;
+  const tick = !bar || bar.ahead ? null : el('span', { class: 'tick' });
   tick?.style.setProperty('left', axisX(bar.nowMin));
-  // 양달/응달/방향 모름 in words, not only the orange band; a wall without hours gets no empty bar
-  const sun = sunTag(row);
+  // 양달/응달/방향 모름 in words, not only the orange band
+  const { sun } = m;
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
-      el('span', { class: 'rname' }, shortName(wall)),
-      feeChip(wall, 'fee'),
+      el('span', { class: 'rname' }, m.shortName),
+      feeChip(m),
       sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
-      basisTag(wall), // own span: the region line may be cut short, this may not
-      meta ? el('span', { class: 'rmeta' }, meta) : null,
-      el('span', { class: 'left' }, rowLeft(status, at, wall))),
-    status.state === 'unknown' ? null : el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
-      ...barSegments(bar.open, bar.nowMin ?? -1).map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
-      ...(bar.sun ?? []).filter(([a, b]) => axisFrac(b) > axisFrac(a)).map(([a, b]) => span('sunband', a, b)),
-      tick));
+      basisTag(m), // own span: the region line may be cut short, this may not
+      m.meta ? el('span', { class: 'rmeta' }, m.meta) : null,
+      el('span', { class: 'left' }, m.left)),
+    bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
+      ...bar.segments.map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
+      ...bar.sunBands.map(([a, b]) => span('sunband', a, b)),
+      tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
-  const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(row, at, id) : []));
-  const li = el('li', { class: `row ${status.state}${endingSoon(row) ? ' soon' : ''}${isOpen ? ' is-open' : ''}` },
+  const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at, id) : []));
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}` },
     btn, el('div', { class: 'expand', id }, inner));
-  li.fill = () => inner.childElementCount || inner.append(...rowDetails(row, at, id).filter(Boolean));
-  li.wallName = wall.name;
-  li.state = status.state;
+  // filled on open: a fresh model, so "오늘" is judged on the clock of the click
+  li.fill = () => inner.childElementCount || inner.append(...rowDetails(cardModel(row, at), row.wall, at, id).filter(Boolean));
+  li.wallName = m.name;
+  li.state = m.state;
   return li;
 }
 
@@ -713,15 +614,15 @@ function render() {
   // the stored flag is ignored (not deleted) while no wall has parking data
   const canPark = state.walls.some(hasParking);
   $('parkRow').hidden = !canPark;
-  const parkOnly = ui.parkingOnly && canPark;
   const rows = buildList(state.walls, at, { minHours: Number(ui.minHours), withBreaks: ui.withBreaks, venue: ui.venue });
   const openTotal = rows.filter((r) => r.status.state === 'open').length;
+  const fv = filterView(ui, { canPark, openTotal, isNow });
   // 내 지역 · 구분 · 주차 narrow every group, the map and the counts alike (scopeRows)
-  const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly });
+  const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
   const all = withDistance(filterRows(scoped, ui.sun), origin);
   shown = { rows: all, at };
   // the open row was filtered out, or moved to another group (e.g. now closed, folded away): forget it
-  if (openName && !all.some((r) => r.wall.name === openName && r.status.state === openState)) {
+  if (openName && !keepOpenRow(all, openName, openState)) {
     openName = null;
     moreOpen = false;
     infoOpen = false;
@@ -731,21 +632,15 @@ function render() {
   const needOrigin = ui.sortMode === 'distance' && !origin;
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
 
-  for (const [id, on] of [['sunOnly', ui.sun === 'sun'], ['shadeOnly', ui.sun === 'shade'],
-    ['longOnly', ui.minHours !== '0'], ['nearFirst', ui.sortMode === 'distance'], ['parkingOnly', ui.parkingOnly], ['withBreaks', ui.withBreaks]]) {
-    $(id).setAttribute('aria-pressed', String(on));
-  }
-  // the chip and the sheet share one value: the chip names it (3·5·8시간+)
-  $('longOnly').textContent = `${ui.minHours === '0' ? '3' : ui.minHours}시간+`;
-  $('venueQuick').value = ui.venue;
-  $('venueQuick').closest('.pill').classList.toggle('on', ui.venue !== 'any');
+  for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
+  $('longOnly').textContent = fv.longLabel;
   const rc = $('regionChip');
   rc.hidden = !ui.regions.length;
-  rc.firstChild.textContent = regionLabel(ui.regions);
-  rc.setAttribute('aria-label', `${regionLabel(ui.regions)} 해제, 전국 보기`);
+  rc.firstChild.textContent = fv.regionLabel;
+  rc.setAttribute('aria-label', fv.regionChipLabel);
   for (const box of sheetForm.querySelectorAll('input[name="region"]')) box.checked = ui.regions.includes(box.value);
-  // the sheet's button counts what only the sheet shows (parking, 휴게 합산), not the 3·5·8시간+ chip again
-  const sheetOn = sheetCount(ui, parkOnly); // 내 지역 counts as one
+  syncRegionCounts();
+  const sheetOn = fv.sheetCount;
   $('moreFilters').classList.toggle('on', sheetOn > 0);
   $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn} ▾` : '조건 ▾';
 
@@ -755,7 +650,7 @@ function render() {
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
-    $('summary').replaceChildren(lead, el('b', { class: n ? null : 'zero' }, String(n)), '곳에서 탈 수 있어요');
+    $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
   }
   $('sub').textContent = `${DAY_KO[at.getDay()]}요일${origin ? ' · 직선거리' : ''}`; // the date input shows the rest
 
@@ -764,11 +659,10 @@ function render() {
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
   // the filters hid every open wall: offer the way back right here
-  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly, venue: ui.venue, regions: ui.regions };
   // replaceChildren(null) would print "null": only real nodes go in
-  emptyMsg.replaceChildren(...[emptyText(f, openTotal, isNow),
-    regionActive(f, openTotal) ? el('button', { type: 'button', class: 'clear-filters to-national' }, '전국으로 보기') : null,
-    filtersActive(f, openTotal) ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null].filter(Boolean));
+  emptyMsg.replaceChildren(...[fv.emptyText,
+    fv.national ? el('button', { type: 'button', class: 'clear-filters to-national' }, '전국으로 보기') : null,
+    fv.clear ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null].filter(Boolean));
   rowSeq = 0;
   $('rows-open').replaceChildren(...open.map((r) => safeRow(r, at)));
 
@@ -897,7 +791,6 @@ $('nearFirst').addEventListener('click', () => {
   if (!origin) locate();
 });
 
-$('venueQuick').addEventListener('change', (e) => setUi('venue', cleanVenue(e.target.value)));
 $('regionChip').addEventListener('click', () => {
   setUi('regions', []);
   $('sunOnly').focus(); // the chip is gone
@@ -913,12 +806,27 @@ function syncRegions() {
   $('regionRow').hidden = !list.length;
   if (regionKey === list.join('|')) return;
   regionKey = list.join('|');
-  $('regionOpts').replaceChildren(...regionGroups(list).map((g) => el('div', { class: 'rg', role: 'group', 'aria-labelledby': `rg-${g.name}` },
-    el('p', { class: 'rg-name', id: `rg-${g.name}` }, g.name),
+  // one folded <details> per 시·도 (경기 alone has 15 구·시): a group opens by itself when it holds a pick
+  $('regionOpts').replaceChildren(...regionGroups(list).map((g) => el('details', { class: 'rg', open: g.regions.some((r) => ui.regions.includes(r)) ? '' : null },
+    el('summary', { class: 'rg-name', 'data-total': String(g.regions.length) }, g.name, el('span', { class: 'rg-n' })),
     el('div', { class: 'rg-list' }, ...g.regions.map((r) => el('label', {},
       el('input', { type: 'checkbox', name: 'region', value: r }), r.slice(g.name.length).trim() || r))))));
 }
+// "n곳" (how many to pick from) or "n곳 선택" on each 시·도 header
+function syncRegionCounts() {
+  $('regionClear').hidden = !ui.regions.length;
+  for (const g of $('regionOpts').querySelectorAll('.rg')) {
+    const n = g.querySelectorAll('input:checked').length;
+    const sum = g.firstChild;
+    sum.lastChild.textContent = n ? `${n}곳 선택` : `${sum.dataset.total}곳`;
+    sum.lastChild.classList.toggle('on', n > 0);
+  }
+}
 
+$('regionClear').addEventListener('click', () => {
+  setUi('regions', []);
+  $('regionOpts').querySelector('summary')?.focus(); // the button is gone
+});
 $('moreFilters').addEventListener('click', () => sheet.showModal());
 document.querySelector('#group-open .empty').addEventListener('click', (e) => {
   if (e.target.closest('.to-national')) {
@@ -926,7 +834,7 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
     return $('sunOnly').focus(); // the button is gone
   }
   if (!e.target.closest('.clear-filters')) return;
-  Object.assign(ui, { sun: 'any', minHours: '0', parkingOnly: false, venue: 'any' });
+  Object.assign(ui, CLEARED);
   sheetForm.elements.minHours.value = '0';
   sheetForm.elements.venue.value = 'any';
   saveUi();
@@ -1027,7 +935,7 @@ onChange(() => {
 const FOCUSABLE = 'button, a, summary';
 const tick = () => {
   const a = document.activeElement;
-  if (!live || document.hidden || document.querySelector('.more[open]') || a?.closest('#pin-card, .clear-filters')) return;
+  if (skipTick({ live, hidden: document.hidden, detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters') })) return;
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   render();
