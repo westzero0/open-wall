@@ -71,6 +71,8 @@ function cleanOverride(v) {
 
 const PARKING = ['free', 'paid', 'none', 'unknown'];
 const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
+// A wall's own stamp artwork (src/stamp.js): an svg under data/stamps/, never a path that can leave it.
+export const STAMP_RE = /^stamps\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.svg$/;
 
 function cleanCredit(v) {
   if (!isPlainObject(v) || typeof v.text !== 'string' || !v.text.trim()) return null;
@@ -96,6 +98,7 @@ function cleanParking(v) {
 // indoor/outdoor: absent means 'outdoor' (the app is about outdoor walls); anything else is dropped
 export const VENUES = ['outdoor', 'indoor', 'both'];
 
+const cleanStamp = (v) => (typeof v === 'string' && STAMP_RE.test(v) && !v.includes('..') ? v : null);
 const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.includes('..') ? v : null);
 
 // 내 블로그 후기: at most 3 {title, url, date}; only https://blog.naver.com/caramelsnow/<digits> links survive
@@ -203,6 +206,7 @@ export function normalizeWall(raw) {
   const location = cleanLocation(raw.location);
   const parking = cleanParking(raw.parking);
   const photo = cleanPhoto(raw.photo);
+  const stamp = cleanStamp(raw.stamp);
   const photo_credit = photo ? cleanCredit(raw.photo_credit) : null;
   const short_name = typeof raw.short_name === 'string' ? raw.short_name.trim() : '';
   const venue = VENUES.includes(raw.venue) ? raw.venue : null;
@@ -229,6 +233,7 @@ export function normalizeWall(raw) {
     ...(location ? { location } : {}),
     ...(parking ? { parking } : {}),
     ...(photo ? { photo } : {}),
+    ...(stamp ? { stamp } : {}),
     ...(photo_credit ? { photo_credit } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
     ...(venue ? { venue } : {}),
@@ -260,7 +265,7 @@ export function keepGeo(old, next) {
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
-  for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };

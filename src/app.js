@@ -13,6 +13,7 @@ import {
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { inkStamp } from './stamp.js';
 import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, shareUrl, skipTick, wallFromSearch } from './ui-state.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
@@ -33,6 +34,7 @@ const ICONS = {
   chat: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
   phone: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'],
   pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
+  sliders: ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
 };
@@ -471,13 +473,13 @@ function goToMoment(date, min) {
   render();
 }
 
-// A wall's picture for the pick: its photo (fixed box, lazy), else a plain grey mark of the logo and, on the big card,
-// the wall's height in metres. Decorative: the name and the reason beside it say everything.
-function pickMedia(wall, hero) {
-  const box = el('span', { class: `pick-media${hero ? ' big' : ''}`, 'aria-hidden': 'true' });
+// A wall's picture for the pick: its photo (fixed box, lazy), else a grey mark of the logo and, on a tile, the wall's
+// height in metres. Decorative: the name and the reason beside it say everything.
+function pickMedia(wall, tile) {
+  const box = el('span', { class: `pick-media${tile ? ' tile' : ''}`, 'aria-hidden': 'true' });
   const plain = () => box.replaceChildren(...[
     el('span', { class: 'pick-mono' }),
-    hero && wall.height_m ? el('span', { class: 'pick-height' }, `${wall.height_m}m`) : null,
+    tile && wall.height_m ? el('span', { class: 'pick-height' }, `${wall.height_m}m`) : null,
   ].filter(Boolean)); // (replaceChildren would print a null as the word "null")
   if (!wall.photo) {
     plain();
@@ -489,12 +491,13 @@ function pickMedia(wall, hero) {
   return box;
 }
 
-let pickBasisOpen = false;
+let pickBasisOpen = false; // the day / basis choices, shown only when asked for
 let pickRefocus = null;
 
-// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason); opened it is one big card
-// (photo or the logo mark with the height, the wall, one sentence of why, one button), the next two as small lines, and
-// the day and basis behind two quiet buttons. Hidden when the list has nothing to say about the coming weekend.
+// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason). Opened: one row naming the
+// day and basis (it opens the choices), then up to three tiles side by side, swiped one at a time with the next peeking in:
+// a photo (or the grey logo mark with the height), the rank, the wall, one sentence of why. Hidden when the list has nothing
+// to say about the coming weekend.
 function renderPick() {
   const box = $('pick');
   const r = state.walls.length ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue }) : null;
@@ -502,7 +505,7 @@ function renderPick() {
   if (box.hidden) return;
   pickDay = Math.min(pickDay, r.days.length - 1);
   const cur = r.byDay[pickDay];
-  const [top, ...next] = cur.items;
+  const top = cur.items[0];
   const go = (it) => {
     const first = (r.pref === 'shade' ? it.shade : r.pref === 'sun' ? it.sun : it.open)?.[0]?.[0] ?? it.open[0][0];
     goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
@@ -512,45 +515,34 @@ function renderPick() {
   $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
 
   const kids = [];
-  if (top) {
-    const why = reasonOf(top, r.pref).sentence;
-    const cta = el('button', { type: 'button', class: 'pick-cta' }, '카드 보기');
-    cta.addEventListener('click', () => go(top));
-    kids.push(el('div', { class: 'pick-card' },
-      el('div', { class: 'pick-hero' }, pickMedia(top.wall, true), el('span', { class: 'pick-chip' }, dayText(cur.day.date))),
-      el('div', { class: 'pick-text' },
-        el('h3', { class: 'pick-name' }, shortName(top.wall)),
-        el('p', { class: 'pick-why' }, `${why} ${hoursLine(top)}`),
-        cta)));
-  } else {
-    kids.push(el('p', { class: 'pick-empty' }, '이 날은 조건에 맞는 곳이 없어요. 다른 날이나 기준을 골라 보세요.'));
+  const set = el('button', { type: 'button', class: 'pick-set', 'aria-expanded': String(pickBasisOpen), 'data-focus': 'set' },
+    el('span', {}, `${dayText(cur.day.date)} · ${PICK_WORD[r.pref]}`), icon('sliders'));
+  set.addEventListener('click', () => { pickBasisOpen = !pickBasisOpen; pickRefocus = 'set'; renderPick(); });
+  kids.push(set);
+  if (pickBasisOpen) {
+    const group = (label, items, pressed, pick) => el('div', { class: 'pick-segs', role: 'group', 'aria-label': label },
+      ...items.map(([v, text]) => {
+        const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(pressed(v)), 'data-focus': `${label}-${v}` }, text);
+        b.addEventListener('click', () => { pick(v); pickRefocus = `${label}-${v}`; renderPick(); });
+        return b;
+      }));
+    if (r.days.length > 1) kids.push(group('요일', r.days.map((d, i) => [i, `${d.label}요일`]), (v) => v === pickDay, (v) => { pickDay = v; }));
+    kids.push(group('기준', PICK_PREFS, (v) => v === pickPref, (v) => { pickPref = v; }));
+    if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
   }
-  if (next.length) {
-    kids.push(el('ul', { class: 'pick-next' }, ...next.map((it) => {
-      const b = el('button', { type: 'button', class: 'pick-line' },
-        el('span', { class: 'pick-line-name' }, shortName(it.wall)), el('span', { class: 'pick-line-why' }, reasonOf(it, r.pref).short));
+  if (cur.items.length) {
+    kids.push(el('ul', { class: 'pick-rail' }, ...cur.items.map((it, i) => {
+      const b = el('button', { type: 'button', class: 'pick-tile' },
+        el('span', { class: 'pick-tile-media' }, pickMedia(it.wall, true), el('span', { class: 'pick-rankchip' }, `${i + 1}순위`)),
+        el('span', { class: 'pick-tile-text' },
+          el('span', { class: 'pick-name' }, shortName(it.wall)),
+          el('span', { class: 'pick-why' }, reasonOf(it, r.pref).sentence),
+          el('span', { class: 'pick-hours' }, hoursLine(it))));
       b.addEventListener('click', () => go(it));
       return el('li', {}, b);
     })));
-  }
-  // day and basis: two quiet buttons, the basis choices only when asked for
-  const link = (text, key, onClick) => {
-    const b = el('button', { type: 'button', class: 'pick-link', 'data-focus': key }, text);
-    b.addEventListener('click', () => { pickRefocus = key; onClick(); renderPick(); });
-    return b;
-  };
-  const other = (pickDay + 1) % r.days.length;
-  kids.push(el('div', { class: 'pick-links' },
-    r.days.length > 1 ? link(`${r.days[other].label}요일 보기`, 'day', () => { pickDay = other; }) : null,
-    link(pickBasisOpen ? '기준 접기' : `기준 바꾸기 · ${PICK_WORD[r.pref]}`, 'basis', () => { pickBasisOpen = !pickBasisOpen; })));
-  if (pickBasisOpen) {
-    kids.push(el('div', { class: 'pick-segs', role: 'group', 'aria-label': '추천 기준' },
-      ...PICK_PREFS.map(([v, text]) => {
-        const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(v === pickPref), 'data-focus': `pref-${v}` }, text);
-        b.addEventListener('click', () => { pickPref = v; pickRefocus = `pref-${v}`; renderPick(); });
-        return b;
-      })));
-    if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
+  } else {
+    kids.push(el('p', { class: 'pick-empty' }, '이 날은 조건에 맞는 곳이 없어요. 다른 날이나 기준을 골라 보세요.'));
   }
   kids.push(el('p', { class: 'pick-note' }, '운영시간과 해 계산 기준이에요. 가기 전에 공지를 꼭 확인해 주세요.'));
   $('pick-body').replaceChildren(...kids);
@@ -732,7 +724,7 @@ function blogBox(blog, withList = true) {
 // 다녀왔어요 (the open card only): the right end of the 오늘 운영 line; opens the 기록 추가 sheet with this wall fixed.
 // Just after a save the check gives way to the 해벽 stamp, pressed once (same .stamp-in as the 기록 calendar).
 function beenBtn(m) {
-  const mark = logView.justStamped(m.name) ? el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }) : icon('check');
+  const mark = logView.justStamped(m.name) ? inkStamp(el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }), state.walls.find((w) => w.name === m.name)) : icon('check');
   const been = el('button', { type: 'button', class: 'btn been-btn', 'data-focus': 'been', 'aria-label': m.beenAria ?? null }, mark, m.beenLabel);
   been.addEventListener('click', () => logView.openAdd({ wall: m.name, from: been }));
   return been;

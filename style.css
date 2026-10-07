@@ -221,8 +221,9 @@ main { padding-bottom: 48px; }
 .fav-item.open .fav-status { color: var(--open); }
 .fav-item:active { background: var(--sunken); }
 .fav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band holding one raised card, a picture and a
-   sentence, where the list is flat rows with bars). Folded: thumbnail, wall, reason. Every control is at least --tap high. */
+/* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band holding photo tiles, where the list is
+   flat rows with bars). Folded: thumbnail, wall, reason. Opened: a settings row and tiles swiped side by side, the next one
+   peeking in. Every control is at least --tap high. */
 .pick { --pad: 16px; margin: 10px -16px 0; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-block: 1px solid var(--line); }
 .pick-sum { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px var(--pad); list-style: none; cursor: pointer; }
 .pick-sum::-webkit-details-marker { display: none; }
@@ -236,32 +237,33 @@ main { padding-bottom: 48px; }
 .pick-media { position: relative; display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; background: var(--sunken); }
 .pick-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .pick-mono { width: 22px; height: 22px; background: var(--muted); opacity: .55; -webkit-mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; }
-.pick-media.big { align-items: flex-end; justify-content: space-between; padding: 12px 16px; }
-.pick-media.big .pick-mono { width: 56px; height: 56px; align-self: flex-start; margin-left: auto; order: 2; }
-.pick-height { font-size: 2.25rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--fg); }
-.pick-body { padding: 4px var(--pad) 0; }
-.pick-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
-.pick-hero { position: relative; height: 120px; }
-.pick-chip { position: absolute; left: 12px; top: 12px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; }
-.pick-text { padding: 12px 16px 16px; }
-.pick-name { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
-.pick-why { margin: 4px 0 0; font-size: .9375rem; }
-.pick-cta { width: 100%; min-height: var(--tap); margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: transparent; color: var(--fg); font: inherit; font-size: .9375rem; font-weight: 600; }
-.pick-cta:active, .pick-line:active { background: var(--sunken); }
-.pick-next { list-style: none; margin: 8px 0 0; padding: 0; }
-.pick-next li + li { border-top: 1px solid var(--hair); }
-.pick-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--tap); padding: 0 2px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; }
-.pick-line-name { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
-.pick-line-why { flex: none; max-width: 55%; font-size: var(--fs-sm); color: var(--muted); text-align: right; }
-.pick-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin-top: 4px; }
-.pick-link { min-height: var(--tap); padding: 0 2px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; }
-.pick-segs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 3px; background: var(--sunken); border-radius: var(--radius); }
+.pick-media.tile { align-items: flex-end; justify-content: space-between; padding: 10px 12px; }
+.pick-media.tile .pick-mono { width: 48px; height: 48px; align-self: flex-start; margin-left: auto; order: 2; }
+.pick-height { font-size: 1.75rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--fg); }
+.pick-body { padding: 0 var(--pad); }
+.pick-set { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: var(--tap); padding: 0 2px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; }
+.pick-set svg { flex: none; width: 18px; height: 18px; }
+.pick-segs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 6px; padding: 3px; background: var(--sunken); border-radius: var(--radius); }
 .pick-seg { min-height: var(--tap); border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .pick-seg[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
-:is(.pick-cta, .pick-line, .pick-link, .pick-seg):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.pick-basis { margin: 8px 0 0; color: var(--muted); font-size: var(--fs-xs); }
+:is(.pick-set, .pick-seg, .pick-tile):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pick-basis { margin: 0 0 8px; color: var(--muted); font-size: var(--fs-xs); }
+.pick-rail {
+  display: flex; gap: 12px; margin: 0 calc(var(--pad) * -1); padding: 2px var(--pad) 8px; list-style: none; overflow-x: auto;
+  scroll-snap-type: x mandatory; scroll-padding-inline: var(--pad); scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.pick-rail::-webkit-scrollbar { display: none; }
+.pick-rail > li { flex: 0 0 min(76%, 270px); scroll-snap-align: start; }
+.pick-tile { display: flex; flex-direction: column; width: 100%; height: 100%; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; color: var(--fg); font: inherit; text-align: left; }
+.pick-tile:active { background: var(--sunken); }
+.pick-tile-media { position: relative; display: block; flex: none; height: 130px; }
+.pick-rankchip { position: absolute; left: 10px; top: 10px; padding: 3px 10px; border-radius: var(--r-pill); background: var(--surface); color: var(--accent); font-size: var(--fs-xs); font-weight: 700; }
+.pick-tile-text { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 14px; }
+.pick-name { font-size: 1.0625rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.pick-why { font-size: .9375rem; }
+.pick-hours { font-size: var(--fs-sm); color: var(--muted); }
 .pick-empty { margin: 0; padding: 12px 0; color: var(--muted); font-size: var(--fs-sm); }
-.pick-note { margin: 0; padding: 8px 0 12px; color: var(--muted); font-size: var(--fs-xs); }
+.pick-note { margin: 0; padding: 4px 0 12px; color: var(--muted); font-size: var(--fs-xs); }
 .card.no-photo { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: no-preference) {
   #pin-card.enter .card { animation: pin-in var(--dur-ui) var(--ease-out); }
@@ -869,6 +871,7 @@ dialog::backdrop { background: var(--scrim); }
 }
 .rp-field textarea { resize: vertical; white-space: pre-wrap; }
 .rp-extra[hidden] { display: none; }
+.rp-chat-name { user-select: all; -webkit-user-select: all; color: var(--fg); overflow-wrap: anywhere; } /* one tap selects the whole name, to copy */
 /* the foot of a card: 정보가 달라요 · 오픈채팅방 알려주기, quiet text links (the 44px height is the tap area) */
 .help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 18px; margin-top: 6px; } /* right-aligned: out of the way of the card's content */
 .help-link { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -1019,8 +1022,8 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .cal-badge { position: absolute; top: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
 .cal-day[aria-current="date"] { border: 2px solid var(--fg); }
 td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
-/* the stamp: the logo file as a one-colour mask in the --open ink; the day number sits on it in the page colour */
-.stamp { display: block; background: var(--open); opacity: var(--ink, 1); -webkit-mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; mask: url(assets/haebyeok-mark.svg) center / contain no-repeat; transform: rotate(var(--tilt, 0deg)); }
+/* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the day number sits on it in the page colour */
+.stamp { display: block; background: var(--open); opacity: var(--ink, 1); -webkit-mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; transform: rotate(var(--tilt, 0deg)); }
 .cal-stamp { position: absolute; z-index: 0; left: 50%; top: 50%; width: 64%; max-width: 40px; aspect-ratio: 1; margin: calc(max(-20px, -32%)) 0 0 calc(max(-20px, -32%)); }
 .cal-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @keyframes stamp-in { from { transform: rotate(var(--tilt, 0deg)) scale(1.15); } to { transform: rotate(var(--tilt, 0deg)) scale(1); } }

@@ -11,6 +11,10 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#f4f4f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101312" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-title" content="해벽">
   <meta property="og:type" content="website">
   <meta property="og:title" content="해벽 · 지금 열린 외벽">
   <meta property="og:description" content="지금 열려 있는 실외 인공암벽과 양달·응달을 한눈에.">
@@ -307,7 +311,8 @@
         </fieldset>
         <div class="rp-extra" data-kind="오픈채팅방" hidden>
           <label class="rp-field">오픈채팅방 링크<input type="url" name="chat" inputmode="url" autocomplete="off" placeholder="https://open.kakao.com/o/…" maxlength="80"></label>
-          <p class="sh-hint">이용자가 운영하는 카카오톡 오픈채팅방이에요. 확인 후 카드에 연결해요.</p>
+          <p class="sh-hint">방이 없다면 카카오톡 오픈채팅에서 만들어 보세요. 찾기 쉽게 방 이름을 <b class="rp-chat-name"></b>으로 하면 좋아요.</p>
+          <p class="sh-hint">이용자가 운영하는 방이라 앱은 대화 내용을 관리하지 않아요. 확인한 뒤 카드에 연결해요.</p>
         </div>
         <div class="rp-extra" data-kind="임시휴무" hidden>
           <label class="rp-field">휴무 시작일<input type="date" name="from"></label>
