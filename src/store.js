@@ -93,6 +93,21 @@ export const VENUES = ['outdoor', 'indoor', 'both'];
 
 const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.includes('..') ? v : null);
 
+// 내 블로그 후기: at most 3 {title, url, date}; only https://blog.naver.com/caramelsnow/<digits> links survive
+export const BLOG_URL_RE = /^https:\/\/blog\.naver\.com\/caramelsnow\/\d+$/;
+
+function cleanBlogPosts(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const p of v) {
+    if (!isPlainObject(p) || typeof p.title !== 'string' || !p.title.trim() || p.title.length > 120) continue;
+    if (!isDateStr(p.date) || typeof p.url !== 'string' || !BLOG_URL_RE.test(p.url)) continue;
+    out.push({ title: p.title.trim(), url: p.url, date: p.date });
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
 const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 function cleanSun(v) {
@@ -190,6 +205,7 @@ export function normalizeWall(raw) {
   const indoor_hours = isPlainObject(raw.indoor_hours) ? cleanHours(raw.indoor_hours) : {};
   const indoor_winter = getWinter(raw.indoor_winter);
   const holiday = HOLIDAY_RULES.includes(raw.holiday) ? raw.holiday : null;
+  const blog_posts = cleanBlogPosts(raw.blog_posts);
 
   return {
     region,
@@ -214,6 +230,7 @@ export function normalizeWall(raw) {
     ...(Object.keys(indoor_hours).length ? { indoor_hours } : {}),
     ...(indoor_winter.type !== 'none' ? { indoor_winter } : {}),
     ...(holiday ? { holiday } : {}),
+    ...(blog_posts.length ? { blog_posts } : {}),
   };
 }
 
@@ -237,7 +254,7 @@ export function keepGeo(old, next) {
   } else if (!out.photo_credit && out.photo === old.photo && old.photo_credit) out.photo_credit = old.photo_credit;
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
-  for (const k of ['indoor_hours', 'indoor_winter']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -261,7 +278,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       // holiday / nth closures fill only walls that have none (an edited rule stays)
       if (w.holiday && !old.holiday) fill.holiday = w.holiday;

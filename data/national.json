@@ -352,7 +352,14 @@
       },
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "대화역 리드클라이밍 고양인공암벽장 이용후기 주차",
+          "url": "https://blog.naver.com/caramelsnow/223963719877",
+          "date": "2025-08-08"
+        }
+      ]
     },
     {
       "name": "클라임스퀘어 ICN",
@@ -1431,7 +1438,14 @@
       },
       "checked_at": "2026-07-10",
       "venue": "both",
-      "holiday": "closed"
+      "holiday": "closed",
+      "blog_posts": [
+        {
+          "title": "포천 클라이밍 키즈클라이밍체험부터 리드클라이밍까지 가능한 소흘국민체육센터",
+          "url": "https://blog.naver.com/caramelsnow/223353822007",
+          "date": "2024-02-14"
+        }
+      ]
     },
     {
       "name": "한석봉체육관 클라이밍장",
@@ -1618,7 +1632,14 @@
       "photo": "photos/namyangju.jpg",
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "남양주 이색 놀거리 인공암벽 클라이밍체험복장",
+          "url": "https://blog.naver.com/caramelsnow/223111077192",
+          "date": "2023-05-25"
+        }
+      ]
     },
     {
       "name": "성남시인공암벽장",
@@ -1795,7 +1816,14 @@
       "photo": "photos/pangyo.jpg",
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "성남 판교클라이밍 판교공원 인공암벽장 위치 및 주차 탑로핑 체험",
+          "url": "https://blog.naver.com/caramelsnow/223083169773",
+          "date": "2023-04-25"
+        }
+      ]
     },
     {
       "name": "설봉공원인공암벽장",
@@ -2111,7 +2139,19 @@
       "contact": {
         "notice_url": "https://m.cafe.daum.net/bukhansanclimbing/Zkik"
       },
-      "venue": "both"
+      "venue": "both",
+      "blog_posts": [
+        {
+          "title": "서울 북한산 국제클라이밍센터 이용방법: 실내외 외벽 이용 팁, 주차, 주의 사항",
+          "url": "https://blog.naver.com/caramelsnow/224354834461",
+          "date": "2026-07-23"
+        },
+        {
+          "title": "도전!산악스포츠 2회차 북한산국제클라이밍센터 수업",
+          "url": "https://blog.naver.com/caramelsnow/223216245272",
+          "date": "2023-09-19"
+        }
+      ]
     },
     {
       "name": "당고개인공암벽장",
@@ -2283,7 +2323,14 @@
       "photo": "photos/danggogae.jpg",
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "노원 리드클라이밍 수락산당고개지구공원 인공암벽장 동절기 이용시간 주차 후기",
+          "url": "https://blog.naver.com/caramelsnow/223861602630",
+          "date": "2025-05-11"
+        }
+      ]
     },
     {
       "name": "은평인공암벽장",
@@ -2461,7 +2508,19 @@
       "photo_credit": {
         "text": "직접 촬영"
       },
-      "holiday": "closed"
+      "holiday": "closed",
+      "blog_posts": [
+        {
+          "title": "구파발역롯데몰 은평인공암벽장 주차 리드클라이밍 이용",
+          "url": "https://blog.naver.com/caramelsnow/223116329497",
+          "date": "2023-05-31"
+        },
+        {
+          "title": "[서울 은평/인공암벽]은평 인공암벽장",
+          "url": "https://blog.naver.com/caramelsnow/221986818906",
+          "date": "2020-06-01"
+        }
+      ]
     },
     {
       "name": "서울산악문화체험센터",
@@ -2906,7 +2965,24 @@
       "photo_credit": {
         "text": "직접 촬영"
       },
-      "holiday": "weekend"
+      "holiday": "weekend",
+      "blog_posts": [
+        {
+          "title": "용마산 가볼만한곳 용마폭포공원 클라이밍 이용방법 주차 교육",
+          "url": "https://blog.naver.com/caramelsnow/224020517159",
+          "date": "2025-09-24"
+        },
+        {
+          "title": "용마폭포공원 중랑 스포츠클라이밍 경기장 (운영시간 변경) 리드클라이밍",
+          "url": "https://blog.naver.com/caramelsnow/223034956139",
+          "date": "2023-03-05"
+        },
+        {
+          "title": "[서울 중랑/인공외벽]202103_중랑스포츠클라이밍경기장",
+          "url": "https://blog.naver.com/caramelsnow/222268976771",
+          "date": "2021-03-09"
+        }
+      ]
     },
     {
       "name": "응봉산 인공암벽공원",
@@ -3183,7 +3259,24 @@
       "photo": "photos/ttukseom.jpg",
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "한강 뚝섬유원지에서 리드클라이밍 인공외벽 무료 이용방법",
+          "url": "https://blog.naver.com/caramelsnow/223854979582",
+          "date": "2025-05-04"
+        },
+        {
+          "title": "뚝섬한강공원 실외클라이밍 인공암벽장 소식-빌레이테스트 시행 및 사물함 신청",
+          "url": "https://blog.naver.com/caramelsnow/223127834884",
+          "date": "2023-06-13"
+        },
+        {
+          "title": "2023년 서울 뚝섬한강공원 인공암벽장 암벽등반",
+          "url": "https://blog.naver.com/caramelsnow/223097540999",
+          "date": "2023-05-09"
+        }
+      ]
     },
     {
       "name": "영등포 스포츠클라이밍경기장",
@@ -3369,7 +3462,19 @@
       },
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "서울 인공외벽 리드클라이밍 영등포스포츠클라이밍경기장 이용방법 이용시간 주차",
+          "url": "https://blog.naver.com/caramelsnow/223877491006",
+          "date": "2025-05-25"
+        },
+        {
+          "title": "서울 암벽등반 영등포 스포츠클라이밍경기장 주차 이용후기",
+          "url": "https://blog.naver.com/caramelsnow/223111090026",
+          "date": "2023-05-27"
+        }
+      ]
     },
     {
       "name": "보라매공원 인공암벽등반장",
@@ -3655,7 +3760,19 @@
       "photo": "photos/gangnam.jpg",
       "photo_credit": {
         "text": "직접 촬영"
-      }
+      },
+      "blog_posts": [
+        {
+          "title": "대치 인공암벽장 강남스포츠클라이밍센터 드라이툴링 이용방법 비용",
+          "url": "https://blog.naver.com/caramelsnow/224194456359",
+          "date": "2026-02-24"
+        },
+        {
+          "title": "서울 리드클라이밍 대치동 강남스포츠클라이밍센터 빌레이테스트 주차",
+          "url": "https://blog.naver.com/caramelsnow/223184583891",
+          "date": "2023-08-15"
+        }
+      ]
     },
     {
       "name": "파주스타디움 인공암벽장",
@@ -3832,7 +3949,14 @@
       "photo_credit": {
         "text": "직접 촬영"
       },
-      "venue": "both"
+      "venue": "both",
+      "blog_posts": [
+        {
+          "title": "파주 국제 스포츠클라이밍 경기장 이용방법 & 주차 팁 (15m 실내 리드, 무료 운영)",
+          "url": "https://blog.naver.com/caramelsnow/224357308238",
+          "date": "2026-07-25"
+        }
+      ]
     }
   ]
 }
