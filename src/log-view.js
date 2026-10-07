@@ -62,6 +62,7 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
   let focusDay = picked;
   let monthSay = '';
   let stamped = null; // the day a record was just added: its stamp lands with a short press, once
+  let stampedWall = null; // ...and the wall, so its card's 다녀왔어요 pill gets the same press
 
   const regionOf = (name) => getWalls().find((w) => w.name === name)?.region ?? '';
   const persist = () => saveLog(storage, log) || toast('이 브라우저에 저장하지 못했어요. 이번 방문 동안만 남아요.');
@@ -144,8 +145,9 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     const key = opener?.dataset.focus ?? null;
     dlg.close();
     stamped = res.record.date;
+    stampedWall = wall;
     changed(key);
-    stamped = null;
+    stamped = stampedWall = null;
     toast(`${wall} 기록했어요`, () => {
       log = removeRecord(log, res.record.id);
       persist();
@@ -370,6 +372,7 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     openAdd,
     exportFile,
     importFile,
+    justStamped: (name) => stampedWall === name, // true only while changed() redraws after a save
     recordsFor: (name) => log.filter((r) => r.wall === name), // newest first (normalizeLog/addRecord keep that order)
   };
 }
