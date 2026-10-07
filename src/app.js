@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, barSegments, cleanRegions, cleanVenue, dayBar, dayLine, dayText, emptyText, endingSoon, filterRows, filtersActive, fmtMin, formatDistance, formatRanges,
-  breakRanges, groupRows, hasParking, memoFacts, splitInfo, NTH_KO, parkingNames, regionActive, regionGroups, regionLabel, regionList, scopeRows, seasonSun, unknownText, winterSpan,
+  blogLabel, blogMoreLabel, blogPosts, breakRanges, groupRows, hasParking, memoFacts, splitInfo, NTH_KO, parkingNames, regionActive, regionGroups, regionLabel, regionList, scopeRows, seasonSun, unknownText, winterSpan,
   isLivePick, mapPins, memoLines, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowBar, rowLeft,
   sheetCount, shortName, sliderValue, sortRows, staleness, summaryLead, sunTag, timeLabel, wallPosition, weeklyHours, withDistance,
 } from './viewmodel.js';
@@ -187,6 +187,7 @@ function card(row, at) {
     old.stale ? el('p', { class: 'note stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
     ...notes.map((n) => el('p', { class: 'note' }, n)),
     actionLinks(wall),
+    blogBox(wall, false),
     more(wall));
 }
 
@@ -559,10 +560,33 @@ function rowDetails(row, at, id) {
       sunBox(dial, wall.name, day.closed)),
     go || report ? el('div', { class: 'acts' }, go, report) : null,
     moreLinks(wall),
+    blogBox(wall),
     rowButtons(wall.name),
-    // 내 후기 링크가 들어올 자리: acts 아래, 접힘 줄 위
     more.childElementCount > 1 ? more : null,
   ];
+}
+
+// 내 후기: latest post as a link; "외 N개" unfolds the rest in the same place (folded again on reopen, see toggleRow).
+// Titles and dates only via textContent; the urls were checked in normalizeWall (BLOG_URL_RE).
+function blogBox(wall, withList = true) {
+  const posts = blogPosts(wall);
+  if (!posts.length) return null;
+  const link = (p, label) => el('a', { class: 'btn sub blog-link', href: p.url, target: '_blank', rel: 'noopener noreferrer' }, label);
+  const moreLabel = withList ? blogMoreLabel(wall) : null;
+  const list = moreLabel ? el('ul', { class: 'blog-list', id: `blog-${++rowSeq}` },
+    ...posts.map((p) => el('li', {}, el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer' },
+      el('span', { class: 'bt' }, p.title), el('span', { class: 'bd' }, p.date))))) : null;
+  if (list) list.hidden = true;
+  const more = list && el('button', { type: 'button', class: 'btn sub blog-more', 'aria-expanded': 'false', 'aria-controls': list.id }, moreLabel);
+  more?.addEventListener('click', () => {
+    const on = more.getAttribute('aria-expanded') !== 'true';
+    more.setAttribute('aria-expanded', String(on));
+    list.hidden = !on;
+  });
+  return el('div', { class: 'blog' },
+    el('div', { class: 'blog-row' }, link(posts[0], blogLabel(posts[0])), more),
+    list,
+    withList ? el('p', { class: 'blog-note' }, '참고용 후기 · 운영시간은 앱 정보가 기준') : null);
 }
 
 // 무료/유료 tags mean the entrance fee: shown beside the name, not among the chips (parking has its own).
@@ -636,6 +660,7 @@ function toggleRow(li) {
   gridSeason.clear(); // a reopened row starts on the picked day's season
   if (!opening) return;
   li.fill();
+  li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
   setRowOpen(li, true);
   // opened near the foot of the screen: the details would appear below the fold, so bring the row up
   const btn = li.querySelector('.row-btn');

@@ -130,6 +130,11 @@ export const hasParking = (wall) => wall.parking?.status === 'free' || wall.park
 
 export const shortName = (wall) => wall.short_name || wall.name;
 
+// 내 후기: posts newest first; the label shows year-month only
+export const blogPosts = (wall) => [...(wall.blog_posts ?? [])].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+export const blogLabel = (post) => `내 후기 · ${post.date.slice(0, 7)}`;
+export const blogMoreLabel = (wall) => (blogPosts(wall).length > 1 ? `외 ${blogPosts(wall).length - 1}개` : null);
+
 export const photoSrc = (wall) => (wall.photo ? `data/${wall.photo}` : null);
 
 export function placeholderText(wall) {
