@@ -2653,7 +2653,7 @@
         ]
       },
       "parking": {
-        "status": "unknown",
+        "status": "paid",
         "note": "센터 주차장(노을공원주차장 아님)"
       },
       "checked_at": "2026-07-10",
