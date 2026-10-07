@@ -1,5 +1,6 @@
 import { getStatus, openIntervals } from './hours.js';
 import { isSunlit } from './sun.js';
+import { viewOf } from './viewmodel.js';
 
 const GROUP = { open: 0, closed: 1, unknown: 2 };
 
@@ -10,8 +11,9 @@ function stayMin(wall, status, at, withBreaks) {
   return openIntervals(wall, at).reduce((sum, [a, b]) => sum + Math.max(0, b - Math.max(a, now)), 0);
 }
 
-export function buildList(walls, at, { minHours = 0, sun = 'any', withBreaks = false } = {}) {
-  const rows = walls.map((wall) => {
+// venue: the 구분 filter; each wall is read through viewOf (실내 → a 'both' wall's indoor hours).
+export function buildList(walls, at, { minHours = 0, sun = 'any', withBreaks = false, venue = 'any' } = {}) {
+  const rows = walls.map((w) => viewOf(w, venue)).map((wall) => {
     const status = getStatus(wall, at);
     const sun = isSunlit(wall, at);
     return {

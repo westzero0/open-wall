@@ -6,13 +6,30 @@ const WINTER = { 없음: 'none', 휴장: 'closed', 변경: 'changed' };
 const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const PARKING_KO = { 무료: 'free', 유료: 'paid', 없음: 'none', 모름: 'unknown' };
 const PARKING_LABEL = Object.fromEntries(Object.entries(PARKING_KO).map(([ko, en]) => [en, ko]));
+const VENUE_KO = { 실외: 'outdoor', 실내: 'indoor', 실내외: 'both' };
+const VENUE_LABEL = Object.fromEntries(Object.entries(VENUE_KO).map(([ko, en]) => [en, ko]));
 
 export const CSV_HEADERS = [
   '이름', '지역', '높이', '태그', '메모', '확인일',
   ...DAY_COLS.map(([, label]) => label),
   '동절기', '동절시작월', '동절끝월', '동절시간', '동절실내안내',
   '임시휴장일', '우천규칙', '전화', '인스타', '네이버지도', '공지사이트', '방향', '위도', '경도', '주차', '주차메모',
+  '구분', // added last; an older CSV without it still imports (empty = keep the stored value / outdoor)
+  '공휴일', '격주휴무', // same: absent or empty keeps the stored rule (keepGeo)
 ];
+const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
+const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
+const DAY_KO_KEY = Object.fromEntries(DAY_COLS.map(([k, ko]) => [ko, k]));
+
+// '일 2,4; 토 1' → [{ day: 'sun', nth: [2, 4] }, { day: 'sat', nth: [1] }]
+function nthList(s) {
+  return list(s).map((item) => {
+    const m = item.match(/^([월화수목금토일])\s*([1-5](?:\s*,\s*[1-5])*)$/);
+    if (!m) throw new Error(`격주휴무 형식 오류: ${item} (예: 일 2,4)`);
+    return { day: DAY_KO_KEY[m[1]], nth: m[2].split(',').map(Number) };
+  });
+}
+const nthText = (rules) => (rules ?? []).map((r) => `${DAY_COLS.find(([k]) => k === r.day)[1]} ${r.nth.join(',')}`).join('; ');
 
 export function parseCsv(text) {
   const rows = [];
@@ -146,6 +163,11 @@ export function csvToWalls(rows, opts = {}) {
       const pkNote = get('주차메모');
       if (pk && !Object.hasOwn(PARKING_KO, pk)) throw new Error('주차는 무료/유료/없음/모름 중 하나여야 해요');
       const parking = pk || pkNote ? compact({ status: pk ? PARKING_KO[pk] : 'unknown', note: pkNote }) : null;
+      const venue = get('구분');
+      if (venue && !Object.hasOwn(VENUE_KO, venue)) throw new Error('구분은 실외/실내/실내외 중 하나여야 해요');
+      const holiday = get('공휴일');
+      if (holiday && !Object.hasOwn(HOLIDAY_KO, holiday)) throw new Error('공휴일은 주말/휴무/평일 중 하나여야 해요');
+      const nth_closed = nthList(get('격주휴무'));
 
       walls.push({
         name: get('이름'),
@@ -156,12 +178,14 @@ export function csvToWalls(rows, opts = {}) {
         checked_at: get('확인일') || null,
         hours,
         winter,
-        exceptions: { closed_dates, rain_rule: get('우천규칙').toUpperCase() === 'O' },
+        exceptions: { closed_dates, rain_rule: get('우천규칙').toUpperCase() === 'O', ...(nth_closed.length ? { nth_closed } : {}) },
         contact: compact({
           phone: get('전화'), instagram: get('인스타'), naver_map: get('네이버지도'), notice_url: get('공지사이트'),
         }),
         sun: compact({ facing, lat, lng }),
         ...(parking ? { parking } : {}),
+        ...(venue ? { venue: VENUE_KO[venue] } : {}),
+        ...(holiday ? { holiday: HOLIDAY_KO[holiday] } : {}),
       });
     } catch (e) {
       errors.push(`행 ${n + 2}: ${e.message}`);
@@ -191,6 +215,9 @@ export function wallToRow(w) {
     방향: w.sun?.facing ?? '', 위도: w.sun?.lat ?? '', 경도: w.sun?.lng ?? '',
     주차: w.parking ? PARKING_LABEL[w.parking.status] : '',
     주차메모: w.parking?.note ?? '',
+    구분: VENUE_LABEL[w.venue] ?? '',
+    공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
+    격주휴무: nthText(w.exceptions?.nth_closed),
   };
   return CSV_HEADERS.map((k) => String(o[k]));
 }

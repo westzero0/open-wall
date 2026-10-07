@@ -1,4 +1,5 @@
 import { DAY_KEYS, toMin, ymd } from './time.js';
+import { holidayName } from './holidays.js';
 
 const dayStart = (d, offset = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset);
 const atMin = (d, min) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, min);
@@ -12,16 +13,40 @@ export function inWinter(wall, date) {
     : m >= w.from_month || m <= w.to_month;
 }
 
-// Day value (pair, list of pairs) for the calendar day, or null (closed / not entered).
-function daySlot(wall, date) {
-  if (wall.exceptions?.closed_dates?.includes(ymd(date))) return null;
-  const key = DAY_KEYS[date.getDay()];
-  if (inWinter(wall, date)) {
-    if (wall.winter.type === 'closed') return null;
-    if (wall.winter.type === 'changed') return wall.winter.hours?.[key] ?? null;
-  }
-  return wall.hours?.[key] ?? null;
+// Hours value of a weekday key, or 'hol' (public holiday), in or out of the winter season:
+// a pair, a list of pairs, null (closed) or undefined (not entered / no holiday rule).
+// holiday 'weekend' reads Saturday's hours (Sunday can carry nth closures, e.g. 둘째·넷째 일요일).
+export function slotOf(wall, key, winter) {
+  if (winter && wall.winter?.type === 'closed') return null;
+  const src = winter && wall.winter?.type === 'changed' ? wall.winter.hours ?? {} : wall.hours;
+  if (key === 'hol') return wall.holiday === 'closed' ? null : wall.holiday === 'weekend' ? src?.sat : undefined;
+  return src?.[key];
 }
+
+// 1 for the 1st–7th of the month, 2 for the 8th–14th, …: "둘째 일요일" is the Sunday with nth 2.
+export const nthOfMonth = (date) => Math.ceil(date.getDate() / 7);
+const nthClosed = (wall, date) => (wall.exceptions?.nth_closed ?? [])
+  .some((r) => r.day === DAY_KEYS[date.getDay()] && r.nth.includes(nthOfMonth(date)));
+
+// The one rule for a calendar day; every status, bar, table row and break reads it (through daySlot).
+// key: the timetable row the day follows ('hol' when a holiday rule replaces the weekday).
+// A holiday on the wall's weekly closing day stays closed (whether it opens then is not known);
+// 'weekday' (or no rule) keeps the weekday's hours.
+// why: 'closed_date' | 'nth' | null. slot: as slotOf.
+export function dayRule(wall, date) {
+  const winter = inWinter(wall, date);
+  const day = DAY_KEYS[date.getDay()];
+  const own = slotOf(wall, day, winter);
+  const holiday = holidayName(date);
+  const key = holiday && own !== null && (wall.holiday === 'weekend' || wall.holiday === 'closed') ? 'hol' : day;
+  const base = { key, winter, holiday };
+  if (wall.exceptions?.closed_dates?.includes(ymd(date))) return { ...base, slot: null, why: 'closed_date' };
+  if (nthClosed(wall, date)) return { ...base, slot: null, why: 'nth' };
+  return { ...base, slot: key === 'hol' ? slotOf(wall, 'hol', winter) : own, why: null };
+}
+
+// Day value (pair, list of pairs) for the calendar day, or null (closed / not entered).
+const daySlot = (wall, date) => dayRule(wall, date).slot ?? null;
 
 // A day value is one pair ["HH:MM","HH:MM"] or a list of pairs; returns sorted spans, touching ones merged.
 function spans(date, slot) {
