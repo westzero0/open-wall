@@ -1,7 +1,7 @@
 import { buildList } from './listing.js';
 import { DAY_KO, hhmm, ymd } from './time.js';
-import { loadWalls, normalizeWall, parseJson } from './store.js';
-import { state, storage, onChange } from './state.js';
+import { fetchNational, loadWalls } from './store.js';
+import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
 import { createMap } from './map.js';
 import { dialModel, seasonWindows } from './dial.js';
@@ -13,6 +13,7 @@ import {
 } from './viewmodel.js';
 
 const $ = (id) => document.getElementById(id);
+let loadFailed = false;
 const UI_KEY = 'open-wall:ui';
 
 const el = (tag, attrs = {}, ...kids) => {
@@ -30,7 +31,8 @@ const SUN_FILTERS = ['any', 'sun', 'shade'];
 // ---- UI state: filters persist in localStorage, location stays in memory ----
 const ui = { minHours: '0', sun: 'any', parkingOnly: false, sortMode: 'time', tab: 'list' };
 try {
-  Object.assign(ui, JSON.parse(storage.getItem(UI_KEY)) ?? {});
+  const saved = JSON.parse(storage.getItem(UI_KEY));
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.assign(ui, saved);
 } catch { /* bad JSON or no storage: defaults */ }
 // `sun` used to be a sort preference ('sun'/'shade' first); the same values now mean the 양달/응달 filter.
 if (!SUN_FILTERS.includes(ui.sun)) ui.sun = 'any';
@@ -46,6 +48,7 @@ let origin = null; // {lat, lng} after "내 위치"
 let locateNote = '';
 let live = true; // date/time follow the clock until the user picks another moment
 let openName = null; // the expanded timetable row, kept by wall name across re-renders
+let openState = null; // that row's status.state, so a row that moves to another group is forgotten
 let shown = { rows: [], at: null }; // last rendered rows (all groups, with distance) for the map
 let mapApi = null; // created the first time the map tab opens
 let mapFailed = false;
@@ -121,10 +124,16 @@ function actionLinks(wall) {
       el('a', { class: `btn${kind ? ` ${kind}` : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, label)));
 }
 
-const rowButtons = (name, ...extra) => el('div', { class: 'row-actions' },
-  el('button', { type: 'button', 'data-act': 'edit', 'data-name': name }, '수정'),
-  el('button', { type: 'button', 'data-act': 'delete', 'data-name': name }, '삭제'),
-  ...extra);
+const rowButtons = (name, ...extra) => {
+  const kids = [
+    ...(canEdit ? [
+      el('button', { type: 'button', 'data-act': 'edit', 'data-name': name }, '수정'),
+      el('button', { type: 'button', 'data-act': 'delete', 'data-name': name }, '삭제'),
+    ] : []),
+    ...extra,
+  ].filter(Boolean);
+  return kids.length ? el('div', { class: 'row-actions' }, ...kids) : null;
+};
 
 function more(wall) {
   const src = photoSrc(wall);
@@ -177,7 +186,7 @@ function safeCard(row, at) {
     const name = row.wall.name;
     return el('li', { class: 'card broken' },
       el('h3', { class: 'name' }, name),
-      el('p', { class: 'note' }, '표시 중 오류가 발생했어요. 수정 또는 삭제해 주세요.'),
+      el('p', { class: 'note' }, canEdit ? '표시 중 오류가 발생했어요. 수정 또는 삭제해 주세요.' : '표시 중 오류가 발생했어요.'),
       rowButtons(name));
   }
 }
@@ -190,6 +199,16 @@ const span = (cls, a, b) => {
   s.style.width = `${(axisFrac(b) - axisFrac(a)) * 100}%`;
   return s;
 };
+
+// bottom-right chip on the photo; the credit comes from data, so it goes in as text only
+function creditChip(wall) {
+  const c = wall.photo_credit;
+  if (!c || !photoSrc(wall)) return null;
+  const text = `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`;
+  return c.url
+    ? el('a', { class: 'credit', href: c.url, target: '_blank', rel: 'noopener noreferrer' }, text)
+    : el('span', { class: 'credit' }, text);
+}
 
 function hero(wall) {
   const ph = () => {
@@ -317,7 +336,7 @@ function rowDetails(row, at, id) {
     href: `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}`,
   }, '길찾기');
   return [
-    el('div', { class: 'herowrap' }, hero(wall), el('span', { class: 'stamp' }, `확인 ${wall.checked_at ?? '없음'}`)),
+    el('div', { class: 'herowrap' }, hero(wall), el('span', { class: 'stamp' }, `확인 ${wall.checked_at ?? '없음'}`), creditChip(wall)),
     el('div', { class: 'm-cols' },
       el('div', { class: 'm-info' },
         el('h3', { class: 'x-name' }, wall.name),
@@ -358,6 +377,7 @@ function timeRow(row, at) {
     btn, el('div', { class: 'expand', id }, inner));
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(row, at, id).filter(Boolean));
   li.wallName = wall.name;
+  li.state = status.state;
   return li;
 }
 
@@ -368,7 +388,7 @@ function safeRow(row, at) {
     const name = row.wall.name;
     return el('li', { class: 'row broken' },
       el('p', { class: 'rname' }, name),
-      el('p', { class: 'note' }, '표시 중 오류가 발생했어요. 수정 또는 삭제해 주세요.'),
+      el('p', { class: 'note' }, canEdit ? '표시 중 오류가 발생했어요. 수정 또는 삭제해 주세요.' : '표시 중 오류가 발생했어요.'),
       rowButtons(name));
   }
 }
@@ -385,6 +405,7 @@ function toggleRow(li) {
   const opening = !li.classList.contains('is-open');
   for (const o of document.querySelectorAll('#panel-list .row.is-open')) setRowOpen(o, false);
   openName = opening ? li.wallName : null;
+  openState = opening ? li.state : null;
   moreOpen = false;
   if (!opening) return;
   li.fill();
@@ -419,6 +440,11 @@ function render() {
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = live && !Number.isNaN(+at);
   if (Number.isNaN(+at)) return;
+  if (loadFailed) { // never show "0 open" for a list that did not load
+    $('summary').dataset.key = 'load-failed';
+    $('summary').textContent = '외벽 목록을 불러오지 못했어요';
+    return;
+  }
   const isNow = live; // same decision that just set the inputs, so a minute rollover can't flip the wording
   const t = hhmm(at);
   const label = timeLabel(minuteOf(at), isNow);
@@ -436,7 +462,8 @@ function render() {
   if (parkOnly) rows = rows.filter((r) => hasParking(r.wall));
   const all = withDistance(filterRows(rows, ui.sun), origin);
   shown = { rows: all, at };
-  if (openName && !all.some((r) => r.wall.name === openName)) { // the open row was filtered out: forget it
+  // the open row was filtered out, or moved to another group (e.g. now closed, folded away): forget it
+  if (openName && !all.some((r) => r.wall.name === openName && r.status.state === openState)) {
     openName = null;
     moreOpen = false;
   }
@@ -626,7 +653,7 @@ $('locate').addEventListener('click', locate);
 
 document.querySelector('main').addEventListener('click', (e) => {
   const b = e.target.closest('.cards button[data-act], .rows button[data-act]');
-  if (b) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.name }));
+  if (b && (canEdit || b.dataset.act === 'report')) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.name }));
   const rb = e.target.closest('.row-btn');
   if (rb) toggleRow(rb.parentElement);
 });
@@ -640,16 +667,50 @@ document.addEventListener('keydown', (e) => {
 });
 
 onChange(render);
-// Live mode follows the clock. The minute tick skips while a row (or the map card's "자세히") is open
-// or focus is inside a row/card, because re-rendering would drop focus; it catches up next tick.
-const tick = () => live && !document.hidden && !document.querySelector('.more[open], .row.is-open')
-  && !document.activeElement?.closest('.cards, .rows') && render();
+// Live mode follows the clock. The minute tick skips only while the map card's "자세히" is open or focus is in a card.
+const tick = () => {
+  if (!live || document.hidden || document.querySelector('.more[open]') || document.activeElement?.closest('.cards')) return;
+  // a focused row button would be dropped by the re-render: give focus back to the same row afterwards
+  const name = document.activeElement?.closest('.rows .row')?.wallName;
+  render();
+  if (name) [...document.querySelectorAll('#panel-list .row')].find((li) => li.wallName === name)?.querySelector('.row-btn')?.focus();
+};
 setInterval(tick, 60_000);
 document.addEventListener('visibilitychange', tick);
 
-state.walls = (
-  loadWalls(storage) ??
-  (await fetch('data/national.json').then((r) => r.text()).then(parseJson).then((l) => l.map(normalizeWall)).catch(() => []))
-).filter((w) => w.name);
+// A saved list keeps the app working as before; the shipped list is fetched only without one.
+// Visitors always read the shipped list (their old saved copy is only a fallback when it can't load);
+// at ?edit a saved list wins, so edits stay.
+async function loadList() {
+  const saved = loadWalls(storage)?.filter((w) => w.name);
+  if (canEdit && saved?.length) return saved;
+  try {
+    return await fetchNational();
+  } catch {
+    return saved?.length ? saved : null;
+  }
+}
+
+function showLoadError(on) {
+  loadFailed = on;
+  $('load-error').hidden = !on;
+  document.body.classList.toggle('load-failed', on);
+}
+
+$('manage').hidden = !canEdit;
+
+$('retry').addEventListener('click', async () => {
+  $('retry').disabled = true;
+  const list = await loadList();
+  $('retry').disabled = false;
+  if (!list) return;
+  state.walls = list;
+  showLoadError(false);
+  render();
+});
+
+const first = await loadList();
+state.walls = first ?? [];
+showLoadError(!first);
 render();
 showTab(ui.tab === 'map' ? 'map' : 'list');

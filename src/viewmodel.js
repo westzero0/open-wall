@@ -31,7 +31,8 @@ export function groupRows(rows) {
   };
 }
 
-export const endingSoon = (row) => row.status.state === 'open' && row.status.remainingMin <= 60;
+// a break ahead is not a closing: no "soon" colour
+export const endingSoon = (row) => row.status.state === 'open' && row.status.endKind !== 'break' && row.status.remainingMin <= 60;
 
 export function pinState(status) {
   if (status.state === 'open') return status.remainingMin <= 60 ? 'soon' : 'open';
@@ -137,6 +138,7 @@ export function rowLeft(status, at) {
     return `${ymd(d) === ymd(at) ? '' : `${md(d)} `}${t} 오픈`;
   }
   const r = status.remainingMin;
+  if (r <= 60 && status.endKind === 'break') return `곧 휴게 · ${r}분 후 휴게`;
   if (r <= 60) return `곧 마감 · ${r}분 남음`;
   return `${Math.floor(r / 60)}시간${r % 60 ? ` ${r % 60}분` : ''} 남음`;
 }

@@ -67,6 +67,14 @@ function cleanOverride(v) {
 const PARKING = ['free', 'paid', 'none', 'unknown'];
 const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
 
+function cleanCredit(v) {
+  if (!isPlainObject(v) || typeof v.text !== 'string' || !v.text.trim()) return null;
+  const out = { text: v.text.trim().slice(0, 60) };
+  if (typeof v.license === 'string' && v.license.trim()) out.license = v.license.trim().slice(0, 30);
+  if (typeof v.url === 'string' && /^https:\/\//i.test(v.url)) out.url = v.url;
+  return out;
+}
+
 function cleanLocation(v) {
   if (!isPlainObject(v)) return null;
   const { lat, lng } = v;
@@ -155,6 +163,7 @@ export function normalizeWall(raw) {
   const location = cleanLocation(raw.location);
   const parking = cleanParking(raw.parking);
   const photo = cleanPhoto(raw.photo);
+  const photo_credit = photo ? cleanCredit(raw.photo_credit) : null;
   const short_name = typeof raw.short_name === 'string' ? raw.short_name.trim() : '';
 
   return {
@@ -174,6 +183,7 @@ export function normalizeWall(raw) {
     ...(location ? { location } : {}),
     ...(parking ? { parking } : {}),
     ...(photo ? { photo } : {}),
+    ...(photo_credit ? { photo_credit } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
   };
 }
@@ -192,7 +202,10 @@ export function keepGeo(old, next) {
     && (!Number.isFinite(out.sun?.lat) || (old.sun?.lat === out.sun.lat && old.sun?.lng === out.sun.lng))) {
     out.location = old.location;
   }
-  if (!out.photo && old.photo) out.photo = old.photo;
+  if (!out.photo && old.photo) {
+    out.photo = old.photo;
+    if (old.photo_credit) out.photo_credit = old.photo_credit;
+  } else if (!out.photo_credit && out.photo === old.photo && old.photo_credit) out.photo_credit = old.photo_credit;
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   return out;
 }
@@ -215,6 +228,7 @@ export function mergeWalls(existing, incoming, mode) {
       const old = byName.get(w.name);
       const fill = {};
       for (const k of ['location', 'parking', 'photo', 'short_name']) if (w[k] && !old[k]) fill[k] = w[k];
+      if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       // hours are only backfilled for walls that have none, so edited hours are never replaced
       if (!hasHours(old) && hasHours(w)) {
         Object.assign(fill, { hours: w.hours, checked_at: w.checked_at });
@@ -242,6 +256,15 @@ export function parseJson(text) {
   const data = JSON.parse(text);
   const list = Array.isArray(data) ? data : data?.walls;
   if (!Array.isArray(list)) throw new Error('외벽 목록(walls 배열)이 없는 파일이에요');
+  return list;
+}
+
+// The shipped list. Anything but a non-empty list is an error, so a bad network never reads as "0 open".
+export async function fetchNational(fetchFn = fetch) {
+  const r = await fetchFn('data/national.json');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const list = parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
+  if (!list.length) throw new Error('empty');
   return list;
 }
 
