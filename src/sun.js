@@ -30,6 +30,7 @@ const angleDiff = (a, b) => {
 
 // Order: manual override -> no facing -> low sun -> wall faces away -> terrain -> sunlit.
 export function isSunlit(wall, at) {
+  if (wall.venue === 'indoor') return { lit: null, reason: 'indoor' }; // indoor-only: no sun math
   const override = wall.sun_override;
   if (Array.isArray(override) && override.length) {
     const m = at.getHours() * 60 + at.getMinutes();

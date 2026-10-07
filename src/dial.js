@@ -21,6 +21,7 @@ const windowsOf = sunIntervals;
 function sentenceOf(lit, sp, rel, wall, isNow) {
   const b = (text) => ({ text, bold: true });
   const t = (text) => ({ text });
+  if (lit.reason === 'indoor') return [t('실내 암장이라 양달·응달을 계산하지 않아요.')];
   if (lit.lit === null) return [t('이 암장은 벽이 어느 쪽을 보는지 몰라서 양달인지 응달인지 계산할 수 없어요.')];
   if (lit.reason === 'override') return [t('직접 입력한 시간 기준으로 '), b(lit.lit ? '양달' : '응달'), t('이에요.')];
   if (!sp || sp.altitude <= 0) return [t(`${isNow ? '지금은' : '이 시각에는'} 해가 지평선 아래에 있어요. 응달이에요.`)];
@@ -77,7 +78,4 @@ export function dialModel(wall, at, { isNow = true, dayLabel = '오늘' } = {}) 
   };
 }
 
-export function seasonWindows(wall, year) {
-  return [['여름', '6/21', 5, 21], ['봄·가을', '3/21', 2, 21], ['겨울', '12/21', 11, 21]]
-    .map(([name, date, mo, d]) => ({ name, date, windows: windowsOf(wall, new Date(year, mo, d, 12)) }));
-}
+export { seasonWindows } from './viewmodel.js';
