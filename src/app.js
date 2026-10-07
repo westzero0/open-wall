@@ -339,8 +339,37 @@ function moreTabs(wall, at, d, id) {
   return [el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels];
 }
 
+// The address sits under the place line; tapping it copies it (the text turns into "✓ 복사했어요" for a moment).
+function addrLine(m) {
+  if (!m.address) return null;
+  const text = el('span', { class: 'addr-t' }, m.address);
+  const btn = el('button', { type: 'button', class: 'addr-btn', 'aria-label': `주소 복사: ${m.address}` }, text);
+  const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
+  let timer;
+  const flash = (msg, shown) => {
+    say.textContent = msg;
+    text.textContent = shown;
+    btn.classList.add('done');
+    clearTimeout(timer);
+    timer = setTimeout(() => { text.textContent = m.address; btn.classList.remove('done'); }, 1800);
+  };
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(m.address);
+      flash('주소를 복사했어요', '✓ 복사했어요');
+    } catch { // no clipboard (http, old browser, denied): select the text so it can be copied by hand
+      const r = document.createRange();
+      r.selectNodeContents(text);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      say.textContent = '주소를 선택했어요. 길게 눌러 복사하세요';
+    }
+  });
+  return el('p', { class: 'addr-line' }, btn, say);
+}
+
 // First view under the chips: 안내 (status notes, then the memo lines: closures/warnings, hours, the rest),
-// parking names, the address with a copy button. Weekly closures are a 안내 line and the hatched grid rows.
+// parking (names). Weekly closures are a 안내 line and the hatched grid rows.
 const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
   l.label ? el('span', { class: 'mk' }, l.label) : null,
   el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
@@ -363,24 +392,6 @@ function infoBlock(m) {
     btn.addEventListener('click', () => { infoOpen = !infoOpen; sync(); });
     sync();
     parts.push(fold, btn);
-  }
-  if (m.address) {
-    const text = el('p', { class: 'addr-t' }, m.address);
-    const say = el('span', { class: 'addr-say', 'aria-live': 'polite' });
-    const btn = el('button', { type: 'button', class: 'btn', 'aria-label': '주소 복사' }, '복사');
-    btn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(m.address);
-        say.textContent = '주소를 복사했어요';
-      } catch { // no clipboard (http, old browser, denied): select the text so it can be copied by hand
-        const r = document.createRange();
-        r.selectNodeContents(text);
-        getSelection().removeAllRanges();
-        getSelection().addRange(r);
-        say.textContent = '주소를 선택했어요. 길게 눌러 복사하세요';
-      }
-    });
-    parts.push(el('div', { class: 'irow addr' }, el('span', { class: 'mk' }, '주소'), text, btn), say);
   }
   // status, then the wall's own lot, then "주변" lots on a line of their own (the status is no longer a chip as well)
   const { onsite, nearby } = m.parkingWhere;
@@ -451,6 +462,7 @@ function rowDetails(m, wall, at, id) {
       el('div', { class: 'm-info' },
         el('h3', { class: 'x-name' }, m.name, feeChip(m)),
         el('p', { class: 'x-sub' }, m.sub),
+        addrLine(m),
         el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
