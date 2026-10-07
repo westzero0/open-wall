@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <meta name="color-scheme" content="light dark">
   <title>지금 열린 외벽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,6 +38,10 @@
     </div>
   </header>
   <main class="wrap">
+    <div id="load-error" class="load-error" role="alert" hidden>
+      <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요. 지금 "0곳"이 아니라 목록이 없는 거예요.</p>
+      <button type="button" id="retry">다시 시도</button>
+    </div>
     <div role="tablist" aria-label="보기 방식" class="tabs">
       <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list">목록</button>
       <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">지도</button>
@@ -138,6 +141,11 @@
       </form>
     </dialog>
   </main>
+  <footer class="wrap foot">
+    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
+    <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
+    <p>틀린 정보 제보: 제보 기능은 준비 중이에요.</p>
+  </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script type="module" src="src/app.js"></script>
   <script type="module" src="src/manage.js"></script>

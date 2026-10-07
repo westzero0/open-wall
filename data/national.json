@@ -349,6 +349,9 @@
       "contact": {
         "notice_url": "https://www.gys.or.kr/subpage/index/45",
         "instagram": "goyang_gys"
+      },
+      "photo_credit": {
+        "text": "직접 촬영"
       }
     },
     {
@@ -1605,7 +1608,10 @@
         "note": "외벽 앞"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/namyangju.jpg"
+      "photo": "photos/namyangju.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "성남시인공암벽장",
@@ -1765,7 +1771,10 @@
         "note": "석란빌딩 일일권 4,000원(모두의주차장에서 구매 후 입차)"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/pangyo.jpg"
+      "photo": "photos/pangyo.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "설봉공원인공암벽장",
@@ -2249,7 +2258,10 @@
         "note": "공원 주차장 4시간 무료(회차 불가 시 다시 4시간) · 당고개아래 공영주차장"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/danggogae.jpg"
+      "photo": "photos/danggogae.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "은평인공암벽장",
@@ -2423,7 +2435,10 @@
         "note": "외벽 앞(협소) · 은평 롯데몰(평일 3시간 주차권) · 구파발역 공영주차장"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/eunpyeong.jpg"
+      "photo": "photos/eunpyeong.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "서울산악문화체험센터",
@@ -2864,7 +2879,10 @@
         "lat": 37.58179,
         "lng": 127.09104
       },
-      "photo": "photos/jungnang.jpg"
+      "photo": "photos/jungnang.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "응봉산 인공암벽공원",
@@ -3138,7 +3156,10 @@
         "note": "뚝섬한강공원 뚝섬4주차장"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/ttukseom.jpg"
+      "photo": "photos/ttukseom.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "영등포 스포츠클라이밍경기장",
@@ -3321,6 +3342,9 @@
       "photo": "photos/yeongdeungpo.jpg",
       "contact": {
         "notice_url": "https://bmcm.y-sisul.or.kr/young/center/climbing.php"
+      },
+      "photo_credit": {
+        "text": "직접 촬영"
       }
     },
     {
@@ -3604,7 +3628,10 @@
         "status": "unknown",
         "note": "강남구견인차량보관소 노상주차장"
       },
-      "photo": "photos/gangnam.jpg"
+      "photo": "photos/gangnam.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     },
     {
       "name": "파주스타디움 인공암벽장",
@@ -3777,7 +3804,10 @@
         "phone": "031-940-5243",
         "notice_url": "https://www.paju.go.kr/user/board/BD_board.list.do?bbsCd=9080"
       },
-      "photo": "photos/paju.jpg"
+      "photo": "photos/paju.jpg",
+      "photo_credit": {
+        "text": "직접 촬영"
+      }
     }
   ]
 }
