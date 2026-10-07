@@ -97,7 +97,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     // the selected card covers the map's foot: keep the tapped pin above it
     if (p && fromClick) {
       map.panInside([p.lat, p.lng], {
-        paddingTopLeft: [24, coveredTop() + 24], paddingBottomRight: [24, covered() + 24],
+        paddingTopLeft: [24, coveredTop() + 24], paddingBottomRight: [24, covered() + 40], // the pin clears the card's edge by more than its own ring
         animate: !matchMedia('(prefers-reduced-motion: reduce)').matches,
       });
     }
@@ -106,6 +106,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   map.on('click', () => selected && select(null, true));
   map.on('zoomend', labels);
   dark.addEventListener('change', restyle);
+  new MutationObserver(restyle).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); // 내 정보 › 화면
 
   const bounds = () => {
     const pts = pins.map((p) => [p.lat, p.lng]);

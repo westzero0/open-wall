@@ -16,6 +16,7 @@ export const CSV_HEADERS = [
   '임시휴장일', '우천규칙', '전화', '인스타', '네이버지도', '공지사이트', '방향', '위도', '경도', '주차', '주차메모',
   '구분', // added last; an older CSV without it still imports (empty = keep the stored value / outdoor)
   '공휴일', '격주휴무', // same: absent or empty keeps the stored rule (keepGeo)
+  '오픈채팅', // same: an older CSV without it keeps the stored chat link (keepGeo)
 ];
 const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
 const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
@@ -180,7 +181,7 @@ export function csvToWalls(rows, opts = {}) {
         winter,
         exceptions: { closed_dates, rain_rule: get('우천규칙').toUpperCase() === 'O', ...(nth_closed.length ? { nth_closed } : {}) },
         contact: compact({
-          phone: get('전화'), instagram: get('인스타'), naver_map: get('네이버지도'), notice_url: get('공지사이트'),
+          phone: get('전화'), instagram: get('인스타'), naver_map: get('네이버지도'), notice_url: get('공지사이트'), chat_url: get('오픈채팅'),
         }),
         sun: compact({ facing, lat, lng }),
         ...(parking ? { parking } : {}),
@@ -211,7 +212,7 @@ export function wallToRow(w) {
     임시휴장일: (w.exceptions?.closed_dates ?? []).join(';'),
     우천규칙: w.exceptions?.rain_rule ? 'O' : '',
     전화: w.contact?.phone ?? '', 인스타: w.contact?.instagram ?? '',
-    네이버지도: w.contact?.naver_map ?? '', 공지사이트: w.contact?.notice_url ?? '',
+    네이버지도: w.contact?.naver_map ?? '', 공지사이트: w.contact?.notice_url ?? '', 오픈채팅: w.contact?.chat_url ?? '',
     방향: w.sun?.facing ?? '', 위도: w.sun?.lat ?? '', 경도: w.sun?.lng ?? '',
     주차: w.parking ? PARKING_LABEL[w.parking.status] : '',
     주차메모: w.parking?.note ?? '',

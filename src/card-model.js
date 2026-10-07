@@ -2,6 +2,8 @@
 // No DOM: app.js only draws what this returns, so the three views can't phrase the same rule differently.
 import { hasHours, openIntervals } from './hours.js';
 import { hhmm, ymd } from './time.js';
+import { CHAT_URL_RE } from './store.js';
+import { dayParts } from './log.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
 } from './viewmodel.js';
@@ -197,13 +199,26 @@ function blogOf(wall) {
   };
 }
 
+// 내 기록 (log.js records of this wall, newest first): "✓ 다녀옴 2번" on the row, the latest 3 in the open card.
+function visitsOf(records) {
+  return {
+    count: records.length,
+    label: `✓ 다녀옴 ${records.length}번`,
+    recent: records.slice(0, 3).map((r) => {
+      const p = dayParts(r.date);
+      return { id: r.id, date: `${p.year}.${p.month}.${p.day}(${p.dow})`, memo: r.memo ?? '' };
+    }),
+  };
+}
+
 // ---- the model ----
 /**
- * cardModel(row, at, {now}) → plain data for one wall's list row, expanded row and map card.
+ * cardModel(row, at, {now, visits}) → plain data for one wall's list row, expanded row and map card.
  * row: a buildList row ({wall, status, lit, reason, method, short}, plus distanceKm from withDistance).
  * at: the picked moment. now: the real clock, only to call the picked day "오늘".
+ * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
  */
-export function cardModel(row, at, { now = new Date() } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -226,6 +241,7 @@ export function cardModel(row, at, { now = new Date() } = {}) {
   const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
   const route = pos ? `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}` : null;
   const c = wall.contact ?? {};
+  const hasChat = CHAT_URL_RE.test(c.chat_url ?? '');
   const photo = wall.photo ? `data/${wall.photo}` : null;
   const credit = wall.photo_credit && photo
     ? { text: `사진 · ${wall.photo_credit.text}${wall.photo_credit.license ? ` · ${wall.photo_credit.license}` : ''}`, url: wall.photo_credit.url || null }
@@ -270,11 +286,14 @@ export function cardModel(row, at, { now = new Date() } = {}) {
     closedDay: day.closed,
     dayLabel,
     route,
+    hasChat, // the card offers 오픈채팅방 알려주기 only while there is none
     links: [
-      c.phone && { label: '전화', href: `tel:${c.phone.replace(/[^\d+]/g, '')}` },
+      // the order a visitor reaches for them: the notice (the evidence for the hours), the chat room, then the phone
+      safeUrl(c.notice_url) && { label: '공지사항', href: c.notice_url },
       c.instagram && { label: '인스타 공지', href: `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/` },
+      hasChat && { label: '오픈채팅', href: c.chat_url },
+      c.phone && { label: '전화', href: `tel:${c.phone.replace(/[^\d+]/g, '')}` },
       safeUrl(c.naver_map) && { label: '네이버지도', href: c.naver_map },
-      safeUrl(c.notice_url) && { label: '공지 사이트', href: c.notice_url },
       route && { label: '길찾기', href: route, primary: true },
     ].filter(Boolean),
     blog: blogOf(wall),
@@ -285,5 +304,6 @@ export function cardModel(row, at, { now = new Date() } = {}) {
     },
     heroText: `${wall.height_m ? `높이 ${wall.height_m}m · ` : ''}사진 준비 중`,
     credit,
+    ...(visits?.length ? { visits: visitsOf(visits) } : {}),
   };
 }
