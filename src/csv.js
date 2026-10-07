@@ -1,4 +1,5 @@
 import { orderIntervals } from './hours.js';
+import { isDateStr } from './store.js';
 
 const DAY_COLS = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
 const WINTER = { 없음: 'none', 휴장: 'closed', 변경: 'changed' };
@@ -78,7 +79,14 @@ const list = (s) => (s ? s.split(';').map((x) => x.trim()).filter(Boolean) : [])
 const compact = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '' && v !== undefined));
 const num = (s) => (s === '' ? undefined : Number(s));
 
-export function csvToWalls(rows) {
+// The one winter time of a wall whose non-closed winter days all share it; undefined when they differ.
+function uniformWinterTime(hours) {
+  const vals = Object.values(hours ?? {}).filter(Boolean);
+  return vals.length && vals.every((v) => JSON.stringify(v) === JSON.stringify(vals[0])) ? vals[0] : undefined;
+}
+
+// opts.prevWinterHours(name): the stored per-day winter hours, kept when the row has no single winter time.
+export function csvToWalls(rows, opts = {}) {
   const [header = [], ...body] = rows;
   const col = Object.fromEntries(header.map((h, i) => [h.trim(), i]));
   const walls = [];
@@ -97,7 +105,7 @@ export function csvToWalls(rows) {
 
       // The CSV format carries ONE winter time, applied to every day that is not closed in normal hours.
       const wlabel = get('동절기');
-      if (wlabel && !(wlabel in WINTER)) throw new Error('동절기는 없음/휴장/변경 중 하나여야 해요');
+      if (wlabel && !Object.hasOwn(WINTER, wlabel)) throw new Error('동절기는 없음/휴장/변경 중 하나여야 해요');
       const winter = { type: WINTER[wlabel] ?? 'none' };
       if (winter.type !== 'none') {
         if (!get('동절시작월') || !get('동절끝월')) throw new Error('동절기 시작월·끝월이 필요해요');
@@ -109,15 +117,20 @@ export function csvToWalls(rows) {
       }
       if (winter.type === 'changed') {
         const t = range(get('동절시간'));
-        if (!t) throw new Error('동절기 시간이 필요해요');
+        const prev = t ? undefined : opts.prevWinterHours?.(get('이름'));
+        if (!t && !prev) throw new Error('동절기 시간이 필요해요 (요일마다 다른 동절기 시간은 수정 창에서만 유지돼요)');
         // a normally-closed day stays closed in winter
-        winter.hours = Object.fromEntries(DAY_COLS.map(([k]) => [k, hours[k] === null ? null : t]));
+        winter.hours = t ? Object.fromEntries(DAY_COLS.map(([k]) => [k, hours[k] === null ? null : t])) : prev;
       }
 
       if (get('동절실내안내')) {
         if (winter.type === 'none') throw new Error('동절실내안내는 동절기가 있을 때만 쓸 수 있어요');
         winter.indoor_note = get('동절실내안내');
       }
+
+      const closed_dates = list(get('임시휴장일'));
+      const badDate = closed_dates.find((d) => !isDateStr(d));
+      if (badDate) throw new Error(`임시휴장일은 YYYY-MM-DD 형식이어야 해요: ${badDate}`);
 
       const facing = get('방향');
       if (facing && !FACINGS.includes(facing)) throw new Error(`방향 오류: ${facing}`);
@@ -143,7 +156,7 @@ export function csvToWalls(rows) {
         checked_at: get('확인일') || null,
         hours,
         winter,
-        exceptions: { closed_dates: list(get('임시휴장일')), rain_rule: get('우천규칙').toUpperCase() === 'O' },
+        exceptions: { closed_dates, rain_rule: get('우천규칙').toUpperCase() === 'O' },
         contact: compact({
           phone: get('전화'), instagram: get('인스타'), naver_map: get('네이버지도'), notice_url: get('공지사이트'),
         }),
@@ -160,10 +173,10 @@ export function csvToWalls(rows) {
 const fmt = (v) => (v === undefined ? '' : v === null ? '휴무' : (typeof v[0] === 'string' ? [v] : v).map(([a, b]) => `${a}-${b}`).join('; '));
 
 export function wallToRow(w) {
-  // Only one winter time is written (the first non-closed day's); see csvToWalls.
+  // One winter time is written only when every open winter day shares it; per-day times stay in the stored wall.
   const h = w.hours ?? {};
   const win = w.winter ?? { type: 'none' };
-  const winterTime = win.type === 'changed' ? Object.values(win.hours ?? {}).find(Boolean) : undefined;
+  const winterTime = win.type === 'changed' ? uniformWinterTime(win.hours) : undefined;
   const o = {
     이름: w.name, 지역: w.region ?? '', 높이: w.height_m ?? '', 태그: (w.tags ?? []).join(';'),
     메모: w.memo ?? '', 확인일: w.checked_at ?? '',

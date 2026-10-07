@@ -3,6 +3,7 @@
   "walls": [
     {
       "name": "양주인공암벽장",
+      "short_name": "양주",
       "region": "경기 양주시",
       "height_m": null,
       "tags": [
@@ -161,10 +162,14 @@
         "status": "unknown",
         "note": "서부권스포츠센터"
       },
-      "checked_at": "2026-07-10"
+      "checked_at": "2026-07-10",
+      "contact": {
+        "notice_url": "https://www.yjuc.or.kr/sub/content.asp?cIdx=30&fboard=board_notice"
+      }
     },
     {
       "name": "고양인공암벽장",
+      "short_name": "고양",
       "region": "경기 고양시",
       "height_m": null,
       "tags": [
@@ -340,10 +345,15 @@
         "note": "외벽 앞은 협소 · 고양종합운동장 주차장 이용 시 2시간 무료 주차등록"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/goyang.jpg"
+      "photo": "photos/goyang.jpg",
+      "contact": {
+        "notice_url": "https://www.gys.or.kr/subpage/index/45",
+        "instagram": "goyang_gys"
+      }
     },
     {
       "name": "클라임스퀘어 ICN",
+      "short_name": "클라임스퀘어 ICN",
       "region": "인천 서구",
       "height_m": null,
       "tags": [
@@ -389,6 +399,7 @@
     },
     {
       "name": "광명시인공암벽장",
+      "short_name": "광명",
       "region": "경기 광명시",
       "height_m": null,
       "tags": [
@@ -436,6 +447,7 @@
     },
     {
       "name": "부천종합운동장클라이밍",
+      "short_name": "부천종합운동장",
       "region": "경기 부천시",
       "height_m": 19.6,
       "tags": [
@@ -474,6 +486,7 @@
     },
     {
       "name": "인천문학경기장암벽장",
+      "short_name": "문학경기장",
       "region": "인천 미추홀구",
       "height_m": null,
       "tags": [
@@ -638,10 +651,14 @@
         "status": "paid",
         "note": "1일 주차 2,000원 · 외벽 앞"
       },
-      "checked_at": "2026-07-10"
+      "checked_at": "2026-07-10",
+      "contact": {
+        "notice_url": "https://www.mhstadium.co.kr/fmcs/15"
+      }
     },
     {
       "name": "시흥스포츠클라이밍센터",
+      "short_name": "시흥",
       "region": "경기 시흥시",
       "height_m": null,
       "tags": [
@@ -810,6 +827,7 @@
     },
     {
       "name": "안양새물공원인공암벽장",
+      "short_name": "안양 새물공원",
       "region": "경기 안양시",
       "height_m": null,
       "tags": [
@@ -969,10 +987,14 @@
         "status": "unknown",
         "note": "새물공원 주차장1만 이용 가능(3시간 주차권 지급)"
       },
-      "checked_at": "2026-07-10"
+      "checked_at": "2026-07-10",
+      "contact": {
+        "notice_url": "https://www.auc.or.kr/smpark/board/list?boardManagementNo=8"
+      }
     },
     {
       "name": "화랑유원지인공암벽등반장",
+      "short_name": "화랑유원지",
       "region": "경기 안산시",
       "height_m": null,
       "tags": [
@@ -1141,6 +1163,7 @@
     },
     {
       "name": "광교스포츠클라이밍장",
+      "short_name": "광교호수공원",
       "region": "경기 수원시",
       "height_m": null,
       "tags": [
@@ -1309,6 +1332,7 @@
     },
     {
       "name": "죽미체육공원인공암벽장",
+      "short_name": "죽미체육공원",
       "region": "경기 오산시",
       "height_m": null,
       "tags": [],
@@ -1321,6 +1345,7 @@
     },
     {
       "name": "소흘국민체육센터 인공암벽장&실내인공암벽장",
+      "short_name": "소흘",
       "region": "경기 포천시",
       "height_m": null,
       "tags": [
@@ -1400,6 +1425,7 @@
     },
     {
       "name": "한석봉체육관 클라이밍장",
+      "short_name": "한석봉체육관",
       "region": "경기 가평군",
       "height_m": null,
       "tags": [
@@ -1414,6 +1440,7 @@
     },
     {
       "name": "남양주시 인공암벽",
+      "short_name": "남양주",
       "region": "경기 남양주시",
       "height_m": null,
       "tags": [
@@ -1582,6 +1609,7 @@
     },
     {
       "name": "성남시인공암벽장",
+      "short_name": "성남종합운동장",
       "region": "경기 성남시",
       "height_m": null,
       "tags": [
@@ -1661,6 +1689,7 @@
     },
     {
       "name": "판교공원 인공암벽장",
+      "short_name": "판교공원",
       "region": "경기 성남시",
       "height_m": null,
       "tags": [
@@ -1740,6 +1769,7 @@
     },
     {
       "name": "설봉공원인공암벽장",
+      "short_name": "설봉공원",
       "region": "경기 이천시",
       "height_m": null,
       "tags": [
@@ -1908,6 +1938,7 @@
     },
     {
       "name": "북한산 국제클라이밍센터",
+      "short_name": "북한산",
       "region": "서울 강북구",
       "height_m": null,
       "tags": [
@@ -2046,10 +2077,14 @@
       "location": {
         "lat": 37.65607,
         "lng": 126.99794
+      },
+      "contact": {
+        "notice_url": "https://m.cafe.daum.net/bukhansanclimbing/Zkik"
       }
     },
     {
       "name": "당고개인공암벽장",
+      "short_name": "당고개",
       "region": "서울 노원구",
       "height_m": 15,
       "tags": [
@@ -2218,6 +2253,7 @@
     },
     {
       "name": "은평인공암벽장",
+      "short_name": "은평",
       "region": "서울 은평구",
       "height_m": 15.6,
       "tags": [
@@ -2391,6 +2427,7 @@
     },
     {
       "name": "서울산악문화체험센터",
+      "short_name": "서울산악문화센터",
       "region": "서울 마포구",
       "height_m": 14.4,
       "tags": [
@@ -2522,10 +2559,14 @@
         "status": "unknown",
         "note": "센터 주차장(노을공원주차장 아님)"
       },
-      "checked_at": "2026-07-10"
+      "checked_at": "2026-07-10",
+      "contact": {
+        "notice_url": "https://seoulmccenter.kr/notice.html"
+      }
     },
     {
       "name": "강서한강공원 인공암벽장",
+      "short_name": "강서한강공원",
       "region": "서울 강서구",
       "height_m": 14,
       "tags": [
@@ -2661,6 +2702,7 @@
     },
     {
       "name": "중랑 스포츠클라이밍 경기장",
+      "short_name": "중랑 용마폭포",
       "region": "서울 중랑구",
       "height_m": 17,
       "tags": [
@@ -2826,6 +2868,7 @@
     },
     {
       "name": "응봉산 인공암벽공원",
+      "short_name": "응봉산",
       "region": "서울 성동구",
       "height_m": 15,
       "tags": [
@@ -2962,6 +3005,7 @@
     },
     {
       "name": "뚝섬한강공원 인공암벽",
+      "short_name": "뚝섬한강공원",
       "region": "서울 광진구",
       "height_m": 15,
       "tags": [
@@ -3098,6 +3142,7 @@
     },
     {
       "name": "영등포 스포츠클라이밍경기장",
+      "short_name": "영등포",
       "region": "서울 영등포구",
       "height_m": 17,
       "tags": [
@@ -3273,10 +3318,14 @@
         "note": "영등포다목적배드민턴체육관 · 4시간 무료 주차등록 후 5분당 150원 · 1부·2부 각각 결제"
       },
       "checked_at": "2026-07-10",
-      "photo": "photos/yeongdeungpo.jpg"
+      "photo": "photos/yeongdeungpo.jpg",
+      "contact": {
+        "notice_url": "https://bmcm.y-sisul.or.kr/young/center/climbing.php"
+      }
     },
     {
       "name": "보라매공원 인공암벽등반장",
+      "short_name": "보라매공원",
       "region": "서울 동작구",
       "height_m": 15.5,
       "tags": [
@@ -3418,6 +3467,7 @@
     },
     {
       "name": "강남스포츠클라이밍센터",
+      "short_name": "강남",
       "region": "서울 강남구",
       "height_m": null,
       "tags": [
@@ -3558,6 +3608,7 @@
     },
     {
       "name": "파주스타디움 인공암벽장",
+      "short_name": "파주스타디움",
       "region": "경기 파주시",
       "height_m": null,
       "tags": [
@@ -3723,7 +3774,8 @@
       },
       "checked_at": "2026-07-25",
       "contact": {
-        "phone": "031-940-5243"
+        "phone": "031-940-5243",
+        "notice_url": "https://www.paju.go.kr/user/board/BD_board.list.do?bbsCd=9080"
       },
       "photo": "photos/paju.jpg"
     }

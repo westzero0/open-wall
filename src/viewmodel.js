@@ -1,7 +1,7 @@
 // src/viewmodel.js
-import { hasHours, openIntervals } from './hours.js';
+import { hasHours, inWinter, openIntervals, orderIntervals } from './hours.js';
 import { isSunlit, sunWindows } from './sun.js';
-import { toMin } from './time.js';
+import { DAY_KEYS, toMin, ymd } from './time.js';
 
 const SUN_STEP = 10;
 const p2 = (n) => String(n).padStart(2, '0');
@@ -19,7 +19,7 @@ export function dayBar(wall, at) {
   const sunKnown = isSunlit(wall, at).lit !== null;
   const sun = sunKnown ? sunIntervals(wall, at) : null;
   const nowMin = at.getHours() * 60 + at.getMinutes();
-  const sunText = sun ? `해 ${formatRanges(sun)}` : '해 정보 없음';
+  const sunText = sun ? `양달 ${formatRanges(sun)}` : '양달 정보 없음';
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
@@ -101,11 +101,13 @@ const PARKING_TEXT = {
   none: ['주차 불가', 'warn'],
 };
 export function parkingLabel(parking) {
-  const [text, tone] = PARKING_TEXT[parking?.status] ?? ['주차 정보 없음', 'muted'];
+  const [text, tone] = PARKING_TEXT[parking?.status] ?? ['주차 확인 필요', 'muted'];
   return { text, tone, note: parking?.note ?? '' };
 }
 
 export const hasParking = (wall) => wall.parking?.status === 'free' || wall.parking?.status === 'paid';
+
+export const shortName = (wall) => wall.short_name || wall.name;
 
 export const photoSrc = (wall) => (wall.photo ? `data/${wall.photo}` : null);
 
@@ -117,6 +119,52 @@ export function placeholderText(wall) {
   };
 }
 
+// ---- timetable ----
+// Filters only reach the open group; closed/unknown stay as they are. A sun filter drops walls
+// whose facing is unknown (lit === null); `short` (below the minimum stay) is dropped too.
+export function filterRows(rows, sun) {
+  const want = sun === 'sun' ? true : sun === 'shade' ? false : undefined;
+  return rows.filter((r) => r.status.state !== 'open' || (!r.short && (want === undefined || r.lit === want)));
+}
+
+const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+export function rowLeft(status, at) {
+  if (status.state === 'unknown') return '시간 미입력';
+  if (status.state === 'closed') {
+    const d = status.nextOpenAt;
+    if (!d) return '다음 오픈 정보 없음';
+    const t = fmtMin(d.getHours() * 60 + d.getMinutes());
+    return `${ymd(d) === ymd(at) ? '' : `${md(d)} `}${t} 오픈`;
+  }
+  const r = status.remainingMin;
+  if (r <= 60) return `곧 마감 · ${r}분 남음`;
+  return `${Math.floor(r / 60)}시간${r % 60 ? ` ${r % 60}분` : ''} 남음`;
+}
+
+// The timetable axis runs 06:00–24:00.
+export const AXIS = [360, 1440];
+export const axisFrac = (m) => (Math.min(Math.max(m, AXIS[0]), AXIS[1]) - AXIS[0]) / (AXIS[1] - AXIS[0]);
+
+// Open intervals cut at `nowMin` into [a, b, past] pieces on the axis; zero-width pieces are dropped.
+export function barSegments(open, nowMin) {
+  const clip = (m) => Math.min(Math.max(m, AXIS[0]), AXIS[1]);
+  const out = [];
+  for (const [a0, b0] of open) {
+    const [a, b] = [clip(a0), clip(b0)];
+    const cut = Math.min(Math.max(nowMin, a), b);
+    if (cut > a) out.push([a, cut, true]);
+    if (b > cut) out.push([cut, b, false]);
+  }
+  return out;
+}
+
+export const SLIDER = { min: 360, max: 1410, step: 10 };
+const round10 = (m) => Math.round(m / 10) * 10;
+export const sliderValue = (m) => Math.min(Math.max(round10(m), SLIDER.min), SLIDER.max);
+// A pick is "now" when the date is today and the slider sits on the real time (rounded to its 10-minute step).
+export const isLivePick = (date, min, now) => date === ymd(now) && min === round10(now.getHours() * 60 + now.getMinutes());
+export { fmtMin };
+
 // Hours older than a year may have changed (seasonal schedules, notices): flag them. Only walls with hours are judged.
 export const STALE_DAYS = 365;
 export function staleness(wall, now) {
@@ -124,4 +172,73 @@ export function staleness(wall, now) {
   const days = m ? Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5) : null;
   const stale = hasHours(wall) && (days === null || days > STALE_DAYS);
   return { stale, label: m ? `${m[1]}-${m[2]}` : '확인일 없음' };
+}
+
+// Hours for the whole week (Mon→Sun), runs of days with the same hours merged: '월', '토·일', '화–목'.
+// Each row has its text and minute intervals (an after-midnight close runs past 1440; 휴무 = []).
+// In the winter range the winter hours apply; a winter closure is one line. closed_dates stay out of this table.
+const WEEK = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
+function dayHours(v) {
+  if (v === null) return { text: '휴무', intervals: [] };
+  const raw = typeof v[0] === 'string' ? [v] : v;
+  const list = orderIntervals(raw) ?? raw;
+  return {
+    text: list.map(([a, b]) => `${a}–${b}`).join(', '),
+    intervals: list.map(([a, b]) => [toMin(a), toMin(b) > toMin(a) ? toMin(b) : toMin(b) + 1440]),
+  };
+}
+export function weeklyHours(wall, date) {
+  const season = inWinter(wall, date) ? '동절기' : '';
+  if (season && wall.winter.type === 'closed') return { season, rows: [{ days: '동절기', text: '외벽 휴장', today: true, intervals: [] }] };
+  const src = (season && wall.winter.type === 'changed' ? wall.winter.hours : wall.hours) ?? {};
+  const todayKey = DAY_KEYS[date.getDay()];
+  const runs = [];
+  WEEK.forEach(([key], i) => {
+    if (src[key] === undefined) return;
+    const day = dayHours(src[key]);
+    const last = runs[runs.length - 1];
+    if (last && last.text === day.text && last.end === i - 1) last.end = i;
+    else runs.push({ ...day, start: i, end: i });
+  });
+  const name = (i) => WEEK[i][1];
+  return {
+    season,
+    rows: runs.map(({ text, intervals, start, end }) => ({
+      days: start === end ? name(start) : `${name(start)}${end - start === 1 ? '·' : '–'}${name(end)}`,
+      text,
+      today: WEEK.slice(start, end + 1).some(([k]) => k === todayKey),
+      intervals,
+    })),
+  };
+}
+
+// The picked day's hours for the first view, from openIntervals (the same source as getStatus), so
+// closed_dates, yesterday's after-midnight tail and winter hours read the same as the status.
+// `closed`: the wall has hours but none on this day.
+export function dayLine(wall, date) {
+  const season = inWinter(wall, date) ? '동절기' : '';
+  const intervals = openIntervals(wall, date);
+  if (intervals.length) return { season, closed: false, text: formatRanges(intervals) };
+  if (!hasHours(wall)) return { season, closed: false, text: '운영시간 미입력' };
+  const src = season && wall.winter.type === 'changed' ? wall.winter.hours : wall.hours;
+  let text = '휴무';
+  if (wall.exceptions?.closed_dates?.includes(ymd(date))) text = '임시 휴장 · 휴무';
+  else if (season && wall.winter.type === 'closed') text = '외벽 휴장';
+  else if (src?.[DAY_KEYS[date.getDay()]] === undefined) text = '운영시간 미입력';
+  return { season, closed: true, text };
+}
+
+// Minimum stay: 상관없음 / 3 / 5 / 8 hours. Older saved choices (1h, 2h) map to the nearest sensible one.
+export const MIN_HOURS = ['0', '3', '5', '8'];
+export const migrateMinHours = (v) => ({ 1: '0', 2: '3' }[String(v)] ?? (MIN_HOURS.includes(String(v)) ? String(v) : '0'));
+
+// Slider label: the real time; "(지금)" when the live time sits outside the slider and the thumb rests at its end.
+export const timeLabel = (min, live) => `${fmtMin(min)}${live && sliderValue(min) !== round10(min) ? ' (지금)' : ''}`;
+
+// Why the open group is empty: nothing open at all, or the active filters hid the open ones.
+export function emptyText({ sun = 'any', minHours = '0', parkOnly = false }, openTotal, isNow = true) {
+  const on = [sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만']
+    .filter(Boolean);
+  if (!openTotal || !on.length) return `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`;
+  return `열린 곳 ${openTotal}곳 중 조건(${on.join(' · ')})에 맞는 곳이 없어요. 조건을 바꿔 보세요.`;
 }
