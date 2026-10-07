@@ -1,9 +1,16 @@
-import { getStatus } from './hours.js';
+import { getStatus, openIntervals } from './hours.js';
 import { isSunlit } from './sun.js';
 
 const GROUP = { open: 0, closed: 1, unknown: 2 };
 
-export function buildList(walls, at, { minHours = 0, sun = 'any' } = {}) {
+// Minutes of use left: the stretch until the next break/closing, or (withBreaks) all open time left today.
+function stayMin(wall, status, at, withBreaks) {
+  if (!withBreaks) return status.remainingMin;
+  const now = at.getHours() * 60 + at.getMinutes();
+  return openIntervals(wall, at).reduce((sum, [a, b]) => sum + Math.max(0, b - Math.max(a, now)), 0);
+}
+
+export function buildList(walls, at, { minHours = 0, sun = 'any', withBreaks = false } = {}) {
   const rows = walls.map((wall) => {
     const status = getStatus(wall, at);
     const sun = isSunlit(wall, at);
@@ -13,7 +20,7 @@ export function buildList(walls, at, { minHours = 0, sun = 'any' } = {}) {
       lit: sun.lit,
       reason: sun.reason,
       method: sun.method,
-      short: status.state === 'open' && status.remainingMin < minHours * 60,
+      short: status.state === 'open' && stayMin(wall, status, at, withBreaks) < minHours * 60,
     };
   });
 

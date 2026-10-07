@@ -502,3 +502,7 @@ dialog::backdrop { background: var(--scrim); }
 .load-error button { min-height: 44px; padding: 0 18px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--fg); font-weight: 600; white-space: nowrap; }
 .load-error button:disabled { opacity: .6; }
 .load-failed .tabs, .load-failed #panel-list, .load-failed #panel-map { display: none; }
+
+#breakRow { flex-wrap: wrap; }
+.sh-hint { flex-basis: 100%; margin: 0; font-size: .8125rem; color: var(--muted); }
+.chip.break { color: var(--muted); }
