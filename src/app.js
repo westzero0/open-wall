@@ -16,7 +16,7 @@ import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOp
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
-import { aggregate, crowdPayload, crowdReady, markSent, parseCrowdCsv, sentLevel } from './crowd.js';
+import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -58,6 +58,8 @@ const logView = createLogView({
   onChange: () => render(),
   reveal: (name) => revealFromLog(name),
   showList: () => showTab('list', true),
+  crowdAsk: (wall, date, time) => crowdAsk(wall, date, time),
+  sendCrowd: (wall, level, date, time) => sendCrowd(wall, level, date, time),
 });
 createProfileView({
   getTheme: () => ui.theme,
@@ -565,8 +567,9 @@ function rowDetails(m, wall, at, id) {
         el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
         el('p', { class: 'x-sub' }, m.sub),
         addrLine(m),
-        actionLinks(m.links.filter((l) => !l.primary), beenBtn(m)), // 공지사항 · 오픈채팅 · 전화 … and 다녀왔어요 last: what a visitor does next
-        el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
+        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        // 오늘 운영 … and 다녀왔어요 at the right end of the same line (wraps to the right of the next line when long)
+        el('div', { class: 'today-row' }, el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)), beenBtn(m)),
         ...crowdBox(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
@@ -613,7 +616,7 @@ function blogBox(blog, withList = true) {
     restList, more);
 }
 
-// 다녀왔어요 (the open card only): the last pill of the link row; opens the 기록 추가 sheet with this wall fixed.
+// 다녀왔어요 (the open card only): the right end of the 오늘 운영 line; opens the 기록 추가 sheet with this wall fixed.
 // Just after a save the check gives way to the 해벽 stamp, pressed once (same .stamp-in as the 기록 calendar).
 function beenBtn(m) {
   const mark = logView.justStamped(m.name) ? el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }) : icon('check');
@@ -630,11 +633,18 @@ function visitLog(m) {
 }
 // ---- 혼잡도 (crowd.js; setup: docs/crowd-setup.md) ----
 // The published CSV is read once at load and again at most every 5 minutes (tick); a failed read keeps the last good
-// one (or none: the chip hides). This device's own reports: localStorage, one per wall per 30 minutes.
+// one (or none: the chip hides). Reports go from the 기록 추가 sheet (log-view.js calls crowdAsk/sendCrowd); this
+// device's own reports: localStorage, 30 minutes between reports of a wall, 2 a day per wall, 5 a day, one per visit.
 const CROWD_SEND = crowdReady(config.crowdEndpoint, config.crowdFields);
 const CROWD_KEY = 'open-wall:crowd-sent';
 const crowd = { byWall: null, at: 0, busy: false };
 const readSent = () => { try { return JSON.parse(localStorage.getItem(CROWD_KEY) ?? 'null'); } catch { return null; } };
+// the sheet's question: null (not set up, no time, too old or in the future), canReport's {ok: false, reason, waitMin} (limit reached), 'ask'
+function crowdAsk(wall, date, time) {
+  if (!CROWD_SEND || !time || !askable(date, time)) return null;
+  const r = canReport(readSent(), wall, Date.now(), `${date} ${time}`);
+  return r.ok ? 'ask' : r;
+}
 async function loadCrowd() {
   if (!config.crowdCsvUrl || crowd.busy || Date.now() - crowd.at < 5 * 60e3) return;
   crowd.busy = true;
@@ -652,47 +662,33 @@ async function loadCrowd() {
   crowd.at = Date.now();
   crowd.busy = false;
 }
-const crowdCtx = (name, at) => (!CROWD_SEND && !config.crowdCsvUrl ? null : {
+const crowdCtx = (name, at) => (!config.crowdCsvUrl ? null : {
   stat: crowd.byWall ? aggregate(crowd.byWall.get(name) ?? [], name, at, { live, now: new Date() }) : null,
-  live,
-  canSend: CROWD_SEND,
-  sent: sentLevel(readSent(), name),
 });
-async function sendCrowd(name, level) {
+// → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
+// request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
+async function sendCrowd(name, level, date, time) {
+  const before = readSent();
+  const store = (v) => { try { localStorage.setItem(CROWD_KEY, JSON.stringify(v)); } catch { /* private mode: no limit */ } };
+  store(markSent(before, name, Date.now(), `${date} ${time}`));
   try {
     await fetch(config.crowdEndpoint, {
       method: 'POST', mode: 'no-cors', credentials: 'omit',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: crowdPayload(config.crowdFields, name, level),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: crowdPayload(config.crowdFields, name, level, `${date} ${time}`),
     });
   } catch {
-    return toast('보내지 못했어요. 연결을 확인해 주세요.');
+    store(before);
+    return false;
   }
-  try { localStorage.setItem(CROWD_KEY, JSON.stringify(markSent(readSent(), name, level))); } catch { /* private mode: no limit */ }
-  toast('혼잡도 제보 고마워요');
-  render();
-  document.querySelector('#panel-list .row.is-open .crowd-ask [aria-pressed="true"]')?.focus({ preventScroll: true });
+  return true;
 }
-// chip: level in words + a 1–3 bar meter (not colour alone); ask: 44px pills, pressed + aria-disabled once sent
+// chip: level in words + a 1–3 bar meter (not colour alone)
 function crowdBox(m) {
   const c = m.crowd;
   if (!c) return [];
-  const chip = c.chip && el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
+  return [el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
-    c.chip.text);
-  if (!c.ask) return [chip];
-  const sent = c.ask.sent;
-  const pills = c.ask.options.map((lv) => {
-    const b = el('button', { type: 'button', class: 'crowd-pill', 'aria-pressed': String(sent === lv), 'aria-disabled': sent ? 'true' : null }, lv);
-    b.addEventListener('click', () => {
-      if (b.getAttribute('aria-disabled') === 'true') return;
-      for (const x of b.parentElement.children) x.setAttribute('aria-disabled', 'true');
-      b.setAttribute('aria-pressed', 'true');
-      sendCrowd(m.name, lv).finally(() => { if (b.isConnected) for (const x of b.parentElement.children) { x.removeAttribute('aria-disabled'); x.setAttribute('aria-pressed', 'false'); } });
-    });
-    return b;
-  });
-  return [chip, el('div', { class: 'crowd-ask', role: 'group', 'aria-label': c.ask.prompt },
-    el('span', { class: 'crowd-q' }, c.ask.prompt), el('div', { class: 'crowd-pills' }, ...pills))];
+    c.chip.text)];
 }
 const modelOf = (row, at) => cardModel(row, at, { visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at) });
 
@@ -712,6 +708,8 @@ function timeRow(row, at) {
       el('span', { class: 'rname' }, m.shortName),
       feeChip(m),
       sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
+      m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
+        el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
       basisTag(m), // own span: the region line may be cut short, this may not
       m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
       m.meta ? el('span', { class: 'rmeta' }, m.meta) : null,
