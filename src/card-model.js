@@ -4,6 +4,7 @@ import { hasHours, openIntervals } from './hours.js';
 import { hhmm, ymd } from './time.js';
 import { CHAT_URL_RE } from './store.js';
 import { dayParts } from './log.js';
+import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
 } from './viewmodel.js';
@@ -188,13 +189,13 @@ function splitInfo(lines, limit = 3) {
   return { shown: lines.slice(0, n), folded, moreLabel: folded.length ? `안내 ${folded.length}줄 더 보기` : null };
 }
 
-// 내 후기: posts newest first; the label shows year-month only. Titles/urls were checked in normalizeWall.
+// 희노애Rock 후기 (the maker's blog): posts newest first; the label shows year-month only. Titles/urls were checked in normalizeWall.
 function blogOf(wall) {
   const posts = [...(wall.blog_posts ?? [])].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   if (!posts.length) return null;
   return {
     posts,
-    first: { url: posts[0].url, label: `내 후기 · ${posts[0].date.slice(0, 7)}` },
+    first: { url: posts[0].url, label: `희노애Rock 후기 · ${posts[0].date.slice(0, 7)}` },
     moreLabel: posts.length > 1 ? `외 ${posts.length - 1}개` : null,
   };
 }
@@ -211,21 +212,37 @@ function visitsOf(records) {
   };
 }
 
+// 혼잡도 (crowd.js): the chip under 오늘 운영 and the 여유/보통/혼잡 buttons, both only while the wall is open.
+// crowd: { stat: aggregate() or null (no CSV), live, canSend (form set up), sent: this device's level in the last 30 min }
+function crowdOf(crowd, state) {
+  if (!crowd || state !== 'open') return null;
+  const s = crowd.stat;
+  const chipOf = (level, text) => ({ text, level, bars: CROWD_LEVELS.indexOf(level) + 1, muted: false });
+  const chip = !s ? null
+    : s.recent ? chipOf(s.recent.level, `방금 제보 ${s.recent.level} · 제보 ${s.recent.n}건 · 최근 90분`)
+      : s.level ? chipOf(s.level, `이 시간대 ${s.level === '보통' ? '대개' : '보통'} ${s.level} · 제보 ${s.n}건 · ${s.basis}`) // not "보통 보통"
+        : { text: '제보 모으는 중', level: null, bars: 0, muted: true };
+  const ask = crowd.canSend && crowd.live
+    ? { prompt: crowd.sent ? '제보했어요' : '지금 어때요?', sent: crowd.sent ?? null, options: CROWD_LEVELS }
+    : null;
+  return chip || ask ? { chip, ask } : null;
+}
+
 // ---- the model ----
 /**
- * cardModel(row, at, {now, visits}) → plain data for one wall's list row, expanded row and map card.
+ * cardModel(row, at, {now, visits, crowd}) → plain data for one wall's list row, expanded row and map card.
  * row: a buildList row ({wall, status, lit, reason, method, short}, plus distanceKm from withDistance).
  * at: the picked moment. now: the real clock, only to call the picked day "오늘".
  * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
+ * crowd: see crowdOf. Without it (혼잡도 not set up), or with nothing to show, the model has no `crowd` key.
  */
-export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
   const dist = row.distanceKm != null ? formatDistance(row.distanceKm) : null;
   const basis = BASIS[wall.timeBasis] ?? null;
   const distLine = dist ? `직선 ${dist}` : null;
-  const where = [wall.region, distLine, basis].filter(Boolean).join(' · ');
   const text = statusText(status, at, wall);
   const bar = status.state === 'unknown' ? null : barOf(wall, status, at);
   const old = staleness(wall, at);
@@ -235,6 +252,9 @@ export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
   const rainNote = wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
   const memo = memoLines(wall.memo);
   const facts = memoFacts(wall, memo);
+  // the 주소 row right below already starts with the region ("서울 광진구 자양동 …"): don't say it twice
+  const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
+  const where = [regionShown, distLine, basis].filter(Boolean).join(' · ');
   const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote }].filter(Boolean);
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
@@ -243,6 +263,7 @@ export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
   const c = wall.contact ?? {};
   const hasChat = CHAT_URL_RE.test(c.chat_url ?? '');
   const photo = wall.photo ? `data/${wall.photo}` : null;
+  const crowdModel = crowdOf(crowd, status.state);
   const credit = wall.photo_credit && photo
     ? { text: `사진 · ${wall.photo_credit.text}${wall.photo_credit.license ? ` · ${wall.photo_credit.license}` : ''}`, url: wall.photo_credit.url || null }
     : null;
@@ -286,7 +307,7 @@ export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
     closedDay: day.closed,
     dayLabel,
     route,
-    hasChat, // the card offers 오픈채팅방 알려주기 only while there is none
+    hasChat, // the card offers 오픈채팅 추가 only while there is none
     links: [
       // the order a visitor reaches for them: the notice (the evidence for the hours), the chat room, then the phone
       safeUrl(c.notice_url) && { label: '공지사항', href: c.notice_url },
@@ -304,6 +325,9 @@ export function cardModel(row, at, { now = new Date(), visits = null } = {}) {
     },
     heroText: `${wall.height_m ? `높이 ${wall.height_m}m · ` : ''}사진 준비 중`,
     credit,
-    ...(visits?.length ? { visits: visitsOf(visits) } : {}),
+    // 다녀왔어요 pill: "다녀왔어요" until the first record, then "다녀옴 N번" (a tap adds one more)
+    beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
+    ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
+    ...(crowdModel ? { crowd: crowdModel } : {}),
   };
 }

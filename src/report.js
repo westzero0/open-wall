@@ -1,4 +1,4 @@
-// "정보가 달라요" report: pure payload + validation. The sink is a published Google Form (see config.js).
+// "정보 수정 요청" report: pure payload + validation. The sink is a published Google Form (see config.js).
 export const KINDS = ['운영시간', '임시휴무', '주차', '기타'];
 export const MAX_BODY = 2000;
 export const MAX_NOTE = 300;

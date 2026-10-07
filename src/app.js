@@ -16,6 +16,7 @@ import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOp
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
+import { aggregate, crowdPayload, crowdReady, markSent, parseCrowdCsv, sentLevel } from './crowd.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -116,11 +117,12 @@ function dayBarBlock(bar) {
 
 // contact links; the expanded row leaves out 길찾기 (primary), it has its own button
 const LINK_ICON = { 공지사항: 'megaphone', '인스타 공지': 'megaphone', 오픈채팅: 'chat', 전화: 'phone', 네이버지도: 'pin' };
-function actionLinks(links) {
-  if (!links.length) return null;
+function actionLinks(links, last = null) { // last: one more pill at the end of the same wrapping row
+  if (!links.length && !last) return null;
   return el('div', { class: 'actions' },
     ...links.map(({ label, href, primary }) =>
-      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)));
+      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)),
+    last);
 }
 
 const rowButtons = (name, ...extra) => {
@@ -553,8 +555,8 @@ function rowDetails(m, wall, at, id) {
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
   const helps = config.reportEndpoint
     ? el('div', { class: 'help-row' },
-      el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요'),
-      m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅방 알려주기'))
+      el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
+      m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
     : null;
   return [
     el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit)),
@@ -563,8 +565,9 @@ function rowDetails(m, wall, at, id) {
         el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
         el('p', { class: 'x-sub' }, m.sub),
         addrLine(m),
-        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 join the address's 복사/길찾기: what a visitor does next
+        actionLinks(m.links.filter((l) => !l.primary), beenBtn(m)), // 공지사항 · 오픈채팅 · 전화 … and 다녀왔어요 last: what a visitor does next
         el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
+        ...crowdBox(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
@@ -575,14 +578,14 @@ function rowDetails(m, wall, at, id) {
         el('p', { class: 'checked' }, m.checked)),
       more.childElementCount > 1 ? more : null, // hours / season tabs sit above the compass
       sunBox(dial, m.name, m.closedDay)),
-    visitBox(m),
+    visitLog(m),
     blogBox(m.blog),
     helps,
     rowButtons(m.name),
   ];
 }
 
-// 내 후기: a small list (newest first, 3 shown, "외 N개" unfolds the rest in place); the map card keeps one link.
+// 희노애Rock 후기: a small list (newest first, 3 shown, "외 N개" unfolds the rest in place); the map card keeps one link.
 // Titles and dates only via textContent; the urls were checked in normalizeWall (BLOG_URL_RE).
 const BLOG_SHOWN = 3;
 function blogBox(blog, withList = true) {
@@ -605,24 +608,93 @@ function blogBox(blog, withList = true) {
     restList.hidden = !on;
   });
   return el('div', { class: 'blog' },
-    el('p', { class: 'blog-h' }, el('b', {}, '내 후기'), ' 참고용 · 운영시간은 앱 정보가 기준'),
+    el('p', { class: 'blog-h' }, el('b', {}, '희노애Rock 후기'), ' 참고용 · 운영시간은 앱 정보가 기준'),
     el('ul', { class: 'blog-list' }, ...posts.slice(0, BLOG_SHOWN).map(item)),
     restList, more);
 }
 
-// 다녀왔어요 (the open card only) opens the 기록 추가 sheet with this wall fixed; 내 기록 shows the latest 3.
-function visitBox(m) {
-  const been = el('button', { type: 'button', class: 'btn sub been-btn', 'data-focus': 'been' }, icon('check'), '다녀왔어요');
+// 다녀왔어요 (the open card only): the last pill of the link row; opens the 기록 추가 sheet with this wall fixed.
+// Just after a save the check gives way to the 해벽 stamp, pressed once (same .stamp-in as the 기록 calendar).
+function beenBtn(m) {
+  const mark = logView.justStamped(m.name) ? el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }) : icon('check');
+  const been = el('button', { type: 'button', class: 'btn been-btn', 'data-focus': 'been', 'aria-label': m.beenAria ?? null }, mark, m.beenLabel);
   been.addEventListener('click', () => logView.openAdd({ wall: m.name, from: been }));
-  const v = m.visits;
-  return el('div', { class: 'visit' },
-    been,
-    v ? el('div', { class: 'mylog' },
-      el('p', { class: 'blog-h' }, el('b', {}, '내 기록'), ` ${v.count}번 다녀왔어요 · 이 기기에만 저장`),
-      el('ul', { class: 'mylog-list' }, ...v.recent.map((r) => el('li', {}, el('span', { class: 'ml-d' }, r.date), r.memo ? el('span', { class: 'ml-m' }, r.memo) : null))))
-      : null);
+  return been;
 }
-const modelOf = (row, at) => cardModel(row, at, { visits: logView.recordsFor(row.wall.name) });
+// the latest 3 records, small, at the foot; nothing at all without records
+function visitLog(m) {
+  const v = m.visits;
+  return v ? el('div', { class: 'mylog' },
+    el('ul', { class: 'mylog-list' }, ...v.recent.map((r) => el('li', {}, el('span', { class: 'ml-d' }, r.date), r.memo ? el('span', { class: 'ml-m' }, r.memo) : null))),
+    el('p', { class: 'mylog-note' }, '이 기기에만 저장돼요')) : null;
+}
+// ---- 혼잡도 (crowd.js; setup: docs/crowd-setup.md) ----
+// The published CSV is read once at load and again at most every 5 minutes (tick); a failed read keeps the last good
+// one (or none: the chip hides). This device's own reports: localStorage, one per wall per 30 minutes.
+const CROWD_SEND = crowdReady(config.crowdEndpoint, config.crowdFields);
+const CROWD_KEY = 'open-wall:crowd-sent';
+const crowd = { byWall: null, at: 0, busy: false };
+const readSent = () => { try { return JSON.parse(localStorage.getItem(CROWD_KEY) ?? 'null'); } catch { return null; } };
+async function loadCrowd() {
+  if (!config.crowdCsvUrl || crowd.busy || Date.now() - crowd.at < 5 * 60e3) return;
+  crowd.busy = true;
+  try {
+    const res = await fetch(config.crowdCsvUrl, { credentials: 'omit' });
+    if (!res.ok) throw new Error(String(res.status));
+    const byWall = new Map();
+    for (const r of parseCrowdCsv(await res.text(), state.walls.map((w) => w.name))) {
+      if (!byWall.has(r.wall)) byWall.set(r.wall, []);
+      byWall.get(r.wall).push(r);
+    }
+    crowd.byWall = byWall;
+    if (!document.activeElement?.closest('.rows .row, #pin-card')) render(); // else the next minute tick draws it
+  } catch { /* quiet: the chip stays as it was */ }
+  crowd.at = Date.now();
+  crowd.busy = false;
+}
+const crowdCtx = (name, at) => (!CROWD_SEND && !config.crowdCsvUrl ? null : {
+  stat: crowd.byWall ? aggregate(crowd.byWall.get(name) ?? [], name, at, { live, now: new Date() }) : null,
+  live,
+  canSend: CROWD_SEND,
+  sent: sentLevel(readSent(), name),
+});
+async function sendCrowd(name, level) {
+  try {
+    await fetch(config.crowdEndpoint, {
+      method: 'POST', mode: 'no-cors', credentials: 'omit',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: crowdPayload(config.crowdFields, name, level),
+    });
+  } catch {
+    return toast('보내지 못했어요. 연결을 확인해 주세요.');
+  }
+  try { localStorage.setItem(CROWD_KEY, JSON.stringify(markSent(readSent(), name, level))); } catch { /* private mode: no limit */ }
+  toast('혼잡도 제보 고마워요');
+  render();
+  document.querySelector('#panel-list .row.is-open .crowd-ask [aria-pressed="true"]')?.focus({ preventScroll: true });
+}
+// chip: level in words + a 1–3 bar meter (not colour alone); ask: 44px pills, pressed + aria-disabled once sent
+function crowdBox(m) {
+  const c = m.crowd;
+  if (!c) return [];
+  const chip = c.chip && el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
+    c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
+    c.chip.text);
+  if (!c.ask) return [chip];
+  const sent = c.ask.sent;
+  const pills = c.ask.options.map((lv) => {
+    const b = el('button', { type: 'button', class: 'crowd-pill', 'aria-pressed': String(sent === lv), 'aria-disabled': sent ? 'true' : null }, lv);
+    b.addEventListener('click', () => {
+      if (b.getAttribute('aria-disabled') === 'true') return;
+      for (const x of b.parentElement.children) x.setAttribute('aria-disabled', 'true');
+      b.setAttribute('aria-pressed', 'true');
+      sendCrowd(m.name, lv).finally(() => { if (b.isConnected) for (const x of b.parentElement.children) { x.removeAttribute('aria-disabled'); x.setAttribute('aria-pressed', 'false'); } });
+    });
+    return b;
+  });
+  return [chip, el('div', { class: 'crowd-ask', role: 'group', 'aria-label': c.ask.prompt },
+    el('span', { class: 'crowd-q' }, c.ask.prompt), el('div', { class: 'crowd-pills' }, ...pills))];
+}
+const modelOf = (row, at) => cardModel(row, at, { visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at) });
 
 let rowSeq = 0;
 function timeRow(row, at) {
@@ -1147,6 +1219,7 @@ const FOCUSABLE = 'button, a, summary';
 const tick = () => {
   const a = document.activeElement;
   if (skipTick({ live, hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters') })) return;
+  loadCrowd();
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   render();
@@ -1201,6 +1274,7 @@ if (sharedWall) {
 }
 syncRegions();
 render();
+loadCrowd();
 if (sharedWall) {
   revealRow(sharedWall.name); // its group is only known after the first render
   const u = new URL(location.href);
