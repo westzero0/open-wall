@@ -36,9 +36,10 @@ export function isSunlit(wall, at) {
     const lit = override.some(([a, b]) => toMin(a) <= m && m < toMin(b));
     return { lit, reason: 'override', method: 'override' };
   }
-  const facing = FACING[wall.sun?.facing];
-  if (facing === undefined) return { lit: null };
-  const p = sunPosition(at, wall.sun.lat ?? SEOUL.lat, wall.sun.lng ?? SEOUL.lng);
+  const key = wall.sun?.facing;
+  if (typeof key !== 'string' || !Object.hasOwn(FACING, key)) return { lit: null };
+  const facing = FACING[key];
+  const p = sunPosition(at, Number.isFinite(wall.sun.lat) ? wall.sun.lat : SEOUL.lat, Number.isFinite(wall.sun.lng) ? wall.sun.lng : SEOUL.lng);
   let reason = 'sun';
   if (p.altitude < MIN_ALTITUDE) reason = 'night';
   else if (angleDiff(p.azimuth, facing) > MAX_ANGLE) reason = 'facing';

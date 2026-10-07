@@ -82,17 +82,41 @@ function cleanParking(v) {
 
 const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.includes('..') ? v : null);
 
-function getWinter(v) {
-  if (!isPlainObject(v) || !v.type) return { type: 'none' };
-  if (!['none', 'closed', 'changed'].includes(v.type)) return { type: 'none' };
-  const { indoor_note, ...rest } = v;
-  const note = typeof indoor_note === 'string' ? indoor_note.trim() : '';
-  return { ...(rest.hours === undefined ? rest : { ...rest, hours: cleanHours(rest.hours) }), ...(note ? { indoor_note: note } : {}) };
+const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+function cleanSun(v) {
+  const s = getPlainObject(v);
+  const out = {};
+  if (typeof s.facing === 'string' && FACINGS.includes(s.facing)) out.facing = s.facing;
+  if (Number.isFinite(s.lat) && Math.abs(s.lat) <= 90) out.lat = s.lat;
+  if (Number.isFinite(s.lng) && Math.abs(s.lng) <= 180) out.lng = s.lng;
+  return out;
 }
+
+const isMonth = (m) => Number.isInteger(m) && m >= 1 && m <= 12;
+
+function getWinter(v) {
+  if (!isPlainObject(v) || !['closed', 'changed'].includes(v.type)) return { type: 'none' };
+  if (!isMonth(v.from_month) || !isMonth(v.to_month)) return { type: 'none' }; // a season with no valid months would never apply
+  const note = typeof v.indoor_note === 'string' ? v.indoor_note.trim() : '';
+  return {
+    type: v.type,
+    from_month: v.from_month,
+    to_month: v.to_month,
+    ...(v.hours === undefined ? {} : { hours: cleanHours(v.hours) }),
+    ...(note ? { indoor_note: note } : {}),
+  };
+}
+
+export const isDateStr = (s) => {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(+d) && d.toISOString().startsWith(s);
+};
 
 function getExceptions(v) {
   if (!isPlainObject(v)) return { closed_dates: [], rain_rule: false };
-  const closed_dates = getStringArray(v.closed_dates);
+  const closed_dates = Array.isArray(v.closed_dates) ? v.closed_dates.filter(isDateStr) : [];
   const rain_rule = typeof v.rain_rule === 'boolean' ? v.rain_rule : false;
   return { closed_dates, rain_rule };
 }
@@ -114,13 +138,13 @@ export function normalizeWall(raw) {
     };
   }
 
-  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  const name = typeof raw.name === 'string' ? raw.name.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
   const tags = getStringArray(raw.tags);
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
   const exceptions = getExceptions(raw.exceptions);
   const contact = cleanContact(raw.contact);
-  const sun = getPlainObject(raw.sun);
+  const sun = cleanSun(raw.sun);
   const region = typeof raw.region === 'string' ? raw.region : '';
   const memo = typeof raw.memo === 'string' ? raw.memo : '';
   const height_m = typeof raw.height_m === 'number' && isFinite(raw.height_m) ? raw.height_m : null;
@@ -131,6 +155,7 @@ export function normalizeWall(raw) {
   const location = cleanLocation(raw.location);
   const parking = cleanParking(raw.parking);
   const photo = cleanPhoto(raw.photo);
+  const short_name = typeof raw.short_name === 'string' ? raw.short_name.trim() : '';
 
   return {
     region,
@@ -149,6 +174,7 @@ export function normalizeWall(raw) {
     ...(location ? { location } : {}),
     ...(parking ? { parking } : {}),
     ...(photo ? { photo } : {}),
+    ...(short_name && short_name.length <= 20 ? { short_name } : {}),
   };
 }
 
@@ -167,6 +193,7 @@ export function keepGeo(old, next) {
     out.location = old.location;
   }
   if (!out.photo && old.photo) out.photo = old.photo;
+  if (!out.short_name && old.short_name) out.short_name = old.short_name;
   return out;
 }
 
@@ -187,12 +214,21 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name']) if (w[k] && !old[k]) fill[k] = w[k];
       // hours are only backfilled for walls that have none, so edited hours are never replaced
-      if (!hasHours(old) && hasHours(w)) Object.assign(fill, { hours: w.hours, checked_at: w.checked_at, ...(w.winter?.type !== 'none' && !old.winter?.hours ? { winter: w.winter } : {}) });
-      const shadowPart = w.shadow && !old.shadow ? { sun: { ...old.sun, ...w.sun }, shadow: w.shadow } : {};
-      if (Object.keys(fill).length || shadowPart.shadow) {
-        byName.set(w.name, { ...old, ...fill, ...shadowPart });
+      if (!hasHours(old) && hasHours(w)) {
+        Object.assign(fill, { hours: w.hours, checked_at: w.checked_at });
+        if (w.winter.type !== 'none' && (!old.winter || old.winter.type === 'none')) fill.winter = w.winter;
+      }
+      // sun: user-set facing / coordinates stay; the incoming ones only fill gaps (a shadow only with its own coordinates)
+      const os = old.sun ?? {};
+      const sun = { ...os };
+      if (os.facing === undefined && w.sun.facing) sun.facing = w.sun.facing;
+      if (os.lat === undefined && os.lng === undefined && w.sun.lat !== undefined) Object.assign(sun, { lat: w.sun.lat, lng: w.sun.lng });
+      if (JSON.stringify(sun) !== JSON.stringify(os)) fill.sun = sun;
+      if (w.shadow && !old.shadow && sun.lat === w.sun.lat && sun.lng === w.sun.lng) fill.shadow = w.shadow;
+      if (Object.keys(fill).length) {
+        byName.set(w.name, { ...old, ...fill });
         updated++;
       } else skipped++;
     }

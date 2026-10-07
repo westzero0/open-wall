@@ -3,7 +3,7 @@ import { DAY_KEYS, toMin, ymd } from './time.js';
 const dayStart = (d, offset = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset);
 const atMin = (d, min) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, min);
 
-function inWinter(wall, date) {
+export function inWinter(wall, date) {
   const w = wall.winter;
   if (!w || !w.type || w.type === 'none') return false;
   const m = date.getMonth() + 1;
@@ -107,7 +107,7 @@ function baseStatus(wall, at) {
   const today = spans(dayStart(at), daySlot(wall, dayStart(at)));
   const onBreak = today.some((s) => s.closeAt <= at) && today.some((s) => s.openAt > at);
 
-  for (let n = 0; n <= 14; n++) {
+  for (let n = 0; n <= 200; n++) {
     const d = dayStart(at, n);
     const next = spans(d, daySlot(wall, d)).find((s) => s.openAt > at);
     if (next) return { state: 'closed', nextOpenAt: next.openAt, onBreak };
