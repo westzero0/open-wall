@@ -449,7 +449,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
 .s-open { position: absolute; top: 5px; height: 20px; border: 1px solid var(--open); border-radius: 3px; background: color-mix(in srgb, var(--open-past) 50%, transparent); }
 .s-row .g-sun, .s-row .g-sunon { top: 10px; height: 10px; }
-/* first view: 안내 lines, parking names, address (label column shared with the memo list) */
+/* first view: 안내 lines, parking (label column shared with the memo list) */
 .memo-list.info { margin-top: 8px; border-top: 1px solid var(--hair); }
 .memo-list.info li { padding: 3px 0; } /* tight: the open panel stays near one screen */
 .info-fold { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 150ms var(--ease-out), opacity 150ms var(--ease-out), visibility 0s linear 150ms; }
@@ -466,11 +466,12 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .pk-word.good { color: var(--open); }
 .pk-word.warn { color: var(--warn); }
 .pk-word.muted { color: var(--muted); font-weight: 400; }
-.addr-t { min-width: 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
-.addr .btn { min-width: var(--tap); min-height: var(--tap); justify-content: center; }
-.addr .mk { align-self: center; padding-top: 0; }
-.addr-say { display: block; font-size: var(--fs-xs); color: var(--muted); }
-.addr-say:empty { display: none; }
+.addr-line { margin: 2px 0 0; }
+/* the whole line is the button: no copy chip; a dotted underline says it can be tapped */
+.addr-btn { display: inline-flex; max-width: 100%; min-height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.addr-t { min-width: 0; overflow-wrap: anywhere; text-decoration: underline dotted; text-underline-offset: 3px; align-self: center; }
+.addr-btn.done .addr-t { color: var(--accent); font-weight: 600; text-decoration: none; }
+.addr-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .memo-list { list-style: none; margin: 0; padding: 0; font-size: var(--fs-sm); line-height: 1.45; }
 .memo-list li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 8px; margin: 0; padding: 5px 0; border-bottom: 1px solid var(--hair); font-size: inherit; } /* li.key: not the legend .key */
 .memo-list li:last-child { border-bottom: 0; }
