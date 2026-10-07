@@ -1,5 +1,5 @@
-// 혼잡도: visitors report 여유/보통/혼잡 through a Google Form; the app reads the sheet's published CSV
-// (제보시각, 암장, 단계) and summarises it. No DOM, no network: app.js fetches and draws.
+// 혼잡도: visitors report 여유/보통/혼잡 (with the visit's time) from the 기록 추가 sheet through a Google Form; the app
+// reads the sheet's published CSV (제보시각, 암장, 단계[, 방문시각]) and summarises it. No DOM, no network: app.js fetches and draws.
 import { parseCsv } from './csv.js';
 import { isHoliday as krHoliday } from './holidays.js';
 
@@ -10,9 +10,10 @@ export const WINDOW_DAYS = 56; // 8주
 export const NEAR_MIN = 60; // ± minutes of the picked time
 export const RECENT_MIN = 90; // "방금 제보" window while the pick is now
 export const MIN_REPORTS = 3;
-export const RESEND_MS = 30 * 60e3;
+export const ASK_DAYS = 7; // the sheet asks about a visit up to a week back
 const SKEW_MS = 5 * 60e3; // the form's clock vs this device: a few minutes ahead is still "now"
 const DAY = 864e5;
+const LATE_MS = (ASK_DAYS + 1) * DAY; // a 방문시각 may be this much older than its 제보시각 (a day of slack)
 
 const n = Number;
 // a real calendar moment in local time, or null (2026-02-30, 25:00 … fail the round trip)
@@ -40,8 +41,10 @@ export function parseWhen(v) {
 
 /**
  * parseCrowdCsv(text, names, now) → [{ t (ms), wall, score 0|1|2 }], oldest first.
+ * t is the 4th column 방문시각 when the row has one, else the 1st (제보시각; sheets made before 방문시각 existed).
  * Untrusted: only the newest MAX_CHARS / MAX_ROWS are read (the sheet appends at the bottom), the wall must be
  * one of `names` (NFC), the level one of LEVELS, the time parseable, not in the future and within 8 weeks.
+ * A 방문시각 must also be parseable and lie between 8 days before its 제보시각 and (a few minutes past) it.
  * Anything else (the header row too) is dropped.
  */
 export function parseCrowdCsv(text, names, now = new Date()) {
@@ -53,10 +56,14 @@ export function parseCrowdCsv(text, names, now = new Date()) {
   const lo = +now - WINDOW_DAYS * DAY;
   const out = [];
   for (const row of parseCsv(src).slice(-MAX_ROWS)) {
-    const when = parseWhen(row[0]);
+    const filed = parseWhen(row[0]);
+    const visitCell = String(row[3] ?? '').trim();
+    const visit = visitCell ? parseWhen(visitCell) : null;
+    if (!filed || +filed > hi || (visitCell && (!visit || +visit > +filed + SKEW_MS || +visit < +filed - LATE_MS))) continue;
+    const when = visit ?? filed;
     const wall = String(row[1] ?? '').normalize('NFC').trim();
     const score = LEVELS.indexOf(String(row[2] ?? '').normalize('NFC').trim());
-    if (!when || score < 0 || !known.has(wall) || +when > hi || +when < lo) continue;
+    if (score < 0 || !known.has(wall) || +when > hi || +when < lo) continue;
     out.push({ t: +when, wall, score });
   }
   return out.sort((a, b) => a.t - b.t);
@@ -102,32 +109,88 @@ export function aggregate(reports, wall, at, { isHoliday = krHoliday, live = fal
   };
 }
 
+// ---- asking (the 기록 추가 sheet) ----
+const pad = (x) => String(x).padStart(2, '0');
+const dayOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/**
+ * askable(date 'YYYY-MM-DD', time 'HH:mm', now) → true when the sheet may ask how crowded that visit was:
+ * a real moment, not after now, on a day at most ASK_DAYS back (today counts as 0).
+ */
+export function askable(date, time, now = new Date()) {
+  const at = parseWhen(`${date} ${time}`);
+  return Boolean(at) && +at <= +now && date >= dayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - ASK_DAYS));
+}
+
 // ---- sending ----
-// The record of this device's own reports ({wall: {t, level}}), as read back from localStorage: only sane
-// entries of the last 30 minutes, at most 50.
+// This device's own reports, {'<wall>': [sent-at ms, …, 'YYYY-MM-DD HH:mm' visit, …]}, as read back from localStorage.
+// Limits: COOLDOWN_MIN minutes between two reports of a wall, WALL_DAY_CAP a day per wall, DAY_CAP a day in all (the
+// day = the day it was sent, local midnight resets), and one report per visit (wall + date + 30-minute slot), whenever
+// sent. On read only sane sent times (numbers, not in the future) of today or still cooling down are kept, at most
+// DAY_CAP; visits only as real 'YYYY-MM-DD HH:mm' slots (minutes floored to :00/:30) not after now and at most
+// ASK_DAYS + 1 days back (the sheet asks a week back), at most VISITS_KEPT; junk dropped; at most 200 walls.
+export const COOLDOWN_MIN = 30;
+export const WALL_DAY_CAP = 2;
+export const DAY_CAP = 5;
+const VISITS_KEPT = 20; // WALL_DAY_CAP × (ASK_DAYS + 1) plus slack
+const COOLDOWN_MS = COOLDOWN_MIN * 60e3;
+// 'YYYY-MM-DD HH:mm' → the same visit on its half hour ('… 14:17' → '… 14:00'), or null
+export function visitSlot(when) {
+  const at = typeof when === 'string' ? parseWhen(when) : null;
+  if (!at) return null;
+  return `${dayOf(at)} ${pad(at.getHours())}:${pad(at.getMinutes() < 30 ? 0 : 30)}`;
+}
 export function cleanSent(raw, now = Date.now()) {
   const out = {};
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
-  for (const [wall, v] of Object.entries(raw).slice(0, 500)) {
-    if (Object.keys(out).length >= 50) break;
-    if (!wall || wall.length > 100 || !v || typeof v !== 'object') continue;
-    const t = Number(v.t);
-    if (!Number.isFinite(t) || t > now + SKEW_MS || t <= now - RESEND_MS || !LEVELS.includes(v.level)) continue;
-    out[wall] = { t, level: v.level };
+  const d = new Date(now);
+  const today = dayOf(d);
+  const oldest = dayOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() - ASK_DAYS - 1));
+  for (const [wall, list] of Object.entries(raw).slice(0, 1000)) {
+    if (Object.keys(out).length >= 200) break;
+    if (!wall || wall.length > 100 || !Array.isArray(list)) continue;
+    const items = list.slice(0, 50);
+    const ts = items.filter((t) => typeof t === 'number' && Number.isFinite(t) && t <= now && (t > now - COOLDOWN_MS || dayOf(new Date(t)) === today))
+      .sort((x, y) => x - y).slice(-DAY_CAP);
+    const vs = [...new Set(items.filter((v) => typeof v === 'string' && v.length <= 16).map(visitSlot)
+      .filter((v) => v && v.slice(0, 10) >= oldest && +parseWhen(v) <= now + SKEW_MS))].sort().slice(-VISITS_KEPT);
+    if (ts.length || vs.length) out[wall] = [...ts, ...vs];
   }
   return out;
 }
-// one report per wall per 30 minutes from this device
-export const canReport = (sent, wall, now = Date.now()) => !cleanSent(sent, now)[wall];
-export const sentLevel = (sent, wall, now = Date.now()) => cleanSent(sent, now)[wall]?.level ?? null;
-export const markSent = (sent, wall, level, now = Date.now()) => cleanSent({ ...cleanSent(sent, now), [wall]: { t: now, level } }, now);
+const sentTimes = (list) => (list ?? []).filter((t) => typeof t === 'number');
+/** canReport(sent, wall, now, visit?) → {ok, reason, waitMin}: reason 'dup' (this visit — 'YYYY-MM-DD HH:mm', same 30-minute
+ *  slot — was reported already), 'cap' (DAY_CAP today), 'wall' (WALL_DAY_CAP for this wall today), 'wait' (cooling down;
+ *  waitMin whole minutes left, rounded up) or null. */
+export function canReport(sent, wall, now = Date.now(), visit = null) {
+  const s = cleanSent(sent, now);
+  const today = dayOf(new Date(now));
+  const isToday = (t) => dayOf(new Date(t)) === today;
+  const mine = sentTimes(s[wall]);
+  const last = mine.length ? mine[mine.length - 1] : null;
+  const slot = visitSlot(visit);
+  if (slot && s[wall]?.includes(slot)) return { ok: false, reason: 'dup', waitMin: 0 };
+  if (Object.values(s).flatMap(sentTimes).filter(isToday).length >= DAY_CAP) return { ok: false, reason: 'cap', waitMin: 0 };
+  if (mine.filter(isToday).length >= WALL_DAY_CAP) return { ok: false, reason: 'wall', waitMin: 0 };
+  if (last !== null && now - last < COOLDOWN_MS) return { ok: false, reason: 'wait', waitMin: Math.ceil((last + COOLDOWN_MS - now) / 60e3) };
+  return { ok: true, reason: null, waitMin: 0 };
+}
+/** markSent(sent, wall, now, visit?) → the store with this report added (its visit slot too, when given). */
+export const markSent = (sent, wall, now = Date.now(), visit = null) => {
+  const s = cleanSent(sent, now);
+  const slot = visitSlot(visit);
+  return cleanSent({ ...s, [wall]: [...(s[wall] ?? []), now, ...(slot ? [slot] : [])] }, now);
+};
 
-// fields: { wall: 'entry.…', level: 'entry.…', kind?: 'entry.…' } — kind is for a shared form whose 종류 gets '혼잡도'
-export const crowdReady = (endpoint, fields) => /^https?:\/\//.test(endpoint ?? '') && /^entry\.\d+$/.test(fields?.wall ?? '') && /^entry\.\d+$/.test(fields?.level ?? '');
-export function crowdPayload(fields, wall, level) {
+// fields: { wall: 'entry.…', level: 'entry.…', kind?: 'entry.…', when?: 'entry.…' } — kind is for a shared form whose
+// 종류 gets '혼잡도'; when (방문시각, a short-answer question) gets 'YYYY-MM-DD HH:mm'. Without it the form's own
+// timestamp stands for the visit.
+const ENTRY_RE = /^entry\.\d+$/;
+export const crowdReady = (endpoint, fields) => /^https?:\/\//.test(endpoint ?? '') && ENTRY_RE.test(fields?.wall ?? '') && ENTRY_RE.test(fields?.level ?? '');
+export function crowdPayload(fields, wall, level, when = '') {
   const p = new URLSearchParams();
   p.set(fields.wall, wall);
   p.set(fields.level, level);
-  if (/^entry\.\d+$/.test(fields.kind ?? '')) p.set(fields.kind, '혼잡도');
+  if (ENTRY_RE.test(fields.kind ?? '')) p.set(fields.kind, '혼잡도');
+  if (ENTRY_RE.test(fields.when ?? '') && parseWhen(when)) p.set(fields.when, when);
   return p.toString();
 }

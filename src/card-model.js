@@ -3,7 +3,7 @@
 import { hasHours, openIntervals } from './hours.js';
 import { hhmm, ymd } from './time.js';
 import { CHAT_URL_RE } from './store.js';
-import { dayParts } from './log.js';
+import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
@@ -207,13 +207,13 @@ function visitsOf(records) {
     label: `✓ 다녀옴 ${records.length}번`,
     recent: records.slice(0, 3).map((r) => {
       const p = dayParts(r.date);
-      return { id: r.id, date: `${p.year}.${p.month}.${p.day}(${p.dow})`, memo: r.memo ?? '' };
+      return { id: r.id, date: `${p.year}.${p.month}.${p.day}(${p.dow})`, memo: recordNote(r) }; // "15:00 · 메모"
     }),
   };
 }
 
-// 혼잡도 (crowd.js): the chip under 오늘 운영 and the 여유/보통/혼잡 buttons, both only while the wall is open.
-// crowd: { stat: aggregate() or null (no CSV), live, canSend (form set up), sent: this device's level in the last 30 min }
+// 혼잡도 (crowd.js): the chip under 오늘 운영, only while the wall is open. Reports are sent from the 기록 추가 sheet.
+// crowd: { stat: aggregate() or null (no CSV yet) }
 function crowdOf(crowd, state) {
   if (!crowd || state !== 'open') return null;
   const s = crowd.stat;
@@ -222,10 +222,14 @@ function crowdOf(crowd, state) {
     : s.recent ? chipOf(s.recent.level, `방금 제보 ${s.recent.level} · 제보 ${s.recent.n}건 · 최근 90분`)
       : s.level ? chipOf(s.level, `이 시간대 ${s.level === '보통' ? '대개' : '보통'} ${s.level} · 제보 ${s.n}건 · ${s.basis}`) // not "보통 보통"
         : { text: '제보 모으는 중', level: null, bars: 0, muted: true };
-  const ask = crowd.canSend && crowd.live
-    ? { prompt: crowd.sent ? '제보했어요' : '지금 어때요?', sent: crowd.sent ?? null, options: CROWD_LEVELS }
-    : null;
-  return chip || ask ? { chip, ask } : null;
+  return chip ? { chip } : null;
+}
+
+// The list row's 혼잡 pill: only when a level is settled (fewer than 3 reports → nothing on the row).
+// text is the word alone; aria adds where it comes from.
+function crowdTagOf(s) {
+  const level = s.recent ? s.recent.level : s.level;
+  return { level, text: level, aria: s.recent ? `혼잡도 ${level}, 방금 제보 ${s.recent.n}건` : `혼잡도 ${level}, 이 시간대 제보 ${s.n}건` };
 }
 
 // ---- the model ----
@@ -329,5 +333,6 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),
+    ...(crowdModel?.chip?.level ? { crowdTag: crowdTagOf(crowd.stat) } : {}),
   };
 }

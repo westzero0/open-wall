@@ -2,13 +2,17 @@
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
 import { ymd } from './time.js';
+import { hasHours, openIntervals } from './hours.js';
+import { axisFrac, formatRanges } from './viewmodel.js';
 import {
-  MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, addRecord, dayParts, exportLog, loadLog, mergeLog, monthGrid, monthSummary,
-  normalizeLog, parseImport, recordsByDay, removeRecord, saveLog, shiftMonth, stampLook, visitedCount,
+  MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
+  normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, stampLook, timeOfMin,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitedCount,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
 const today = () => ymd(new Date());
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const newId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 // ---- toast: one line at the foot of the screen, optionally with 실행 취소 (kept while it has focus) ----
@@ -47,14 +51,16 @@ box.addEventListener('focusin', () => clearTimeout(toastTimer));
 box.addEventListener('focusout', armToast);
 
 /**
- * createLogView({storage, getWalls, getFavs, onChange, reveal, showList})
+ * createLogView({storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk, sendCrowd})
  * getWalls(): the current wall list (names = the progress denominator). getFavs(): ♥ names, listed first in the picker.
  * onChange(): the log changed (list rows redraw).
  * reveal(name): open that wall's card in the list. showList(): go to the 목록 tab.
+ * crowdAsk(wall, date, time) → null | canReport's {ok: false, reason, waitMin} | 'ask': whether the sheet asks how crowded that visit was (app.js).
+ * sendCrowd(wall, level, date, time) → Promise<boolean>: the 혼잡도 report (app.js; the record itself stays here).
  */
-export function createLogView({ storage, getWalls, getFavs, onChange, reveal, showList }) {
+export function createLogView({ storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false }) {
   const panel = $('panel-log');
-  let log = loadLog(storage, today());
+  let log = loadLog(storage, today(), nowMin());
   // the calendar: the month in view, the picked day, the day that holds the grid's tab stop
   const now = new Date();
   let view = { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -97,9 +103,163 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
       return el('li', {}, el('label', {}, input, el('span', { class: 'pn' }, favs.includes(w.name) ? el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥ ') : null, w.name), w.region ? el('span', { class: 'pr' }, w.region) : null));
     }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
   }
+  // ---- 방문 시각: the wall's hours of the picked day on the 06–24 axis, and an invisible range input over them ----
+  const timeIn = $('la-time-in');
+  const timeSay = $('la-time-say');
+  const timeNote = $('la-time-note');
+  const timeErr = $('la-time-err');
+  const timeClear = dlg.querySelector('.la-time-clear');
+  const trk = dlg.querySelector('.vt-trk');
+  const mark = dlg.querySelector('.vt-mark');
+  const crowdRow = dlg.querySelector('.la-crowd');
+  const crowdSentNote = dlg.querySelector('.la-crowd-sent');
+  const crowdPills = [...crowdRow.querySelectorAll('.crowd-pill')];
+  let visitMin = null; // minutes of the day, or null (시간 모름)
+  let timeTouched = false; // set or cleared by the visitor: picking another wall keeps it
+  let crowdLevel = null; // 여유/보통/혼잡 picked in the sheet, or null
+  const pct = (m) => `${axisFrac(m) * 100}%`;
+  const placed = (cls, a, b) => {
+    const s = el('span', { class: cls });
+    s.style.left = pct(a);
+    s.style.width = `${(axisFrac(b) - axisFrac(a)) * 100}%`;
+    return s;
+  };
+  dlg.querySelector('.vt-axis').append(...[6, 12, 18, 24].map((h) => {
+    const s = el('span', {}, `${h}시`);
+    s.style.left = pct(h * 60);
+    return s;
+  }));
+  const sheetWall = () => fixedWall ?? choice;
+  // {wall, open}: open = openIntervals of the picked day (holidays, winter, breaks applied), null without a wall or date
+  function dayOpen() {
+    const wall = getWalls().find((w) => w.name === sheetWall());
+    const v = form.elements.date.value;
+    if (!wall || !validDate(v)) return { wall, open: null };
+    const p = dayParts(v);
+    return { wall, open: openIntervals(wall, new Date(p.year, p.month - 1, p.day)) };
+  }
+  function drawDay() {
+    const { wall, open } = dayOpen();
+    const list = open ?? [];
+    // today: the stretch after now is dimmed and can't be picked (setVisit ignores it)
+    const ahead = form.elements.date.value === today() ? [placed('vt-future', visitMax(nowMin()) ?? VISIT_FIRST, 1440)] : [];
+    trk.replaceChildren(...list.filter(([a, b]) => axisFrac(b) > axisFrac(a)).map(([a, b]) => placed('vt-bar', a, b)),
+      ...visitBreaks(list).map(([a, b]) => placed('vt-brk', a, b)), ...ahead);
+    trk.classList.toggle('off', Boolean(open) && !list.length);
+    timeNote.textContent = !wall ? '암장을 고르면 그날 운영시간이 보여요.'
+      : !open ? '날짜를 고르면 그날 운영시간이 보여요.'
+        : !hasHours(wall) ? '운영시간 정보가 없어요. 시각은 골라도 돼요.'
+          : !list.length ? '이 날은 휴무예요. 시각은 골라도 돼요.'
+            : `운영 ${formatRanges(list)}`;
+  }
+  // the question shows only while crowdAsk says so (set up, a time, the last 7 days, not later than now)
+  function drawCrowd() {
+    const wall = sheetWall();
+    const ask = wall && visitMin != null ? crowdAsk(wall, form.elements.date.value, timeOfMin(visitMin)) : null;
+    const wait = ask && ask !== 'ask'; // reported a moment ago: the row stays, off, with the reason
+    crowdRow.hidden = !ask;
+    crowdSentNote.hidden = !wait;
+    if (wait) crowdSentNote.textContent = { dup: '이 방문은 이미 제보했어요.', wait: `방금 보냈어요. ${ask.waitMin}분 뒤에 다시 보낼 수 있어요.`, wall: '이 암장은 오늘 두 번 보냈어요.', cap: '오늘은 더 보낼 수 없어요.' }[ask.reason];
+    if (ask !== 'ask') crowdLevel = null;
+    for (const b of crowdPills) {
+      b.disabled = Boolean(wait);
+      b.setAttribute('aria-pressed', String(b.value === crowdLevel));
+    }
+  }
+  function drawTime() {
+    const on = visitMin != null;
+    mark.hidden = !on;
+    if (on) {
+      mark.style.left = pct(visitMin);
+      timeIn.value = String(visitMin);
+    }
+    timeSay.textContent = on ? `${timeOfMin(visitMin)}쯤 방문` : '시간 모름';
+    timeSay.classList.toggle('unset', !on);
+    timeIn.setAttribute('aria-valuetext', on ? timeSpeech(visitMin) : '시간 모름');
+    timeClear.hidden = !on;
+    drawCrowd();
+  }
+  // the default: today → half an hour ago on the half hour, moved into that day's hours; another day (or no wall
+  // picked yet) → 시간 모름
+  function resetTime() {
+    const { open } = dayOpen();
+    const now = new Date();
+    visitMin = open && form.elements.date.value === today() ? visitDefault(open, now.getHours() * 60 + now.getMinutes()) : null;
+    if (visitMin == null) timeIn.value = String(open?.length ? snapVisit(Math.max(open[0][0], VISIT_FIRST)) : 720); // where a key press starts
+    drawTime();
+  }
+  const setVisit = () => {
+    const v = snapVisit(Number(timeIn.value)); // 24:00 (the axis end) → 23:30
+    const last = form.elements.date.value === today() ? (visitMax(nowMin()) ?? -1) : Infinity;
+    if (v > last) { // after now: not a pick; the value goes back
+      timeIn.value = String(visitMin ?? Math.min(720, Math.max(last, VISIT_FIRST)));
+      return;
+    }
+    visitMin = v;
+    timeTouched = true;
+    timeErr.hidden = true;
+    drawTime();
+  };
+  timeIn.addEventListener('input', setVisit); // keyboard and screen readers (the input ignores pointers: style.css)
+  // Pointers: the bar itself picks the half hour under the finger (a transparent range's tap is unreliable on iOS Safari).
+  // touch-action: pan-y — a vertical swipe scrolls the sheet (pointercancel, nothing picked); a tap, or a drag that goes
+  // sideways first, picks. A mouse picks on press.
+  const vt = dlg.querySelector('.vt');
+  let drag = null; // {id, x, y, on}
+  const pickAt = (x) => {
+    const r = trk.getBoundingClientRect();
+    const m = minuteAtFrac(r.width ? (x - r.left) / r.width : 0, nowMin(), form.elements.date.value === today());
+    if (m == null) return;
+    visitMin = m;
+    timeTouched = true;
+    timeErr.hidden = true;
+    drawTime();
+  };
+  vt.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); // no compat mousedown: it would take the focus given below
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, on: e.pointerType === 'mouse' };
+    vt.setPointerCapture(e.pointerId);
+    timeIn.focus({ preventScroll: true });
+    if (drag.on) pickAt(e.clientX);
+  });
+  vt.addEventListener('pointermove', (e) => {
+    if (drag?.id !== e.pointerId) return;
+    const dx = Math.abs(e.clientX - drag.x);
+    if (!drag.on && dx > 6 && dx > Math.abs(e.clientY - drag.y)) drag.on = true;
+    if (drag.on) pickAt(e.clientX);
+  });
+  vt.addEventListener('pointerup', (e) => {
+    if (drag?.id !== e.pointerId) return;
+    if (drag.on || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) <= 10) pickAt(e.clientX); // a tap
+    drag = null;
+  });
+  vt.addEventListener('pointercancel', () => { drag = null; });
+  timeClear.addEventListener('click', () => {
+    visitMin = null;
+    timeTouched = true;
+    drawTime();
+    timeIn.focus();
+  });
+  form.elements.date.addEventListener('change', () => {
+    timeTouched = false;
+    timeErr.hidden = true;
+    drawDay();
+    resetTime();
+  });
+  for (const b of crowdPills) {
+    b.addEventListener('click', () => {
+      crowdLevel = crowdLevel === b.value ? null : b.value; // a second press clears it
+      drawCrowd();
+    });
+  }
+
   picks.addEventListener('change', (e) => {
     choice = e.target.value;
     pickErr.hidden = true;
+    drawDay();
+    if (timeTouched) drawCrowd();
+    else resetTime();
   });
   form.elements.q.addEventListener('input', drawPicks);
 
@@ -116,6 +276,11 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     form.elements.date.value = date && date <= t ? date : t;
     pickErr.hidden = true;
     dateErr.hidden = true;
+    timeErr.hidden = true;
+    timeTouched = false;
+    crowdLevel = null;
+    drawDay();
+    resetTime();
     if (!wall) drawPicks();
     dlg.showModal();
   }
@@ -129,12 +294,20 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
       pickErr.hidden = false;
       return form.elements.q.focus();
     }
-    const res = addRecord(log, { wall, date: form.elements.date.value, memo: form.elements.memo.value }, { today: today(), id: newId() });
+    const time = visitMin == null ? '' : timeOfMin(visitMin);
+    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value }, { today: today(), id: newId(), nowMin: nowMin() });
+    if (res.field === 'time') {
+      timeErr.textContent = res.error;
+      timeErr.hidden = false;
+      return timeIn.focus();
+    }
     if (res.error) {
       dateErr.textContent = res.error;
       dateErr.hidden = false;
       return form.elements.date.focus();
     }
+    // asked again at save time: the question's conditions (a week back, not later than now, not sent yet) may have moved
+    const level = crowdLevel && crowdAsk(wall, res.record.date, time) === 'ask' ? crowdLevel : null;
     log = res.log;
     persist();
     if (!panel.hidden) { // added from the 기록 tab: show the day it went on
@@ -148,12 +321,12 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     stampedWall = wall;
     changed(key);
     stamped = stampedWall = null;
-    toast(`${wall} 기록했어요`, () => {
-      log = removeRecord(log, res.record.id);
-      persist();
-      changed(key);
-      toast('기록을 취소했어요');
-    });
+    // no 실행 취소 here: an undo could drop the record but not a 혼잡도 report already sent. A mistaken record is
+    // deleted from the 기록 tab (that one keeps its undo).
+    toast(level ? `${wall} 기록했어요 · 혼잡도 제보 고마워요` : `${wall} 기록했어요`);
+    if (level) {
+      sendCrowd(wall, level, res.record.date, time).then((ok) => ok || toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'));
+    }
   });
 
   // ---- backup ----
@@ -170,7 +343,7 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
   async function importFile(file) {
     if (!file) return '';
     if (file.size > MAX_IMPORT_BYTES) return '가져오지 못했어요: 파일이 너무 커요(1MB까지).';
-    const res = parseImport(await file.text(), today());
+    const res = parseImport(await file.text(), today(), nowMin());
     if (!res.ok) return `가져오지 못했어요: ${res.error}`;
     const merged = mergeLog(log, res.records);
     log = merged.log;
@@ -187,7 +360,7 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
     changed();
     (document.getElementById('lg-day-title') ?? panel.querySelector('[data-focus="empty-add"]'))?.focus(); // the last one gone: the empty state
     toast('기록을 지웠어요', () => {
-      log = normalizeLog([...log, r], today());
+      log = normalizeLog([...log, r], today(), nowMin());
       persist();
       changed();
       document.getElementById('lg-day-title')?.focus();
@@ -346,9 +519,9 @@ export function createLogView({ storage, getWalls, getFavs, onChange, reveal, sh
         const open = el('button', { type: 'button', class: 'lg-open' },
           el('span', { class: 'lg-name' }, r.wall),
           regionOf(r.wall) ? el('span', { class: 'lg-region' }, regionOf(r.wall)) : null,
-          r.memo ? el('span', { class: 'lg-memo' }, r.memo) : null);
+          recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null); // "15:00 · 메모"
         open.addEventListener('click', () => reveal(r.wall));
-        const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일 기록 삭제` }, '삭제');
+        const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
         return el('li', {}, stamp(r.date, 'stamp rec-stamp'), open, del);
       })) : null,

@@ -242,6 +242,33 @@
           <label class="la-field"><span class="sh-label">날짜</span><input type="date" name="date" required aria-describedby="la-date-err"></label>
           <p class="la-err" id="la-date-err" hidden></p>
         </div>
+        <div class="sh-row la-row la-time">
+          <div class="la-time-hd">
+            <label class="sh-label" for="la-time-in" id="la-time-label">방문 시각 (선택)</label>
+            <b class="la-time-say" id="la-time-say" aria-hidden="true">시간 모름</b>
+          </div>
+          <div class="vt">
+            <div class="vt-trk" aria-hidden="true"></div>
+            <span class="vt-mark" aria-hidden="true" hidden></span>
+            <input type="range" id="la-time-in" name="time" min="360" max="1440" step="30" value="720" aria-describedby="la-time-note la-time-err">
+          </div>
+          <div class="vt-axis" aria-hidden="true"></div>
+          <div class="la-time-ft">
+            <p class="sh-hint" id="la-time-note"></p>
+            <button type="button" class="sh-toggle la-time-clear" hidden>시간 모름</button>
+          </div>
+          <p class="la-err" id="la-time-err" role="alert" hidden></p>
+        </div>
+        <div class="sh-row la-row la-crowd" role="group" aria-labelledby="la-crowd-q" hidden>
+          <p class="la-crowd-q" id="la-crowd-q">그때 혼잡도는 어땠어요? <span>(선택)</span></p>
+          <div class="crowd-pills">
+            <button type="button" class="crowd-pill" aria-pressed="false" value="여유">여유</button>
+            <button type="button" class="crowd-pill" aria-pressed="false" value="보통">보통</button>
+            <button type="button" class="crowd-pill" aria-pressed="false" value="혼잡">혼잡</button>
+          </div>
+          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(암장·시각·단계만).</p>
+        </div>
+        <p class="sh-row la-row sh-hint la-crowd-sent" hidden></p>
         <div class="sh-row la-row">
           <label class="la-field"><span class="sh-label">메모 (선택)</span><textarea name="memo" rows="2" maxlength="100" placeholder="예: 오후엔 응달이라 시원했어요"></textarea></label>
           <p class="sh-hint">100자까지. 이 기기에만 저장돼요.</p>

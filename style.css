@@ -322,6 +322,9 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .x-name { margin: 12px 0 2px; font-size: var(--fs-lg); line-height: 1.25; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .x-sub { font-size: var(--fs-sm); color: var(--muted); }
 .today { margin-top: 10px; font-size: var(--fs-base); }
+/* 오늘 운영 … with 다녀왔어요 at the right end; a long line pushes the pill to the right of the next line */
+.today-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: 10px; }
+.today-row .today { margin-top: 0; min-width: 0; }
 .today span { color: var(--muted); font-size: var(--fs-sm); margin-right: 6px; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
 .crowd-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 2px 10px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: var(--fs-sm); }
@@ -333,21 +336,23 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .crowd-meter i:nth-child(3) { height: 12px; }
 .crowd-chip[data-level="여유"] i:nth-child(-n+1),
 .crowd-chip[data-level="보통"] i:nth-child(-n+2),
-.crowd-chip[data-level="혼잡"] i:nth-child(-n+3) { background: currentColor; }
-.crowd-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; }
-.crowd-q { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
+.crowd-chip[data-level="혼잡"] i:nth-child(-n+3),
+.crowdnow[data-level="여유"] i:nth-child(-n+1),
+.crowdnow[data-level="보통"] i:nth-child(-n+2),
+.crowdnow[data-level="혼잡"] i:nth-child(-n+3) { background: currentColor; }
+/* list-row pill: same size as .sunnow, outlined so it doesn't read as sun */
+.crowdnow { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 6px; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; color: var(--fg); }
+/* 여유 · 보통 · 혼잡 in the 기록 추가 sheet: pressed shows ✓ and fills, so not by colour alone */
 .crowd-pills { display: flex; gap: 6px; }
 .crowd-pill {
   min-height: var(--tap); min-width: 64px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
   background: var(--surface); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
   transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out);
 }
+.crowd-pill:disabled { opacity: .45; cursor: default; }
 .crowd-pill:active { transform: scale(.97); }
 .crowd-pill[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
 .crowd-pill[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: 2px; }
-.crowd-pill[aria-disabled="true"] { cursor: default; }
-.crowd-pill[aria-disabled="true"]:not([aria-pressed="true"]) { color: var(--muted); border-color: var(--line); }
-.crowd-pill[aria-disabled="true"]:active { transform: none; }
 .stale-note { margin-top: 4px; font-size: var(--fs-xs); color: var(--warn); }
 .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; font-size: var(--fs-xs); line-height: 2; }
@@ -872,11 +877,50 @@ dialog::backdrop { background: var(--scrim); }
 .la-foot { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding-top: 14px; border-top: 1px solid var(--hair); }
 .la-save { min-height: var(--tap); border: 0; border-radius: var(--radius); background: var(--accent); color: var(--bg); font-weight: 700; white-space: nowrap; }
 #log-add-title { overflow-wrap: anywhere; }
+/* 방문 시각: the wall's hours of that day on the 06–24 axis (휴게 hatched). The bar (44px tall, full width) takes taps
+   and sideways drags itself (log-view.js pointer handlers; pan-y keeps vertical swipes scrolling the sheet); an invisible
+   range input over it, deaf to pointers, serves arrow keys and screen readers. .vt-mark draws the pick. */
+div.la-time { display: block; }
+.la-time-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; }
+.la-time-say { font-size: var(--fs-base); font-variant-numeric: tabular-nums; }
+.la-time-say.unset { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.vt { position: relative; height: var(--tap); margin-top: 6px; border-radius: var(--r-sm); cursor: pointer; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.vt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vt-trk { position: absolute; left: 0; right: 0; top: 14px; height: 16px; border-radius: 4px; background: var(--sunken); }
+.vt-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; background: var(--open-bar); }
+.vt-future { position: absolute; top: 0; bottom: 0; right: 0; border-radius: 0 4px 4px 0; background: var(--surface); opacity: .7; pointer-events: none; }
+.vt-brk { position: absolute; top: 0; bottom: 0; border: 1px solid var(--line-strong); border-radius: 2px;
+  background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 6px); }
+.vt-trk.off { border: 1px solid var(--line); background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 6px); }
+.vt-mark { position: absolute; top: 4px; bottom: 4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--fg); box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
+.vt-mark::before { content: ""; position: absolute; left: 50%; top: -3px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 2px var(--surface); }
+.vt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; -webkit-appearance: none; appearance: none; }
+/* a 1px thumb keeps the input's value ↔ position mapping the same as the bar's axis */
+.vt input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 1px; height: var(--tap); }
+.vt input::-moz-range-thumb { width: 1px; height: var(--tap); border: 0; }
+.vt-axis { position: relative; height: 1.4em; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.vt-axis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.vt-axis span:first-child { transform: none; }
+.vt-axis span:last-child { transform: translateX(-100%); }
+.la-time-ft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-top: 4px; }
+.la-time-ft .sh-hint { flex: 1 1 12rem; }
+.la-time-clear { margin-left: auto; }
+div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.la-crowd-q { flex-basis: 100%; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.la-crowd-q span { font-weight: 400; }
+.la-crowd .crowd-pills { flex-wrap: wrap; }
 
 /* ---- 다녀왔어요 / 내 기록 (open card) and "✓ 다녀옴 N번" (list row) ---- */
 .been { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
-/* the last pill of the link row: same size as the others, outline only in the text colour (the links are green) */
-.expand-in .actions .btn.been-btn { background: transparent; color: var(--fg); border-color: var(--line-strong); font-family: inherit; }
+/* the right end of the 오늘 운영 line: the link pills' size (34px seen, 44px tap via ::after), outline in the text colour */
+.expand-in .been-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 34px; min-height: 0; margin-left: auto; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: transparent; color: var(--fg);
+  font-family: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
+}
+.expand-in .been-btn svg { flex: none; width: 15px; height: 15px; }
+.expand-in .been-btn::after { content: ""; position: absolute; inset: -5px 0; }
+.expand-in .been-btn:active { transform: scale(.97); }
 .been-stamp { flex: none; width: 15px; height: 15px; background: var(--fg); }
 .been-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .been-stamp.stamp-in { animation: none; } }
