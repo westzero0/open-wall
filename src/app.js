@@ -11,27 +11,65 @@ import {
   regionGroups, regionList, scopeRows, seasonSun, sliderValue, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
-import { CLEARED, cleanRegions, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, skipTick } from './ui-state.js';
+import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, shareUrl, skipTick, wallFromSearch } from './ui-state.js';
+import { el } from './dom.js';
+import { createLogView, toast } from './log-view.js';
+import { applyTheme, createProfileView } from './profile-view.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
 
-const el = (tag, attrs = {}, ...kids) => {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) if (v !== null && v !== undefined) e.setAttribute(k, v);
-  e.append(...kids.filter((k) => k !== null && k !== undefined && k !== false));
-  return e;
-};
 const pct = (min) => `${(min / 1440) * 100}%`;
+
+// Inline icons on a 24px grid, drawn in the text colour; the button or link around one carries its name.
+const ICONS = {
+  share: ['M12 3v12', 'M8 7l4-4 4 4', 'M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'],
+  nav: ['M3 11L22 2l-9 19-2-8-8-2z'],
+  check: ['M5 12l5 5 9-10'],
+  megaphone: ['M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M18.5 6a9 9 0 0 1 0 12'],
+  chat: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
+  phone: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'],
+  pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
+  heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
+  copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
+};
+function icon(name, filled = false) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: filled ? 'currentColor' : 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(k, v);
+  for (const d of ICONS[name]) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    svg.append(p);
+  }
+  return svg;
+}
 
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
+applyTheme(ui.theme);
+// 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
+const logView = createLogView({
+  storage,
+  getWalls: () => state.walls,
+  getFavs: () => favs,
+  onChange: () => render(),
+  reveal: (name) => revealFromLog(name),
+  showList: () => showTab('list', true),
+});
+createProfileView({
+  getTheme: () => ui.theme,
+  setTheme: (t) => { ui.theme = cleanTheme(t); saveUi(); applyTheme(ui.theme); },
+  exportFile: logView.exportFile,
+  importFile: logView.importFile,
+});
 let origin = null; // {lat, lng} after "내 위치"
 let locateNote = '';
 let live = true; // date/time follow the clock until the user picks another moment
 let openName = null; // the expanded timetable row, kept by wall name across re-renders
 let openState = null; // that row's status.state, so a row that moves to another group is forgotten
+let allRows = []; // last built rows before any filter: the 내 암장 strip shows a favorite whatever the filters hide
 let shown = { rows: [], at: null }; // last rendered rows (all groups, with distance) for the map
 let mapApi = null; // created the first time the map tab opens
 let mapFailed = false;
@@ -77,11 +115,12 @@ function dayBarBlock(bar) {
 }
 
 // contact links; the expanded row leaves out 길찾기 (primary), it has its own button
+const LINK_ICON = { 공지사항: 'megaphone', '인스타 공지': 'megaphone', 오픈채팅: 'chat', 전화: 'phone', 네이버지도: 'pin' };
 function actionLinks(links) {
   if (!links.length) return null;
   return el('div', { class: 'actions' },
     ...links.map(({ label, href, primary }) =>
-      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, label)));
+      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)));
 }
 
 const rowButtons = (name, ...extra) => {
@@ -95,42 +134,30 @@ const rowButtons = (name, ...extra) => {
   return kids.length ? el('div', { class: 'row-actions' }, ...kids) : null;
 };
 
-function more(m) {
-  const photo = m.photo ? el('img', { class: 'photo', src: m.photo, loading: 'lazy', decoding: 'async', alt: `${m.name} 외벽 사진` }) : null;
-  photo?.addEventListener('error', () => photo.remove(), { once: true });
-  return el('details', { class: 'more' },
-    el('summary', {}, '자세히'),
-    photo,
-    memoList(m.memo),
-    el('p', { class: 'meta' }, m.checked),
-    m.approxNote ? el('p', { class: 'meta' }, m.approxNote) : null,
-    m.parkingMemo ? el('p', { class: 'meta' }, m.parkingMemo) : null,
-    rowButtons(m.name,
-      config.reportEndpoint ? el('button', { type: 'button', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요') : null));
-}
-
-// The map's selected pin.
+// The map's selected pin: only what reads at a glance (photo, name, status, today's bar). Everything else is the
+// wall's card in the list, one tap away.
 function card(row, at) {
   const m = cardModel(row, at);
-  return el('li', { class: `card ${m.state}${m.short ? ' short' : ''}${m.stale ? ' stale' : ''}` },
-    thumb(m),
+  const more = el('button', { type: 'button', class: 'pin-more' }, '목록에서 자세히 보기 ›');
+  more.addEventListener('click', () => {
+    showTab('list');
+    revealRow(m.name);
+  });
+  // no photo: no grey placeholder block; its type and height ride on the place line instead
+  const { primary, secondary } = m.placeholder;
+  return el('li', { class: `card ${m.state}${m.short ? ' short' : ''}${m.stale ? ' stale' : ''}${m.photo ? '' : ' no-photo'}` },
+    m.photo ? thumb(m) : null,
     el('div', { class: 'head' },
-      el('h3', { class: 'name' }, m.name, feeChip(m)),
+      el('div', { class: 'name-row' }, favBtn(m.name), el('h3', { class: 'name' }, m.name, feeChip(m))),
       el('p', { class: 'where' },
         m.region ? el('small', {}, m.region) : null,
+        !m.photo && secondary ? el('small', {}, secondary) : null,
+        !m.photo && primary.endsWith('m') ? el('small', {}, `높이 ${primary}`) : null,
         m.distLine ? el('span', { class: 'dist' }, m.distLine) : null,
         basisTag(m)),
       el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.statusText)),
     m.bar ? dayBarBlock(m.bar) : null,
-    el('div', { class: 'chips' },
-      ...m.tags.map((t) => el('span', { class: 'chip' }, t)),
-      ...m.barBreaks.map((t) => el('span', { class: 'chip break' }, t)),
-      el('span', { class: `chip parking ${m.parking.tone}`, title: m.parking.note || null }, m.parking.text)),
-    m.staleNote ? el('p', { class: 'note stale-note' }, m.staleNote) : null,
-    ...m.notes.map((n) => el('p', { class: 'note' }, n)),
-    actionLinks(m.links),
-    blogBox(m.blog, false),
-    more(m));
+    more);
 }
 
 function safeCard(row, at) {
@@ -339,19 +366,23 @@ function moreTabs(wall, at, d, id) {
   return [el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels];
 }
 
-// The address sits under the place line; tapping it copies it (the text turns into "✓ 복사했어요" for a moment).
+// The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
+// "✓ 복사했어요" and the icon into a check for a moment). Next to it, an icon opens the route.
 function addrLine(m) {
-  if (!m.address) return null;
+  const nav = m.route && el('a', { class: 'icon-btn', href: m.route, target: '_blank', rel: 'noopener noreferrer', 'aria-label': '길찾기', title: '길찾기' }, icon('nav'));
+  if (!m.address) return nav ? el('p', { class: 'addr-line' }, nav) : null;
   const text = el('span', { class: 'addr-t' }, m.address);
-  const btn = el('button', { type: 'button', class: 'addr-btn', 'aria-label': `주소 복사: ${m.address}` }, text);
+  const glyph = el('span', { class: 'addr-ic', 'aria-hidden': 'true' }, icon('copy'));
+  const btn = el('button', { type: 'button', class: 'addr-btn', 'aria-label': `주소 복사: ${m.address}` }, text, glyph);
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
   let timer;
   const flash = (msg, shown) => {
     say.textContent = msg;
     text.textContent = shown;
+    glyph.replaceChildren(icon('check'));
     btn.classList.add('done');
     clearTimeout(timer);
-    timer = setTimeout(() => { text.textContent = m.address; btn.classList.remove('done'); }, 1800);
+    timer = setTimeout(() => { text.textContent = m.address; glyph.replaceChildren(icon('copy')); btn.classList.remove('done'); }, 1800);
   };
   btn.addEventListener('click', async () => {
     try {
@@ -365,7 +396,75 @@ function addrLine(m) {
       say.textContent = '주소를 선택했어요. 길게 눌러 복사하세요';
     }
   });
-  return el('p', { class: 'addr-line' }, btn, say);
+  return el('p', { class: 'addr-line' }, btn, nav, say);
+}
+
+// ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
+let favs = loadFavs(storage);
+function paintStar(btn) {
+  const on = favs.includes(btn.dataset.fav);
+  btn.setAttribute('aria-pressed', String(on));
+  btn.classList.toggle('on', on);
+  btn.replaceChildren(icon('heart', on));
+}
+// Every heart and name mark of a wall is repainted in place, so the tapped button keeps focus.
+function syncFavs() {
+  for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
+  for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
+  renderFavStrip();
+}
+function favBtn(name) {
+  const btn = el('button', { type: 'button', class: 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기' });
+  btn.addEventListener('click', () => {
+    favs = toggleFav(favs, name);
+    saveFavs(storage, favs);
+    syncFavs();
+    if (ui.favOnly) render(); // the list itself follows the hearts
+  });
+  paintStar(btn);
+  return btn;
+}
+// 내 암장: one line per favorite (name, status now); a tap opens its card in the list, filters cleared for the visit if
+// they hide it. Hidden with no favorites, so the first screen is unchanged until someone stars a wall.
+function renderFavStrip() {
+  const at = shown.at;
+  const mine = favs.map((n) => allRows.find((r) => r.wall.name === n)).filter(Boolean);
+  $('favs').hidden = !mine.length || !at;
+  if (!mine.length || !at) return;
+  $('countFav').textContent = String(mine.length);
+  $('fav-list').replaceChildren(...mine.map((row) => {
+    const m = cardModel(row, at);
+    const b = el('button', { type: 'button', class: `fav-item ${m.state}` },
+      el('span', { class: 'fav-name' }, m.shortName), el('span', { class: 'fav-status' }, m.statusText));
+    b.addEventListener('click', () => revealClearing(m.name));
+    return el('li', {}, b);
+  }));
+}
+
+// 공유하기 icon at the end of the name line: the phone's share sheet when there is one; otherwise the link is
+// copied (the icon turns into a check for a moment and the live note says so).
+function shareBtn(name) {
+  const btn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, icon('share'));
+  const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
+  let timer;
+  btn.addEventListener('click', async () => {
+    const url = shareUrl(location.href, name);
+    try {
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ title: `${name} · 해벽`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      btn.classList.add('done');
+      btn.replaceChildren(icon('check'));
+      say.textContent = '링크를 복사했어요';
+      clearTimeout(timer);
+      timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(icon('share')); say.textContent = ''; }, 1800);
+    } catch (e) {
+      if (e?.name !== 'AbortError') prompt('링크를 복사하세요', url); // no clipboard (http, denied); AbortError = sheet closed
+    }
+  });
+  return el('span', { class: 'share-wrap' }, btn, say);
 }
 
 // First view under the chips: 안내 (status notes, then the memo lines: closures/warnings, hours, the rest),
@@ -432,8 +531,6 @@ function sunBox(d, name, closedDay) {
       el('p', { class: 'dwhen' }, el('b', {}, d.windows.length ? `양달 시간 ${formatRanges(d.windows)}` : `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달이에요`))));
 }
 
-// Memo as "라벨 : 값" lines (the map card's 자세히).
-const memoList = (lines) => (lines.length ? el('ul', { class: 'memo-list', 'aria-label': '메모' }, ...lines.map(memoItem)) : null);
 
 let infoOpen = false; // the 안내 overflow: folded again whenever a card is (re)opened
 let moreOpen = false; // the open row's "더 보기" survives re-renders (slider)
@@ -453,16 +550,20 @@ function rowDetails(m, wall, at, id) {
     if (more.closest('.row.is-open')) moreOpen = more.open; // a row being closed doesn't speak for the open one
     sumState.textContent = more.open ? '접기' : '더 보기';
   });
-  const go = m.route && el('a', { class: 'btn', target: '_blank', rel: 'noopener noreferrer', href: m.route }, '길찾기');
-  const report = config.reportEndpoint
-    ? el('button', { type: 'button', class: 'btn sub', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요') : null;
+  // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
+  const helps = config.reportEndpoint
+    ? el('div', { class: 'help-row' },
+      el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보가 달라요'),
+      m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅방 알려주기'))
+    : null;
   return [
     el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit)),
     el('div', { class: 'm-cols' },
       el('div', { class: 'm-info' },
-        el('h3', { class: 'x-name' }, m.name, feeChip(m)),
+        el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
         el('p', { class: 'x-sub' }, m.sub),
         addrLine(m),
+        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 join the address's 복사/길찾기: what a visitor does next
         el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
@@ -474,9 +575,9 @@ function rowDetails(m, wall, at, id) {
         el('p', { class: 'checked' }, m.checked)),
       more.childElementCount > 1 ? more : null, // hours / season tabs sit above the compass
       sunBox(dial, m.name, m.closedDay)),
-    go || report ? el('div', { class: 'acts' }, go, report) : null,
-    actionLinks(m.links.filter((l) => !l.primary)), // 길찾기 is the button above
+    visitBox(m),
     blogBox(m.blog),
+    helps,
     rowButtons(m.name),
   ];
 }
@@ -509,9 +610,23 @@ function blogBox(blog, withList = true) {
     restList, more);
 }
 
+// 다녀왔어요 (the open card only) opens the 기록 추가 sheet with this wall fixed; 내 기록 shows the latest 3.
+function visitBox(m) {
+  const been = el('button', { type: 'button', class: 'btn sub been-btn', 'data-focus': 'been' }, icon('check'), '다녀왔어요');
+  been.addEventListener('click', () => logView.openAdd({ wall: m.name, from: been }));
+  const v = m.visits;
+  return el('div', { class: 'visit' },
+    been,
+    v ? el('div', { class: 'mylog' },
+      el('p', { class: 'blog-h' }, el('b', {}, '내 기록'), ` ${v.count}번 다녀왔어요 · 이 기기에만 저장`),
+      el('ul', { class: 'mylog-list' }, ...v.recent.map((r) => el('li', {}, el('span', { class: 'ml-d' }, r.date), r.memo ? el('span', { class: 'ml-m' }, r.memo) : null))))
+      : null);
+}
+const modelOf = (row, at) => cardModel(row, at, { visits: logView.recordsFor(row.wall.name) });
+
 let rowSeq = 0;
 function timeRow(row, at) {
-  const m = cardModel(row, at);
+  const m = modelOf(row, at);
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
   const id = `row-x-${++rowSeq}`;
   const isOpen = openName === m.name;
@@ -521,10 +636,12 @@ function timeRow(row, at) {
   const { sun } = m;
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
+      el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
       el('span', { class: 'rname' }, m.shortName),
       feeChip(m),
       sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
       basisTag(m), // own span: the region line may be cut short, this may not
+      m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
       m.meta ? el('span', { class: 'rmeta' }, m.meta) : null,
       el('span', { class: 'left' }, m.left)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
@@ -536,7 +653,7 @@ function timeRow(row, at) {
   const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}` },
     btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
-  li.fill = () => inner.childElementCount || inner.append(...rowDetails(cardModel(row, at), row.wall, at, id).filter(Boolean));
+  li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at, id).filter(Boolean));
   li.wallName = m.name;
   li.state = m.state;
   return li;
@@ -578,6 +695,25 @@ function toggleRow(li) {
   // opened near the foot of the screen: the details would appear below the fold, so bring the row up
   const btn = li.querySelector('.row-btn');
   if (btn.getBoundingClientRect().top > innerHeight * 0.6) btn.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+
+// Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
+// Used by a share link and by the map card's 자세히 보기.
+function revealRow(name) {
+  const row = shown.rows.find((r) => r.wall.name === name);
+  if (!row) return false;
+  openName = name;
+  openState = row.status.state;
+  moreOpen = false;
+  infoOpen = false;
+  moreTab = 0;
+  gridSeason.clear();
+  render(); // the open row is built filled, so no transition plays
+  const li = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === name);
+  const band = li?.closest('details');
+  if (band) band.open = true;
+  li?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  return true;
 }
 
 // ---- render ----
@@ -631,7 +767,9 @@ function render() {
   const fv = filterView(ui, { canPark, openTotal, isNow });
   // 내 지역 · 구분 · 주차 narrow every group, the map and the counts alike (scopeRows)
   const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
-  const all = withDistance(filterRows(scoped, ui.sun), origin);
+  const mine = ui.favOnly ? scoped.filter((r) => favs.includes(r.wall.name)) : scoped; // 즐겨찾기만
+  const all = withDistance(filterRows(mine, ui.sun), origin);
+  allRows = rows;
   shown = { rows: all, at };
   // the open row was filtered out, or moved to another group (e.g. now closed, folded away): forget it
   if (openName && !keepOpenRow(all, openName, openState)) {
@@ -650,7 +788,8 @@ function render() {
   rc.hidden = !ui.regions.length;
   rc.firstChild.textContent = fv.regionLabel;
   rc.setAttribute('aria-label', fv.regionChipLabel);
-  for (const box of sheetForm.querySelectorAll('input[name="region"]')) box.checked = ui.regions.includes(box.value);
+  for (const box of $('regionOpts').querySelectorAll('input[name="region"]')) box.checked = ui.regions.includes(box.value);
+  $('regionNow').textContent = ui.regions.length ? ui.regions.join(', ') : '전국'; // the 조건 sheet only says it; 내 정보 changes it
   syncRegionCounts();
   const sheetOn = fv.sheetCount;
   $('moreFilters').classList.toggle('on', sheetOn > 0);
@@ -695,12 +834,18 @@ function render() {
   $('map-note').textContent = `위치 정보 없음 ${unlocated.length}곳 · ${unlocated.join(', ')}`;
   $('map-note').hidden = !unlocated.length;
   mapApi?.setRows(all, at);
+  renderFavStrip();
 }
 
 // ---- map tab ----
 function showPin(row, fromClick) {
   const box = $('pin-card');
+  box.classList.remove('enter'); // only a tap plays the slide-in, not the minute re-render
   if (!row) return box.replaceChildren();
+  if (fromClick) {
+    $('pin-live').textContent = `${row.wall.name} 선택됨`;
+    box.classList.add('enter');
+  }
   const close = el('button', { type: 'button', class: 'pin-close', 'aria-label': '선택 닫기' }, '✕');
   close.addEventListener('click', () => {
     mapApi?.select(null);
@@ -711,6 +856,13 @@ function showPin(row, fromClick) {
   box.scrollTop = 0;
   box.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); // only scrolls when the map's foot is off screen
 }
+
+// Esc closes the selected card (a dialog on top gets the key first)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || $('panel-map').hidden || !$('pin-card').childElementCount || document.querySelector('dialog[open]')) return;
+  mapApi?.select(null);
+  $('map').focus({ preventScroll: true });
+});
 
 function mapError() {
   mapFailed = true;
@@ -744,7 +896,7 @@ function openMap() {
   mapApi.fitAll();
 }
 
-const tabs = ['list', 'map'];
+const tabs = TABS; // 목록 | 지도 | 기록
 function showTab(key, focus = false) {
   ui.tab = key;
   saveUi();
@@ -754,8 +906,34 @@ function showTab(key, focus = false) {
     t.tabIndex = k === key ? 0 : -1;
     $(`panel-${k}`).hidden = k !== key;
   }
+  controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
+  fitSticky();
+  if (key !== 'log') tick(); // back from 기록: a live clock catches up now
   if (focus) $(`tab-${key}`).focus();
   if (key === 'map') openMap();
+  if (key === 'log') logView.render();
+}
+
+// A 기록 line opens that wall's card in the list. Filters that hide it are cleared for this visit (not saved), and a
+// toast says so; a name no longer in the list only gets the toast.
+function revealFromLog(name) {
+  showTab('list');
+  if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 암장이에요');
+  const cleared = revealClearing(name);
+  document.querySelector('#panel-list .row.is-open .row-btn')?.focus({ preventScroll: true });
+  if (cleared) toast('조건을 모두 지우고 보여 드려요');
+}
+
+// revealRow, and when the filters hide the wall: clear them for this visit only (nothing is saved until a filter is
+// changed) and reveal again. → true when filters were cleared. Used by 내 암장 and 기록.
+function revealClearing(name) {
+  if (revealRow(name)) return false;
+  Object.assign(ui, CLEARED, { regions: [] });
+  sheetForm.elements.minHours.value = ui.minHours;
+  sheetForm.elements.venue.value = ui.venue;
+  render();
+  revealRow(name);
+  return true;
 }
 
 // ---- controls ----
@@ -857,16 +1035,29 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
 // The date + slider stick to the top while the list scrolls (the filter row above them scrolls away: a
 // negative sticky top), unless even that would take over a short screen (landscape phone, large text):
 // then all of it scrolls away as before. The timetable axis sticks just below.
+// The 목록/지도 bar sticks right under that part (--ctl-h), and --stick-h covers both.
 const controls = $('search');
+const tabbar = document.querySelector('.tabbar');
 const fitSticky = () => {
+  if (controls.hidden) { // 기록 tab: only the tab bar sticks
+    controls.classList.remove('unstuck');
+    tabbar.classList.remove('unstuck');
+    const root = document.documentElement.style;
+    root.setProperty('--ctl-h', '0px');
+    root.setProperty('--stick-h', `${tabbar.offsetHeight}px`);
+    return;
+  }
   const box = controls.getBoundingClientRect();
   const off = Math.max(0, controls.querySelector('.scrub').getBoundingClientRect().top - box.top - 4);
   const h = box.height - off;
   const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
-  const stick = h + axisH <= innerHeight * 0.3;
+  const stick = h + tabbar.offsetHeight + axisH <= innerHeight * 0.3;
   controls.classList.toggle('unstuck', !stick);
+  tabbar.classList.toggle('unstuck', !stick);
   controls.style.top = stick ? `${-off}px` : '';
-  document.documentElement.style.setProperty('--stick-h', `${stick ? h : 0}px`);
+  const root = document.documentElement.style;
+  root.setProperty('--ctl-h', `${stick ? h : 0}px`);
+  root.setProperty('--stick-h', `${stick ? h + tabbar.offsetHeight : 0}px`);
 };
 new ResizeObserver(fitSticky).observe(controls);
 addEventListener('resize', fitSticky);
@@ -875,12 +1066,19 @@ sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // 
 sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
-  if (e.target.name === 'region') setUi('regions', [...sheetForm.querySelectorAll('input[name="region"]:checked')].map((b) => b.value));
 });
+// 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
+$('regionOpts').addEventListener('change', () => setUi('regions', [...$('regionOpts').querySelectorAll('input[name="region"]:checked')].map((b) => b.value)));
 $('parkingOnly').addEventListener('click', () => setUi('parkingOnly', !ui.parkingOnly));
+$('favOnly').addEventListener('click', () => setUi('favOnly', !ui.favOnly));
 $('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBreaks));
 
-for (const k of tabs) $(`tab-${k}`).addEventListener('click', () => showTab(k));
+for (const k of tabs) {
+  $(`tab-${k}`).addEventListener('click', () => {
+    showTab(k);
+    if (k === 'map') $('map').scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' }); // whole map in view
+  });
+}
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   const i = tabs.indexOf(ui.tab);
   const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
@@ -919,12 +1117,13 @@ $('locate').addEventListener('click', locate);
 
 document.querySelector('main').addEventListener('click', (e) => {
   const b = e.target.closest('.cards button[data-act], .rows button[data-act]');
-  if (b && (canEdit || b.dataset.act === 'report')) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.name }));
+  if (b && (canEdit || b.dataset.act === 'report')) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.kind ? { name: b.dataset.name, kind: b.dataset.kind } : b.dataset.name }));
   const rb = e.target.closest('.row-btn');
   if (rb) toggleRow(rb.parentElement);
 });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+  if (ui.tab === 'log') return;
   if (ui.tab === 'map') { // Esc closes the map card, like its close button
     if (!$('pin-card').childElementCount) return;
     mapApi?.select(null);
@@ -947,7 +1146,7 @@ onChange(() => {
 const FOCUSABLE = 'button, a, summary';
 const tick = () => {
   const a = document.activeElement;
-  if (skipTick({ live, hidden: document.hidden, detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters') })) return;
+  if (skipTick({ live, hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters') })) return;
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   render();
@@ -978,6 +1177,7 @@ function showLoadError(on) {
 }
 
 $('manage').hidden = !canEdit;
+$('report-note').hidden = !config.reportEndpoint; // the footer promises 제보 only once the form is connected
 
 $('retry').addEventListener('click', async () => {
   $('retry').disabled = true;
@@ -993,6 +1193,18 @@ $('retry').addEventListener('click', async () => {
 const first = await loadList();
 state.walls = first ?? [];
 showLoadError(!first);
+// A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
+// memory only; nothing is saved until the visitor changes a filter) and starts on the list.
+const sharedWall = wallFromSearch(state.walls, location.search);
+if (sharedWall) {
+  Object.assign(ui, CLEARED, { regions: [], tab: 'list' });
+}
 syncRegions();
 render();
-showTab(ui.tab === 'map' ? 'map' : 'list');
+if (sharedWall) {
+  revealRow(sharedWall.name); // its group is only known after the first render
+  const u = new URL(location.href);
+  u.searchParams.delete('wall');
+  history.replaceState(null, '', u);
+}
+showTab(ui.tab); // loadUi keeps it to TABS

@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
+  <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <title>해벽 · 지금 열린 외벽</title>
   <meta name="description" content="지금 열려 있는 실외 인공암벽과 양달·응달을 한눈에 보여주는 지도.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -24,6 +26,7 @@
   <header class="top">
     <div class="wrap">
       <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
+      <button type="button" class="icon-btn me-btn" id="meBtn" aria-label="내 정보" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></button>
       <p id="summary" role="status"></p>
     </div>
   </header>
@@ -57,11 +60,18 @@
       <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요. 지금 "0곳"이 아니라 목록이 없는 거예요.</p>
       <button type="button" id="retry">다시 시도</button>
     </div>
-    <div role="tablist" aria-label="보기 방식" class="tabs">
-      <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list">목록</button>
-      <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">지도</button>
+    <div class="tabbar">
+      <div role="tablist" aria-label="보기 방식" class="tabs">
+        <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list">목록</button>
+        <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" tabindex="-1">지도</button>
+        <button type="button" role="tab" id="tab-log" aria-selected="false" aria-controls="panel-log" tabindex="-1">기록</button>
+      </div>
     </div>
     <div id="panel-list" role="tabpanel" aria-labelledby="tab-list">
+      <section id="favs" class="favs" aria-labelledby="favs-title" hidden>
+        <h2 id="favs-title" class="band"><span>내 암장</span> <span id="countFav"></span></h2>
+        <ul id="fav-list" class="fav-list"></ul>
+      </section>
       <section class="board" aria-labelledby="board-title">
         <h2 id="board-title" class="sr-only">운영 시간표</h2>
         <div class="axis" id="axis" aria-hidden="true"></div>
@@ -90,7 +100,8 @@
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
       <div class="mapbox">
         <div id="map" role="region" aria-label="암장 지도"></div>
-        <div id="pin-card"></div>
+        <div id="pin-card" role="region" aria-label="선택한 암장"></div>
+        <p id="pin-live" class="sr-only" role="status"></p>
       </div>
       <p id="map-error" class="empty" hidden>지도를 불러오지 못했어요. 목록으로 확인해 주세요.</p>
       <ul class="legend" aria-label="핀 설명">
@@ -104,6 +115,8 @@
       <p id="map-empty" class="empty" hidden>조건에 맞는 곳 중 지도에 표시할 곳이 없어요. 필터를 바꿔 보세요.</p>
       <p id="map-note" class="muted" hidden></p>
     </div>
+    <!-- 기록: drawn by src/log-view.js; kept in this browser only -->
+    <div id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden></div>
     <details id="manage">
       <summary>데이터 관리</summary>
       <div class="manage-buttons">
@@ -146,6 +159,11 @@
           <button type="button" class="sh-toggle" id="withBreaks" aria-pressed="false" aria-describedby="break-label">휴게 뒤 시간도 합산</button>
           <p class="sh-hint">꺼 두면 쉬지 않고 이어서 탈 수 있는 시간만 세요.</p>
         </div>
+        <div class="sh-row" id="favRow">
+          <span class="sh-label" id="fav-label">즐겨찾기</span>
+          <button type="button" class="sh-toggle" id="favOnly" aria-pressed="false" aria-describedby="fav-label">즐겨찾기한 곳만</button>
+          <p class="sh-hint">카드의 ♥로 고른 곳이에요. 목록과 지도에 모두 적용돼요.</p>
+        </div>
         <div class="sh-row" id="parkRow">
           <span class="sh-label" id="park-label">주차</span>
           <button type="button" class="sh-toggle" id="parkingOnly" aria-pressed="false" aria-describedby="park-label">주차 가능한 곳만</button>
@@ -161,14 +179,80 @@
           <span class="sh-label">내 위치</span>
           <button type="button" class="sh-toggle" id="locate">내 위치 찾기</button>
         </div>
+        <div class="sh-row region-now">
+          <span class="sh-label">내 지역</span>
+          <span id="regionNow">전국</span>
+          <p class="sh-hint">오른쪽 위 ‘내 정보’에서 바꿀 수 있어요.</p>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="profile" class="sheet" aria-labelledby="profile-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="profile-title">내 정보</h2>
+          <button class="sh-done">닫기</button>
+        </div>
+        <p class="pf-local">로그인 없이 이 기기에 저장돼요. 내 지역·화면 설정·기록은 이 브라우저에만 있고 어디로도 보내지 않아요.</p>
         <fieldset class="sh-row" id="regionRow">
           <legend>내 지역</legend>
           <p class="sh-hint">여러 곳을 고를 수 있어요. 고르지 않으면 전국이에요.</p>
           <button type="button" class="sh-toggle" id="regionClear" hidden>선택 해제</button>
           <div id="regionOpts"></div>
         </fieldset>
+        <fieldset class="sh-row">
+          <legend>화면</legend>
+          <div class="segs">
+            <label><input type="radio" name="theme" value="auto">자동</label>
+            <label><input type="radio" name="theme" value="light">라이트</label>
+            <label><input type="radio" name="theme" value="dark">다크</label>
+          </div>
+          <p class="sh-hint">자동은 휴대폰 설정을 따라요.</p>
+        </fieldset>
+        <div class="sh-row pf-backup">
+          <span class="sh-label">기록 백업</span>
+          <p class="sh-hint">기록은 이 기기에만 있어요. 휴대폰을 바꾸거나 브라우저 데이터를 지우기 전에 파일로 내보내 두세요.</p>
+          <div class="pf-btns">
+            <button type="button" class="sh-toggle" id="logExport">내보내기</button>
+            <button type="button" class="sh-toggle" id="logImport">가져오기</button>
+            <input type="file" id="logImportFile" accept=".json,application/json" hidden>
+          </div>
+          <p class="pf-status" id="logBackupStatus" role="status"></p>
+        </div>
+        <div class="sh-row" id="pfReportRow" hidden>
+          <a class="pf-link" id="pfReport" target="_blank" rel="noopener noreferrer">정보 제보하기 <span>구글 폼 · 새 창</span></a>
+        </div>
+        <div class="sh-row">
+          <a class="pf-link" id="pfAbout" href="#about">앱 정보 <span>자료 출처 · 만든 사람</span></a>
+        </div>
       </form>
     </dialog>
+    <dialog id="log-add" class="sheet" aria-labelledby="log-add-title">
+      <form novalidate>
+        <div class="sh-head">
+          <h2 id="log-add-title">기록 추가</h2>
+          <button type="button" class="sh-done" data-close>닫기</button>
+        </div>
+        <fieldset class="sh-row la-pick">
+          <legend>어디를 다녀왔나요</legend>
+          <label class="la-field"><span class="sr-only">암장 검색</span><input type="search" name="q" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
+          <ul class="la-picks"></ul>
+          <p class="la-err" id="la-pick-err" hidden>암장을 골라 주세요.</p>
+        </fieldset>
+        <div class="sh-row la-row">
+          <label class="la-field"><span class="sh-label">날짜</span><input type="date" name="date" required aria-describedby="la-date-err"></label>
+          <p class="la-err" id="la-date-err" hidden></p>
+        </div>
+        <div class="sh-row la-row">
+          <label class="la-field"><span class="sh-label">메모 (선택)</span><textarea name="memo" rows="2" maxlength="100" placeholder="예: 오후엔 응달이라 시원했어요"></textarea></label>
+          <p class="sh-hint">100자까지. 이 기기에만 저장돼요.</p>
+        </div>
+        <div class="la-foot">
+          <button type="button" class="sh-toggle" data-close>취소</button>
+          <button type="submit" class="la-save">저장</button>
+        </div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast"><p id="toast-msg" role="status"></p><button type="button" id="toast-act" hidden>실행 취소</button></div>
     <dialog id="report" class="sheet" aria-labelledby="report-title">
       <form novalidate>
         <div class="sh-head">
@@ -183,9 +267,27 @@
             <label><input type="radio" name="kind" value="임시휴무">임시휴무</label>
             <label><input type="radio" name="kind" value="주차">주차</label>
             <label><input type="radio" name="kind" value="기타">기타</label>
+            <label><input type="radio" name="kind" value="오픈채팅방">오픈채팅</label>
           </div>
         </fieldset>
-        <label class="rp-field">내용<textarea name="body" rows="4" required></textarea></label>
+        <div class="rp-extra" data-kind="오픈채팅방" hidden>
+          <label class="rp-field">오픈채팅방 링크<input type="url" name="chat" inputmode="url" autocomplete="off" placeholder="https://open.kakao.com/o/…" maxlength="80"></label>
+          <p class="sh-hint">이용자가 운영하는 카카오톡 오픈채팅방이에요. 확인 후 카드에 연결해요.</p>
+        </div>
+        <div class="rp-extra" data-kind="임시휴무" hidden>
+          <label class="rp-field">휴무 시작일<input type="date" name="from"></label>
+          <label class="rp-field">끝나는 날 (하루만이면 비워 두세요)<input type="date" name="to"></label>
+        </div>
+        <fieldset class="sh-row rp-extra" data-kind="주차" hidden>
+          <legend>주차 상태</legend>
+          <div class="segs">
+            <label><input type="radio" name="parking" value="무료">무료</label>
+            <label><input type="radio" name="parking" value="유료">유료</label>
+            <label><input type="radio" name="parking" value="주차 불가">주차 불가</label>
+            <label><input type="radio" name="parking" value="모름">모름</label>
+          </div>
+        </fieldset>
+        <label class="rp-field"><span class="rp-label">내용</span><textarea name="body" rows="4"></textarea></label>
         <label class="rp-field">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
         <input class="rp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="rp-status" role="status"></p>
@@ -204,10 +306,10 @@
       </form>
     </dialog>
   </main>
-  <footer class="wrap foot">
+  <footer class="wrap foot" id="about" tabindex="-1">
     <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
     <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
-    <p>틀린 정보 제보: 제보 기능은 준비 중이에요.</p>
+    <p id="report-note" hidden>틀린 정보는 펼친 카드의 ‘정보가 달라요’ 버튼으로 알려 주세요.</p>
     <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>

@@ -1,10 +1,13 @@
-// src/ui-state.js — the saved screen state (filters, sort, tab): defaults, cleaning old/broken values,
+// src/ui-state.js — the saved screen state (filters, sort, tab, theme): defaults, cleaning old/broken values,
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any' };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any', favOnly: false, theme: 'auto' };
+export const TABS = ['list', 'map', 'log'];
+// 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
+export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
 // what "조건 지우기" resets (내 지역 has its own way back, 전국으로 보기; sort and 휴게 합산 stay)
-export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, venue: 'any' });
+export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, venue: 'any', favOnly: false });
 
 const SUN_FILTERS = ['any', 'sun', 'shade'];
 const VENUE_FILTERS = ['any', 'indoor', 'outdoor'];
@@ -35,7 +38,9 @@ export function loadUi(storage) {
   ui.withBreaks = ui.withBreaks === true;
   ui.regions = cleanRegions(ui.regions);
   ui.venue = cleanVenue(ui.venue);
-  if (ui.tab !== 'map') ui.tab = 'list';
+  ui.favOnly = ui.favOnly === true;
+  if (!TABS.includes(ui.tab)) ui.tab = 'list';
+  ui.theme = cleanTheme(ui.theme);
   return ui;
 }
 
@@ -49,9 +54,10 @@ const regionLabel = (regions) =>
   (!regions?.length ? '' : regions.length === 1 ? `내 지역: ${regions[0]}` : `내 지역 ${regions.length}곳`);
 
 // The filters that can hide open walls, by name.
-const activeFilters = ({ sun, minHours, parkOnly, venue, regions }) =>
+const activeFilters = ({ sun, minHours, parkOnly, venue, regions, favOnly }) =>
   [regionLabel(regions), venue === 'indoor' && '실내', venue === 'outdoor' && '실외',
-    sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만'].filter(Boolean);
+    sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만',
+    favOnly && '즐겨찾기만'].filter(Boolean);
 
 /**
  * filterView(ui, {canPark, openTotal, isNow}) → what the filter controls and the empty open group show.
@@ -60,20 +66,20 @@ const activeFilters = ({ sun, minHours, parkOnly, venue, regions }) =>
  */
 export function filterView(ui, { canPark, openTotal, isNow }) {
   const parkOnly = ui.parkingOnly && canPark;
-  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly, venue: ui.venue, regions: ui.regions };
+  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly, venue: ui.venue, regions: ui.regions, favOnly: ui.favOnly };
   const on = activeFilters(f);
   const label = regionLabel(ui.regions);
   return {
     parkOnly,
     pressed: {
       sunOnly: ui.sun === 'sun', shadeOnly: ui.sun === 'shade', longOnly: ui.minHours !== '0',
-      nearFirst: ui.sortMode === 'distance', parkingOnly: ui.parkingOnly, withBreaks: ui.withBreaks,
+      nearFirst: ui.sortMode === 'distance', parkingOnly: ui.parkingOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
     },
     longLabel: `${ui.minHours === '0' ? '3' : ui.minHours}시간+`, // the chip and the sheet share one value
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
-    // the sheet button counts what only the sheet shows: parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one)
-    sheetCount: Number(parkOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0),
+    // the sheet button counts what only the sheet shows: parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만
+    sheetCount: Number(parkOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
       ? `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`
@@ -86,6 +92,21 @@ export function filterView(ui, { canPark, openTotal, isNow }) {
 
 // The open row is kept across a re-render only while a row of that wall is still shown in the same group.
 export const keepOpenRow = (rows, name, state) => rows.some((r) => r.wall.name === name && r.status.state === state);
+
+// Share link: the page's own address with just ?wall=<name> (no ?edit, no hash). Names are the wall identity.
+export function shareUrl(href, name) {
+  const u = new URL(href);
+  u.search = '';
+  u.hash = '';
+  u.searchParams.set('wall', name);
+  return u.toString();
+}
+
+// The wall a share link names: exact (NFC) name match in the loaded list, else null. Never trusted beyond that.
+export function wallFromSearch(walls, search) {
+  const name = new URLSearchParams(search).get('wall')?.normalize('NFC').trim();
+  return name ? walls.find((w) => w.name.normalize('NFC') === name) ?? null : null;
+}
 
 // The live minute tick skips a re-render that would pull something from under the user: not live, a hidden
 // page, the map card's "자세히" open, or focus on a control the re-render can't give back (map card, 조건 지우기).

@@ -17,7 +17,9 @@ function getPlainObject(v) {
 }
 
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-const CONTACT_KEYS = ['phone', 'instagram', 'naver_map', 'notice_url'];
+const CONTACT_KEYS = ['phone', 'instagram', 'naver_map', 'notice_url', 'chat_url'];
+// A wall's 오픈채팅방: only a kakao open-chat room link (this value also arrives through visitor reports, so it is held to one host).
+export const CHAT_URL_RE = /^https:\/\/open\.kakao\.com\/o\/[A-Za-z0-9_-]{3,40}$/;
 
 function cleanTime(s) {
   if (typeof s !== 'string' || !/^\d{1,2}:\d{2}$/.test(s)) return null;
@@ -48,7 +50,10 @@ function cleanContact(v) {
   const out = {};
   for (const k of CONTACT_KEYS) {
     const s = getPlainObject(v)[k];
-    if (typeof s === 'string' && s.trim()) out[k] = s;
+    if (typeof s !== 'string' || !s.trim()) continue;
+    if (k === 'chat_url') {
+      if (CHAT_URL_RE.test(s.trim())) out[k] = s.trim();
+    } else out[k] = s;
   }
   return out;
 }
@@ -254,6 +259,7 @@ export function keepGeo(old, next) {
   } else if (!out.photo_credit && out.photo === old.photo && old.photo_credit) out.photo_credit = old.photo_credit;
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
+  if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;

@@ -17,9 +17,30 @@ if (dlg) {
   f.elements.body.maxLength = MAX_BODY;
   alt.href = config.reportFormUrl; // fixed constant, not user input
 
+  // Per kind: the extra pick it needs and what the memo asks for. 운영시간 stays a memo (with an example), not a form.
+  const MEMO = {
+    운영시간: ['바뀐 운영시간', '예) 평일 10:00–22:00, 토 10:00–18:00, 일 휴무. 휴게시간이나 계절(동절기) 차이도 편하게 적어 주세요.'],
+    임시휴무: ['메모 (선택)', '예) 시설 공사, 대회 개최'],
+    주차: ['메모 (선택)', '예) 건물 뒤 공영주차장 2시간 무료'],
+    기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
+    오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
+  };
+  const syncKind = () => {
+    const kind = f.elements.kind.value;
+    for (const x of f.querySelectorAll('.rp-extra')) x.hidden = x.dataset.kind !== kind;
+    const [label, hint] = MEMO[kind] ?? ['내용', ''];
+    f.querySelector('.rp-label').textContent = label;
+    f.elements.body.placeholder = hint;
+  };
+  for (const r of f.elements.kind) r.addEventListener('change', syncKind);
+
   document.addEventListener('wall:report', (e) => {
     f.reset();
-    wallName = e.detail; nameEl.textContent = e.detail; // read-only text, never typed
+    const { name, kind } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind
+    const pick = [...f.elements.kind].find((r) => r.value === kind);
+    if (pick) pick.checked = true;
+    syncKind();
+    wallName = name; nameEl.textContent = name; // read-only text, never typed
     f.elements.send.disabled = false;
     alt.hidden = true;
     say('');
@@ -32,6 +53,7 @@ if (dlg) {
     if (f.elements.send.disabled) return;
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
+      from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
       note: f.elements.note.value, hp: f.elements.website.value,
     });
     if (!v.ok) return say(v.error);
