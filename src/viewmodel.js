@@ -128,6 +128,32 @@ export function withDistance(rows, origin) {
   });
 }
 
+/**
+ * orderForPick(walls, {favs, regions, origin, visits, today}) → [{wall, mine, km}] in the 기록 추가 sheet's order.
+ * mine: the wall is in 내 지역 (always false without regions); km: straight-line distance, or null (no origin/position).
+ * Order: 내 지역 first (with regions), then within each part ① logged in the last 30 days (today and the 29 days
+ * before; newest first, then more visits) ② logged before that (more visits, then newest) ③ ♥ (list order)
+ * ④ the rest. With an origin, ties and ④ go nearest first (no position: after those with one); otherwise list order.
+ * visits: Map name → {last: 'YYYY-MM-DD', count} (visitStats in log.js); today: 'YYYY-MM-DD'. The input is not changed.
+ */
+export const RECENT_DAYS = 30;
+const dayNum = (s) => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8)) / 864e5 : NaN);
+const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0); // Infinity-safe
+export function orderForPick(walls, { favs = [], regions = [], origin = null, visits = new Map(), today } = {}) {
+  const now = dayNum(today);
+  return walls.map((wall, i) => {
+    const p = origin ? wallPosition(wall) : null;
+    const km = p ? distanceKm(origin, p) : null;
+    const v = visits.get(wall.name);
+    const last = v ? dayNum(v.last) : NaN;
+    const tier = !v ? (favs.includes(wall.name) ? 2 : 3) : now - last < RECENT_DAYS ? 0 : 1;
+    const keys = tier === 0 ? [-last, -v.count] : tier === 1 ? [-v.count, -(last || 0)] : [0, 0];
+    const mine = regions.length > 0 && regions.includes(wall.region);
+    return { wall, mine, km, rank: [mine ? 0 : 1, tier, ...keys, km ?? Infinity, i] };
+  }).sort((a, b) => a.rank.reduce((d, x, k) => d || cmp(x, b.rank[k]), 0))
+    .map(({ wall, mine, km }) => ({ wall, mine, km }));
+}
+
 function pinState(status) {
   if (status.state === 'open') return endingSoon({ status }) ? 'soon' : 'open';
   return status.state === 'closed' ? 'closed' : 'unknown';

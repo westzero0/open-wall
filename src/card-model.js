@@ -113,7 +113,7 @@ const parkingWhere = (parking) => {
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
 };
 
-function formatDistance(km) {
+export function formatDistance(km) {
   if (km < 1) {
     const m = Math.round(km * 100) * 10;
     return m >= 1000 ? '1.0km' : `${m}m`;
@@ -123,7 +123,7 @@ function formatDistance(km) {
 
 // Hours older than a year may have changed (seasonal schedules, notices): flag them. Only walls with hours are judged.
 const STALE_DAYS = 365;
-function staleness(wall, now) {
+export function staleness(wall, now) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(wall.checked_at ?? '');
   const days = m ? Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5) : null;
   const stale = hasHours(wall) && (days === null || days > STALE_DAYS);

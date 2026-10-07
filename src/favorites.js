@@ -30,3 +30,21 @@ export function toggleFav(favs, name) {
   if (favs.includes(n)) return favs.filter((f) => f !== n);
   return favs.length >= MAX_FAVS ? favs : [...favs, n];
 }
+
+// ♥ 추천: walls already asked "♥ 즐겨찾기에 추가할까요?" (once per wall, whatever the answer). Same rules as favorites.
+export const FAV_ASKED_KEY = 'open-wall:fav-asked';
+export function loadFavAsked(storage) {
+  try {
+    return cleanFavs(JSON.parse(storage.getItem(FAV_ASKED_KEY)));
+  } catch {
+    return [];
+  }
+}
+export function saveFavAsked(storage, asked) {
+  try {
+    storage.setItem(FAV_ASKED_KEY, JSON.stringify(cleanFavs(asked)));
+  } catch { /* asked again next visit */ }
+}
+/** shouldAskFav(name, count, favs, asked) → true when this save made the wall's 3rd record, it isn't ♥ and wasn't asked. */
+export const FAV_ASK_AT = 3;
+export const shouldAskFav = (name, count, favs, asked) => count === FAV_ASK_AT && !favs.includes(name) && !asked.includes(name);

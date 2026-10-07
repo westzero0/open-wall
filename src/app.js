@@ -8,9 +8,10 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, isLivePick, mapPins, NTH_KO,
-  regionGroups, regionList, scopeRows, seasonSun, sliderValue, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
+  regionGroups, regionList, scopeRows, seasonSun, shortName, sliderValue, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
+import { hoursLine, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, shareUrl, skipTick, wallFromSearch } from './ui-state.js';
 import { el } from './dom.js';
@@ -60,6 +61,16 @@ const logView = createLogView({
   showList: () => showTab('list', true),
   crowdAsk: (wall, date, time) => crowdAsk(wall, date, time),
   sendCrowd: (wall, level, date, time) => sendCrowd(wall, level, date, time),
+  getRegions: () => ui.regions,
+  getOrigin: () => origin,
+  requestLocate: () => locate(false),
+  addFav: (name) => {
+    if (favs.includes(name)) return;
+    favs = toggleFav(favs, name);
+    saveFavs(storage, favs);
+    syncFavs();
+    if (ui.favOnly) render();
+  },
 });
 createProfileView({
   getTheme: () => ui.theme,
@@ -443,6 +454,108 @@ function renderFavStrip() {
     b.addEventListener('click', () => revealClearing(m.name));
     return el('li', {}, b);
   }));
+}
+
+// ---- 이번 주말 추천 (src/pick.js): a folded line above the timetable ----
+let pickDay = 0;
+let pickPref = 'auto';
+let pickKey = '';
+const PICK_PREFS = [['auto', '자동'], ['shade', '응달'], ['sun', '양달'], ['any', '오래']];
+const PICK_WORD = { shade: '응달 우선', sun: '양달 우선', any: '오래 탈 수 있는 곳' };
+
+// Jump the date and time controls to a moment (the same state a visitor gets by picking it), then re-render.
+function goToMoment(date, min) {
+  $('date').value = ymd(date);
+  $('time').value = String(sliderValue(min));
+  live = isLivePick($('date').value, Number($('time').value), new Date());
+  render();
+}
+
+// A wall's picture for the pick: its photo (fixed box, lazy), else a plain grey mark of the logo and, on the big card,
+// the wall's height in metres. Decorative: the name and the reason beside it say everything.
+function pickMedia(wall, hero) {
+  const box = el('span', { class: `pick-media${hero ? ' big' : ''}`, 'aria-hidden': 'true' });
+  const plain = () => box.replaceChildren(...[
+    el('span', { class: 'pick-mono' }),
+    hero && wall.height_m ? el('span', { class: 'pick-height' }, `${wall.height_m}m`) : null,
+  ].filter(Boolean)); // (replaceChildren would print a null as the word "null")
+  if (!wall.photo) {
+    plain();
+    return box;
+  }
+  const img = el('img', { src: `data/${wall.photo}`, alt: '', loading: 'lazy', decoding: 'async' });
+  img.addEventListener('error', plain, { once: true });
+  box.append(img);
+  return box;
+}
+
+let pickBasisOpen = false;
+let pickRefocus = null;
+
+// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason); opened it is one big card
+// (photo or the logo mark with the height, the wall, one sentence of why, one button), the next two as small lines, and
+// the day and basis behind two quiet buttons. Hidden when the list has nothing to say about the coming weekend.
+function renderPick() {
+  const box = $('pick');
+  const r = state.walls.length ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue }) : null;
+  box.hidden = !r || r.byDay.every((d) => !d.items.length);
+  if (box.hidden) return;
+  pickDay = Math.min(pickDay, r.days.length - 1);
+  const cur = r.byDay[pickDay];
+  const [top, ...next] = cur.items;
+  const go = (it) => {
+    const first = (r.pref === 'shade' ? it.shade : r.pref === 'sun' ? it.sun : it.open)?.[0]?.[0] ?? it.open[0][0];
+    goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
+    revealClearing(it.wall.name);
+  };
+  $('pick-thumb').replaceChildren(...(top ? [pickMedia(top.wall, false)] : []));
+  $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
+
+  const kids = [];
+  if (top) {
+    const why = reasonOf(top, r.pref).sentence;
+    const cta = el('button', { type: 'button', class: 'pick-cta' }, '카드 보기');
+    cta.addEventListener('click', () => go(top));
+    kids.push(el('div', { class: 'pick-card' },
+      el('div', { class: 'pick-hero' }, pickMedia(top.wall, true), el('span', { class: 'pick-chip' }, dayText(cur.day.date))),
+      el('div', { class: 'pick-text' },
+        el('h3', { class: 'pick-name' }, shortName(top.wall)),
+        el('p', { class: 'pick-why' }, `${why} ${hoursLine(top)}`),
+        cta)));
+  } else {
+    kids.push(el('p', { class: 'pick-empty' }, '이 날은 조건에 맞는 곳이 없어요. 다른 날이나 기준을 골라 보세요.'));
+  }
+  if (next.length) {
+    kids.push(el('ul', { class: 'pick-next' }, ...next.map((it) => {
+      const b = el('button', { type: 'button', class: 'pick-line' },
+        el('span', { class: 'pick-line-name' }, shortName(it.wall)), el('span', { class: 'pick-line-why' }, reasonOf(it, r.pref).short));
+      b.addEventListener('click', () => go(it));
+      return el('li', {}, b);
+    })));
+  }
+  // day and basis: two quiet buttons, the basis choices only when asked for
+  const link = (text, key, onClick) => {
+    const b = el('button', { type: 'button', class: 'pick-link', 'data-focus': key }, text);
+    b.addEventListener('click', () => { pickRefocus = key; onClick(); renderPick(); });
+    return b;
+  };
+  const other = (pickDay + 1) % r.days.length;
+  kids.push(el('div', { class: 'pick-links' },
+    r.days.length > 1 ? link(`${r.days[other].label}요일 보기`, 'day', () => { pickDay = other; }) : null,
+    link(pickBasisOpen ? '기준 접기' : `기준 바꾸기 · ${PICK_WORD[r.pref]}`, 'basis', () => { pickBasisOpen = !pickBasisOpen; })));
+  if (pickBasisOpen) {
+    kids.push(el('div', { class: 'pick-segs', role: 'group', 'aria-label': '추천 기준' },
+      ...PICK_PREFS.map(([v, text]) => {
+        const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(v === pickPref), 'data-focus': `pref-${v}` }, text);
+        b.addEventListener('click', () => { pickPref = v; pickRefocus = `pref-${v}`; renderPick(); });
+        return b;
+      })));
+    if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
+  }
+  kids.push(el('p', { class: 'pick-note' }, '운영시간과 해 계산 기준이에요. 가기 전에 공지를 꼭 확인해 주세요.'));
+  $('pick-body').replaceChildren(...kids);
+  if (pickRefocus) $('pick-body').querySelector(`[data-focus="${pickRefocus}"]`)?.focus({ preventScroll: true });
+  pickRefocus = null;
 }
 
 // 공유하기 icon at the end of the name line: the phone's share sheet when there is one; otherwise the link is
@@ -905,6 +1018,7 @@ function render() {
   $('map-note').hidden = !unlocated.length;
   mapApi?.setRows(all, at);
   renderFavStrip();
+  renderPick();
 }
 
 // ---- map tab ----
@@ -1157,33 +1271,44 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   showTab(tabs[(next + tabs.length) % tabs.length], true);
 });
 
-function locate() {
-  if (!window.isSecureContext || !navigator.geolocation) {
-    locateNote = window.isSecureContext
-      ? '이 브라우저는 위치를 지원하지 않아요.'
-      : '이 주소(http)에서는 내 위치를 쓸 수 없어요. https 주소에서 열어 주세요.';
-    return render();
-  }
-  navigator.geolocation.getCurrentPosition(
-    (p) => {
-      origin = { lat: p.coords.latitude, lng: p.coords.longitude };
-      ui.sortMode = 'distance';
-      sheetForm.elements.sortMode.value = 'distance';
-      saveUi();
-      locateNote = '내 위치를 기준으로 가까운 순으로 정렬했어요. 직선거리예요.';
-      render();
-      mapApi?.setUser(origin);
-    },
-    (err) => {
-      locateNote = err.code === 1
+// Asks for the position (only on a press: 내 위치 / 가까운 순 / the 기록 sheet's 내 위치로 정렬); kept in memory only.
+// sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); false from the 기록 sheet, which shows the
+// reason itself. → Promise<string>: '' once the position is in, else why not.
+function locate(sort = true) {
+  return new Promise((done) => {
+    const fail = (why) => {
+      if (sort) {
+        locateNote = why;
+        render();
+      }
+      done(why);
+    };
+    if (!window.isSecureContext || !navigator.geolocation) {
+      return fail(window.isSecureContext
+        ? '이 브라우저는 위치를 지원하지 않아요.'
+        : '이 주소(http)에서는 내 위치를 쓸 수 없어요. https 주소에서 열어 주세요.');
+    }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        origin = { lat: p.coords.latitude, lng: p.coords.longitude };
+        if (sort) {
+          ui.sortMode = 'distance';
+          sheetForm.elements.sortMode.value = 'distance';
+          saveUi();
+          locateNote = '내 위치를 기준으로 가까운 순으로 정렬했어요. 직선거리예요.';
+        }
+        render();
+        mapApi?.setUser(origin);
+        done('');
+      },
+      (err) => fail(err.code === 1
         ? '위치 권한이 꺼져 있어요. 브라우저 설정에서 허용해 주세요.'
-        : '위치를 가져오지 못했어요. 잠시 뒤 다시 시도해 주세요.';
-      render();
-    },
-    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
-  );
+        : '위치를 가져오지 못했어요. 잠시 뒤 다시 시도해 주세요.'),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  });
 }
-$('locate').addEventListener('click', locate);
+$('locate').addEventListener('click', () => locate());
 
 document.querySelector('main').addEventListener('click', (e) => {
   const b = e.target.closest('.cards button[data-act], .rows button[data-act]');
@@ -1216,7 +1341,7 @@ onChange(() => {
 const FOCUSABLE = 'button, a, summary';
 const tick = () => {
   const a = document.activeElement;
-  if (skipTick({ live, hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters') })) return;
+  if (skipTick({ live, hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick') })) return;
   loadCrowd();
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
