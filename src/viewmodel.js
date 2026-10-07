@@ -341,43 +341,31 @@ export function seasonSun(wall, at) {
     const v = slotOf(wall, key, inWinter(wall, i === cur ? at : new Date(at.getFullYear(), mo, d)));
     const open = v ? dayHours(v).intervals.map(([a, b]) => [a, Math.min(b, 1440)]) : [];
     const on = overlap(open, s.windows);
-    return { ...s, open, on, onMin: on.reduce((t, [a, b]) => t + b - a, 0), closed: v === null, unknown: v === undefined, current: i === cur };
+    return { ...s, open, on, closed: v === null, unknown: v === undefined, current: i === cur };
   });
 }
-export const durText = (min) => [min >= 60 ? `${Math.floor(min / 60)}시간` : '', min % 60 ? `${min % 60}분` : ''].filter(Boolean).join(' ');
 
-// 1–12 month strip of the winter rule, or null without one (not "the same all year": just not known).
+// The winter rule's months as words ("11~2월"), or null without one (not "the same all year": just not known).
 // Month granularity only: the data has from_month/to_month, no days.
 const monthSpan = (a, b) => (a === b ? `${a}월` : `${a}~${b}월`);
-export function monthStrip(wall, at) {
+export function winterSpan(wall) {
   const w = wall.winter;
   if (!w || w.type === 'none') return null;
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const winter = inWinter(wall, new Date(2000, i, 15));
-    return { m: i + 1, winter, closed: winter && w.type === 'closed', current: i === at.getMonth() };
-  });
-  const allWinter = months.every((x) => x.winter);
+  const allYear = (w.to_month - w.from_month + 12) % 12 === 11;
   return {
-    months,
     closed: w.type === 'closed',
     winter: monthSpan(w.from_month, w.to_month),
-    summer: allWinter ? null : monthSpan((w.to_month % 12) + 1, ((w.from_month + 10) % 12) + 1),
+    summer: allYear ? null : monthSpan((w.to_month % 12) + 1, ((w.from_month + 10) % 12) + 1),
   };
 }
 
 // ---- memo, sorted into what the UI draws ----
-// address: the 주소 line; sizes: 폭 (from "폭 30m") and 높이 (height_m) as numbers; days: weekly closures from
-// the (base) hours, with nth closures and a holiday closure; rest: the memo lines nothing above already shows.
-const DAY_CH = { 월: 'mon', 화: 'tue', 수: 'wed', 목: 'thu', 금: 'fri', 토: 'sat', 일: 'sun' };
-const HOL_WORD = /^(?:법정)?공휴일$|^대체공휴일$|^근로자의날$|^노동절$/;
-// "매주 화요일 정기휴무", "정기휴무 월·법정공휴일": every word is a closed weekday / (with holiday 'closed') a holiday word.
-export function closureCovered(text, wall) {
-  if (!/휴무|휴관/.test(text)) return false;
-  const words = text.replace(/매주|정기|휴무|휴관|요일/g, ' ').split(/[\s·,]+/).filter(Boolean);
-  return words.length > 0 && words.every((t) => (DAY_CH[t] && wall.hours?.[DAY_CH[t]] === null)
-    || (HOL_WORD.test(t) && wall.holiday === 'closed'));
-}
+// address: the 주소 line; sizes: 폭 (from "폭 30m") and 높이 (height_m) as numbers; rest: the other lines as 안내,
+// closures and warnings first, then lines about hours/seasons, then the rest (each group in memo order).
 const SIZE_RE = /^(\d+(?:\.\d+)?)\s*m$/;
+export const WARN_RE = /주의|금지|제한|불가|⚠/;
+const TIME_RE = /휴게|하계|동계|하절기|동절기|평일|주말|운영|개장|재개|\d:\d\d|\d시(?!간)/;
+const restRank = (l) => (l.key || WARN_RE.test(l.value) ? 0 : TIME_RE.test(`${l.label ?? ''} ${l.value}`) ? 1 : 2);
 export function memoFacts(wall) {
   let address = null;
   const sizes = [];
@@ -385,17 +373,19 @@ export function memoFacts(wall) {
   for (const l of memoLines(wall.memo)) {
     if (l.label === '주소' && !address) address = l.value;
     else if (l.label === '폭' && SIZE_RE.test(l.value)) sizes.push({ label: '폭', value: l.value.match(SIZE_RE)[1], unit: 'm' });
-    else if (!closureCovered(`${l.label ?? ''} ${l.value}`, wall)) rest.push(l);
+    else rest.push(l);
   }
   if (wall.height_m) sizes.push({ label: '높이', value: String(wall.height_m), unit: 'm' });
-  const nth = (k) => wall.exceptions?.nth_closed?.find((r) => r.day === k)?.nth ?? null;
-  const days = hasHours(wall)
-    ? [...WEEK.map(([key, label]) => {
-      const n = nth(key);
-      return { key, label, off: wall.hours?.[key] === null, unknown: wall.hours?.[key] === undefined, nth: n ? n.map((x) => NTH_KO[x]).join('·') : null };
-    }), ...(wall.holiday === 'closed' ? [{ key: 'hol', label: '공휴일', off: true, unknown: false, nth: null }] : [])]
-    : [];
-  return { address, sizes, days, rest };
+  return { address, sizes, rest: rest.sort((a, b) => restRank(a) - restRank(b)) };
+}
+
+// 안내 lines in the first view: the first `limit` show, the rest fold. Warning/closure lines come first
+// (memoFacts sorts them to the front), so a run of them longer than `limit` is shown whole.
+export function splitInfo(lines, limit = 3) {
+  let warn = 0;
+  while (warn < lines.length && (lines[warn].key || WARN_RE.test(lines[warn].value))) warn++;
+  const n = Math.max(limit, warn);
+  return { shown: lines.slice(0, n), folded: lines.slice(n) };
 }
 
 // Parking names from the note ("외벽 앞 · 롯데몰 · 공영주차장").
