@@ -449,7 +449,7 @@ div.sh-row { display: flex; align-items: center; justify-content: space-between;
 .more > summary { min-height: var(--tap); display: flex; align-items: center; font-size: .88rem; color: var(--muted); }
 .more[open] > summary { margin-bottom: 6px; }
 .more p { margin: 6px 0; }
-.memo { font-size: .88rem; color: var(--fg); overflow-wrap: anywhere; }
+.memo { font-size: .88rem; color: var(--fg); overflow-wrap: anywhere; white-space: pre-line; }
 .card.unknown .memo { color: var(--muted); }
 .photo { display: block; max-width: 100%; height: auto; border-radius: 10px; margin: 4px 0 8px; }
 .card.broken { grid-template-columns: 1fr; }
