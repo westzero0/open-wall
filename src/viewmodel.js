@@ -1,7 +1,7 @@
 // src/viewmodel.js
 import { hasHours, inWinter, openIntervals, orderIntervals } from './hours.js';
 import { isSunlit, sunWindows } from './sun.js';
-import { DAY_KEYS, toMin, ymd } from './time.js';
+import { DAY_KEYS, DAY_KO, toMin, ymd } from './time.js';
 
 const SUN_STEP = 10;
 const p2 = (n) => String(n).padStart(2, '0');
@@ -23,6 +23,18 @@ export function dayBar(wall, at) {
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
+// Timetable row bar. A closed row whose next opening falls on a later day draws that day's hours
+// (openIntervals of nextOpenAt's day, the same source as getStatus), so "10/8 10:00 오픈" sits on
+// 10/8's bar. `ahead` is that day; it has no "now" (nowMin null) and nothing is past.
+export function rowBar(wall, status, at) {
+  const next = status.state === 'closed' ? status.nextOpenAt : null;
+  if (!next || ymd(next) === ymd(at)) return { ...dayBar(wall, at), ahead: null };
+  const day = new Date(next.getFullYear(), next.getMonth(), next.getDate());
+  const { open, sun } = dayBar(wall, day);
+  const sunText = sun ? `양달 ${formatRanges(sun)}` : '양달 정보 없음';
+  return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}, ${sunText}` };
+}
+
 // Gaps between today's open intervals (lunch break etc.), as [start, end] minutes.
 export function breakRanges(wall, at) {
   const open = openIntervals(wall, at);
@@ -41,7 +53,7 @@ export function groupRows(rows) {
 export const endingSoon = (row) => row.status.state === 'open' && row.status.endKind !== 'break' && row.status.remainingMin <= 60;
 
 export function pinState(status) {
-  if (status.state === 'open') return status.remainingMin <= 60 ? 'soon' : 'open';
+  if (status.state === 'open') return endingSoon({ status }) ? 'soon' : 'open'; // a break ahead is not "soon"
   return status.state === 'closed' ? 'closed' : 'unknown';
 }
 
@@ -136,7 +148,7 @@ export function filterRows(rows, sun) {
 
 const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 export function rowLeft(status, at) {
-  if (status.state === 'unknown') return '시간 미입력';
+  if (status.state === 'unknown') return '운영시간 미입력';
   if (status.state === 'closed') {
     const d = status.nextOpenAt;
     if (!d) return '다음 오픈 정보 없음';
@@ -144,9 +156,9 @@ export function rowLeft(status, at) {
     return `${ymd(d) === ymd(at) ? '' : `${md(d)} `}${t} 오픈`;
   }
   const r = status.remainingMin;
-  if (r <= 60 && status.endKind === 'break') return `곧 휴게 · ${r}분 후 휴게`;
-  if (r <= 60) return `곧 마감 · ${r}분 남음`;
-  return `${Math.floor(r / 60)}시간${r % 60 ? ` ${r % 60}분` : ''} 남음`;
+  const brk = status.endKind === 'break';
+  if (r <= 60) return brk ? `곧 휴게 · ${r}분 후` : `곧 마감 · ${r}분 남음`;
+  return `${Math.floor(r / 60)}시간${r % 60 ? ` ${r % 60}분` : ''} ${brk ? '뒤 휴게' : '남음'}`;
 }
 
 // The timetable axis runs 06:00–24:00.
@@ -243,10 +255,55 @@ export const migrateMinHours = (v) => ({ 1: '0', 2: '3' }[String(v)] ?? (MIN_HOU
 // Slider label: the real time; "(지금)" when the live time sits outside the slider and the thumb rests at its end.
 export const timeLabel = (min, live) => `${fmtMin(min)}${live && sliderValue(min) !== round10(min) ? ' (지금)' : ''}`;
 
+// The filters that can hide open walls, by name.
+const activeFilters = ({ sun = 'any', minHours = '0', parkOnly = false }) =>
+  [sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만'].filter(Boolean);
+
 // Why the open group is empty: nothing open at all, or the active filters hid the open ones.
-export function emptyText({ sun = 'any', minHours = '0', parkOnly = false }, openTotal, isNow = true) {
-  const on = [sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만']
-    .filter(Boolean);
+export function emptyText(f, openTotal, isNow = true) {
+  const on = activeFilters(f);
   if (!openTotal || !on.length) return `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`;
   return `열린 곳 ${openTotal}곳 중 조건(${on.join(' · ')})에 맞는 곳이 없어요. 조건을 바꿔 보세요.`;
+}
+
+// "조건 지우기" is offered only when walls are open and a filter hid them (same test as emptyText).
+export const filtersActive = (f, openTotal) => openTotal > 0 && activeFilters(f).length > 0;
+
+// The sheet button counts only what the chips don't show: parking, and 휴게 합산 while a minimum stay is on.
+export const sheetCount = ({ minHours = '0', withBreaks = false }, parkOnly) => Number(parkOnly) + Number(withBreaks && minHours !== '0');
+
+export const dayText = (d) => `${d.getMonth() + 1}/${d.getDate()}(${DAY_KO[d.getDay()]})`;
+
+// Summary lead: "지금 ", "14:00에 " (today), "10/9(금) 14:00에 " (another day).
+export const summaryLead = (at, now, isNow) =>
+  (isNow ? '지금 ' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}에 `);
+
+// Sun word on an open list row, so 응달 and "facing unknown" read apart too (not only the orange band).
+export function sunTag(row) {
+  if (row.status.state !== 'open') return null;
+  if (row.lit === true) return { text: '양달', tone: 'sun' };
+  if (row.lit === false) return { text: '응달', tone: 'shade' };
+  return { text: '방향 모름', tone: 'unknown' };
+}
+
+// Memo text → [{label, value, key}] lines. Lines split on newlines, then on sentence-ending periods
+// (not "..." and not after a single letter/digit like "A. B."); a known word at the start becomes the
+// label, "짧은 말: 값" too (a colon followed by a space, so "11:00" stays a time). Closures
+// (휴무·휴관·휴장·미운영) go first, unless the line says there is none ("정기휴무 없음").
+const MEMO_LABEL = /^(?:(주소|폭|정기휴무|겨울 휴장|이용료|문의)(?=[\s(])\s*|([^:()]{1,12}):\s+)(.*)$/;
+const MEMO_KEY = /휴무|휴관|휴장|미운영/;
+const MEMO_NONE = /(휴무|휴관|휴장|미운영)\S*\s*없/;
+export function memoLines(memo) {
+  const parts = String(memo ?? '').split('\n')
+    .flatMap((l) => l.split(/(?<=(?:[^.\s]{2}|[가-힣])\.)\s+/))
+    .map((s) => s.trim().replace(/(?<!\.)\.$/, ''))
+    .filter(Boolean);
+  const lines = parts.map((s) => {
+    const key = MEMO_KEY.test(s) && !MEMO_NONE.test(s);
+    const m = s.match(MEMO_LABEL);
+    const label = (m?.[1] ?? m?.[2])?.trim();
+    const value = m?.[3].replace(/^\(([^()]*)\)$/, '$1').trim();
+    return label && value ? { label, value, key } : { label: null, value: s, key };
+  });
+  return [...lines.filter((l) => l.key), ...lines.filter((l) => !l.key)];
 }

@@ -25,12 +25,12 @@ function sentenceOf(lit, sp, rel, wall, isNow) {
   if (lit.reason === 'override') return [t('직접 입력한 시간 기준으로 '), b(lit.lit ? '양달' : '응달'), t('이에요.')];
   if (!sp || sp.altitude <= 0) return [t(`${isNow ? '지금은' : '이 시각에는'} 해가 지평선 아래에 있어요. 응달이에요.`)];
   const head = [t('벽을 마주 보고 서면 해는 '), b(relName(rel)), t(` 하늘에 있어요(${dirName(sp.azimuth)}쪽).`)];
-  const alt = Math.round(sp.altitude);
+  // plain words only: no degrees in the sentence (the picture shows the height)
   switch (lit.reason) {
     case 'sun': return [...head, t(' 해가 등 뒤쪽에서 벽을 비추니 '), b('양달'), t('이에요.')];
     case 'facing': return [...head, t(' 해가 벽 뒤쪽이라 벽은 '), b('응달'), t('이에요.')];
-    case 'terrain': return [...head, t(` 그런데 해가 낮아서(${alt}°) 그쪽 `), b(`산(${Math.round(horizonAt(wall.shadow, sp.azimuth))}° 높이)`), t('에 가려져요. '), b('응달'), t('이에요.')];
-    case 'night': return [...head, t(` 너무 낮아서(${alt}°) `), b('응달'), t('이에요.')];
+    case 'terrain': return [...head, t(' 그런데 해가 낮아서 그쪽 '), b('산'), t('에 가려져요. '), b('응달'), t('이에요.')];
+    case 'night': return [...head, t(' 해가 낮아서 '), b('응달'), t('이에요.')];
     default: return [];
   }
 }
