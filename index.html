@@ -16,27 +16,32 @@
     <div class="wrap">
       <h1>지금 열린 외벽</h1>
       <p id="summary" role="status"></p>
-      <form id="search">
-        <div class="filters" role="group" aria-label="걸러 보기">
-          <button type="button" class="pill toggle" id="sunOnly" aria-pressed="false">양달</button>
-          <button type="button" class="pill toggle" id="shadeOnly" aria-pressed="false">응달</button>
-          <button type="button" class="pill toggle" id="longOnly" aria-pressed="false">3시간+</button>
-          <button type="button" class="pill toggle" id="nearFirst" aria-pressed="false">가까운 순</button>
-          <button type="button" class="pill quiet" id="moreFilters" aria-haspopup="dialog">조건 ▾</button>
-        </div>
-        <p id="locateMsg" hidden></p>
-        <div class="scrub">
-          <div class="scrub-hd">
-            <label class="field"><span class="sr-only">날짜</span><input type="date" id="date" required></label>
-            <span id="sub" class="sub"></span>
-            <label for="time" class="scrub-label">도착 <output id="timeOut" for="time"></output></label>
-            <button type="button" id="nowBtn" hidden>지금으로</button>
-          </div>
-          <input type="range" id="time" min="360" max="1410" step="10">
-        </div>
-      </form>
     </div>
   </header>
+  <!-- filters + time stay in view while the list scrolls (sticky; app.js drops it when it would fill a short screen) -->
+  <form id="search" class="controls" aria-label="시간과 조건">
+    <div class="wrap">
+      <div class="filters" role="group" aria-label="걸러 보기">
+        <button type="button" class="pill toggle" id="sunOnly" aria-pressed="false">양달</button>
+        <button type="button" class="pill toggle" id="shadeOnly" aria-pressed="false">응달</button>
+        <button type="button" class="pill toggle" id="longOnly" aria-pressed="false">3시간+</button>
+        <button type="button" class="pill toggle" id="nearFirst" aria-pressed="false">가까운 순</button>
+        <button type="button" class="pill quiet" id="moreFilters" aria-haspopup="dialog">조건 ▾</button>
+      </div>
+      <p id="locateMsg" hidden></p>
+      <div class="scrub">
+        <div class="scrub-hd">
+          <label class="field"><span class="sr-only">날짜</span><input type="date" id="date" required></label>
+          <span id="sub" class="sub"></span>
+          <label for="time" class="scrub-label">도착 <output id="timeOut" for="time"></output></label>
+        </div>
+        <div class="scrub-row">
+          <input type="range" id="time" min="360" max="1410" step="10">
+          <button type="button" id="nowBtn" hidden>지금으로</button>
+        </div>
+      </div>
+    </div>
+  </form>
   <main class="wrap">
     <div id="load-error" class="load-error" role="alert" hidden>
       <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요. 지금 "0곳"이 아니라 목록이 없는 거예요.</p>
@@ -73,7 +78,10 @@
       </ul>
     </div>
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
-      <div id="map" role="region" aria-label="암장 지도"></div>
+      <div class="mapbox">
+        <div id="map" role="region" aria-label="암장 지도"></div>
+        <div id="pin-card"></div>
+      </div>
       <p id="map-error" class="empty" hidden>지도를 불러오지 못했어요. 목록으로 확인해 주세요.</p>
       <ul class="legend" aria-label="핀 설명">
         <li><span class="dot open" aria-hidden="true"></span>운영 중</li>
@@ -81,9 +89,9 @@
         <li><span class="dot closed" aria-hidden="true"></span>닫힘</li>
         <li><span class="dot unknown" aria-hidden="true"></span>정보 없음</li>
         <li><span class="dot approx" aria-hidden="true"></span>추정 위치</li>
+        <li><span class="dot open sunring" aria-hidden="true"></span>양달(바깥 고리)</li>
       </ul>
       <p id="map-empty" class="empty" hidden>조건에 맞는 곳 중 지도에 표시할 곳이 없어요. 필터를 바꿔 보세요.</p>
-      <div id="pin-card"></div>
       <p id="map-note" class="muted" hidden></p>
     </div>
     <details id="manage">
@@ -150,7 +158,7 @@
     <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
     <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
     <p>틀린 정보 제보: 제보 기능은 준비 중이에요.</p>
-    <p>Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
+    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. 직접 암장을 다니며 정리해요. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script type="module" src="src/app.js"></script>

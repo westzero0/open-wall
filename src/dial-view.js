@@ -2,7 +2,7 @@
 // You stand at the centre looking at the wall (up); angles are clockwise from "ahead".
 const C = 130, R = 92, WY = C - 34, WW = 34;
 const VB_MIN = 22, VB_MAX = 238; // viewBox "22 22 216 216"
-const EM = 16.5; // label font size in viewBox units (style.css .d-lab)
+const EM = 18; // label font size in viewBox units (style.css .d-lab)
 const r1 = (v) => Math.round(v * 10) / 10;
 const P = (rel, r) => {
   const a = (rel * Math.PI) / 180;
@@ -145,7 +145,7 @@ export function renderDial(model) {
   if (L.person.halo) me.append(s('circle', { r: 15, class: 'd-halo' }));
   me.append(s('ellipse', { cx: 0, cy: 1, rx: 10, ry: 4.6, class: 'd-person' }),
     s('circle', { cx: 0, cy: -2.4, r: 4.2, class: 'd-person head' }));
-  add(me, ...L.path.map((p) => s('circle', { cx: p.x, cy: p.y, r: 1.7, class: 'd-path' })),
+  add(me, ...L.path.map((p) => s('circle', { cx: p.x, cy: p.y, r: 2.4, class: 'd-path' })),
     L.sun && s('circle', { cx: L.sun.x, cy: L.sun.y, r: 8, class: `d-sun${model.lit ? '' : ' off'}` }),
     // words last, so no mark paints over them
     L.reason && label(L.reason, 'xl', L.reason.text),

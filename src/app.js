@@ -7,9 +7,9 @@ import { createMap } from './map.js';
 import { dialModel, seasonWindows } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
-  axisFrac, barSegments, dayBar, dayLine, emptyText, endingSoon, filterRows, fmtMin, formatDistance, formatRanges,
-  breakRanges, groupRows, hasParking, isLivePick, mapPins, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowLeft,
-  shortName, sliderValue, sortRows, staleness, timeLabel, wallPosition, weeklyHours, withDistance,
+  axisFrac, barSegments, dayLine, dayText, emptyText, endingSoon, filterRows, filtersActive, fmtMin, formatDistance, formatRanges,
+  breakRanges, groupRows, hasParking, isLivePick, mapPins, memoLines, migrateMinHours, parkingLabel, photoSrc, placeholderText, rowBar, rowLeft,
+  sheetCount, shortName, sliderValue, sortRows, staleness, summaryLead, sunTag, timeLabel, wallPosition, weeklyHours, withDistance,
 } from './viewmodel.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,7 +24,6 @@ const el = (tag, attrs = {}, ...kids) => {
 };
 const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
 const pct = (min) => `${(min / 1440) * 100}%`;
-const dayText = (d) => `${d.getMonth() + 1}/${d.getDate()}(${DAY_KO[d.getDay()]})`;
 const whenText = (d, base) => (ymd(d) === ymd(base) ? hhmm(d) : `${dayText(d)} ${hhmm(d)}`);
 const SUN_FILTERS = ['any', 'sun', 'shade'];
 
@@ -89,10 +88,10 @@ function segments(cls, ranges) {
   });
 }
 
-function dayBarBlock(wall, at) {
-  const bar = dayBar(wall, at);
-  const now = el('span', { class: 'now' });
-  now.style.left = pct(bar.nowMin);
+// The same day as the list row's bar: a closed wall opening on a later day shows that day, without a now line.
+function dayBarBlock(bar) {
+  const now = bar.ahead ? null : el('span', { class: 'now' });
+  now?.style.setProperty('left', pct(bar.nowMin));
   return el('div', { class: 'daybar-wrap' },
     el('div', { class: 'daybar', role: 'img', 'aria-label': bar.label },
       el('div', { class: 'track open-track' }, ...segments('seg', bar.open)),
@@ -100,7 +99,8 @@ function dayBarBlock(wall, at) {
       now),
     el('div', { class: 'ticks', 'aria-hidden': 'true' },
       ...[0, 6, 12, 18, 24].map((t) => el('span', {}, String(t)))),
-    bar.sun ? null : el('p', { class: 'nosun' }, '양달 정보 없음'));
+    bar.ahead || !bar.sun ? el('p', { class: 'nosun' },
+      [bar.ahead ? `${dayText(bar.ahead)} 운영` : null, bar.sun ? null : '양달 정보 없음'].filter(Boolean).join(' · ')) : null);
 }
 
 function sunNote(row) {
@@ -144,7 +144,7 @@ function more(wall) {
   return el('details', { class: 'more' },
     el('summary', {}, '자세히'),
     photo,
-    wall.memo ? el('p', { class: 'memo' }, wall.memo) : null,
+    memoList(wall.memo),
     el('p', { class: 'meta' }, wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음'),
     pos?.approx ? el('p', { class: 'meta' }, '위치 추정(확인 전)') : null,
     wall.parking?.note ? el('p', { class: 'meta' }, `주차 메모 · ${wall.parking.note}`) : null,
@@ -157,6 +157,7 @@ function card(row, at) {
   const { wall, status, short } = row;
   const parking = parkingLabel(wall.parking);
   const old = staleness(wall, at);
+  const bar = status.state === 'unknown' ? null : rowBar(wall, status, at);
   const notes = [
     status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null,
     wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null,
@@ -170,10 +171,10 @@ function card(row, at) {
         wall.region ? el('small', {}, wall.region) : null,
         row.distanceKm != null ? el('span', { class: 'dist' }, `직선 ${formatDistance(row.distanceKm)}`) : null),
       el('p', { class: `status${endingSoon(row) ? ' soon' : ''}` }, statusText(status, at))),
-    status.state === 'unknown' ? null : dayBarBlock(wall, at),
+    bar ? dayBarBlock(bar) : null,
     el('div', { class: 'chips' },
       ...(wall.tags ?? []).map((t) => el('span', { class: 'chip' }, t)),
-      ...breakRanges(wall, at).map((r) => el('span', { class: 'chip break' }, `휴게 ${formatRanges([r])}`)),
+      ...breakRanges(wall, bar?.ahead ?? at).map((r) => el('span', { class: 'chip break' }, `휴게 ${formatRanges([r])}`)),
       el('span', { class: `chip parking ${parking.tone}`, title: parking.note || null }, parking.text)),
     old.stale ? el('p', { class: 'note stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
     ...notes.map((n) => el('p', { class: 'note' }, n)),
@@ -213,14 +214,13 @@ function creditChip(wall) {
 }
 
 function hero(wall) {
-  const ph = () => {
-    const { primary } = placeholderText(wall);
-    return el('div', { class: 'hero ph', 'aria-hidden': 'true' }, el('b', {}, primary), el('span', {}, '사진 준비 중'));
-  };
+  // no photo: a low band instead of a big grey box ("높이 15.5m · 사진 준비 중")
+  const ph = () => el('div', { class: 'hero ph', 'aria-hidden': 'true' },
+    el('span', {}, `${wall.height_m ? `높이 ${wall.height_m}m · ` : ''}사진 준비 중`));
   const src = photoSrc(wall);
   if (!src) return ph();
   const img = el('img', { class: 'hero', src, decoding: 'async', alt: `${wall.name} 외벽 사진` });
-  img.addEventListener('error', () => img.replaceWith(ph()), { once: true }); // same 16:10 box, no jump
+  img.addEventListener('error', () => img.replaceWith(ph()), { once: true });
   return img;
 }
 
@@ -289,7 +289,17 @@ const moreLinks = (wall) => { // contact links; 길찾기 stays in the first vie
 // "오늘 운영 10:00–21:00" / "10/9(금) 임시 휴장 · 휴무": the picked day as getStatus sees it.
 function dayLineParts({ season, closed, text }, at) {
   const day = ymd(at) === ymd(new Date()) ? '오늘' : dayText(at);
-  return [el('span', {}, `${season ? `${season} · ` : ''}${day}${closed ? '' : ' 운영'}`), el('b', {}, text)];
+  const plain = closed || text === '운영시간 미입력'; // not "오늘 운영 운영시간 미입력"
+  return [el('span', {}, `${season ? `${season} · ` : ''}${day}${plain ? '' : ' 운영'}`), el('b', {}, text)];
+}
+
+// Memo as "라벨 : 값" lines (memoLines, viewmodel.js), the same in the list and the map card.
+function memoList(memo) {
+  const lines = memoLines(memo);
+  if (!lines.length) return null;
+  return el('ul', { class: 'memo-list', 'aria-label': '메모' }, ...lines.map((l) => el('li', { class: l.key ? 'key' : null },
+    l.label ? el('span', { class: 'mk' }, l.label) : null,
+    el('span', { class: l.label ? 'mv' : 'mv free' }, l.value))));
 }
 
 let moreOpen = false; // the open row's "더 보기" survives re-renders (slider)
@@ -310,28 +320,23 @@ function rowDetails(row, at, id) {
     wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null,
     pos?.approx ? '위치 추정(확인 전)' : null,
   ].filter(Boolean);
-  const moreId = `${id}-more`;
-  const more = el('details', { class: 'more2', id: moreId },
-    el('summary', {}, '시간표 · 계절 · 정보 더 보기'),
+  const memo = memoList(wall.memo);
+  const sumState = el('span', { class: 'sum-s' }, moreOpen ? '접기' : '더 보기');
+  const more = el('details', { class: 'more2' },
+    el('summary', {}, el('span', { class: 'sum-t' }, '시간표 · 계절 · 정보'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
     weekBlock(week),
     ...(seasonList(wall, at, dial) ?? []),
-    wall.memo ? el('h4', { class: 'h4s' }, '메모') : null,
-    wall.memo ? el('p', { class: 'pn memo' }, wall.memo) : null,
+    memo ? el('h4', { class: 'h4s' }, '메모') : null,
+    memo,
     ...notes.map((n) => el('p', { class: 'note' }, n)),
     moreLinks(wall),
     rowButtons(wall.name,
       config.reportEndpoint ? el('button', { type: 'button', 'data-act': 'report', 'data-name': wall.name }, '정보가 달라요') : null));
   more.open = moreOpen;
-  const showMore = el('button', { type: 'button', class: 'btn alt', 'aria-expanded': String(moreOpen), 'aria-controls': moreId }, '자세히');
+  // one control opens the folded part: its summary row (the old "자세히" button did the same)
   more.addEventListener('toggle', () => {
     if (more.closest('.row.is-open')) moreOpen = more.open; // a row being closed doesn't speak for the open one
-    showMore.setAttribute('aria-expanded', String(more.open));
-  });
-  showMore.addEventListener('click', () => {
-    more.open = !more.open;
-    if (!more.open) return;
-    more.querySelector('summary').focus({ preventScroll: true });
-    more.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    sumState.textContent = more.open ? '접기' : '더 보기';
   });
   const go = pos && el('a', {
     class: 'btn', target: '_blank', rel: 'noopener noreferrer',
@@ -346,11 +351,12 @@ function rowDetails(row, at, id) {
         el('p', { class: 'today' }, ...dayLineParts(day, at)),
         old.stale ? el('p', { class: 'stale-note' }, `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요`) : null,
         el('div', { class: 'tags' },
+          ...breakRanges(wall, at).map((r) => el('span', { class: 'tag brk' }, `휴게 ${formatRanges([r])}`)), // as on the map card
           el('span', { class: `tag pk ${parking.tone}` }, parking.text),
           ...(wall.tags ?? []).map((t) => el('span', { class: 'tag' }, t))),
         wall.parking?.note ? el('p', { class: 'pnote' }, el('b', {}, '주차'), ' ', wall.parking.note) : null),
       sunBox(dial, wall.name, day.closed)),
-    el('div', { class: 'acts' }, go, showMore),
+    go ? el('div', { class: 'acts' }, go) : null,
     more,
   ];
 }
@@ -358,19 +364,22 @@ function rowDetails(row, at, id) {
 let rowSeq = 0;
 function timeRow(row, at) {
   const { wall, status } = row;
-  const bar = dayBar(wall, at);
+  const bar = rowBar(wall, status, at); // "내일 10:00 오픈" draws tomorrow's hours, without a now tick
   const id = `row-x-${++rowSeq}`;
   const isOpen = openName === wall.name;
   const meta = [wall.region, row.distanceKm != null ? formatDistance(row.distanceKm) : null].filter(Boolean).join(' · ');
-  const tick = el('span', { class: 'tick' });
-  tick.style.left = axisX(bar.nowMin);
+  const tick = bar.ahead ? null : el('span', { class: 'tick' });
+  tick?.style.setProperty('left', axisX(bar.nowMin));
+  // 양달/응달/방향 모름 in words, not only the orange band; a wall without hours gets no empty bar
+  const sun = sunTag(row);
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
       el('span', { class: 'rname' }, shortName(wall)),
-      el('span', { class: 'rmeta' }, meta),
+      sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
+      meta ? el('span', { class: 'rmeta' }, meta) : null,
       el('span', { class: 'left' }, rowLeft(status, at))),
-    el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
-      ...barSegments(bar.open, bar.nowMin).map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
+    status.state === 'unknown' ? null : el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
+      ...barSegments(bar.open, bar.nowMin ?? -1).map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
       ...(bar.sun ?? []).filter(([a, b]) => axisFrac(b) > axisFrac(a)).map(([a, b]) => span('sunband', a, b)),
       tick));
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
@@ -412,6 +421,9 @@ function toggleRow(li) {
   if (!opening) return;
   li.fill();
   setRowOpen(li, true);
+  // opened near the foot of the screen: the details would appear below the fold, so bring the row up
+  const btn = li.querySelector('.row-btn');
+  if (btn.getBoundingClientRect().top > innerHeight * 0.6) btn.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 
 // ---- render ----
@@ -454,6 +466,8 @@ function render() {
   $('time').setAttribute('aria-valuetext', label);
   nowTag.textContent = t;
   nowTag.style.setProperty('--x', axisFrac(minuteOf(at)));
+  // an hour tick under the time tag would show half a number ("14:00" over "15"): hide the near ones
+  for (const tk of $('axis').querySelectorAll('.t')) tk.classList.toggle('under', Math.abs(tk.min - minuteOf(at)) < 110);
 
   // the stored flag is ignored (not deleted) while no wall has parking data
   const canPark = state.walls.some(hasParking);
@@ -474,18 +488,23 @@ function render() {
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
 
   for (const [id, on] of [['sunOnly', ui.sun === 'sun'], ['shadeOnly', ui.sun === 'shade'],
-    ['longOnly', ui.minHours === '3'], ['nearFirst', ui.sortMode === 'distance'], ['parkingOnly', ui.parkingOnly], ['withBreaks', ui.withBreaks]]) {
+    ['longOnly', ui.minHours !== '0'], ['nearFirst', ui.sortMode === 'distance'], ['parkingOnly', ui.parkingOnly], ['withBreaks', ui.withBreaks]]) {
     $(id).setAttribute('aria-pressed', String(on));
   }
-  // any minimum stay or parking marks the sheet's button, so a shorter list is explained
-  $('moreFilters').classList.toggle('on', ui.minHours !== '0' || parkOnly);
+  // the chip and the sheet share one value: the chip names it (3·5·8시간+)
+  $('longOnly').textContent = `${ui.minHours === '0' ? '3' : ui.minHours}시간+`;
+  // the sheet's button counts what only the sheet shows (parking, 휴게 합산), not the 3·5·8시간+ chip again
+  const sheetOn = sheetCount(ui, parkOnly);
+  $('moreFilters').classList.toggle('on', sheetOn > 0);
+  $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn} ▾` : '조건 ▾';
 
   const n = open.length;
-  const lead = isNow ? '지금 ' : `${dayText(at)} ${t}에 `;
+  // another day names the day (the live region is read without the date input)
+  const lead = summaryLead(at, now, isNow);
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
-    $('summary').replaceChildren(lead, el('b', {}, String(n)), '곳에서 탈 수 있어요');
+    $('summary').replaceChildren(lead, el('b', { class: n ? null : 'zero' }, String(n)), '곳에서 탈 수 있어요');
   }
   $('sub').textContent = `${DAY_KO[at.getDay()]}요일${origin ? ' · 직선거리' : ''}`; // the date input shows the rest
 
@@ -493,7 +512,11 @@ function render() {
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
-  emptyMsg.textContent = emptyText({ sun: ui.sun, minHours: ui.minHours, parkOnly }, openTotal, isNow);
+  // the filters hid every open wall: offer the way back right here
+  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly };
+  // replaceChildren(null) would print "null": only real nodes go in
+  emptyMsg.replaceChildren(...[emptyText(f, openTotal, isNow),
+    filtersActive(f, openTotal) ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null].filter(Boolean));
   rowSeq = 0;
   $('rows-open').replaceChildren(...open.map((r) => safeRow(r, at)));
 
@@ -520,8 +543,15 @@ function render() {
 function showPin(row, fromClick) {
   const box = $('pin-card');
   if (!row) return box.replaceChildren();
-  box.replaceChildren(el('ul', { class: 'cards' }, safeCard(row, shown.at)));
-  if (fromClick) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const close = el('button', { type: 'button', class: 'pin-close', 'aria-label': '선택 닫기' }, '✕');
+  close.addEventListener('click', () => {
+    mapApi?.select(null);
+    $('map').focus({ preventScroll: true }); // the button is gone; keep focus on the map
+  });
+  box.replaceChildren(close, el('ul', { class: 'cards' }, safeCard(row, shown.at)));
+  if (!fromClick) return;
+  box.scrollTop = 0;
+  box.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' }); // only scrolls when the map's foot is off screen
 }
 
 function mapError() {
@@ -539,7 +569,12 @@ function openMap() {
   if (mapFailed && !mapApi) return;
   if (mapApi) return mapApi.refresh();
   try {
-    mapApi = createMap($('map'), { onSelect: showPin, onError: mapError, onOk: mapOk });
+    mapApi = createMap($('map'), {
+      onSelect: showPin, onError: mapError, onOk: mapOk,
+      covered: () => $('pin-card').offsetHeight,
+      // the sticky controls lie over the map's top while the page is scrolled
+      coveredTop: () => Math.max(0, controls.getBoundingClientRect().bottom - $('map').getBoundingClientRect().top),
+    });
   } catch {
     $('map').hidden = true;
     document.querySelector('.legend').hidden = true;
@@ -569,6 +604,7 @@ function showTab(key, focus = false) {
 // fixed axis: hour ticks, grid lines, the chosen-time tag
 for (const h of [6, 9, 12, 15, 18, 21, 24]) {
   const tk = el('span', { class: 't' }, String(h));
+  tk.min = h * 60;
   tk.style.setProperty('--x', axisFrac(h * 60));
   $('axis').append(tk);
   const g = el('span', { class: 'grid' });
@@ -602,7 +638,7 @@ $('nowBtn').addEventListener('click', () => {
 });
 $('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
-$('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours === '3' ? '0' : '3'));
+$('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== '0' ? '0' : '3'));
 $('nearFirst').addEventListener('click', () => {
   if (ui.sortMode === 'distance') return setUi('sortMode', 'time');
   setUi('sortMode', 'distance');
@@ -610,6 +646,32 @@ $('nearFirst').addEventListener('click', () => {
 });
 
 $('moreFilters').addEventListener('click', () => sheet.showModal());
+document.querySelector('#group-open .empty').addEventListener('click', (e) => {
+  if (!e.target.closest('.clear-filters')) return;
+  Object.assign(ui, { sun: 'any', minHours: '0', parkingOnly: false });
+  sheetForm.elements.minHours.value = '0';
+  saveUi();
+  render();
+  $('sunOnly').focus(); // the button is gone; land on the first filter
+});
+
+// The date + slider stick to the top while the list scrolls (the filter row above them scrolls away: a
+// negative sticky top), unless even that would take over a short screen (landscape phone, large text):
+// then all of it scrolls away as before. The timetable axis sticks just below.
+const controls = $('search');
+const fitSticky = () => {
+  const box = controls.getBoundingClientRect();
+  const off = Math.max(0, controls.querySelector('.scrub').getBoundingClientRect().top - box.top - 4);
+  const h = box.height - off;
+  const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
+  const stick = h + axisH <= innerHeight * 0.3;
+  controls.classList.toggle('unstuck', !stick);
+  controls.style.top = stick ? `${-off}px` : '';
+  document.documentElement.style.setProperty('--stick-h', `${stick ? h : 0}px`);
+};
+new ResizeObserver(fitSticky).observe(controls);
+addEventListener('resize', fitSticky);
+fitSticky();
 sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // the dialog has no padding: only the backdrop hits it
 sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
@@ -662,6 +724,11 @@ document.querySelector('main').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+  if (ui.tab === 'map') { // Esc closes the map card, like its close button
+    if (!$('pin-card').childElementCount) return;
+    mapApi?.select(null);
+    return $('map').focus({ preventScroll: true });
+  }
   const li = document.querySelector('#panel-list .row.is-open');
   if (!li) return;
   const hadFocus = li.contains(document.activeElement);
@@ -670,13 +737,19 @@ document.addEventListener('keydown', (e) => {
 });
 
 onChange(render);
-// Live mode follows the clock. The minute tick skips only while the map card's "자세히" is open or focus is in a card.
+// Live mode follows the clock. The minute tick skips while the map card's "자세히" is open, or while focus
+// sits on something the re-render would replace and can't be matched again: the map card (its close button
+// too) and "조건 지우기". Focus in a list row goes back to the same control of the same row, without scrolling.
+const FOCUSABLE = 'button, a, summary';
 const tick = () => {
-  if (!live || document.hidden || document.querySelector('.more[open]') || document.activeElement?.closest('.cards')) return;
-  // a focused row button would be dropped by the re-render: give focus back to the same row afterwards
-  const name = document.activeElement?.closest('.rows .row')?.wallName;
+  const a = document.activeElement;
+  if (!live || document.hidden || document.querySelector('.more[open]') || a?.closest('#pin-card, .clear-filters')) return;
+  const li = a?.closest('.rows .row');
+  const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   render();
-  if (name) [...document.querySelectorAll('#panel-list .row')].find((li) => li.wallName === name)?.querySelector('.row-btn')?.focus();
+  if (!li) return;
+  const now = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === li.wallName);
+  (now?.querySelectorAll(FOCUSABLE)[i] ?? now?.querySelector('.row-btn'))?.focus({ preventScroll: true });
 };
 setInterval(tick, 60_000);
 document.addEventListener('visibilitychange', tick);
