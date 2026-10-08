@@ -18,15 +18,20 @@ export function inkStamp(span, wall) {
   return span;
 }
 
+/** rimPoint(azimuth) → {x, y} in % of a round stamp: a point of its upper rim (east 90° left, south 180° top, west 270° right). */
+export function rimPoint(az) {
+  const th = (270 - Math.min(270, Math.max(90, az))) * (Math.PI / 180);
+  return { x: 50 + 50 * Math.cos(th), y: 50 - 50 * Math.sin(th) };
+}
+
 /**
  * sunMark(wall, date, time) → {x, y, lit} | null: where the sun stood on the stamp's rim for a visit ('YYYY-MM-DD', 'HH:mm').
- * x, y in % of the stamp (east left, south top, west right); lit: the wall was in the sun. No time, no facing, an
- * override-only or indoor wall, or night: null — the plain stamp, nothing is made up.
+ * x, y in % of the stamp; lit: the wall was in the sun. No time, no facing, an override-only or indoor wall, or night:
+ * null — the plain stamp, nothing is made up.
  */
 export function sunMark(wall, date, time) {
   if (!wall || !time) return null;
   const p = isSunlit(wall, new Date(`${date}T${time}:00`));
   if (!Number.isFinite(p.azimuth) || p.reason === 'night') return null;
-  const th = (270 - Math.min(270, Math.max(90, p.azimuth))) * (Math.PI / 180);
-  return { x: 50 + 50 * Math.cos(th), y: 50 - 50 * Math.sin(th), lit: p.lit };
+  return { ...rimPoint(p.azimuth), lit: p.lit };
 }

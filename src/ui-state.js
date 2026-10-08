@@ -1,5 +1,6 @@
 // src/ui-state.js — the saved screen state (filters, sort, tab, theme): defaults, cleaning old/broken values,
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
+// What is on screen but not saved (picked moment, open row, position) is view-state.js.
 
 export const UI_KEY = 'open-wall:ui';
 const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any', favOnly: false, theme: 'auto' };
@@ -90,9 +91,6 @@ export function filterView(ui, { canPark, openTotal, isNow }) {
   };
 }
 
-// The open row is kept across a re-render only while a row of that wall is still shown in the same group.
-export const keepOpenRow = (rows, name, state) => rows.some((r) => r.wall.name === name && r.status.state === state);
-
 // Share link: the page's own address with just ?wall=<name> (no ?edit, no hash). Names are the wall identity.
 export function shareUrl(href, name) {
   const u = new URL(href);
@@ -107,7 +105,3 @@ export function wallFromSearch(walls, search) {
   const name = new URLSearchParams(search).get('wall')?.normalize('NFC').trim();
   return name ? walls.find((w) => w.name.normalize('NFC') === name) ?? null : null;
 }
-
-// The live minute tick skips a re-render that would pull something from under the user: not live, a hidden
-// page, the map card's "자세히" open, or focus on a control the re-render can't give back (map card, 조건 지우기).
-export const skipTick = ({ live, hidden, detailsOpen, focusHeld }) => !live || hidden || detailsOpen || focusHeld;
