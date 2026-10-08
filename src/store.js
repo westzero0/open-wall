@@ -169,6 +169,14 @@ function getExceptions(v) {
   return { closed_dates, rain_rule, ...(nth_closed.length ? { nth_closed } : {}) };
 }
 
+// 세팅일: { last?, next? } as real calendar dates ('YYYY-MM-DD'); anything else is dropped key by key, null when both are gone.
+export function cleanSetting(v) {
+  if (!isPlainObject(v)) return null;
+  const out = {};
+  for (const k of ['last', 'next']) if (isDateStr(v[k])) out[k] = v[k];
+  return Object.keys(out).length ? out : null;
+}
+
 // Public holidays: 'weekend' (Saturday's hours), 'closed', 'weekday' (the weekday's own hours); absent = not known.
 export const HOLIDAY_RULES = ['weekend', 'closed', 'weekday'];
 
@@ -215,6 +223,7 @@ export function normalizeWall(raw) {
   const indoor_winter = getWinter(raw.indoor_winter);
   const holiday = HOLIDAY_RULES.includes(raw.holiday) ? raw.holiday : null;
   const blog_posts = cleanBlogPosts(raw.blog_posts);
+  const setting = cleanSetting(raw.setting);
 
   return {
     region,
@@ -241,6 +250,7 @@ export function normalizeWall(raw) {
     ...(indoor_winter.type !== 'none' ? { indoor_winter } : {}),
     ...(holiday ? { holiday } : {}),
     ...(blog_posts.length ? { blog_posts } : {}),
+    ...(setting ? { setting } : {}),
   };
 }
 
@@ -269,6 +279,8 @@ export function keepGeo(old, next) {
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
+  // 세팅일: the form doesn't carry it and a CSV may leave 세팅일/다음세팅 out or empty; each date left out keeps the stored one
+  if (old.setting) out.setting = { ...old.setting, ...out.setting };
   return out;
 }
 
@@ -294,6 +306,8 @@ export function mergeWalls(existing, incoming, mode) {
       // holiday / nth closures fill only walls that have none (an edited rule stays)
       if (w.holiday && !old.holiday) fill.holiday = w.holiday;
       if (w.exceptions.nth_closed && !old.exceptions?.nth_closed) fill.exceptions = { ...old.exceptions, nth_closed: w.exceptions.nth_closed };
+      // 세팅일: only the dates this wall lacks (a date the user set stays)
+      if (w.setting && (!old.setting || Object.keys(w.setting).some((k) => !old.setting[k]))) fill.setting = { ...w.setting, ...old.setting };
       // hours are only backfilled for walls that have none, so edited hours are never replaced
       if (!hasHours(old) && hasHours(w)) {
         Object.assign(fill, { hours: w.hours, checked_at: w.checked_at });

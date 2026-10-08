@@ -23,6 +23,7 @@ if (dlg) {
     운영시간: ['바뀐 운영시간', '예) 평일 10:00–22:00, 토 10:00–18:00, 일 휴무. 휴게시간이나 계절(동절기) 차이도 편하게 적어 주세요.'],
     임시휴무: ['메모 (선택)', '예) 시설 공사, 대회 개최'],
     주차: ['메모 (선택)', '예) 건물 뒤 공영주차장 2시간 무료'],
+    세팅일: ['메모 (선택)', '예) 왼쪽 벽 새 루트 12개, 공지에서 확인'],
     기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
   };
@@ -56,6 +57,7 @@ if (dlg) {
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
+      setLast: f.elements.setLast.value, setNext: f.elements.setNext.value,
       note: f.elements.note.value, hp: f.elements.website.value,
     });
     if (!v.ok) return say(v.error);

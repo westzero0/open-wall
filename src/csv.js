@@ -17,6 +17,7 @@ export const CSV_HEADERS = [
   '구분', // added last; an older CSV without it still imports (empty = keep the stored value / outdoor)
   '공휴일', '격주휴무', // same: absent or empty keeps the stored rule (keepGeo)
   '오픈채팅', // same: an older CSV without it keeps the stored chat link (keepGeo)
+  '세팅일', '다음세팅', // same: absent or empty keeps the stored date (keepGeo)
 ];
 const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
 const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
@@ -169,6 +170,8 @@ export function csvToWalls(rows, opts = {}) {
       const holiday = get('공휴일');
       if (holiday && !Object.hasOwn(HOLIDAY_KO, holiday)) throw new Error('공휴일은 주말/휴무/평일 중 하나여야 해요');
       const nth_closed = nthList(get('격주휴무'));
+      const setting = compact({ last: get('세팅일'), next: get('다음세팅') });
+      for (const [k, d] of Object.entries(setting)) if (!isDateStr(d)) throw new Error(`${k === 'last' ? '세팅일' : '다음세팅'}은 YYYY-MM-DD 형식이어야 해요: ${d}`);
 
       walls.push({
         name: get('이름'),
@@ -187,6 +190,7 @@ export function csvToWalls(rows, opts = {}) {
         ...(parking ? { parking } : {}),
         ...(venue ? { venue: VENUE_KO[venue] } : {}),
         ...(holiday ? { holiday: HOLIDAY_KO[holiday] } : {}),
+        ...(Object.keys(setting).length ? { setting } : {}),
       });
     } catch (e) {
       errors.push(`행 ${n + 2}: ${e.message}`);
@@ -219,6 +223,7 @@ export function wallToRow(w) {
     구분: VENUE_LABEL[w.venue] ?? '',
     공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
     격주휴무: nthText(w.exceptions?.nth_closed),
+    세팅일: w.setting?.last ?? '', 다음세팅: w.setting?.next ?? '',
   };
   return CSV_HEADERS.map((k) => String(o[k]));
 }
