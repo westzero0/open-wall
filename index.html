@@ -326,6 +326,7 @@
         <div class="inv-actions">
           <button type="button" class="inv-send" id="inv-share">공유하기</button>
           <button type="button" class="inv-copy" id="inv-copy">문구 복사</button>
+          <button type="button" class="inv-image" id="inv-image">그림으로 공유</button>
         </div>
       </form>
     </dialog>
@@ -342,6 +343,7 @@
             <label><input type="radio" name="kind" value="운영시간">운영시간</label>
             <label><input type="radio" name="kind" value="임시휴무">임시휴무</label>
             <label><input type="radio" name="kind" value="주차">주차</label>
+            <label><input type="radio" name="kind" value="세팅일">세팅일</label>
             <label><input type="radio" name="kind" value="기타">기타</label>
             <label><input type="radio" name="kind" value="오픈채팅방">오픈채팅</label>
           </div>
@@ -354,6 +356,10 @@
         <div class="rp-extra" data-kind="임시휴무" hidden>
           <label class="rp-field">휴무 시작일<input type="date" name="from"></label>
           <label class="rp-field">끝나는 날 (하루만이면 비워 두세요)<input type="date" name="to"></label>
+        </div>
+        <div class="rp-extra" data-kind="세팅일" hidden>
+          <label class="rp-field">마지막 세팅일 (YYYY-MM-DD)<input type="date" name="setLast"></label>
+          <label class="rp-field">다음 예정일 (선택)<input type="date" name="setNext"></label>
         </div>
         <fieldset class="sh-row rp-extra" data-kind="주차" hidden>
           <legend>주차 상태</legend>

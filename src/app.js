@@ -13,6 +13,7 @@ import {
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
@@ -421,6 +422,21 @@ function addrLine(m) {
 
 // ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
 let favs = loadFavs(storage);
+// 세팅일이 바뀌었어요 (setting.js): the setting.last seen per ♥ wall; a first look only records it
+let seen = loadSeen(storage);
+function syncSeen() {
+  const next = recordFirstSeen(seen, state.walls, favs);
+  if (next !== seen) saveSeen(storage, (seen = next));
+}
+// Opening a ♥ wall's card marks its 세팅일 seen: the row's mark goes now, the card's own on its next redraw.
+function seeSetting(name) {
+  const last = state.walls.find((w) => w.name === name)?.setting?.last;
+  if (!last || !favs.includes(name)) return;
+  const next = markSeen(seen, name, last);
+  if (next === seen) return;
+  saveSeen(storage, (seen = next));
+  for (const b of document.querySelectorAll('.row-btn .setnew')) if (b.dataset.setmark === name) b.remove();
+}
 function paintStar(btn) {
   const on = favs.includes(btn.dataset.fav);
   btn.setAttribute('aria-pressed', String(on));
@@ -684,6 +700,8 @@ function rowDetails(m, wall, at, id) {
           ...m.tags.map((t) => el('span', { class: 'tag' }, t)),
           ...m.sizes.map((t) => el('span', { class: 'tag' }, t))),
         ...infoBlock(m),
+        m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
+        m.setting ? el('p', { class: 'checked setting' }, m.setting) : null,
         el('p', { class: 'checked' }, m.checked)),
       more.childElementCount > 1 ? more : null, // hours / season tabs sit above the compass
       sunBox(dial, m.name, m.closedDay)),
@@ -796,7 +814,9 @@ function crowdBox(m) {
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
     c.chip.text)];
 }
-const modelOf = (row, at) => cardModel(row, at, { visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at) });
+const modelOf = (row, at) => cardModel(row, at, {
+  visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
+});
 
 let rowSeq = 0;
 function timeRow(row, at) {
@@ -813,6 +833,7 @@ function timeRow(row, at) {
       el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
       el('span', { class: 'rname' }, m.shortName),
       feeChip(m),
+      m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
       sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
       m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
         el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
@@ -852,6 +873,7 @@ function setRowOpen(li, open) {
   li.querySelector('.row-btn').setAttribute('aria-expanded', String(open));
   const more = li.querySelector('.more2');
   if (!open && more) more.open = false; // a closed row comes back folded, like after a re-render
+  if (!open) li.querySelector('.expand-in .setnew')?.remove(); // 세팅일 badge: seen once it was opened
 }
 
 // One row open at a time.
@@ -866,6 +888,7 @@ function toggleRow(li) {
   gridSeason.clear(); // a reopened row starts on the picked day's season
   if (!opening) return;
   li.fill();
+  seeSetting(li.wallName);
   li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
   setRowOpen(li, true);
   // opened near the foot of the screen: the details would appear below the fold, so bring the row up
@@ -885,6 +908,7 @@ function revealRow(name) {
   moreTab = 0;
   gridSeason.clear();
   render(); // the open row is built filled, so no transition plays
+  seeSetting(name);
   const li = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === name);
   const band = li?.closest('details');
   if (band) band.open = true;
@@ -915,6 +939,7 @@ function setBand(summary, label, n) {
 
 function render() {
   const now = new Date(); // one clock reading per render
+  syncSeen();
   syncClock(now);
   const at = pickedAt(now);
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.

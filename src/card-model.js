@@ -232,6 +232,16 @@ function crowdTagOf(s) {
   return { level, text: level, aria: s.recent ? `혼잡도 ${level}, 방금 제보 ${s.recent.n}건` : `혼잡도 ${level}, 이 시간대 제보 ${s.n}건` };
 }
 
+// 세팅일: "마지막 세팅 2026-09-12 · 다음 예정 2026-11-03", whichever is known; a next date already past is left out
+// (never shown as upcoming). null when there is nothing to say.
+export function settingText(setting, today) {
+  const parts = [
+    setting?.last && `마지막 세팅 ${setting.last}`,
+    setting?.next && setting.next >= today && `다음 예정 ${setting.next}`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 // ---- the model ----
 /**
  * cardModel(row, at, {now, visits, crowd}) → plain data for one wall's list row, expanded row and map card.
@@ -239,8 +249,9 @@ function crowdTagOf(s) {
  * at: the picked moment. now: the real clock, only to call the picked day "오늘".
  * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
  * crowd: see crowdOf. Without it (혼잡도 not set up), or with nothing to show, the model has no `crowd` key.
+ * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
  */
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -300,6 +311,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
     checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',
+    setting: settingText(wall.setting, ymd(now)),
+    settingBadge: settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info: splitInfo([...notes.filter((n) => n.key), ...facts.rest, ...notes.filter((n) => !n.key)]), // expanded row's 안내
     sizes: facts.sizes,
