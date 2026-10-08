@@ -13,6 +13,8 @@ import {
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { parseInvite } from './invite.js';
+import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
 import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, shareUrl, skipTick, wallFromSearch } from './ui-state.js';
 import { el } from './dom.js';
@@ -22,6 +24,7 @@ import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, pars
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
+const inviteView = createInviteView({ getWalls: () => state.walls }); // the share menu, the 같이 가요 sheet and the banner
 
 const pct = (min) => `${(min / 1440) * 100}%`;
 
@@ -550,8 +553,8 @@ function renderPick() {
   pickRefocus = null;
 }
 
-// 공유하기 icon at the end of the name line: the phone's share sheet when there is one; otherwise the link is
-// copied (the icon turns into a check for a moment and the live note says so).
+// 공유하기 icon at the end of the name line: the link is copied right away (the icon turns into a check for a moment and
+// the live note says so), and the toast offers 같이 가요 초대 for that wall.
 function shareBtn(name) {
   const btn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, icon('share'));
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
@@ -559,19 +562,17 @@ function shareBtn(name) {
   btn.addEventListener('click', async () => {
     const url = shareUrl(location.href, name);
     try {
-      if (navigator.share && matchMedia('(pointer: coarse)').matches) {
-        await navigator.share({ title: `${name} · 해벽`, url });
-        return;
-      }
       await navigator.clipboard.writeText(url);
-      btn.classList.add('done');
-      btn.replaceChildren(icon('check'));
-      say.textContent = '링크를 복사했어요';
-      clearTimeout(timer);
-      timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(icon('share')); say.textContent = ''; }, 1800);
-    } catch (e) {
-      if (e?.name !== 'AbortError') prompt('링크를 복사하세요', url); // no clipboard (http, denied); AbortError = sheet closed
+    } catch {
+      prompt('링크를 복사하세요', url); // no clipboard (http, denied)
+      return;
     }
+    btn.classList.add('done');
+    btn.replaceChildren(icon('check'));
+    say.textContent = '링크를 복사했어요';
+    clearTimeout(timer);
+    timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(icon('share')); say.textContent = ''; }, 1800);
+    toast('링크를 복사했어요', () => inviteView.openInvite(name), '같이 가요 초대 만들기');
   });
   return el('span', { class: 'share-wrap' }, btn, say);
 }
@@ -1384,6 +1385,7 @@ showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
 // memory only; nothing is saved until the visitor changes a filter) and starts on the list.
 const sharedWall = wallFromSearch(state.walls, location.search);
+const invite = sharedWall ? parseInvite(location.search, new Date()) : null; // 같이 가요: the link also names a moment
 if (sharedWall) {
   Object.assign(ui, CLEARED, { regions: [], tab: 'list' });
 }
@@ -1391,9 +1393,11 @@ syncRegions();
 render();
 loadCrowd();
 if (sharedWall) {
+  if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list
   revealRow(sharedWall.name); // its group is only known after the first render
+  if (invite) inviteView.banner(invite, sharedWall);
   const u = new URL(location.href);
-  u.searchParams.delete('wall');
+  for (const k of ['wall', 'at', 'n', 'tags', 'note']) u.searchParams.delete(k);
   history.replaceState(null, '', u);
 }
 showTab(ui.tab); // loadUi keeps it to TABS

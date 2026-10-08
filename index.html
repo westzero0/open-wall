@@ -72,6 +72,13 @@
       </div>
     </div>
     <div id="panel-list" role="tabpanel" aria-labelledby="tab-list">
+      <aside id="invite-banner" class="invite-banner" role="note" hidden>
+        <p id="ib-title" class="ib-title"></p>
+        <p id="ib-meta" class="ib-meta"></p>
+        <p id="ib-note" class="ib-note" hidden></p>
+        <button type="button" class="ib-again" id="ib-again" hidden>이 암장으로 새 초대 만들기</button>
+        <button type="button" class="ib-close" onclick="this.closest('aside').hidden = true">닫기</button>
+      </aside>
       <section id="favs" class="favs" aria-labelledby="favs-title" hidden>
         <h2 id="favs-title" class="band"><span>내 암장</span> <span id="countFav"></span></h2>
         <ul id="fav-list" class="fav-list"></ul>
@@ -292,6 +299,36 @@
       </form>
     </dialog>
     <div class="toast" id="toast"><p id="toast-msg" role="status"></p><button type="button" id="toast-act" hidden>실행 취소</button></div>
+    <dialog id="invite" class="sheet" aria-labelledby="invite-title">
+      <form novalidate>
+        <div class="sh-head">
+          <h2 id="invite-title">같이 가요</h2>
+          <button type="button" class="sh-done" data-close>닫기</button>
+        </div>
+        <p class="sm-wall" id="inv-wall"></p>
+        <div class="sh-row inv-when">
+          <label class="inv-field"><span class="sh-label">날짜</span><input type="date" name="date" required></label>
+          <label class="inv-field"><span class="sh-label">시간</span><input type="time" name="time" step="600" required></label>
+        </div>
+        <p class="inv-check" id="inv-check" role="status"></p>
+        <fieldset class="sh-row">
+          <legend>함께할 사람에게 (선택)</legend>
+          <div class="inv-tags" id="inv-tags"></div>
+          <label class="inv-field"><span class="sh-label">함께할 인원</span><select name="n"></select></label>
+          <label class="inv-field"><span class="sh-label">한마디</span><input type="text" name="note" autocomplete="off" placeholder="예) 초보 환영해요"></label>
+        </fieldset>
+        <div class="sh-row inv-prev">
+          <span class="sh-label">보낼 문구</span>
+          <pre class="inv-preview" id="inv-preview"></pre>
+          <p class="sh-hint">받는 사람이 링크를 열면 그 시각 기준으로 카드가 열려요.</p>
+        </div>
+        <p class="inv-say" id="inv-say" role="status"></p>
+        <div class="inv-actions">
+          <button type="button" class="inv-send" id="inv-share">공유하기</button>
+          <button type="button" class="inv-copy" id="inv-copy">문구 복사</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="report" class="sheet" aria-labelledby="report-title">
       <form novalidate>
         <div class="sh-head">
