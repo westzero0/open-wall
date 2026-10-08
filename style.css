@@ -1062,3 +1062,30 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 #toast-act:focus-visible { outline: 2px solid var(--bg); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; transform: none; } }
 @media (hover: hover) and (pointer: fine) { .lg-open:hover, .cal-day:hover, .cal-nav:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); } }
+
+/* 같이 가요: the share menu, the invite sheet, and the banner an invite link opens with. Every control is --tap high. */
+.sm-wall { margin: 0; padding: 0 0 8px; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.inv-when { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.inv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin-top: 10px; }
+.inv-when .inv-field { margin-top: 0; }
+.inv-field input, .inv-field select { width: 100%; min-height: var(--tap); padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
+.inv-check { min-height: 1.4em; margin: 0; padding: 8px 0; font-size: var(--fs-sm); }
+.inv-alt { min-height: var(--tap); padding: 0 4px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.inv-tags { clear: both; display: flex; flex-wrap: wrap; gap: 8px; } /* the legend floats in a .sh-row: start below it */
+.inv-preview { margin: 6px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--sunken); font: inherit; font-size: var(--fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.inv-say { min-height: 1.4em; margin: 0; padding-top: 6px; color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
+.inv-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.inv-send, .inv-copy { min-height: var(--tap); border-radius: var(--radius); font: inherit; font-weight: 700; }
+.inv-send { border: 0; background: var(--accent); color: #fff; }
+.inv-copy { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); }
+:is(.inv-alt, .inv-send, .inv-copy, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.invite-banner { margin: 10px 0 0; padding: 12px 14px 4px; border: 1px solid var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.invite-banner[hidden] { display: none; }
+.ib-title { margin: 0; font-weight: 700; color: var(--accent); }
+.ib-meta { margin: 2px 0 0; font-size: var(--fs-sm); }
+.ib-note { margin: 4px 0 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.ib-from { color: var(--muted); font-size: var(--fs-xs); }
+.ib-again { min-height: var(--tap); margin: 4px 12px 0 0; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
+.ib-again[hidden] { display: none; }
+.ib-close { min-height: var(--tap); margin-left: -2px; padding: 0 2px; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere; this one stacks the label, the text and the hint) */
