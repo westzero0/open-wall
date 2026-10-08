@@ -138,7 +138,7 @@ export function saveLog(storage, log) {
  */
 export function addRecord(log, input, { today, id, nowMin = null }) {
   const wall = cleanText(input?.wall, MAX_WALL);
-  if (!wall) return { error: '외벽을 골라 주세요.' };
+  if (!wall) return { error: '암장을 골라 주세요.' };
   if (!validDate(input?.date)) return { error: '날짜를 골라 주세요.' };
   if (input.date > today) return { error: '오늘 이후 날짜는 기록할 수 없어요.' };
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };

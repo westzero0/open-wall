@@ -1098,7 +1098,7 @@ function showTab(key, focus = false) {
 // toast says so; a name no longer in the list only gets the toast.
 function revealFromLog(name) {
   showTab('list');
-  if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 외벽이에요');
+  if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 암장이에요');
   const cleared = revealClearing(name);
   document.querySelector('#panel-list .row.is-open .row-btn')?.focus({ preventScroll: true });
   if (cleared) toast('조건을 모두 지우고 보여 드려요');

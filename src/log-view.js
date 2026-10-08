@@ -130,7 +130,7 @@ export function createLogView({
     const rest = items.filter((x) => !x.mine);
     const group = (label, list) => el('li', { class: 'la-grp', role: 'group', 'aria-label': label },
       el('p', { class: 'la-grp-hd', 'aria-hidden': 'true' }, label), el('ul', {}, ...list.map(row)));
-    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 외벽이 없어요. 이름 일부로 찾아보세요.')]
+    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]
       : mine.length && rest.length ? [group('내 지역', mine), group('그 밖', rest)]
         : items.map(row)));
   }
@@ -189,7 +189,7 @@ export function createLogView({
     trk.replaceChildren(...list.filter(([a, b]) => axisFrac(b) > axisFrac(a)).map(([a, b]) => placed('vt-bar', a, b)),
       ...visitBreaks(list).map(([a, b]) => placed('vt-brk', a, b)), ...ahead);
     trk.classList.toggle('off', Boolean(open) && !list.length);
-    timeNote.textContent = !wall ? '외벽을 고르면 그날 운영시간이 보여요.'
+    timeNote.textContent = !wall ? '암장을 고르면 그날 운영시간이 보여요.'
       : !open ? '날짜를 고르면 그날 운영시간이 보여요.'
         : !hasHours(wall) ? '운영시간 정보가 없어요. 시각은 골라도 돼요.'
           : !list.length ? '이 날은 휴무예요. 시각은 골라도 돼요.'
@@ -475,7 +475,7 @@ export function createLogView({
     const { places, visits } = activityStats(log, names, today());
     const { total, outside } = visitedCount(log, names);
     const rank = rankOf(places, total);
-    const nextSay = rank.next ? `${rank.next.name}까지 ${rank.next.need}곳 더` : '모든 외벽에 도장을 찍었어요';
+    const nextSay = rank.next ? `${rank.next.name}까지 ${rank.next.need}곳 더` : '모든 암장에 도장을 찍었어요';
     const bar = el('div', { class: 'lg-track', role: 'progressbar', 'aria-label': '다음 등급까지', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(rank.progress * 100)), 'aria-valuetext': nextSay },
       el('div', { class: 'lg-fill' }));
     bar.firstChild.style.width = `${rank.progress * 100}%`;
@@ -504,7 +504,7 @@ export function createLogView({
   function openRankInfo(places, total, from) {
     rankOpener = from;
     const cur = rankOf(places, total);
-    $('rank-info-note').textContent = `서로 다른 외벽 수로 올라가요. 같은 곳에 여러 번 가도 한 곳으로 세요. 지금 목록 ${total}곳 중 ${places}곳을 다녀왔어요.`;
+    $('rank-info-note').textContent = `서로 다른 암장 수로 올라가요. 같은 곳에 여러 번 가도 한 곳으로 세요. 지금 목록 ${total}곳 중 ${places}곳을 다녀왔어요.`;
     $('rank-info-list').replaceChildren(...tiersOf(total).map((t) => {
       const state = t.level < cur.level ? 'done' : t.level === cur.level ? 'now' : 'todo';
       const dots = el('span', { class: 'ri-dots', 'aria-hidden': 'true' }, ...[0, 1, 2, 3, 4].map((i) => el('i', { class: i <= t.level ? 'on' : '' })));
@@ -523,13 +523,13 @@ export function createLogView({
   }
 
   function empty() {
-    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'empty-add' }, '다녀온 외벽을 지금 기록하기');
+    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'empty-add' }, '다녀온 암장을 지금 기록하기');
     add.addEventListener('click', () => openAdd({ from: add }));
-    const home = el('button', { type: 'button', class: 'sh-toggle' }, '홈에서 외벽 보기');
+    const home = el('button', { type: 'button', class: 'sh-toggle' }, '홈에서 암장 보기');
     home.addEventListener('click', showList);
     return el('div', { class: 'lg-empty' },
       el('h3', {}, '아직 기록이 없어요'),
-      el('p', {}, '다녀온 외벽을 남기면 몇 곳을 다녀왔는지 모아 보여 드려요. 이 기기에만 저장돼요.'),
+      el('p', {}, '다녀온 암장을 남기면 몇 곳을 다녀왔는지 모아 보여 드려요. 이 기기에만 저장돼요.'),
       el('div', { class: 'lg-empty-btns' }, add, home));
   }
 

@@ -8,7 +8,7 @@
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
   <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <title>해벽 · 지금 열린 외벽</title>
-  <meta name="description" content="지금 열린 야외 인공암벽을 시간표로, 양달·응달까지 한눈에 볼 수 있어요.">
+  <meta name="description" content="지금 열린 실외암벽을 시간표로, 양달·응달까지 한눈에 볼 수 있어요.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="해벽">
   <meta property="og:type" content="website">
   <meta property="og:title" content="해벽 · 지금 열린 외벽">
-  <meta property="og:description" content="지금 열린 야외 인공암벽을 시간표로, 양달·응달까지 한눈에.">
+  <meta property="og:description" content="지금 열린 실외암벽을 시간표로, 양달·응달까지 한눈에.">
   <meta property="og:image" content="https://westzero0.github.io/open-wall/assets/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,11 +78,11 @@
         <p id="ib-title" class="ib-title"></p>
         <p id="ib-meta" class="ib-meta"></p>
         <p id="ib-note" class="ib-note" hidden></p>
-        <button type="button" class="ib-again" id="ib-again" hidden>이 외벽으로 새 초대 만들기</button>
+        <button type="button" class="ib-again" id="ib-again" hidden>이 암장으로 새 초대 만들기</button>
         <button type="button" class="ib-close" onclick="this.closest('aside').hidden = true">닫기</button>
       </aside>
       <section id="favs" class="favs" aria-labelledby="favs-title" hidden>
-        <h2 id="favs-title" class="band"><span>내 외벽</span> <span id="countFav"></span></h2>
+        <h2 id="favs-title" class="band"><span>내 암장</span> <span id="countFav"></span></h2>
         <ul id="fav-list" class="fav-list"></ul>
       </section>
       <details id="pick" class="pick" hidden>
@@ -119,8 +119,8 @@
     </div>
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
       <div class="mapbox">
-        <div id="map" role="region" aria-label="외벽 지도"></div>
-        <div id="pin-card" role="region" aria-label="선택한 외벽"></div>
+        <div id="map" role="region" aria-label="암장 지도"></div>
+        <div id="pin-card" role="region" aria-label="선택한 암장"></div>
         <p id="pin-live" class="sr-only" role="status"></p>
       </div>
       <p id="map-error" class="empty" hidden>지도를 불러오지 못했어요. 목록으로 확인해 주세요.</p>
@@ -140,7 +140,7 @@
     <details id="manage">
       <summary>데이터 관리</summary>
       <div class="manage-buttons">
-        <button type="button" id="addWall">외벽 추가</button>
+        <button type="button" id="addWall">암장 추가</button>
         <button type="button" id="loadNational">전국 목록 불러오기</button>
         <label class="file-btn">파일 가져오기 (CSV·JSON)
           <input type="file" id="importFile" accept=".csv,.json" hidden>
@@ -259,10 +259,10 @@
         </div>
         <fieldset class="sh-row la-pick">
           <legend>어디를 다녀왔나요</legend>
-          <label class="la-field"><span class="sr-only">외벽 검색</span><input type="search" name="q" placeholder="외벽 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
+          <label class="la-field"><span class="sr-only">암장 검색</span><input type="search" name="q" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
           <div class="la-near"><button type="button" class="sh-toggle la-locate">내 위치로 정렬</button><p class="sh-hint la-locate-note" role="status" hidden></p></div>
           <ul class="la-picks"></ul>
-          <p class="la-err" id="la-pick-err" hidden>외벽을 골라 주세요.</p>
+          <p class="la-err" id="la-pick-err" hidden>암장을 골라 주세요.</p>
         </fieldset>
         <div class="sh-row la-row">
           <label class="la-field"><span class="sh-label">날짜</span><input type="date" name="date" required aria-describedby="la-date-err"></label>
@@ -292,7 +292,7 @@
             <button type="button" class="crowd-pill" aria-pressed="false" value="보통">보통</button>
             <button type="button" class="crowd-pill" aria-pressed="false" value="혼잡">혼잡</button>
           </div>
-          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(외벽·시각·단계만).</p>
+          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(암장·시각·단계만).</p>
         </div>
         <p class="sh-row la-row sh-hint la-crowd-sent" hidden></p>
         <div class="sh-row la-row">
@@ -362,7 +362,7 @@
           <h2 id="report-title">정보 수정 요청</h2>
           <button type="button" class="sh-done" value="close" onclick="this.closest('dialog').close()">닫기</button>
         </div>
-        <p class="rp-field">외벽 이름<strong class="rp-name"></strong></p>
+        <p class="rp-field">암장 이름<strong class="rp-name"></strong></p>
         <fieldset class="sh-row">
           <legend>무엇이 달라졌나요</legend>
           <div class="segs">
@@ -417,8 +417,8 @@
     </dialog>
   </main>
   <footer class="wrap foot" id="about" tabindex="-1">
-    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 외벽의 정보 확인일은 펼친 카드에 표시돼요.</p>
-    <p>자료: 운영시간 등은 외벽 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
+    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
+    <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
     <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
     <p id="report-note" hidden>틀린 정보는 펼친 카드의 ‘정보 수정 요청’ 버튼으로 알려 주세요.</p>
     <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
