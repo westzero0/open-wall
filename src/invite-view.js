@@ -129,7 +129,15 @@ export function createInviteView({ getWalls }) {
   function render(was) {
     const { phase } = st;
     saveBtn.disabled = phase === 'making';
-    saveBtn.textContent = phase === 'making' ? '확정하는 중…' : '저장';
+    // 만드는 동안은 글자 대신 돌아가는 표시만 (스크린리더에는 aria-label 로 알림)
+    if (phase === 'making') {
+      saveBtn.replaceChildren(Object.assign(document.createElement('span'), { className: 'inv-spin' }));
+      saveBtn.querySelector('.inv-spin').setAttribute('aria-hidden', 'true');
+      saveBtn.setAttribute('aria-label', '그림을 확정하는 중이에요');
+    } else {
+      saveBtn.textContent = '저장';
+      saveBtn.removeAttribute('aria-label');
+    }
     saveBtn.setAttribute('aria-busy', String(phase === 'making'));
     for (const b of gated) b.setAttribute('aria-disabled', String(phase !== 'done'));
     why.hidden = phase === 'done';
@@ -138,7 +146,7 @@ export function createInviteView({ getWalls }) {
       if (picImg.src !== ready.url) picImg.src = ready.url;
       picImg.alt = `같이 가요 그림: ${picture.name}, ${picture.date} ${picture.time}`;
       if (was !== 'done') feedback('저장했어요. 이제 공유할 수 있어요.');
-    } else if (phase === 'making') feedback('그림을 확정하는 중이에요…');
+    } else if (phase === 'making') feedback('');
     else if (st.err) feedback(ERR[st.err]);
     else if (was === 'done') feedback('내용을 바꿨어요. 저장을 눌러 주세요.');
   }
