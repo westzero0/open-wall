@@ -1,5 +1,5 @@
 // src/share-image.js — the invite as a 9:16 picture (1080×1920) for a messenger or a story. Canvas only; no new dependency.
-// wrapLines is pure (tested); drawInvite and shareInvite need a browser. The picture cannot carry a link, so it is always
+// wrapLines, sunParts and shareSay are pure (tested); drawInvite, pictureBlob and shareInvite need a browser. The picture cannot carry a link, so it is always
 // shared together with the invite text, or saved while the text is copied when the phone cannot share files.
 const W = 1080;
 const H = 1920;
@@ -245,27 +245,62 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
   g.textAlign = 'left';
 }
 
-/**
- * shareInvite(canvas, text) → 'shared' | 'saved' | 'cancelled'
- * 'shared': the phone's share sheet took the picture and the text. 'saved': it cannot share files here, so the picture was
- * downloaded and the text copied (a copy that fails is thrown to the caller, which asks the user to copy it by hand).
- */
-export async function shareInvite(canvas, text) {
+/** pictureBlob(picture) → the invite picture as a PNG Blob, drawn off screen (drawn ahead, so the tap needs no wait). */
+export async function pictureBlob(picture) {
+  const canvas = document.createElement('canvas');
+  await drawInvite(canvas, picture);
   const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
-  const file = new File([blob], 'haebyeok-invite.png', { type: 'image/png' });
-  if (navigator.canShare?.({ files: [file], text }) && matchMedia('(pointer: coarse)').matches) {
-    try {
-      await navigator.share({ files: [file], text });
-      return 'shared';
-    } catch (e) {
-      if (e?.name === 'AbortError') return 'cancelled';
-    }
-  }
+  if (!blob) throw new Error('no picture');
+  return blob;
+}
+
+const FILE_NAME = 'haebyeok-invite.png';
+
+// the download: an anchor in the page (some browsers ignore a detached one), its URL kept for a minute (a slow phone)
+function saveFile(blob) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(file);
-  a.download = file.name;
+  a.href = URL.createObjectURL(blob);
+  a.download = FILE_NAME;
+  a.hidden = true;
+  document.body.append(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-  await navigator.clipboard.writeText(text);
-  return 'saved';
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+function saveAndCopy(blob, text) {
+  saveFile(blob);
+  let copy;
+  try { copy = navigator.clipboard.writeText(text); } catch (e) { copy = Promise.reject(e); }
+  return Promise.resolve(copy).then(() => ({ how: 'saved', copied: true }), () => ({ how: 'saved', copied: false }));
+}
+
+/**
+ * shareInvite(blob, text) → { via: 'share' | 'save', done: Promise<{ how: 'shared' | 'cancelled' | 'saved', copied? }> }
+ * Call it straight from the tap with a picture drawn beforehand: nothing is awaited before navigator.share or the download,
+ * so the browser still counts it as the user's tap. The picture has no link, so the text always goes with it: the phone's
+ * share sheet takes both; where files cannot be shared (or sharing fails) the picture is saved and the text copied.
+ * A failed copy does not fail the picture (copied: false).
+ */
+export function shareInvite(blob, text) {
+  const file = new File([blob], FILE_NAME, { type: 'image/png' });
+  if (navigator.canShare?.({ files: [file], text }) && matchMedia('(pointer: coarse)').matches) {
+    return {
+      via: 'share',
+      done: navigator.share({ files: [file], text }).then(() => ({ how: 'shared' }),
+        (e) => (e?.name === 'AbortError' ? { how: 'cancelled' } : saveAndCopy(blob, text))),
+    };
+  }
+  return { via: 'save', done: saveAndCopy(blob, text) };
+}
+
+/** shareSay(result) → what the sheet says after the picture went (stays until the next change). */
+export function shareSay({ how, copied } = {}) {
+  if (how === 'shared') return '공유 창을 열었어요. 그림과 문구를 함께 넘겼어요.';
+  if (how === 'cancelled') return '';
+  if (how === 'saved') {
+    return copied ? '그림을 저장했어요(다운로드 폴더). 문구도 복사했어요. 그림과 문구를 함께 보내세요.'
+      : '그림을 저장했어요(다운로드 폴더). 문구는 복사하지 못했어요. 위 보낼 문구를 길게 눌러 복사해 주세요.';
+  }
+  return '';
 }

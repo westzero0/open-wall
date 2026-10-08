@@ -1,6 +1,7 @@
 // src/ui-state.js — the saved screen state (filters, sort, tab, theme): defaults, cleaning old/broken values,
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
 // What is on screen but not saved (picked moment, open row, position) is view-state.js.
+import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
 const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any', favOnly: false, theme: 'auto' };
@@ -91,16 +92,12 @@ export function filterView(ui, { canPark, openTotal, isNow }) {
   };
 }
 
-// Share link: the page's own address with just ?wall=<name> (no ?edit, no hash). Names are the wall identity.
-export function shareUrl(href, name) {
-  const u = new URL(href);
-  u.search = '';
-  u.hash = '';
-  u.searchParams.set('wall', name);
-  return u.toString();
-}
+// Share link: the wall's static share page next to the app, w/<id>/ (no ?edit, no hash). The page carries the wall's own
+// link preview (og tags, made at deploy) and sends the visitor on to ?wall=<name>, which is where wallFromSearch takes over.
+export const shareUrl = (href, name) => sharePageUrl(href, name).toString();
 
 // The wall a share link names: exact (NFC) name match in the loaded list, else null. Never trusted beyond that.
+// Old ?wall=<name> links still land here directly.
 export function wallFromSearch(walls, search) {
   const name = new URLSearchParams(search).get('wall')?.normalize('NFC').trim();
   return name ? walls.find((w) => w.name.normalize('NFC') === name) ?? null : null;

@@ -70,7 +70,7 @@ function cleanOverride(v) {
 }
 
 const PARKING = ['free', 'paid', 'none', 'unknown'];
-const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
+export const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
 // A wall's own stamp artwork (src/stamp.js): an svg under data/stamps/, never a path that can leave it.
 export const STAMP_RE = /^stamps\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.svg$/;
 

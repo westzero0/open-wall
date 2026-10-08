@@ -5,6 +5,7 @@ import { hasHours, openIntervals } from './hours.js';
 import { isSunlit } from './sun.js';
 import { dayText, fmtMin, sunIntervals } from './viewmodel.js';
 import { CHAT_URL_RE } from './store.js';
+import { sharePageUrl } from './share-id.js';
 
 // The only tags an invite can carry: an id in the link, a label on screen. Free text never becomes a tag.
 export const TAGS = [['beginner', '초보 환영'], ['lead', '리드'], ['rope', '로프 챙겨 와요'], ['meet', '주차장에서 만나요']];
@@ -73,12 +74,12 @@ export function parseMoment(s) {
 
 export const momentString = (date, min) => `${date}T${p2(Math.floor(min / 60))}:${p2(min % 60)}`;
 
-/** buildInviteUrl(href, { name, date, min, n, tags, note }) → the page's own address with only the invite params. */
+/**
+ * buildInviteUrl(href, { name, date, min, n, tags, note }) → the wall's share page (w/<id>/, its own link preview) with only
+ * the invite params; the page adds wall=<name> and keeps these when it sends the visitor on to the app.
+ */
 export function buildInviteUrl(href, { name, date, min, n = null, kind = 'look', tags = [], note = '' }) {
-  const u = new URL(href);
-  u.search = '';
-  u.hash = '';
-  u.searchParams.set('wall', name);
+  const u = sharePageUrl(href, name);
   u.searchParams.set('at', momentString(date, min));
   const count = cleanCount(n);
   const kinds = cleanTags(tags);
