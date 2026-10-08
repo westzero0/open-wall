@@ -7,7 +7,7 @@
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
   <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
   <title>해벽 · 지금 열린 외벽</title>
-  <meta name="description" content="지금 열려 있는 실외 인공암벽과 양달·응달을 한눈에 보여주는 지도.">
+  <meta name="description" content="지금 열린 야외 인공암벽을 시간표로, 양달·응달까지 한눈에 볼 수 있어요.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="해벽">
   <meta property="og:type" content="website">
   <meta property="og:title" content="해벽 · 지금 열린 외벽">
-  <meta property="og:description" content="지금 열려 있는 실외 인공암벽과 양달·응달을 한눈에.">
+  <meta property="og:description" content="지금 열린 야외 인공암벽을 시간표로, 양달·응달까지 한눈에.">
   <meta property="og:image" content="https://westzero0.github.io/open-wall/assets/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,7 +61,7 @@
   </form>
   <main class="wrap">
     <div id="load-error" class="load-error" role="alert" hidden>
-      <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요. 지금 "0곳"이 아니라 목록이 없는 거예요.</p>
+      <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.</p>
       <button type="button" id="retry">다시 시도</button>
     </div>
     <div class="tabbar">
@@ -80,7 +80,7 @@
         <button type="button" class="ib-close" onclick="this.closest('aside').hidden = true">닫기</button>
       </aside>
       <section id="favs" class="favs" aria-labelledby="favs-title" hidden>
-        <h2 id="favs-title" class="band"><span>내 암장</span> <span id="countFav"></span></h2>
+        <h2 id="favs-title" class="band"><span>내 외벽</span> <span id="countFav"></span></h2>
         <ul id="fav-list" class="fav-list"></ul>
       </section>
       <details id="pick" class="pick" hidden>
@@ -146,7 +146,7 @@
         <button type="button" id="csvTemplate">CSV 양식 받기</button>
         <button type="button" id="exportJson">JSON 내보내기</button>
       </div>
-      <p class="muted">엑셀은 "CSV 양식"의 열 이름과 같은 헤더를 쓰고, 시간 칸은 텍스트(09:00-18:00)로, 전화번호도 텍스트로 입력하세요. 같은 이름의 외벽은 덮어씁니다.</p>
+      <p class="muted">엑셀은 "CSV 양식"의 열 이름과 같은 헤더를 쓰고, 시간 칸은 텍스트(09:00-18:00)로, 전화번호도 텍스트로 입력해 주세요. 같은 이름의 외벽은 덮어써요.</p>
     </details>
     <dialog id="conditions" class="sheet" aria-labelledby="conditions-title">
       <form method="dialog">
@@ -210,7 +210,7 @@
           <h2 id="profile-title">내 정보</h2>
           <button class="sh-done">닫기</button>
         </div>
-        <p class="pf-local">로그인 없이 이 기기에 저장돼요. 내 지역·화면 설정·기록은 이 브라우저에만 있고 어디로도 보내지 않아요.</p>
+        <p class="pf-local">로그인 없이 이 기기에 저장돼요. 내 지역·화면 설정·기록은 이 브라우저에만 저장돼요. 지도는 OpenStreetMap에서 불러와요.</p>
         <fieldset class="sh-row" id="regionRow">
           <legend>내 지역</legend>
           <p class="sh-hint">여러 곳을 고를 수 있어요. 고르지 않으면 전국이에요.</p>
@@ -245,7 +245,7 @@
           <a class="pf-link" id="pfReport" target="_blank" rel="noopener noreferrer">정보 제보하기 <span>구글 폼 · 새 창</span></a>
         </div>
         <div class="sh-row">
-          <a class="pf-link" id="pfAbout" href="#about">앱 정보 <span>자료 출처 · 만든 사람</span></a>
+          <a class="pf-link" id="pfAbout" href="#about">앱 정보 <span>자료 출처</span></a>
         </div>
       </form>
     </dialog>
@@ -408,7 +408,7 @@
     <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
     <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
     <p id="report-note" hidden>틀린 정보는 펼친 카드의 ‘정보 수정 요청’ 버튼으로 알려 주세요.</p>
-    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
+    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a> · <a href="https://www.instagram.com/burning__rock/" target="_blank" rel="noopener noreferrer">@burning__rock</a></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script type="module" src="src/app.js"></script>
