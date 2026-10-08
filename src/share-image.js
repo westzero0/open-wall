@@ -257,7 +257,7 @@ export async function pictureBlob(picture) {
 const FILE_NAME = 'haebyeok-invite.png';
 
 // the download: an anchor in the page (some browsers ignore a detached one), its URL kept for a minute (a slow phone)
-function saveFile(blob) {
+export function saveFile(blob) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = FILE_NAME;

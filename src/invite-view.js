@@ -6,7 +6,8 @@ import { dayText, fmtMin, sunIntervals } from './viewmodel.js';
 import { weekendDays } from './pick.js';
 import { CHAT_URL_RE } from './store.js';
 import { MAX_COUNT, MAX_NOTE, TAGS, buildInviteUrl, checkMoment, cleanNote, cleanTags, headsPhrase, inviteText } from './invite.js';
-import { pictureBlob, shareInvite, shareSay } from './share-image.js';
+import { pictureBlob, saveFile, shareInvite, shareSay } from './share-image.js';
+import { initialInviteState, nextInviteState } from './invite-state.js';
 import { openIntervals } from './hours.js';
 
 const $ = (id) => document.getElementById(id);
@@ -70,7 +71,7 @@ export function createInviteView({ getWalls }) {
       check.append('날짜와 시간을 골라 주세요.');
       $('inv-preview').textContent = '';
       picture = null;
-      drawSoon();
+      redraw();
       return;
     }
     if (past) check.append('이미 지난 시각이에요. 날짜나 시간을 바꿔 주세요.');
@@ -106,45 +107,70 @@ export function createInviteView({ getWalls }) {
       chatUrl: CHAT_URL_RE.test(wall.contact?.chat_url ?? '') ? wall.contact.chat_url : null,
       url: buildInviteUrl(location.href, { name: wall.name, ...f }),
     });
-    drawSoon();
+    redraw();
   }
   for (const name of ['date', 'time', 'n', 'note']) form.elements[name].addEventListener('input', update);
 
-  // The picture is drawn ahead, shortly after the last change, so a tap on 그림으로 공유 can hand it over at once (a wait
-  // between the tap and navigator.share or the download makes the browser refuse them). A picture of older values is never
-  // sent or shown: the key is everything it draws. The preview is there to long-press and save where downloads are blocked.
+  // The picture is drawn ahead, 0.8 s after the last change; 저장 fixes it for the values at that moment (invite-state.js).
+  // Only then do 그림으로 공유 and 그림 저장 work, and they hand over a Blob that is already there: nothing is awaited in the tap
+  // (a wait between the tap and navigator.share or the download makes the browser refuse them). A picture of older values is
+  // never sent or shown: the key is everything it draws.
   const pic = $('inv-pic');
   const picImg = $('inv-pic-img');
-  let ready = null; // { key, blob, url }
+  const saveBtn = $('inv-save');
+  const gated = [$('inv-image'), $('inv-dl')];
+  const why = $('inv-why');
+  let st = initialInviteState();
+  let ready = null; // { key, blob, url }: the last picture drawn for the current values
   let drawTimer;
   let drawingKey = null;
-  let waiting = false; // the user tapped before the picture was ready
-  const keyOf = () => JSON.stringify(picture);
-  function drawSoon(ms = 350) {
+  const keyOf = () => (picture && !past ? JSON.stringify(picture) : null);
+  const ERR = { past: '이미 지난 시각이에요. 날짜나 시간을 바꿔 주세요.', empty: '날짜와 시간을 골라 주세요.' };
+  function render(was) {
+    const { phase } = st;
+    saveBtn.disabled = phase === 'making';
+    saveBtn.textContent = phase === 'making' ? '확정하는 중…' : '저장';
+    saveBtn.setAttribute('aria-busy', String(phase === 'making'));
+    for (const b of gated) b.setAttribute('aria-disabled', String(phase !== 'done'));
+    why.hidden = phase === 'done';
+    pic.hidden = phase !== 'done';
+    if (phase === 'done') {
+      if (picImg.src !== ready.url) picImg.src = ready.url;
+      picImg.alt = `같이 가요 그림: ${picture.name}, ${picture.date} ${picture.time}`;
+      if (was !== 'done') feedback('저장했어요. 이제 공유할 수 있어요.');
+    } else if (phase === 'making') feedback('그림을 확정하는 중이에요…');
+    else if (st.err) feedback(ERR[st.err]);
+    else if (was === 'done') feedback('내용을 바꿨어요. 저장을 눌러 주세요.');
+  }
+  function dispatch(event) {
+    const was = st.phase;
+    st = nextInviteState(st, event);
+    render(was);
+  }
+  function drawSoon(ms) {
     clearTimeout(drawTimer);
-    if (!picture || past) { pic.hidden = true; return; }
-    if (ready?.key === keyOf()) { pic.hidden = false; return; }
-    pic.hidden = true;
+    const key = keyOf();
+    if (!key || ready?.key === key) return;
     drawTimer = setTimeout(async () => {
-      const key = keyOf();
       drawingKey = key;
       const blob = await pictureBlob(picture).catch(() => null);
       if (drawingKey === key) drawingKey = null;
-      if (key !== keyOf() || past) return; // changed meanwhile: a newer draw is on its way
+      if (key !== keyOf()) return; // changed meanwhile: a newer draw is on its way, this one is dropped
       if (!blob) {
-        if (waiting) feedback('그림을 만들지 못했어요. 공유하기나 문구 복사로 보내 주세요.');
-        waiting = false;
+        const wasMaking = st.phase === 'making';
+        dispatch({ type: 'failed', key });
+        if (wasMaking) feedback('그림을 만들지 못했어요. 공유하기나 문구 복사로 보내 주세요.');
         return;
       }
-      if (ready) { const old = ready.url; setTimeout(() => URL.revokeObjectURL(old), 60000); }
+      if (ready) URL.revokeObjectURL(ready.url);
       ready = { key, blob, url: URL.createObjectURL(blob) };
-      picImg.src = ready.url;
-      picImg.alt = `같이 가요 그림: ${picture.name}, ${picture.date} ${picture.time}`;
-      pic.hidden = false;
-      if (waiting) feedback('그림이 준비됐어요. ‘그림으로 공유’를 한 번 더 눌러 주세요.');
-      waiting = false;
+      dispatch({ type: 'drawn', key });
     }, ms);
   }
+  const redraw = () => {
+    dispatch({ type: 'change', key: keyOf() });
+    drawSoon(st.phase === 'making' ? 0 : 800);
+  };
 
   const feedback = (msg) => { say.textContent = msg; }; // cleared by the next change (update)
   async function send(viaSheet) {
@@ -164,20 +190,23 @@ export function createInviteView({ getWalls }) {
   }
   $('inv-share').addEventListener('click', () => send(true));
   $('inv-copy').addEventListener('click', () => send(false));
-  // no await before shareInvite: the tap's permission to share or download must still hold
+  saveBtn.addEventListener('click', () => {
+    dispatch({ type: 'save', key: keyOf(), past });
+    if (st.phase === 'making' && drawingKey !== st.key) drawSoon(0);
+  });
+  // no await before shareInvite or saveFile: the tap's permission to share or download must still hold
+  const needSave = () => st.phase !== 'done' && (feedback('먼저 저장을 눌러 주세요.'), true);
   $('inv-image').addEventListener('click', () => {
-    if (past) return feedback('이미 지난 시각이에요. 날짜나 시간을 바꿔 주세요.');
-    const text = $('inv-preview').textContent;
-    if (!text || !picture) return feedback('날짜와 시간을 골라 주세요.');
-    if (ready?.key !== keyOf()) {
-      waiting = true;
-      if (drawingKey !== keyOf()) drawSoon(0);
-      return feedback('그림을 만드는 중이에요… 다 되면 한 번 더 눌러 주세요.');
-    }
-    const { via, done } = shareInvite(ready.blob, text);
+    if (needSave()) return;
+    const { via, done } = shareInvite(ready.blob, $('inv-preview').textContent);
     if (via === 'share') feedback('공유 창을 열었어요.');
     const key = ready.key;
-    done.then((r) => { if (key === keyOf()) feedback(shareSay(r)); });
+    done.then((r) => { if (key === keyOf() && st.phase === 'done') feedback(shareSay(r)); });
+  });
+  $('inv-dl').addEventListener('click', () => {
+    if (needSave()) return;
+    saveFile(ready.blob);
+    feedback('그림을 저장했어요(다운로드 폴더). 문구는 복사하지 않았어요.');
   });
 
   function openInvite(name) {
@@ -193,7 +222,7 @@ export function createInviteView({ getWalls }) {
     form.elements.date.value = ymd(first);
     form.elements.time.value = '14:00';
     $('inv-wall').textContent = wall.name; // read-only text
-    waiting = false;
+    dispatch({ type: 'open' });
     update();
     dlg.showModal();
   }
