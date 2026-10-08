@@ -9,7 +9,7 @@ import { CHAT_URL_RE } from './store.js';
 // The only tags an invite can carry: an id in the link, a label on screen. Free text never becomes a tag.
 export const TAGS = [['beginner', '초보 환영'], ['lead', '리드'], ['rope', '로프 챙겨 와요'], ['meet', '주차장에서 만나요']];
 export const MAX_NOTE = 40;
-export const MAX_COUNT = 20;
+export const MAX_COUNT = 10;
 
 const p2 = (n) => String(n).padStart(2, '0');
 const toDate = (ymd) => {
@@ -51,6 +51,16 @@ export function cleanCount(v) {
   return n >= 1 && n <= MAX_COUNT ? n : null;
 }
 
+/** cleanKind(v) → 'have' (a group is already going) or 'look' (looking for people); anything else is 'look'. */
+export const cleanKind = (v) => (v === 'have' ? 'have' : 'look');
+
+/** headsPhrase(n, kind) → "3명 정도 찾아요" / "3명 있어요"; null without a head-count. */
+export const headsPhrase = (n, kind = 'look') => {
+  const count = cleanCount(n);
+  if (!count) return null;
+  return cleanKind(kind) === 'have' ? `${count}명 있어요` : `${count}명 정도 찾아요`;
+};
+
 /** parseMoment('2026-10-10T14:30') → { date, min } for a real calendar day and a real time, else null. */
 export function parseMoment(s) {
   const m = typeof s === 'string' ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(s) : null;
@@ -64,7 +74,7 @@ export function parseMoment(s) {
 export const momentString = (date, min) => `${date}T${p2(Math.floor(min / 60))}:${p2(min % 60)}`;
 
 /** buildInviteUrl(href, { name, date, min, n, tags, note }) → the page's own address with only the invite params. */
-export function buildInviteUrl(href, { name, date, min, n = null, tags = [], note = '' }) {
+export function buildInviteUrl(href, { name, date, min, n = null, kind = 'look', tags = [], note = '' }) {
   const u = new URL(href);
   u.search = '';
   u.hash = '';
@@ -74,6 +84,7 @@ export function buildInviteUrl(href, { name, date, min, n = null, tags = [], not
   const kinds = cleanTags(tags);
   const text = cleanNote(note);
   if (count) u.searchParams.set('n', String(count));
+  if (count && cleanKind(kind) === 'have') u.searchParams.set('k', 'have'); // looking is the default, so it is not written
   if (kinds.length) u.searchParams.set('tags', kinds.join(','));
   if (text) u.searchParams.set('note', text);
   return u.toString();
@@ -90,29 +101,38 @@ export function parseInvite(search, now = new Date()) {
   if (!name || !at) return null;
   const when = toDate(at.date);
   when.setMinutes(at.min);
-  return { name, ...at, n: cleanCount(p.get('n')), tags: cleanTags(p.get('tags')), note: cleanNote(p.get('note')), past: when < now };
+  return { name, ...at, n: cleanCount(p.get('n')), kind: cleanKind(p.get('k')), tags: cleanTags(p.get('tags')), note: cleanNote(p.get('note')), past: when < now };
 }
 
-// "그때는 양달이에요 (17:50까지)" / "그때는 응달이에요 (10:20부터 양달)"; null for no facing known or an indoor wall
-function sunLineOf(wall, day, min) {
+// How the sun is then: null (no facing known, or indoors) | { kind: 'night' } | { kind: 'lit', until } | { kind: 'shade', from }
+// (from: when it turns sunny, or null for shade the rest of the day). Minutes since midnight.
+function sunInfoOf(wall, day, min) {
   if (wall.venue === 'indoor') return null;
   const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(min / 60), min % 60);
   const noon = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12);
   if (isSunlit(wall, noon).lit === null) return null;
-  if (isSunlit(wall, at).reason === 'night') return '그때는 해가 없는 시간이에요';
+  if (isSunlit(wall, at).reason === 'night') return { kind: 'night' };
   const sun = sunIntervals(wall, day);
   const lit = sun.find(([a, b]) => a <= min && min < b);
-  if (lit) return `그때는 양달이에요 (${fmtMin(lit[1])}까지)`;
+  if (lit) return { kind: 'lit', until: lit[1] };
   const next = sun.find(([a]) => a > min);
-  return next ? `그때는 응달이에요 (${fmtMin(next[0])}부터 양달)` : '그때는 응달이에요';
+  return { kind: 'shade', from: next ? next[0] : null };
+}
+
+// "그때는 양달이에요 (17:50까지)" / "그때는 응달이에요 (10:20부터 양달)"; null when there is no news
+function sunLineOf(info) {
+  if (!info) return null;
+  if (info.kind === 'night') return '그때는 해가 없는 시간이에요';
+  if (info.kind === 'lit') return `그때는 양달이에요 (${fmtMin(info.until)}까지)`;
+  return info.from === null ? '그때는 응달이에요' : `그때는 응달이에요 (${fmtMin(info.from)}부터 양달)`;
 }
 
 /**
- * checkMoment(wall, date, min) → { state: 'open' | 'closed' | 'unknown', alt, closedDay, sunLine }
+ * checkMoment(wall, date, min) → { state: 'open' | 'closed' | 'unknown', alt, closedDay, sunLine, sunInfo }
  * alt: a better time when it is closed then (the next opening that day, else two hours before the last closing).
  */
 export function checkMoment(wall, date, min) {
-  if (!hasHours(wall)) return { state: 'unknown', alt: null, closedDay: false, sunLine: null };
+  if (!hasHours(wall)) return { state: 'unknown', alt: null, closedDay: false, sunLine: null, sunInfo: null };
   const day = toDate(date);
   const open = openIntervals(wall, day);
   const isOpen = open.some(([a, b]) => a <= min && min < b);
@@ -122,14 +142,15 @@ export function checkMoment(wall, date, min) {
     const last = open[open.length - 1];
     alt = next ? next[0] : Math.max(last[0], last[1] - 120);
   }
-  return { state: isOpen ? 'open' : 'closed', alt, closedDay: open.length === 0, sunLine: sunLineOf(wall, day, min) };
+  const sunInfo = sunInfoOf(wall, day, min);
+  return { state: isOpen ? 'open' : 'closed', alt, closedDay: open.length === 0, sunLine: sunLineOf(sunInfo), sunInfo };
 }
 
 /** inviteText({ name, date, min, n, tags, note, sunLine, chatUrl, url }) → the message to send, one fact per line. */
-export function inviteText({ name, date, min, n = null, tags = [], note = '', sunLine = null, caution = false, chatUrl = null, url }) {
+export function inviteText({ name, date, min, n = null, kind = 'look', tags = [], note = '', sunLine = null, caution = false, chatUrl = null, url }) {
   const labels = cleanTags(tags).map((id) => TAGS.find(([t]) => t === id)[1]);
   const count = cleanCount(n);
-  const who = [...labels, count ? `${count}명 정도 찾아요` : null].filter(Boolean).join(' · ');
+  const who = [...labels, headsPhrase(count, kind)].filter(Boolean).join(' · ');
   const words = cleanNote(note);
   return [
     `[해벽] ${name} 같이 가요`,

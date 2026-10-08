@@ -870,7 +870,10 @@ dialog::backdrop { background: var(--scrim); }
   border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg);
 }
 .rp-field textarea { resize: vertical; white-space: pre-wrap; }
-.rp-extra[hidden] { display: none; }
+.rp-extra[hidden], .rp-nick[hidden] { display: none; }
+.pf-rank[hidden] { display: none; }
+.pf-rank-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--fs-sm); }
+.pf-rank-list b { display: inline-block; min-width: 2.2em; color: var(--accent); }
 .rp-chat-name { user-select: all; -webkit-user-select: all; color: var(--fg); overflow-wrap: anywhere; } /* one tap selects the whole name, to copy */
 /* the foot of a card: 정보가 달라요 · 오픈채팅방 알려주기, quiet text links (the 44px height is the tap area) */
 .help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 18px; margin-top: 6px; } /* right-aligned: out of the way of the card's content */
@@ -974,7 +977,7 @@ p.setnew { margin-top: 8px; }
 .expand-in .been-btn svg { flex: none; width: 15px; height: 15px; }
 .expand-in .been-btn::after { content: ""; position: absolute; inset: -5px 0; }
 .expand-in .been-btn:active { transform: scale(.97); }
-.been-stamp { flex: none; width: 15px; height: 15px; background: var(--fg); }
+.been-stamp { flex: none; width: 20px; height: 20px; background: var(--fg); }
 .been-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .been-stamp.stamp-in { animation: none; } }
 .mylog { margin-top: 12px; }
@@ -986,13 +989,29 @@ p.setnew { margin-top: 8px; }
 
 /* ---- 기록 tab ---- */
 #panel-log { margin-top: 14px; display: grid; gap: 14px; }
-.lg-prog { padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
-.lg-prog-hd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.lg-prog p { font-weight: 600; }
-.lg-prog p b { font-size: 1.5rem; color: var(--open); }
-.lg-track { height: 10px; margin-top: 10px; border-radius: var(--r-pill); background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+/* 내 활동: the 등급 seal + name, the bar to the next tier, the numbers */
+.lg-act { padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.lg-act-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.lg-act-rank { flex: 1 1 8rem; min-width: 0; }
+.lg-act-rank b { font-size: var(--fs-lg); color: var(--open); }
+.lg-act-rank p:first-child { font-weight: 600; }
+.lg-act-next { font-size: var(--fs-sm); color: var(--muted); }
+.lg-track { height: 10px; margin-top: 12px; border-radius: var(--r-pill); background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .lg-fill { height: 100%; border-radius: inherit; background: var(--open); }
-.lg-prog small { display: block; margin-top: 6px; font-size: var(--fs-xs); color: var(--muted); }
+.lg-act-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; list-style: none; margin: 12px 0 0; padding: 0; }
+.lg-act-stats li { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-sm); color: var(--muted); }
+.lg-act-stats b { font-size: var(--fs-base); color: var(--fg); white-space: nowrap; }
+.lg-act small { display: block; margin-top: 6px; font-size: var(--fs-xs); color: var(--muted); }
+.lg-act-none { display: flex; align-items: center; gap: 12px; padding: 0 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.lg-act-none .rk-seal { width: 44px; height: 44px; }
+/* the 등급 seal: the first-visit stamp (해벽 mark in a double rim); -1 (none yet) a dashed outline. The tier is the name and bar beside it. */
+.rk-seal { flex: none; display: grid; place-items: center; width: 68px; height: 68px; margin: 6px; border-radius: 50%; border: 2px solid var(--open); color: var(--open); }
+.rk-seal .stamp { width: 46%; height: 46%; transform: rotate(8deg); }
+.rk-seal:not([data-level="-1"]) { outline: 1.5px solid var(--open); outline-offset: 3px; } /* the same double rim as a first-visit stamp: the level is the name beside it, not rings */
+.rk-seal[data-level="-1"] { border: 2px dashed var(--line-strong); }
+.rk-seal[data-level="-1"] .stamp { background: var(--muted); opacity: .5; }
+.rk-seal.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .rk-seal.stamp-in { animation: none; } }
 .lg-add {
   min-height: var(--tap); padding: 0 14px; border: 1px solid var(--accent); border-radius: var(--r-pill); background: var(--surface);
   color: var(--accent); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap;
@@ -1025,15 +1044,21 @@ p.setnew { margin-top: 8px; }
 .cal-badge { position: absolute; top: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
 .cal-day[aria-current="date"] { border: 2px solid var(--fg); }
 td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
-/* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the day number sits on it in the page colour */
-.stamp { display: block; background: var(--open); opacity: var(--ink, 1); -webkit-mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; transform: rotate(var(--tilt, 0deg)); }
-.cal-stamp { position: absolute; z-index: 0; left: 50%; top: 50%; width: 64%; max-width: 40px; aspect-ratio: 1; margin: calc(max(-20px, -32%)) 0 0 calc(max(-20px, -32%)); }
+/* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the calendar's stamp is pressed over the day number and covers it (the button's aria-label carries the date) */
+.stamp { display: block; background: var(--open); -webkit-mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; }
+.cal-stamp { position: absolute; z-index: 2; pointer-events: none; left: 50%; top: 50%; width: 68%; max-width: 42px; aspect-ratio: 1; margin: calc(max(-21px, -34%)) 0 0 calc(max(-21px, -34%)); }
 .cal-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
-@keyframes stamp-in { from { transform: rotate(var(--tilt, 0deg)) scale(1.15); } to { transform: rotate(var(--tilt, 0deg)) scale(1); } }
+@keyframes stamp-in { from { transform: scale(1.15); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cal-stamp.stamp-in { animation: none; } }
 .cal-day .cal-n { position: relative; z-index: 1; }
-.cal-day:has(.cal-stamp) .cal-n { color: var(--bg); }
-.rec-stamp { flex: none; align-self: center; width: 22px; height: 22px; margin-left: 12px; }
+.rec-stamp { position: relative; flex: none; align-self: center; width: 28px; height: 28px; margin: 0 2px 0 12px; }
+/* the record's seal: mark in a rim; a 2nd rim = first visit to the wall; the sun dot rides the rim (filled sunny, hollow shade) */
+.seal { box-sizing: border-box; border: 1.5px solid var(--open); border-radius: 50%; }
+.seal.first { outline: 1.5px solid var(--open); outline-offset: 2px; }
+.seal > .stamp { position: absolute; inset: 14%; transform: rotate(8deg); } /* every stamp leans the same way: pressed a little clockwise */
+.seal > .sun { position: absolute; width: 22%; height: 22%; min-width: 5px; min-height: 5px; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid var(--open); }
+.seal > .sun.lit { background: var(--open); box-shadow: 0 0 0 1.5px var(--bg); }
+.seal > .sun.shade { background: var(--bg); }
 .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .lg-day h3 { font-size: var(--fs-base); outline-offset: 2px; }
 .lg-day h3 span { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
@@ -1071,6 +1096,10 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-when { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .inv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin-top: 10px; }
 .inv-when .inv-field { margin-top: 0; }
+.inv-count { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.inv-kind { display: flex; border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; }
+.inv-kind button { min-height: var(--tap); padding: 0 14px; border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; }
+.inv-kind button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .inv-field input, .inv-field select { width: 100%; min-height: var(--tap); padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
 .inv-check { min-height: 1.4em; margin: 0; padding: 8px 0; font-size: var(--fs-sm); }
 .inv-alt { min-height: var(--tap); padding: 0 4px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
@@ -1078,10 +1107,11 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-preview { margin: 6px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--sunken); font: inherit; font-size: var(--fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
 .inv-say { min-height: 1.4em; margin: 0; padding-top: 6px; color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
 .inv-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
-.inv-send, .inv-copy { min-height: var(--tap); border-radius: var(--radius); font: inherit; font-weight: 700; }
+.inv-send, .inv-copy, .inv-image { min-height: var(--tap); border-radius: var(--radius); font: inherit; font-weight: 700; }
 .inv-send { border: 0; background: var(--accent); color: #fff; }
-.inv-copy { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); }
-:is(.inv-alt, .inv-send, .inv-copy, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.inv-copy, .inv-image { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); white-space: nowrap; }
+.inv-image { grid-column: 1 / -1; }
+:is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .invite-banner { margin: 10px 0 0; padding: 12px 14px 4px; border: 1px solid var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }

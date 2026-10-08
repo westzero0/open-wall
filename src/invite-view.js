@@ -2,10 +2,12 @@
 // Logic is in invite.js; this file only draws and wires it. Whatever came from a link is shown with textContent.
 import { el } from './dom.js';
 import { ymd } from './time.js';
-import { dayText, fmtMin } from './viewmodel.js';
+import { dayText, fmtMin, sunIntervals } from './viewmodel.js';
 import { weekendDays } from './pick.js';
 import { CHAT_URL_RE } from './store.js';
-import { MAX_COUNT, MAX_NOTE, TAGS, buildInviteUrl, checkMoment, cleanNote, inviteText } from './invite.js';
+import { MAX_COUNT, MAX_NOTE, TAGS, buildInviteUrl, checkMoment, cleanNote, cleanTags, headsPhrase, inviteText } from './invite.js';
+import { drawInvite, shareInvite } from './share-image.js';
+import { openIntervals } from './hours.js';
 
 const $ = (id) => document.getElementById(id);
 const toMin = (hhmm) => {
@@ -22,6 +24,8 @@ export function createInviteView({ getWalls }) {
   let wall = null;
   let tags = new Set();
   let past = false;
+  let kind = 'look'; // 'look': looking for people; 'have': a group is already going
+  let picture = null; // what the picture shows, set with the preview
 
   // ---- the sheet
   const tagBox = $('inv-tags');
@@ -35,14 +39,22 @@ export function createInviteView({ getWalls }) {
     tagBox.append(b);
   }
   const count = form.elements.n;
-  count.append(el('option', { value: '' }, '인원 미정'), ...Array.from({ length: MAX_COUNT }, (_, i) => el('option', { value: String(i + 1) }, `${i + 1}명 정도 찾아요`)));
+  count.append(el('option', { value: '' }, '인원 미정'), ...Array.from({ length: MAX_COUNT }, (_, i) => el('option', { value: String(i + 1) }, `${i + 1}명`)));
+  const kindBtns = [...dlg.querySelectorAll('.inv-kind button')];
+  for (const b of kindBtns) {
+    b.addEventListener('click', () => {
+      kind = b.dataset.kind;
+      for (const o of kindBtns) o.setAttribute('aria-pressed', String(o === b));
+      update();
+    });
+  }
   form.elements.note.maxLength = MAX_NOTE;
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close());
 
   const fields = () => ({
     date: form.elements.date.value, min: toMin(form.elements.time.value),
-    n: form.elements.n.value, tags: [...tags], note: form.elements.note.value,
+    n: form.elements.n.value, kind, tags: [...tags], note: form.elements.note.value,
   });
 
   // the check line (open or not, the sun) and the preview of what will be sent
@@ -74,9 +86,20 @@ export function createInviteView({ getWalls }) {
       }
     }
     const open = !past && checkMoment(wall, f.date, f.min);
+    const caution = !!open && open.state !== 'open'; // closed then, or hours unknown: the message says to check
+    const sunLine = open && open.state === 'open' ? open.sunLine : null;
+    const day = new Date(`${f.date}T00:00`);
+    const hasOpen = !past && open && open.state !== 'unknown';
+    const kinds = cleanTags(f.tags).map((id) => TAGS.find(([t]) => t === id)[1]);
+    picture = {
+      name: wall.name, date: dayText(day), time: fmtMin(f.min), at: f.min,
+      open: hasOpen ? openIntervals(wall, day) : [], sun: open && open.sunLine !== null ? sunIntervals(wall, day) : [],
+      sunLine: caution ? '※ 운영시간 확인 필요' : sunLine, sunInfo: caution ? null : open?.sunInfo ?? null,
+      tags: [...kinds, headsPhrase(f.n, f.kind)].filter(Boolean), note: cleanNote(f.note),
+      made: `${ymd(now)} ${fmtMin(now.getHours() * 60 + now.getMinutes())}`.replace(/-/g, '.'), // 2026.10.08 14:32
+    };
     $('inv-preview').textContent = inviteText({
-      name: wall.name, ...f, sunLine: open && open.state === 'open' ? open.sunLine : null,
-      caution: !!open && open.state !== 'open', // closed then, or hours unknown: the message says to check
+      name: wall.name, ...f, sunLine, caution,
       chatUrl: CHAT_URL_RE.test(wall.contact?.chat_url ?? '') ? wall.contact.chat_url : null,
       url: buildInviteUrl(location.href, { name: wall.name, ...f }),
     });
@@ -106,11 +129,26 @@ export function createInviteView({ getWalls }) {
   }
   $('inv-share').addEventListener('click', () => send(true));
   $('inv-copy').addEventListener('click', () => send(false));
+  $('inv-image').addEventListener('click', async () => {
+    if (past) return feedback('이미 지난 시각이에요. 날짜나 시간을 바꿔 주세요.');
+    const text = $('inv-preview').textContent;
+    if (!text || !picture) return feedback('날짜와 시간을 골라 주세요.');
+    try {
+      const canvas = document.createElement('canvas');
+      await drawInvite(canvas, picture);
+      const how = await shareInvite(canvas, text);
+      if (how === 'saved') feedback('그림을 저장하고 문구를 복사했어요. 그림과 문구를 함께 보내세요.');
+    } catch {
+      prompt('문구를 복사하세요', text); // no clipboard or no canvas: the text still goes
+    }
+  });
 
   function openInvite(name) {
     wall = getWalls().find((w) => w.name === name) ?? null;
     if (!wall) return;
     tags = new Set();
+    kind = 'look';
+    for (const b of kindBtns) b.setAttribute('aria-pressed', String(b.dataset.kind === 'look'));
     for (const b of tagBox.children) b.setAttribute('aria-pressed', 'false');
     form.reset();
     const first = weekendDays(new Date())[0].date; // the nearest weekend day, 14:00: a sensible start to change
@@ -131,7 +169,7 @@ export function createInviteView({ getWalls }) {
       const when = `${dayText(new Date(`${inv.date}T00:00`))} ${fmtMin(inv.min)}`;
       $('ib-title').textContent = inv.past ? `지난 약속이에요 · ${when}` : `같이 가요 초대 · ${when}`;
       const labels = inv.tags.map((id) => TAGS.find(([t]) => t === id)[1]);
-      $('ib-meta').textContent = [found.name, ...labels, inv.n ? `${inv.n}명 정도 찾아요` : null].filter(Boolean).join(' · ');
+      $('ib-meta').textContent = [found.name, ...labels, headsPhrase(inv.n, inv.kind)].filter(Boolean).join(' · ');
       const note = $('ib-note');
       const words = cleanNote(inv.note); // cleaned again where it is shown
       note.hidden = !words;
