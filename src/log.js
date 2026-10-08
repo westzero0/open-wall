@@ -4,12 +4,11 @@
 // Everything read (localStorage, an imported file) is untrusted and goes through normalizeLog.
 
 export const LOG_KEY = 'open-wall:log';
-export const TIP_KEY = 'open-wall:log-tip'; // '1' once the "back it up" note was closed
 export const MAX_RECORDS = 2000;
 export const MAX_MEMO = 100;
 export const MAX_WALL = 100;
 export const MAX_IMPORT_BYTES = 1_000_000;
-export const TIP_AT = 5; // the backup note shows once this many records exist
+export const TIP_AT = 5; // the save toast mentions the backup once, when this many records exist
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -139,7 +138,7 @@ export function saveLog(storage, log) {
  */
 export function addRecord(log, input, { today, id, nowMin = null }) {
   const wall = cleanText(input?.wall, MAX_WALL);
-  if (!wall) return { error: '암장을 골라 주세요.' };
+  if (!wall) return { error: '외벽을 골라 주세요.' };
   if (!validDate(input?.date)) return { error: '날짜를 골라 주세요.' };
   if (input.date > today) return { error: '오늘 이후 날짜는 기록할 수 없어요.' };
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };

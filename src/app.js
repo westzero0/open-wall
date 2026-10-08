@@ -1,5 +1,5 @@
 import { buildList } from './listing.js';
-import { DAY_KO, hhmm, ymd } from './time.js';
+import { DAY_KO, hhmm } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
@@ -7,8 +7,8 @@ import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
-  axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, isLivePick, mapPins, NTH_KO,
-  regionGroups, regionList, scopeRows, seasonSun, shortName, sliderValue, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
+  axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
+  regionGroups, regionList, scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
@@ -17,7 +17,8 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, keepOpenRow, loadUi, saveUi as storeUi, shareUrl, skipTick, wallFromSearch } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch } from './ui-state.js';
+import { clockView, initialView, step } from './view-state.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
@@ -41,6 +42,8 @@ const ICONS = {
   pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
   sliders: ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
+  info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
+  calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
 };
 function icon(name, filled = false) {
@@ -61,6 +64,7 @@ applyTheme(ui.theme);
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
 const logView = createLogView({
   storage,
+  icon,
   getWalls: () => state.walls,
   getFavs: () => favs,
   onChange: () => render(),
@@ -69,7 +73,7 @@ const logView = createLogView({
   crowdAsk: (wall, date, time) => crowdAsk(wall, date, time),
   sendCrowd: (wall, level, date, time) => sendCrowd(wall, level, date, time),
   getRegions: () => ui.regions,
-  getOrigin: () => origin,
+  getOrigin: () => vs.origin,
   requestLocate: () => locate(false),
   addFav: (name) => {
     if (favs.includes(name)) return;
@@ -85,11 +89,25 @@ createProfileView({
   exportFile: logView.exportFile,
   importFile: logView.importFile,
 });
-let origin = null; // {lat, lng} after "내 위치"
-let locateNote = '';
-let live = true; // date/time follow the clock until the user picks another moment
-let openName = null; // the expanded timetable row, kept by wall name across re-renders
-let openState = null; // that row's status.state, so a row that moves to another group is forgotten
+// ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
+// Every change goes through go(event): view-state.js decides the next state and the follow-ups, run here in order.
+let vs = initialView();
+const FX = {
+  render: () => render(),
+  crowd: () => loadCrowd(),
+  sortDistance: () => {
+    ui.sortMode = 'distance';
+    sheetForm.elements.sortMode.value = 'distance';
+    saveUi();
+  },
+  setUser: () => mapApi?.setUser(vs.origin),
+};
+function go(ev) {
+  const r = step(vs, ev, new Date());
+  vs = r.vs;
+  for (const f of r.fx) FX[f]();
+  return r.fx;
+}
 let allRows = []; // last built rows before any filter: the 내 암장 strip shows a favorite whatever the filters hide
 let shown = { rows: [], at: null }; // last rendered rows (all groups, with distance) for the map
 let mapApi = null; // created the first time the map tab opens
@@ -241,12 +259,10 @@ function gridAxis(nowMin) {
 const clipDay = (list) => list.map(([a, b]) => [a, Math.min(b, 1440)]).filter(([a, b]) => axisFrac(b) > axisFrac(a));
 const overlapOf = (a, b) => a.flatMap(([s, e]) => b.map(([x, y]) => [Math.max(s, x), Math.min(e, y)])).filter(([s, e]) => e > s);
 
-const gridSeason = new Map(); // wall name → the season being previewed ('summer'/'winter'); absent = the picked day's own
-
 // Hours grid: Mon–Sun + 공휴일 on 06–24. Today's row: highlighted, the time line, today's sun over it (solid where
 // it meets the real open hours of the day). 휴게·휴무 hatched. Previewing the other season hides the time line.
 function hoursGrid(wall, at) {
-  const wk = weeklyHours(wall, at, gridSeason.get(wall.name));
+  const wk = weeklyHours(wall, at, vs.season[wall.name]); // a season being previewed, else the picked day's own
   if (!wk.rows.length) return null;
   const ws = winterSpan(wall);
   const live = !wk.preview;
@@ -259,9 +275,7 @@ function hoursGrid(wall, at) {
     ...[['summer', '하계'], ['winter', '동계']].map(([k, label]) => {
       const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k) }, label);
       b.addEventListener('click', () => {
-        const current = weeklyHours(wall, at).season;
-        if (k === current) gridSeason.delete(wall.name);
-        else gridSeason.set(wall.name, k);
+        go({ type: 'season', name: wall.name, pick: k, current: weeklyHours(wall, at).season });
         const next = hoursGrid(wall, at);
         sec.replaceWith(next);
         next.querySelector(`[data-season="${k}"]`)?.focus();
@@ -357,8 +371,7 @@ function seasonSunBlock(wall, at, d) {
 }
 
 // The folded part: one picture at a time, [운영시간] [계절별 양달] tabs (arrows/Home/End move). Starts on 운영시간
-// each time the row opens (moreTab resets with moreOpen); the switch is instant, no motion.
-let moreTab = 0;
+// each time the row opens (vs.moreTab resets with the row); the switch is instant, no motion.
 function moreTabs(wall, at, d, id) {
   const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)]].filter(([, p]) => p);
   if (panes.length < 2) return panes.map(([, p]) => p);
@@ -367,7 +380,7 @@ function moreTabs(wall, at, d, id) {
   }, label));
   const panels = panes.map(([, p], i) => el('div', { role: 'tabpanel', id: `${id}-p${i}`, 'aria-labelledby': `${id}-t${i}`, class: 'm-panel' }, p));
   const pick = (n, focus) => {
-    moreTab = n;
+    go({ type: 'tab', n });
     tabs.forEach((t, i) => {
       t.setAttribute('aria-selected', String(i === n));
       t.tabIndex = i === n ? 0 : -1;
@@ -384,7 +397,7 @@ function moreTabs(wall, at, d, id) {
       pick((n + tabs.length) % tabs.length, true);
     });
   });
-  pick(Math.min(moreTab, tabs.length - 1), false);
+  pick(Math.min(vs.moreTab, tabs.length - 1), false);
   return [el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels];
 }
 
@@ -481,17 +494,11 @@ function renderFavStrip() {
 // ---- 이번 주말 추천 (src/pick.js): a folded line above the timetable ----
 let pickDay = 0;
 let pickPref = 'auto';
-let pickKey = '';
 const PICK_PREFS = [['auto', '자동'], ['shade', '응달'], ['sun', '양달'], ['any', '오래']];
 const PICK_WORD = { shade: '응달 우선', sun: '양달 우선', any: '오래 탈 수 있는 곳' };
 
 // Jump the date and time controls to a moment (the same state a visitor gets by picking it), then re-render.
-function goToMoment(date, min) {
-  $('date').value = ymd(date);
-  $('time').value = String(sliderValue(min));
-  live = isLivePick($('date').value, Number($('time').value), new Date());
-  render();
-}
+const goToMoment = (date, min) => go({ type: 'moment', date, min });
 
 // A wall's picture for the pick: its photo (fixed box, lazy), else a grey mark of the logo and, on a tile, the wall's
 // height in metres. Decorative: the name and the reason beside it say everything.
@@ -526,7 +533,7 @@ function renderPick() {
   pickDay = Math.min(pickDay, r.days.length - 1);
   const cur = r.byDay[pickDay];
   const top = cur.items[0];
-  const go = (it) => {
+  const goPick = (it) => {
     const first = (r.pref === 'shade' ? it.shade : r.pref === 'sun' ? it.sun : it.open)?.[0]?.[0] ?? it.open[0][0];
     goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
     revealClearing(it.wall.name);
@@ -558,7 +565,7 @@ function renderPick() {
           el('span', { class: 'pick-name' }, shortName(it.wall)),
           el('span', { class: 'pick-why' }, reasonOf(it, r.pref).sentence),
           el('span', { class: 'pick-hours' }, hoursLine(it))));
-      b.addEventListener('click', () => go(it));
+      b.addEventListener('click', () => goPick(it));
       return el('li', {}, b);
     })));
   } else {
@@ -610,12 +617,12 @@ function infoBlock(m) {
     const fold = el('div', { class: 'info-fold', id: fid }, el('div', { class: 'info-fold-in' }, inner));
     const btn = el('button', { type: 'button', class: 'info-more', 'aria-controls': fid }, '');
     const sync = () => {
-      btn.setAttribute('aria-expanded', String(infoOpen));
-      btn.textContent = infoOpen ? '접기' : moreLabel;
-      fold.classList.toggle('open', infoOpen);
-      fold.inert = !infoOpen;
+      btn.setAttribute('aria-expanded', String(vs.infoOpen));
+      btn.textContent = vs.infoOpen ? '접기' : moreLabel;
+      fold.classList.toggle('open', vs.infoOpen);
+      fold.inert = !vs.infoOpen;
     };
-    btn.addEventListener('click', () => { infoOpen = !infoOpen; sync(); });
+    btn.addEventListener('click', () => { go({ type: 'info' }); sync(); });
     sync();
     parts.push(fold, btn);
   }
@@ -659,22 +666,21 @@ function sunBox(d, name, closedDay) {
 }
 
 
-let infoOpen = false; // the 안내 overflow: folded again whenever a card is (re)opened
-let moreOpen = false; // the open row's "더 보기" survives re-renders (slider)
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Expanded row (v6): what decides the visit first, the rest folded in "더 보기".
 function rowDetails(m, wall, at, id) {
-  const dial = dialModel(wall, at, { isNow: live, dayLabel: m.dayLabel });
-  const sumState = el('span', { class: 'sum-s' }, moreOpen ? '접기' : '더 보기');
+  const dial = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
+  // the 안내 overflow folds again and the "더 보기" fold survives re-renders (slider) through vs.infoOpen / vs.moreOpen
+  const sumState = el('span', { class: 'sum-s' }, vs.moreOpen ? '접기' : '더 보기');
   // folded: the pictures only, one at a time (hours grid | seasonal sun)
   const more = el('details', { class: 'more2' },
     el('summary', {}, el('span', { class: 'sum-t' }, '시간표 · 계절'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
     ...moreTabs(wall, at, dial, id));
-  more.open = moreOpen;
+  more.open = vs.moreOpen;
   // one control opens the folded part: its summary row (the old "자세히" button did the same)
   more.addEventListener('toggle', () => {
-    if (more.closest('.row.is-open')) moreOpen = more.open; // a row being closed doesn't speak for the open one
+    if (more.closest('.row.is-open')) go({ type: 'more', open: more.open }); // a row being closed doesn't speak for the open one
     sumState.textContent = more.open ? '접기' : '더 보기';
   });
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
@@ -788,7 +794,7 @@ async function loadCrowd() {
   crowd.busy = false;
 }
 const crowdCtx = (name, at) => (!config.crowdCsvUrl ? null : {
-  stat: crowd.byWall ? aggregate(crowd.byWall.get(name) ?? [], name, at, { live, now: new Date() }) : null,
+  stat: crowd.byWall ? aggregate(crowd.byWall.get(name) ?? [], name, at, { live: vs.live, now: new Date() }) : null,
 });
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -825,7 +831,7 @@ function timeRow(row, at) {
   const m = modelOf(row, at);
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
   const id = `row-x-${++rowSeq}`;
-  const isOpen = openName === m.name;
+  const isOpen = vs.openName === m.name;
   const tick = !bar || bar.ahead ? null : el('span', { class: 'tick' });
   tick?.style.setProperty('left', axisX(bar.nowMin));
   // 양달/응달/방향 모름 in words, not only the orange band
@@ -880,15 +886,9 @@ function setRowOpen(li, open) {
 
 // One row open at a time.
 function toggleRow(li) {
-  const opening = !li.classList.contains('is-open');
   for (const o of document.querySelectorAll('#panel-list .row.is-open')) setRowOpen(o, false);
-  openName = opening ? li.wallName : null;
-  openState = opening ? li.state : null;
-  moreOpen = false;
-  infoOpen = false;
-  moreTab = 0;
-  gridSeason.clear(); // a reopened row starts on the picked day's season
-  if (!opening) return;
+  go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
+  if (vs.openName !== li.wallName) return;
   li.fill();
   seeSetting(li.wallName);
   li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
@@ -903,13 +903,7 @@ function toggleRow(li) {
 function revealRow(name) {
   const row = shown.rows.find((r) => r.wall.name === name);
   if (!row) return false;
-  openName = name;
-  openState = row.status.state;
-  moreOpen = false;
-  infoOpen = false;
-  moreTab = 0;
-  gridSeason.clear();
-  render(); // the open row is built filled, so no transition plays
+  go({ type: 'reveal', name, state: row.status.state }); // renders: the open row is built filled, so no transition plays
   seeSetting(name);
   const li = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === name);
   const band = li?.closest('details');
@@ -921,20 +915,6 @@ function revealRow(name) {
 // ---- render ----
 const minuteOf = (d) => d.getHours() * 60 + d.getMinutes();
 
-// Before 06:00 or after 23:30 the slider rests at its end, but the time used (and shown) stays the real clock.
-function syncClock(now) {
-  if (!live) return;
-  $('date').value = ymd(now);
-  $('time').value = String(sliderValue(minuteOf(now)));
-}
-
-function pickedAt(now) {
-  if (!live) return new Date(`${$('date').value}T${fmtMin(Number($('time').value))}`);
-  const d = new Date(now);
-  d.setSeconds(0, 0);
-  return d;
-}
-
 function setBand(summary, label, n) {
   summary.replaceChildren(el('span', {}, label), el('span', { class: 'count' }, String(n)));
 }
@@ -942,17 +922,19 @@ function setBand(summary, label, n) {
 function render() {
   const now = new Date(); // one clock reading per render
   syncSeen();
-  syncClock(now);
-  const at = pickedAt(now);
+  // live: the inputs follow the clock (the slider rests at its end before 06:00 / after 23:30, the time used stays real)
+  const { date, min, at } = clockView(vs, now);
+  if ($('date').value !== date) $('date').value = date;
+  if ($('time').value !== String(min)) $('time').value = String(min);
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
-  $('nowBtn').hidden = live && !Number.isNaN(+at);
+  $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
   if (Number.isNaN(+at)) return;
   if (loadFailed) { // never show "0 open" for a list that did not load
     $('summary').dataset.key = 'load-failed';
     $('summary').textContent = '외벽 목록을 불러오지 못했어요';
     return;
   }
-  const isNow = live; // same decision that just set the inputs, so a minute rollover can't flip the wording
+  const isNow = vs.live; // same decision that just set the inputs, so a minute rollover can't flip the wording
   const t = hhmm(at);
   const label = timeLabel(minuteOf(at), isNow);
   $('timeOut').textContent = label;
@@ -971,18 +953,12 @@ function render() {
   // 내 지역 · 구분 · 주차 narrow every group, the map and the counts alike (scopeRows)
   const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
   const mine = ui.favOnly ? scoped.filter((r) => favs.includes(r.wall.name)) : scoped; // 즐겨찾기만
-  const all = withDistance(filterRows(mine, ui.sun), origin);
+  const all = withDistance(filterRows(mine, ui.sun), vs.origin);
   allRows = rows;
   shown = { rows: all, at };
-  // the open row was filtered out, or moved to another group (e.g. now closed, folded away): forget it
-  if (openName && !keepOpenRow(all, openName, openState)) {
-    openName = null;
-    moreOpen = false;
-    infoOpen = false;
-    moreTab = 0;
-  }
+  go({ type: 'shown', rows: all }); // the open row was filtered out, or moved to another group: forget it
   const groups = groupRows(all);
-  const needOrigin = ui.sortMode === 'distance' && !origin;
+  const needOrigin = ui.sortMode === 'distance' && !vs.origin;
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
@@ -1006,7 +982,7 @@ function render() {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
   }
-  $('sub').textContent = `${DAY_KO[at.getDay()]}요일${origin ? ' · 직선거리' : ''}`; // the date input shows the rest
+  $('sub').textContent = `${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date input shows the rest
 
   $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
   $('countOpen').textContent = String(n);
@@ -1028,7 +1004,7 @@ function render() {
   setBand($('group-unknown').querySelector('summary'), '운영시간을 아직 몰라요', groups.unknown.length);
   $('rows-unknown').replaceChildren(...groups.unknown.map((r) => safeRow(r, at)));
 
-  const msg = locateNote || (needOrigin ? '내 위치를 먼저 확인해 주세요.' : '');
+  const msg = vs.locateNote || (needOrigin ? '내 위치를 먼저 확인해 주세요.' : '');
   $('locateMsg').textContent = msg;
   $('locateMsg').hidden = !msg;
 
@@ -1095,7 +1071,7 @@ function openMap() {
     return mapError();
   }
   mapApi.setRows(shown.rows, shown.at);
-  mapApi.setUser(origin);
+  mapApi.setUser(vs.origin);
   mapApi.refresh(); // measure the now-visible container before fitting
   mapApi.fitAll();
 }
@@ -1122,7 +1098,7 @@ function showTab(key, focus = false) {
 // toast says so; a name no longer in the list only gets the toast.
 function revealFromLog(name) {
   showTab('list');
-  if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 암장이에요');
+  if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 외벽이에요');
   const cleared = revealClearing(name);
   document.querySelector('#panel-list .row.is-open .row-btn')?.focus({ preventScroll: true });
   if (cleared) toast('조건을 모두 지우고 보여 드려요');
@@ -1161,7 +1137,7 @@ for (const k of ['minHours', 'sortMode', 'venue']) sheetForm.elements[k].value =
 const setUi = (k, v) => {
   ui[k] = v;
   if (k === 'minHours' || k === 'sortMode' || k === 'venue') sheetForm.elements[k].value = v;
-  if (k === 'sortMode') locateNote = '';
+  if (k === 'sortMode') go({ type: 'sort' });
   saveUi();
   render();
 };
@@ -1169,20 +1145,16 @@ const setUi = (k, v) => {
 $('search').addEventListener('submit', (e) => e.preventDefault());
 $('search').addEventListener('input', (e) => {
   if (e.target.id !== 'date' && e.target.id !== 'time') return;
-  live = isLivePick($('date').value, Number($('time').value), new Date());
-  render();
-});
-$('nowBtn').addEventListener('click', () => {
-  live = true;
-  render();
+  go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
 $('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
 $('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== '0' ? '0' : '3'));
+$('nowBtn').addEventListener('click', () => go({ type: 'now' }));
 $('nearFirst').addEventListener('click', () => {
   if (ui.sortMode === 'distance') return setUi('sortMode', 'time');
   setUi('sortMode', 'distance');
-  if (!origin) locate();
+  if (!vs.origin) locate();
 });
 
 $('regionChip').addEventListener('click', () => {
@@ -1297,10 +1269,7 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
 function locate(sort = true) {
   return new Promise((done) => {
     const fail = (why) => {
-      if (sort) {
-        locateNote = why;
-        render();
-      }
+      go({ type: 'locateFailed', why, sort });
       done(why);
     };
     if (!window.isSecureContext || !navigator.geolocation) {
@@ -1310,15 +1279,7 @@ function locate(sort = true) {
     }
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        origin = { lat: p.coords.latitude, lng: p.coords.longitude };
-        if (sort) {
-          ui.sortMode = 'distance';
-          sheetForm.elements.sortMode.value = 'distance';
-          saveUi();
-          locateNote = '내 위치를 기준으로 가까운 순으로 정렬했어요. 직선거리예요.';
-        }
-        render();
-        mapApi?.setUser(origin);
+        go({ type: 'located', origin: { lat: p.coords.latitude, lng: p.coords.longitude }, sort }); // sort: also 가까운 순, saved
         done('');
       },
       (err) => fail(err.code === 1
@@ -1361,12 +1322,11 @@ onChange(() => {
 const FOCUSABLE = 'button, a, summary';
 const tick = () => {
   const a = document.activeElement;
-  if (skipTick({ live, hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick') })) return;
-  loadCrowd();
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
-  render();
-  if (!li) return;
+  // not skipped: the 혼잡도 CSV if due, then the re-render
+  const ran = go({ type: 'tick', hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick') }).length;
+  if (!ran || !li) return;
   const now = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === li.wallName);
   (now?.querySelectorAll(FOCUSABLE)[i] ?? now?.querySelector('.row-btn'))?.focus({ preventScroll: true });
 };

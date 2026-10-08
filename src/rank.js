@@ -4,13 +4,19 @@ import { visitedCount } from './log.js';
 
 // at: different walls needed. A tier whose `at` is not below the list's size is skipped — 전국 완주 (every wall) stands there.
 export const RANKS = [
-  { key: 'first', name: '첫 외벽', at: 1 },
-  { key: 'intro', name: '외벽 입문', at: 3 },
-  { key: 'regular', name: '외벽 단골', at: 6 },
-  { key: 'explorer', name: '외벽 탐험가', at: 12 },
-  { key: 'master', name: '외벽 마스터', at: 25 },
+  { key: 'first', name: '볕뉘', gloss: '그늘진 곳에 잠깐 비치는 작은 볕', at: 1 },
+  { key: 'intro', name: '햇귀', gloss: '해가 처음 솟을 때 번지는 빛', at: 3 },
+  { key: 'regular', name: '해오름', gloss: '해가 떠오름', at: 6 },
+  { key: 'explorer', name: '햇발', gloss: '사방으로 뻗치는 햇살', at: 12 },
+  { key: 'master', name: '해무리', gloss: '해 둘레에 둥글게 생기는 빛 테', at: 25 },
 ];
-export const COMPLETE = { key: 'complete', name: '전국 완주' };
+export const COMPLETE = { key: 'complete', name: '온누리', gloss: '온 세상, 전국을 다 돌았어요' };
+
+/** tiersOf(total) → the tiers this list can reach, lowest first: [{key, name, at, level}]; 전국 완주 (at = total) closes it. */
+export function tiersOf(total) {
+  const t = Math.max(0, Math.floor(Number(total) || 0));
+  return [...RANKS.map((r, level) => ({ ...r, level })).filter((r) => r.at < t), ...(t ? [{ ...COMPLETE, at: t, level: 5 }] : [])];
+}
 
 /**
  * rankOf(visited, total) → {key, name, level, next: {name, need} | null, progress 0..1}.
@@ -20,14 +26,14 @@ export const COMPLETE = { key: 'complete', name: '전국 완주' };
 export function rankOf(visited, total) {
   const t = Math.max(0, Math.floor(Number(total) || 0));
   const v = Math.min(Math.max(0, Math.floor(Number(visited) || 0)), t);
-  const ladder = [...RANKS.map((r, level) => ({ ...r, level })).filter((r) => r.at < t), ...(t ? [{ ...COMPLETE, at: t, level: 5 }] : [])];
+  const ladder = tiersOf(t);
   let i = -1;
   while (i + 1 < ladder.length && v >= ladder[i + 1].at) i += 1;
-  const cur = ladder[i] ?? { key: 'none', name: '', at: 0, level: -1 };
+  const cur = ladder[i] ?? { key: 'none', name: '', gloss: '', at: 0, level: -1 };
   const nx = ladder[i + 1];
   return {
-    key: cur.key, name: cur.name, level: cur.level,
-    next: nx ? { name: nx.name, need: nx.at - v } : null,
+    key: cur.key, name: cur.name, gloss: cur.gloss ?? '', level: cur.level,
+    next: nx ? { name: nx.name, need: nx.at - v, at: nx.at } : null,
     progress: nx ? v / nx.at : 1,
   };
 }

@@ -7,9 +7,9 @@ import { axisFrac, formatRanges, orderForPick } from './viewmodel.js';
 import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
-import { activityStats, loadContrib, rankOf } from './rank.js';
+import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import {
-  MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
+  MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
   timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount,
 } from './log.js';
@@ -67,7 +67,7 @@ box.addEventListener('focusout', armToast);
  * addFav(name): ♥ a wall (the ♥ 추천 toast's button).
  */
 export function createLogView({
-  storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
+  storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
   getRegions = () => [], getOrigin = () => null, requestLocate = async () => '위치를 쓸 수 없어요.', addFav = () => {},
 }) {
   const panel = $('panel-log');
@@ -130,7 +130,7 @@ export function createLogView({
     const rest = items.filter((x) => !x.mine);
     const group = (label, list) => el('li', { class: 'la-grp', role: 'group', 'aria-label': label },
       el('p', { class: 'la-grp-hd', 'aria-hidden': 'true' }, label), el('ul', {}, ...list.map(row)));
-    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]
+    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 외벽이 없어요. 이름 일부로 찾아보세요.')]
       : mine.length && rest.length ? [group('내 지역', mine), group('그 밖', rest)]
         : items.map(row)));
   }
@@ -189,7 +189,7 @@ export function createLogView({
     trk.replaceChildren(...list.filter(([a, b]) => axisFrac(b) > axisFrac(a)).map(([a, b]) => placed('vt-bar', a, b)),
       ...visitBreaks(list).map(([a, b]) => placed('vt-brk', a, b)), ...ahead);
     trk.classList.toggle('off', Boolean(open) && !list.length);
-    timeNote.textContent = !wall ? '암장을 고르면 그날 운영시간이 보여요.'
+    timeNote.textContent = !wall ? '외벽을 고르면 그날 운영시간이 보여요.'
       : !open ? '날짜를 고르면 그날 운영시간이 보여요.'
         : !hasHours(wall) ? '운영시간 정보가 없어요. 시각은 골라도 돼요.'
           : !list.length ? '이 날은 휴무예요. 시각은 골라도 돼요.'
@@ -202,7 +202,7 @@ export function createLogView({
     const wait = ask && ask !== 'ask'; // reported a moment ago: the row stays, off, with the reason
     crowdRow.hidden = !ask;
     crowdSentNote.hidden = !wait;
-    if (wait) crowdSentNote.textContent = { dup: '이 방문은 이미 제보했어요.', wait: `방금 보냈어요. ${ask.waitMin}분 뒤에 다시 보낼 수 있어요.`, wall: '이 암장은 오늘 두 번 보냈어요.', cap: '오늘은 더 보낼 수 없어요.' }[ask.reason];
+    if (wait) crowdSentNote.textContent = { dup: '이 방문은 이미 제보했어요.', wait: `방금 보냈어요. ${ask.waitMin}분 뒤에 다시 보낼 수 있어요.`, wall: '이 외벽은 오늘 두 번 보냈어요.', cap: '오늘은 더 보낼 수 없어요.' }[ask.reason];
     if (ask !== 'ask') crowdLevel = null;
     for (const b of crowdPills) {
       b.disabled = Boolean(wait);
@@ -372,7 +372,7 @@ export function createLogView({
     rankUp = false;
     // no 실행 취소 here: an undo could drop the record but not a 혼잡도 report already sent. A mistaken record is
     // deleted from the 기록 tab (that one keeps its undo).
-    const saved = `${wall} 기록했어요${level ? ' · 혼잡도 제보 고마워요' : ''}${after.level > before.level ? ` · 등급이 올랐어요 · ${after.name}` : ''}`;
+    const saved = `${wall} 기록했어요${level ? ' · 혼잡도 제보 고마워요' : ''}${after.level > before.level ? ` · 등급이 올랐어요 · ${after.name}(${after.gloss})` : ''}${log.length === TIP_AT ? ` · 기록 ${TIP_AT}개 · 내 정보 › 기록 백업으로 저장해 둘 수 있어요` : ''}`;
     // ♥ 추천: on a wall's 3rd record, once per wall — the same toast, with ♥ 추가 instead of nothing. (A 등급 goes up
     // only on a wall's 1st record, so the two never meet.)
     const asked = loadFavAsked(storage);
@@ -445,11 +445,25 @@ export function createLogView({
     return s;
   }
 
-  // The 등급 seal — the ONE place its artwork is decided (the first-visit stamp look, style.css .rk-seal).
+  // The 등급 seal — the ONE place its artwork is decided: the 해벽 mark in a round rim, ringed by the sun's path (a thin
+  // tilted orbit, its upper half behind the seal, its lower half in front). Five sun stops sit on the front arc (east →
+  // west, below the mark); one more is filled per tier (볕뉘 1 … 해무리 5) and 온누리 (전국 완주) draws the whole orbit solid.
   // level: rankOf's -1..5; pressed: the save just raised the 등급 (.stamp-in). Decoration only: the name and the way to
   // the next tier are text next to it.
+  const ORBIT_PHI = [150, 120, 90, 60, 30];
   function rankStamp(level, pressed = false) {
-    return el('span', { class: `rk-seal${pressed ? ' stamp-in' : ''}`, 'data-level': String(level), 'aria-hidden': 'true' }, el('span', { class: 'stamp' }));
+    const seal = el('span', { class: `rk-seal${pressed ? ' stamp-in' : ''}${level === 5 ? ' complete' : ''}`, 'data-level': String(level), 'aria-hidden': 'true' });
+    const face = el('span', { class: 'rk-face' }, el('span', { class: 'stamp' }));
+    const dots = el('span', { class: 'rk-orb rk-dots' });
+    ORBIT_PHI.forEach((phi, i) => {
+      const dot = el('span', { class: `rk-dot${i <= level ? ' on' : ''}` });
+      dot.style.setProperty('--s', (0.75 + 0.4 * Math.sin(phi * Math.PI / 180)).toFixed(2)); // nearer the viewer (front-centre) = bigger
+      dot.style.left = `${50 + 50 * Math.cos(phi * Math.PI / 180)}%`;
+      dot.style.top = `${50 + 50 * Math.sin(phi * Math.PI / 180)}%`;
+      dots.append(dot);
+    });
+    seal.append(el('span', { class: 'rk-orb rk-back' }), face, el('span', { class: 'rk-orb rk-front' }), dots);
+    return seal;
   }
 
   // 내 활동: the 등급 seal (decoration only), the way to the next tier, the numbers.
@@ -458,51 +472,60 @@ export function createLogView({
     const names = getWalls().map((w) => w.name);
     const seal = (level) => rankStamp(level, rankUp);
     if (!log.length) return el('p', { class: 'lg-act-none' }, seal(-1), '다녀오면 도장이 찍혀요');
-    const { places, visits, month } = activityStats(log, names, today());
+    const { places, visits } = activityStats(log, names, today());
     const { total, outside } = visitedCount(log, names);
     const rank = rankOf(places, total);
     const nextSay = rank.next ? `${rank.next.name}까지 ${rank.next.need}곳 더` : '모든 외벽에 도장을 찍었어요';
     const bar = el('div', { class: 'lg-track', role: 'progressbar', 'aria-label': '다음 등급까지', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(rank.progress * 100)), 'aria-valuetext': nextSay },
       el('div', { class: 'lg-fill' }));
     bar.firstChild.style.width = `${rank.progress * 100}%`;
-    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'log-add' }, '+ 기록 추가');
+    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'log-add', 'aria-label': '기록하기' }, '+ 기록');
     add.addEventListener('click', () => openAdd({ date: picked <= today() ? picked : null, from: add }));
     const crowd = loadContrib(storage).crowd;
-    const stat = (label, n) => el('li', {}, el('span', {}, label), el('b', {}, n));
+    const info = el('button', { type: 'button', class: 'lg-info', 'aria-label': '등급 안내 보기', 'data-focus': 'rank-info' }, icon('info'));
+    info.addEventListener('click', () => openRankInfo(places, total, info));
     return el('section', { class: 'lg-act', 'aria-label': '내 활동' },
       el('div', { class: 'lg-act-hd' },
         seal(rank.level),
         el('div', { class: 'lg-act-rank' },
-          el('p', {}, rank.name ? el('b', {}, rank.name) : '아직 등급 전이에요'),
+          el('p', {}, rank.name ? el('b', {}, rank.name) : '아직 등급 전이에요', info),
           el('p', { class: 'lg-act-next' }, nextSay)),
         add),
       bar,
-      el('ul', { class: 'lg-act-stats' },
-        stat('다녀온 곳', `${places}곳`), stat('방문', `${visits}번`), stat('이번 달', `${month}번`),
-        crowd ? stat('혼잡도 제보', `${crowd}번`) : null),
-      el('small', {}, `목록 ${total}곳 중 ${places}곳${outside ? ` · 지금 목록에 없는 ${outside}곳은 빠져요` : ''}`));
+      el('p', { class: 'lg-bar-end', 'aria-hidden': 'true' }, el('span', {}, `${places}곳`), el('span', {}, rank.next ? `${rank.next.name} ${rank.next.at}곳` : rank.name)),
+      el('p', { class: 'lg-act-meta' }, `방문 ${visits}번${crowd ? ` · 혼잡도 제보 ${crowd}번` : ''}`),
+      outside ? el('small', {}, `지금 목록에 없는 ${outside}곳은 빠져요`) : null);
   }
 
-  function tip() {
-    let closed = false;
-    try { closed = storage.getItem(TIP_KEY) === '1'; } catch { /* no storage: show it */ }
-    if (closed || log.length < TIP_AT) return null;
-    const save = el('button', { type: 'button', class: 'sh-toggle' }, '지금 내보내기');
+  // 등급 안내 sheet: every tier this list can reach with the walls it takes (the tier now is marked, passed ones are ticked).
+  const rankDlg = $('rank-info');
+  let rankOpener = null;
+  rankDlg.addEventListener('close', () => rankOpener?.focus());
+  function openRankInfo(places, total, from) {
+    rankOpener = from;
+    const cur = rankOf(places, total);
+    $('rank-info-note').textContent = `서로 다른 외벽 수로 올라가요. 같은 곳에 여러 번 가도 한 곳으로 세요. 지금 목록 ${total}곳 중 ${places}곳을 다녀왔어요.`;
+    $('rank-info-list').replaceChildren(...tiersOf(total).map((t) => {
+      const state = t.level < cur.level ? 'done' : t.level === cur.level ? 'now' : 'todo';
+      const dots = el('span', { class: 'ri-dots', 'aria-hidden': 'true' }, ...[0, 1, 2, 3, 4].map((i) => el('i', { class: i <= t.level ? 'on' : '' })));
+      return el('li', { class: `ri-${state}` }, dots, el('div', { class: 'ri-name' }, el('b', {}, t.name), el('small', {}, t.gloss)), el('span', {}, t.key === 'complete' ? `전체 ${t.at}곳` : `${t.at}곳`),
+        el('em', {}, state === 'done' ? '달성' : state === 'now' ? '지금' : `${t.at - places}곳 더`));
+    }));
+    rankDlg.showModal();
+  }
+
+  // the backup note: one quiet line at the very bottom of the 기록 tab (the first thing nobody needs twice stays out of the way);
+  // the TIP_AT-th record also says it once in the save toast.
+  function backupNote() {
+    const save = el('button', { type: 'button' }, '내보내기');
     save.addEventListener('click', () => toast(exportFile()));
-    const close = el('button', { type: 'button', class: 'lg-tip-x', 'aria-label': '백업 안내 닫기' }, '✕');
-    close.addEventListener('click', () => {
-      try { storage.setItem(TIP_KEY, '1'); } catch { /* shown again next visit */ }
-      render();
-      panel.querySelector('.lg-add')?.focus();
-    });
-    return el('div', { class: 'lg-tip', role: 'note' },
-      el('p', {}, '이 기기에만 저장돼요 — 백업해 두세요. 내 정보 › 기록 백업에서도 할 수 있어요.'), save, close);
+    return el('p', { class: 'lg-backup' }, '기록은 이 기기에만 저장돼요 ·', save);
   }
 
   function empty() {
-    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'empty-add' }, '다녀온 암장을 지금 기록하기');
+    const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'empty-add' }, '다녀온 외벽을 지금 기록하기');
     add.addEventListener('click', () => openAdd({ from: add }));
-    const home = el('button', { type: 'button', class: 'sh-toggle' }, '홈에서 암장 보기');
+    const home = el('button', { type: 'button', class: 'sh-toggle' }, '홈에서 외벽 보기');
     home.addEventListener('click', showList);
     return el('div', { class: 'lg-empty' },
       el('h3', {}, '아직 기록이 없어요'),
@@ -594,17 +617,16 @@ export function createLogView({
         navBtn('다음 달', '›', 1, 'cal-next'),
         todayBtn),
       el('p', { class: 'cal-sum' }, `${view.month}월 기록 ${sum.visits}번 · ${sum.walls}곳`),
-      say, table);
+      say, table,
+      el('p', { class: 'cal-legend' }, '도장의 점은 그날 해의 위치 · ● 양달 ○ 응달'));
   }
 
-  // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) and 이 날 기록하기
+  // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)
   function dayList(byDay) {
     const t = today();
     const p = dayParts(picked);
     const recs = byDay.get(picked) ?? [];
     const future = picked > t;
-    const add = el('button', { type: 'button', class: 'sh-toggle lg-day-add', 'data-focus': 'day-add', disabled: future ? '' : null }, '이 날 기록하기');
-    add.addEventListener('click', () => openAdd({ date: picked, from: add }));
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
       el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개` : ' · 기록 없음')),
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
@@ -617,7 +639,6 @@ export function createLogView({
         del.addEventListener('click', () => remove(r));
         return el('li', {}, stamp('rec-stamp', [r]), open, del);
       })) : null,
-      add,
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
   }
 
@@ -628,8 +649,7 @@ export function createLogView({
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
       activity(),
-      tip(),
-      ...(log.length ? [calendar(byDay), dayList(byDay)] : [empty()]),
+      ...(log.length ? [calendar(byDay), dayList(byDay), backupNote()] : [empty()]),
     ].filter(Boolean));
   }
 

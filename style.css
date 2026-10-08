@@ -991,36 +991,57 @@ p.setnew { margin-top: 8px; }
 #panel-log { margin-top: 14px; display: grid; gap: 14px; }
 /* 내 활동: the 등급 seal + name, the bar to the next tier, the numbers */
 .lg-act { padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
-.lg-act-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-.lg-act-rank { flex: 1 1 8rem; min-width: 0; }
+.lg-act-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; }
+.lg-act-rank { flex: 1 1 5.5rem; min-width: 0; }
 .lg-act-rank b { font-size: var(--fs-lg); color: var(--open); }
 .lg-act-rank p:first-child { font-weight: 600; }
 .lg-act-next { font-size: var(--fs-sm); color: var(--muted); }
 .lg-track { height: 10px; margin-top: 12px; border-radius: var(--r-pill); background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .lg-fill { height: 100%; border-radius: inherit; background: var(--open); }
-.lg-act-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; list-style: none; margin: 12px 0 0; padding: 0; }
-.lg-act-stats li { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-sm); color: var(--muted); }
-.lg-act-stats b { font-size: var(--fs-base); color: var(--fg); white-space: nowrap; }
+.lg-bar-end { display: flex; justify-content: space-between; margin: 4px 2px 0; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.lg-act-meta { margin: 8px 2px 0; font-size: var(--fs-sm); color: var(--muted); }
+.lg-info { position: relative; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 6px; padding: 0; vertical-align: -5px; border: 0; background: none; color: var(--muted); }
+.lg-info::after { content: ""; position: absolute; inset: -10px; }
+.lg-info svg { width: 20px; height: 20px; }
+.ri-list { display: grid; margin: 4px 0 0; padding: 0; list-style: none; }
+.ri-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 4px 12px; min-height: 52px; padding: 8px 0; border-top: 1px solid var(--hair); }
+.ri-name { display: grid; gap: 1px; min-width: 0; }
+.ri-list b { font-size: var(--fs-base); }
+.ri-name small { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.ri-list span, .ri-list em { font-size: var(--fs-sm); font-style: normal; color: var(--muted); white-space: nowrap; }
+.ri-list em { min-width: 3.5rem; text-align: right; font-weight: 600; }
+.ri-now b, .ri-now em { color: var(--open); }
+.ri-done em { color: var(--open); }
+.ri-todo b { color: var(--muted); font-weight: 600; }
+.ri-dots { display: inline-flex; gap: 3px; }
+.ri-dots i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--line-strong); }
+.ri-dots i.on { border-color: var(--open); background: var(--open); }
 .lg-act small { display: block; margin-top: 6px; font-size: var(--fs-xs); color: var(--muted); }
 .lg-act-none { display: flex; align-items: center; gap: 12px; padding: 0 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
-.lg-act-none .rk-seal { width: 44px; height: 44px; }
-/* the 등급 seal: the first-visit stamp (해벽 mark in a double rim); -1 (none yet) a dashed outline. The tier is the name and bar beside it. */
-.rk-seal { flex: none; display: grid; place-items: center; width: 68px; height: 68px; margin: 6px; border-radius: 50%; border: 2px solid var(--open); color: var(--open); }
-.rk-seal .stamp { width: 46%; height: 46%; transform: rotate(8deg); }
-.rk-seal:not([data-level="-1"]) { outline: 1.5px solid var(--open); outline-offset: 3px; } /* the same double rim as a first-visit stamp: the level is the name beside it, not rings */
-.rk-seal[data-level="-1"] { border: 2px dashed var(--line-strong); }
-.rk-seal[data-level="-1"] .stamp { background: var(--muted); opacity: .5; }
+.lg-act-none .rk-seal { width: 44px; height: 44px; margin: 8px 20px 8px 22px; }
+/* the 등급 seal: the 해벽 mark in a round rim, ringed by the sun's path — a thin tilted orbit (upper half behind the face, lower
+   half in front) with 5 sun stops on the front arc (in front of the face), one more filled per tier, 전국 완주 draws the whole orbit solid;
+   -1 (none yet) a dashed face with the empty orbit. The orbit box is 174% x 61% of the seal, tilted -24deg; margins reserve its reach. */
+.rk-seal { --rk-line: color-mix(in srgb, var(--muted) 60%, transparent); position: relative; flex: none; width: 56px; height: 56px; margin: 10px 22px 10px 20px; }
+.rk-face { position: absolute; inset: 0; z-index: 1; border: 2px solid var(--open); border-radius: 50%; background: var(--surface); color: var(--open); box-shadow: 0 0 0 3px var(--surface); } /* page-colour stroke: the orbit behind stops short of the rim */
+.rk-face .stamp { position: absolute; left: 24%; top: 24%; width: 52%; height: 52%; }
+.rk-orb { position: absolute; left: -37%; top: 19.5%; width: 174%; height: 61%; border: 1px solid var(--rk-line); border-radius: 50%; transform: rotate(-24deg); pointer-events: none; }
+.rk-back { z-index: 0; clip-path: inset(-3px -3px 50% -3px); }
+.rk-front { z-index: 2; clip-path: inset(50% -3px -3px -3px); box-shadow: 0 0 0 2px var(--surface), inset 0 0 0 2px var(--surface); } /* page-colour halo both sides: the line weaves over the rim */
+.rk-seal.complete .rk-orb:not(.rk-dots) { border: 1.5px solid var(--open); }
+.rk-dots { z-index: 3; border: 0; }
+.rk-dot { position: absolute; width: calc(6px * var(--s, 1)); height: calc(6px * var(--s, 1)); margin: calc(-3px * var(--s, 1)) 0 0 calc(-3px * var(--s, 1)); border-radius: 50%; border: 1px solid var(--rk-line); background: var(--surface); box-shadow: 0 0 0 2px var(--surface); } /* the page-colour halo cuts the orbit line behind the dot */
+.rk-dot.on { width: calc(9px * var(--s, 1)); height: calc(9px * var(--s, 1)); margin: calc(-4.5px * var(--s, 1)) 0 0 calc(-4.5px * var(--s, 1)); border: 0; background: var(--open); }
+.rk-seal[data-level="-1"] .rk-face { border-color: var(--line-strong); border-style: dashed; }
+.rk-seal[data-level="-1"] .stamp { left: 30%; top: 30%; width: 40%; height: 40%; background: var(--muted); opacity: .5; }
 .rk-seal.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .rk-seal.stamp-in { animation: none; } }
 .lg-add {
   min-height: var(--tap); padding: 0 14px; border: 1px solid var(--accent); border-radius: var(--r-pill); background: var(--surface);
   color: var(--accent); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap;
 }
-.lg-tip { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 12px 4px 12px 14px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
-.lg-tip p { padding-top: 10px; font-size: var(--fs-sm); font-weight: 600; }
-.lg-tip .sh-toggle { grid-row: 2; justify-self: start; }
-.lg-tip-x { grid-column: 2; grid-row: 1; }
-.lg-tip-x { width: var(--tap); height: var(--tap); border: 0; border-radius: var(--r-md); background: none; color: var(--muted); font-size: var(--fs-base); }
+.lg-backup { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+.lg-backup button { min-height: var(--tap); padding: 0 8px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; }
 .lg-empty { padding: 24px 16px; text-align: center; border: 1px dashed var(--line-strong); border-radius: 14px; }
 .lg-empty h3 { font-size: var(--fs-lg); }
 .lg-empty p { margin: 6px 0 16px; color: var(--muted); font-size: var(--fs-sm); }
@@ -1031,6 +1052,7 @@ p.setnew { margin-top: 8px; }
 .cal-head h3 { flex: 1; text-align: center; font-size: var(--fs-base); }
 .cal-nav, .cal-today { min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: var(--r-md); background: none; color: var(--fg); font-size: var(--fs-lg); line-height: 1; }
 .cal-today { padding: 0 10px; font-size: var(--fs-sm); font-weight: 600; color: var(--accent); white-space: nowrap; }
+.cal-legend { margin: 6px 4px 0; text-align: right; font-size: var(--fs-xs); color: var(--muted); }
 .cal-sum { margin: 2px 0 6px; text-align: center; font-size: var(--fs-sm); color: var(--muted); }
 .cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .cal-grid th { padding: 4px 0; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
@@ -1041,7 +1063,7 @@ p.setnew { margin-top: 8px; }
 }
 .cal-day.future { color: var(--muted); }
 .cal-n { font-weight: 600; }
-.cal-badge { position: absolute; top: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
+.cal-badge { position: absolute; bottom: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
 .cal-day[aria-current="date"] { border: 2px solid var(--fg); }
 td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
 /* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the calendar's stamp is pressed over the day number and covers it (the button's aria-label carries the date) */
@@ -1051,12 +1073,12 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 @keyframes stamp-in { from { transform: scale(1.15); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cal-stamp.stamp-in { animation: none; } }
 .cal-day .cal-n { position: relative; z-index: 1; }
-.rec-stamp { position: relative; flex: none; align-self: center; width: 28px; height: 28px; margin: 0 2px 0 12px; }
+.rec-stamp { position: relative; flex: none; align-self: center; width: 32px; height: 32px; margin: 0 0 0 10px; }
 /* the record's seal: mark in a rim; a 2nd rim = first visit to the wall; the sun dot rides the rim (filled sunny, hollow shade) */
 .seal { box-sizing: border-box; border: 1.5px solid var(--open); border-radius: 50%; }
-.seal.first { outline: 1.5px solid var(--open); outline-offset: 2px; }
-.seal > .stamp { position: absolute; inset: 14%; transform: rotate(8deg); } /* every stamp leans the same way: pressed a little clockwise */
-.seal > .sun { position: absolute; width: 22%; height: 22%; min-width: 5px; min-height: 5px; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid var(--open); }
+.seal.first { box-shadow: inset 0 0 0 1.5px var(--bg), inset 0 0 0 3px var(--open); } /* a second rim inside: the stamp keeps its size */
+.seal > .stamp { position: absolute; inset: 18%; transform: rotate(8deg); } /* every stamp leans the same way: pressed a little clockwise */
+.seal > .sun { position: absolute; width: 22%; height: 22%; min-width: 7px; min-height: 7px; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid var(--open); }
 .seal > .sun.lit { background: var(--open); box-shadow: 0 0 0 1.5px var(--bg); }
 .seal > .sun.shade { background: var(--bg); }
 .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1072,8 +1094,6 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .lg-del { flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 12px; border: 0; background: none; color: var(--warn); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .lg-open:active, .lg-del:active, .cal-nav:active, .cal-today:active, .cal-day:active { background: var(--sunken); }
 .lg-open:focus-visible, .lg-del:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.lg-day-add { margin-top: 10px; }
-.lg-day-add:disabled { opacity: .5; cursor: not-allowed; }
 .lg-day .sh-hint { margin-top: 6px; }
 
 /* ---- toast: a line at the foot, above the home indicator; 실행 취소 inside ---- */

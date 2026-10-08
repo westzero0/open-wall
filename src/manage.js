@@ -72,28 +72,10 @@ function report(res, extra = [], updatedLabel = '덮어씀') {
   alert([`추가 ${res.added}곳, ${updatedLabel} ${res.updated}곳, 건너뜀 ${res.skipped}곳`, ...extra].join('\n'));
 }
 
-// The spreadsheet library is only needed for Excel imports, so it loads when one is picked.
-function loadXlsx() {
-  if (typeof XLSX !== 'undefined') return Promise.resolve();
-  return new Promise((resolve) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload = s.onerror = resolve; // a failure falls through to the existing typeof guard
-    document.head.append(s);
-  });
-}
-
 async function readIncoming(file) {
   if (/\.json$/i.test(file.name)) return { walls: parseJson(await file.text()), errors: [] };
-  let csv;
-  if (/\.csv$/i.test(file.name)) csv = await file.text();
-  else {
-    await loadXlsx();
-    if (typeof XLSX === 'undefined') throw new Error('엑셀 읽기 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인하거나 CSV로 저장해 가져오세요.');
-    const book = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-    csv = XLSX.utils.sheet_to_csv(book.Sheets[book.SheetNames[0]], { dateNF: 'yyyy-mm-dd' });
-  }
-  return csvToWalls(parseCsv(csv), { prevWinterHours: (name) => state.walls.find((w) => w.name === name)?.winter?.hours });
+  if (!/\.csv$/i.test(file.name)) throw new Error('CSV 또는 JSON 파일만 가져올 수 있어요. 엑셀은 CSV로 저장해 주세요.');
+  return csvToWalls(parseCsv(await file.text()), { prevWinterHours: (name) => state.walls.find((w) => w.name === name)?.winter?.hours });
 }
 
 $('importFile').addEventListener('change', async (e) => {

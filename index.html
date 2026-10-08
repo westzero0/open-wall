@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://docs.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
@@ -27,6 +28,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <noscript><p class="wrap">자바스크립트를 켜야 볼 수 있어요.</p></noscript>
   <header class="top">
     <div class="wrap">
       <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
@@ -76,7 +78,7 @@
         <p id="ib-title" class="ib-title"></p>
         <p id="ib-meta" class="ib-meta"></p>
         <p id="ib-note" class="ib-note" hidden></p>
-        <button type="button" class="ib-again" id="ib-again" hidden>이 암장으로 새 초대 만들기</button>
+        <button type="button" class="ib-again" id="ib-again" hidden>이 외벽으로 새 초대 만들기</button>
         <button type="button" class="ib-close" onclick="this.closest('aside').hidden = true">닫기</button>
       </aside>
       <section id="favs" class="favs" aria-labelledby="favs-title" hidden>
@@ -117,8 +119,8 @@
     </div>
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
       <div class="mapbox">
-        <div id="map" role="region" aria-label="암장 지도"></div>
-        <div id="pin-card" role="region" aria-label="선택한 암장"></div>
+        <div id="map" role="region" aria-label="외벽 지도"></div>
+        <div id="pin-card" role="region" aria-label="선택한 외벽"></div>
         <p id="pin-live" class="sr-only" role="status"></p>
       </div>
       <p id="map-error" class="empty" hidden>지도를 불러오지 못했어요. 목록으로 확인해 주세요.</p>
@@ -140,13 +142,13 @@
       <div class="manage-buttons">
         <button type="button" id="addWall">외벽 추가</button>
         <button type="button" id="loadNational">전국 목록 불러오기</button>
-        <label class="file-btn">파일 가져오기 (CSV·엑셀·JSON)
-          <input type="file" id="importFile" accept=".csv,.xlsx,.xls,.json" hidden>
+        <label class="file-btn">파일 가져오기 (CSV·JSON)
+          <input type="file" id="importFile" accept=".csv,.json" hidden>
         </label>
         <button type="button" id="csvTemplate">CSV 양식 받기</button>
         <button type="button" id="exportJson">JSON 내보내기</button>
       </div>
-      <p class="muted">엑셀은 "CSV 양식"의 열 이름과 같은 헤더를 쓰고, 시간 칸은 텍스트(09:00-18:00)로, 전화번호도 텍스트로 입력해 주세요. 같은 이름의 외벽은 덮어써요.</p>
+      <p class="muted">CSV는 "CSV 양식"의 열 이름과 같은 헤더를 쓰고, 시간 칸은 텍스트(09:00-18:00)로, 전화번호도 텍스트로 입력해 주세요. 같은 이름의 외벽은 덮어써요.</p>
     </details>
     <dialog id="conditions" class="sheet" aria-labelledby="conditions-title">
       <form method="dialog">
@@ -257,10 +259,10 @@
         </div>
         <fieldset class="sh-row la-pick">
           <legend>어디를 다녀왔나요</legend>
-          <label class="la-field"><span class="sr-only">암장 검색</span><input type="search" name="q" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
+          <label class="la-field"><span class="sr-only">외벽 검색</span><input type="search" name="q" placeholder="외벽 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
           <div class="la-near"><button type="button" class="sh-toggle la-locate">내 위치로 정렬</button><p class="sh-hint la-locate-note" role="status" hidden></p></div>
           <ul class="la-picks"></ul>
-          <p class="la-err" id="la-pick-err" hidden>암장을 골라 주세요.</p>
+          <p class="la-err" id="la-pick-err" hidden>외벽을 골라 주세요.</p>
         </fieldset>
         <div class="sh-row la-row">
           <label class="la-field"><span class="sh-label">날짜</span><input type="date" name="date" required aria-describedby="la-date-err"></label>
@@ -290,7 +292,7 @@
             <button type="button" class="crowd-pill" aria-pressed="false" value="보통">보통</button>
             <button type="button" class="crowd-pill" aria-pressed="false" value="혼잡">혼잡</button>
           </div>
-          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(암장·시각·단계만).</p>
+          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(외벽·시각·단계만).</p>
         </div>
         <p class="sh-row la-row sh-hint la-crowd-sent" hidden></p>
         <div class="sh-row la-row">
@@ -304,6 +306,16 @@
       </form>
     </dialog>
     <div class="toast" id="toast"><p id="toast-msg" role="status"></p><button type="button" id="toast-act" hidden>실행 취소</button></div>
+    <dialog id="rank-info" class="sheet" aria-labelledby="rank-info-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="rank-info-title">등급 안내</h2>
+          <button class="sh-done">닫기</button>
+        </div>
+        <p class="sh-hint" id="rank-info-note"></p>
+        <ol class="ri-list" id="rank-info-list"></ol>
+      </form>
+    </dialog>
     <dialog id="invite" class="sheet" aria-labelledby="invite-title">
       <form novalidate>
         <div class="sh-head">
@@ -350,7 +362,7 @@
           <h2 id="report-title">정보 수정 요청</h2>
           <button type="button" class="sh-done" value="close" onclick="this.closest('dialog').close()">닫기</button>
         </div>
-        <p class="rp-field">암장 이름<strong class="rp-name"></strong></p>
+        <p class="rp-field">외벽 이름<strong class="rp-name"></strong></p>
         <fieldset class="sh-row">
           <legend>무엇이 달라졌나요</legend>
           <div class="segs">
@@ -405,10 +417,11 @@
     </dialog>
   </main>
   <footer class="wrap foot" id="about" tabindex="-1">
-    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
-    <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
+    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 외벽의 정보 확인일은 펼친 카드에 표시돼요.</p>
+    <p>자료: 운영시간 등은 외벽 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
+    <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
     <p id="report-note" hidden>틀린 정보는 펼친 카드의 ‘정보 수정 요청’ 버튼으로 알려 주세요.</p>
-    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a> · <a href="https://www.instagram.com/burning__rock/" target="_blank" rel="noopener noreferrer">@burning__rock</a></p>
+    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script type="module" src="src/app.js"></script>

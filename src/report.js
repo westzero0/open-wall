@@ -41,7 +41,7 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
   const memo = s(input.body);
   const note = s(input.note);
   const fail = (error) => ({ ok: false, error });
-  if (!name) return fail('암장 이름이 없어요.');
+  if (!name) return fail('외벽 이름이 없어요.');
   if (!KINDS.includes(kind) && kind !== CHAT_KIND) return fail('무엇이 달라졌는지 골라 주세요.');
   const mode = opts.nick ?? 'off'; // 'off' | 'optional' | 'required' (nickMode)
   const nick = mode === 'off' ? '' : cleanNick(input.nick);
