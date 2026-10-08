@@ -1,6 +1,6 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
-import { MAX_BODY, buildPayload, cooldownLeft, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, buildPayload, cooldownLeft, loadNick, nickMode, validateReport } from './report.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -10,6 +10,17 @@ if (dlg) {
   const KEY = 'open-wall:report-ts';
   const get = () => { try { return Number(localStorage.getItem(KEY)); } catch { return NaN; } };
   const set = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode: no cooldown */ } };
+  // 닉네임 field: shown only while config.reportNickEntry is set; the last nickname is kept on this device (open-wall:nick, cleaned on read).
+  const mode = nickMode(config);
+  const nickBox = dlg.querySelector('.rp-nick');
+  const NICK_KEY = 'open-wall:nick';
+  const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  const saveNick = (v) => { try { localStorage.setItem(NICK_KEY, v); } catch { /* private mode: not remembered */ } };
+  if (mode !== 'off') {
+    nickBox.hidden = false;
+    nickBox.querySelector('.rp-nick-label').textContent = `닉네임 (${mode === 'required' ? '필수' : '선택'} · ${MAX_NICK}자까지)`;
+    f.elements.nick.maxLength = MAX_NICK;
+  }
   let wallName = '';
   const nameEl = dlg.querySelector('.rp-name');
   const chatNameEl = dlg.querySelector('.rp-chat-name'); // the suggested room name, one tap selects it
@@ -38,6 +49,7 @@ if (dlg) {
 
   document.addEventListener('wall:report', (e) => {
     f.reset();
+    if (mode !== 'off') f.elements.nick.value = readNick();
     const { name, kind } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
@@ -58,17 +70,18 @@ if (dlg) {
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
       setLast: f.elements.setLast.value, setNext: f.elements.setNext.value,
-      note: f.elements.note.value, hp: f.elements.website.value,
-    });
+      note: f.elements.note.value, hp: f.elements.website.value, nick: f.elements.nick.value,
+    }, new Date(), { nick: mode });
     if (!v.ok) return say(v.error);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
     f.elements.send.disabled = true;
+    if (v.report.nick) saveNick(v.report.nick);
     if (!v.honeypot) {
       try {
         await fetch(config.reportEndpoint, {
           method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report, config.reportNickEntry),
         });
       } catch {
         f.elements.send.disabled = false;

@@ -181,16 +181,6 @@ export const shiftMonth = (year, month, by) => {
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 };
 
-/**
- * stampLook(date) → {tilt, ink}: the same day always gets the same stamp (no randomness). tilt in degrees, -5..5;
- * ink = opacity, .85..1. Hash of the date's digits (FNV-1a), so neighbouring days differ.
- */
-export function stampLook(date) {
-  let h = 2166136261;
-  for (const ch of String(date)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return { tilt: Math.round(((h % 101) / 10 - 5) * 10) / 10, ink: Math.round((0.85 + (((h >>> 8) % 16) / 100)) * 100) / 100 };
-}
-
 /** recordsByDay(log) → Map 'YYYY-MM-DD' → records of that day (in log order). */
 export function recordsByDay(log) {
   const days = new Map();
@@ -216,6 +206,17 @@ export function visitedCount(log, names) {
   const walls = new Set(log.map((r) => r.wall));
   const visited = [...walls].filter((w) => known.has(w)).length;
   return { visited, total: known.size, outside: walls.size - visited };
+}
+
+/** firstVisits(log) → Set of record ids: per wall the earliest record (date, then time; a record without time first). The 도장 with the double rim. */
+export function firstVisits(log) {
+  const best = new Map();
+  for (const r of log) {
+    const b = best.get(r.wall);
+    const k = `${r.date} ${r.time ?? ''}`;
+    if (!b || k < b.k || (k === b.k && r.id < b.id)) best.set(r.wall, { k, id: r.id });
+  }
+  return new Set([...best.values()].map((b) => b.id));
 }
 
 /** visitStats(log) → Map wall name → {last: the newest record date, count: records (several on one day count each)}. */

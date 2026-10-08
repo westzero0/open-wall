@@ -236,6 +236,11 @@
           </div>
           <p class="pf-status" id="logBackupStatus" role="status"></p>
         </div>
+        <div class="sh-row pf-rank" id="pfRank" hidden>
+          <span class="sh-label pf-rank-title">이벤트 랭킹</span>
+          <ol class="pf-rank-list"></ol>
+          <p class="sh-hint pf-rank-note"></p>
+        </div>
         <div class="sh-row" id="pfReportRow" hidden>
           <a class="pf-link" id="pfReport" target="_blank" rel="noopener noreferrer">정보 제보하기 <span>구글 폼 · 새 창</span></a>
         </div>
@@ -314,8 +319,17 @@
         <fieldset class="sh-row">
           <legend>함께할 사람에게 (선택)</legend>
           <div class="inv-tags" id="inv-tags"></div>
-          <label class="inv-field"><span class="sh-label">함께할 인원</span><select name="n"></select></label>
+          <div class="inv-field"><span class="sh-label">인원</span>
+            <div class="inv-count">
+              <div class="inv-kind" role="group" aria-label="인원의 뜻">
+                <button type="button" data-kind="look" aria-pressed="true">찾아요</button>
+                <button type="button" data-kind="have" aria-pressed="false">있어요</button>
+              </div>
+              <select name="n" aria-label="인원"></select>
+            </div>
+          </div>
           <label class="inv-field"><span class="sh-label">한마디</span><input type="text" name="note" autocomplete="off" placeholder="예) 초보 환영해요"></label>
+          <p class="sh-hint">전화번호, 링크, 이메일은 지워져요. 연락은 대화방에서 해 주세요.</p>
         </fieldset>
         <div class="sh-row inv-prev">
           <span class="sh-label">보낼 문구</span>
@@ -371,6 +385,7 @@
           </div>
         </fieldset>
         <label class="rp-field"><span class="rp-label">내용</span><textarea name="body" rows="4"></textarea></label>
+        <label class="rp-field rp-nick" hidden><span class="rp-nick-label">닉네임</span><input name="nick" maxlength="6" autocomplete="off"><span class="sh-hint">이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요.</span></label>
         <label class="rp-field">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
         <input class="rp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="rp-status" role="status"></p>
@@ -399,5 +414,6 @@
   <script type="module" src="src/app.js"></script>
   <script type="module" src="src/manage.js"></script>
   <script type="module" src="src/report-view.js"></script>
+  <script type="module" src="src/contrib-view.js"></script>
 </body>
 </html>

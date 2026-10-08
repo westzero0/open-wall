@@ -6,10 +6,11 @@ import { hasHours, openIntervals } from './hours.js';
 import { axisFrac, formatRanges, orderForPick } from './viewmodel.js';
 import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
-import { inkStamp } from './stamp.js';
+import { inkStamp, sunMark } from './stamp.js';
+import { activityStats, loadContrib, rankOf } from './rank.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, TIP_KEY, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
-  normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, stampLook, timeOfMin,
+  firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
   timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount,
 } from './log.js';
 
@@ -79,6 +80,11 @@ export function createLogView({
   let monthSay = '';
   let stamped = null; // the day a record was just added: its stamp lands with a short press, once
   let stampedWall = null; // ...and the wall, so its card's 다녀왔어요 pill gets the same press
+  let rankUp = false; // that save raised the 등급: the 내 활동 seal gets the same press
+  const rankNow = () => {
+    const { visited, total } = visitedCount(log, getWalls().map((w) => w.name));
+    return rankOf(visited, total);
+  };
 
   const regionOf = (name) => getWalls().find((w) => w.name === name)?.region ?? '';
   const persist = () => saveLog(storage, log) || toast('이 브라우저에 저장하지 못했어요. 이번 방문 동안만 남아요.');
@@ -347,7 +353,10 @@ export function createLogView({
     }
     // asked again at save time: the question's conditions (a week back, not later than now, not sent yet) may have moved
     const level = crowdLevel && crowdAsk(wall, res.record.date, time) === 'ask' ? crowdLevel : null;
+    const before = rankNow();
     log = res.log;
+    const after = rankNow();
+    rankUp = after.level > before.level;
     persist();
     if (!panel.hidden) { // added from the 기록 tab: show the day it went on
       picked = focusDay = res.record.date;
@@ -360,10 +369,12 @@ export function createLogView({
     stampedWall = wall;
     changed(key);
     stamped = stampedWall = null;
+    rankUp = false;
     // no 실행 취소 here: an undo could drop the record but not a 혼잡도 report already sent. A mistaken record is
     // deleted from the 기록 tab (that one keeps its undo).
-    const saved = level ? `${wall} 기록했어요 · 혼잡도 제보 고마워요` : `${wall} 기록했어요`;
-    // ♥ 추천: on a wall's 3rd record, once per wall — the same toast, with ♥ 추가 instead of nothing
+    const saved = `${wall} 기록했어요${level ? ' · 혼잡도 제보 고마워요' : ''}${after.level > before.level ? ` · 등급이 올랐어요 · ${after.name}` : ''}`;
+    // ♥ 추천: on a wall's 3rd record, once per wall — the same toast, with ♥ 추가 instead of nothing. (A 등급 goes up
+    // only on a wall's 1st record, so the two never meet.)
     const asked = loadFavAsked(storage);
     if (shouldAskFav(wall, countFor(log, wall), getFavs(), asked)) {
       saveFavAsked(storage, [...asked, wall]);
@@ -373,7 +384,7 @@ export function createLogView({
       }, '♥ 추가');
     } else toast(saved);
     if (level) {
-      sendCrowd(wall, level, res.record.date, time).then((ok) => ok || toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'));
+      sendCrowd(wall, level, res.record.date, time).then((ok) => (ok ? panel.contains(document.activeElement) || render() : toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'))); // render: 혼잡도 제보 count
     }
   });
 
@@ -415,29 +426,61 @@ export function createLogView({
     });
   }
 
-  // the 해벽 mark as an ink stamp (css mask), tilted/inked per date; decoration only. A wall with its own stamp artwork
-  // (src/stamp.js) is drawn from that file; `wallName` is the record's wall (a calendar day shows its first record's).
-  function stamp(date, cls, wallName) {
-    const { tilt, ink } = stampLook(date);
-    const s = el('span', { class: cls, 'aria-hidden': 'true' });
-    s.style.setProperty('--tilt', `${tilt}deg`);
-    s.style.setProperty('--ink', String(ink));
-    return inkStamp(s, getWalls().find((w) => w.name === wallName));
+  // The record's 도장: the 해벽 mark (css mask) in a round rim; a dot on the rim where the sun stood
+  // (filled = sunny wall, hollow = shade; only a record with a time), a second rim for the first visit to that wall.
+  // Decoration only. A wall with its own stamp artwork (src/stamp.js) is drawn from that file. `recs`: the records
+  // this seal stands for, newest visit first (a calendar day shows its first record's).
+  let firsts = new Set();
+  function stamp(cls, recs) {
+    const [r] = recs;
+    const wall = getWalls().find((w) => w.name === r.wall);
+    const s = el('span', { class: `seal ${cls}${recs.some((x) => firsts.has(x.id)) ? ' first' : ''}`, 'aria-hidden': 'true' }, inkStamp(el('span', { class: 'stamp' }), wall));
+    const sun = sunMark(wall, r.date, r.time);
+    if (sun) {
+      const dot = el('span', { class: `sun ${sun.lit ? 'lit' : 'shade'}` });
+      dot.style.left = `${sun.x.toFixed(1)}%`;
+      dot.style.top = `${sun.y.toFixed(1)}%`;
+      s.append(dot);
+    }
+    return s;
   }
 
-  function progress() {
-    const { visited, total, outside } = visitedCount(log, getWalls().map((w) => w.name));
-    const bar = el('div', { class: 'lg-track', role: 'progressbar', 'aria-label': '다녀온 암장', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(visited), 'aria-valuetext': `${total}곳 중 ${visited}곳` },
+  // The 등급 seal — the ONE place its artwork is decided (the first-visit stamp look, style.css .rk-seal).
+  // level: rankOf's -1..5; pressed: the save just raised the 등급 (.stamp-in). Decoration only: the name and the way to
+  // the next tier are text next to it.
+  function rankStamp(level, pressed = false) {
+    return el('span', { class: `rk-seal${pressed ? ' stamp-in' : ''}`, 'data-level': String(level), 'aria-hidden': 'true' }, el('span', { class: 'stamp' }));
+  }
+
+  // 내 활동: the 등급 seal (decoration only), the way to the next tier, the numbers.
+  // No records: one short line instead (the empty state below carries the buttons).
+  function activity() {
+    const names = getWalls().map((w) => w.name);
+    const seal = (level) => rankStamp(level, rankUp);
+    if (!log.length) return el('p', { class: 'lg-act-none' }, seal(-1), '다녀오면 도장이 찍혀요');
+    const { places, visits, month } = activityStats(log, names, today());
+    const { total, outside } = visitedCount(log, names);
+    const rank = rankOf(places, total);
+    const nextSay = rank.next ? `${rank.next.name}까지 ${rank.next.need}곳 더` : '모든 외벽에 도장을 찍었어요';
+    const bar = el('div', { class: 'lg-track', role: 'progressbar', 'aria-label': '다음 등급까지', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(rank.progress * 100)), 'aria-valuetext': nextSay },
       el('div', { class: 'lg-fill' }));
-    bar.firstChild.style.width = `${total ? (visited / total) * 100 : 0}%`;
+    bar.firstChild.style.width = `${rank.progress * 100}%`;
     const add = el('button', { type: 'button', class: 'lg-add', 'data-focus': 'log-add' }, '+ 기록 추가');
     add.addEventListener('click', () => openAdd({ date: picked <= today() ? picked : null, from: add }));
-    return el('section', { class: 'lg-prog', 'aria-label': '진행률' },
-      el('div', { class: 'lg-prog-hd' },
-        el('p', {}, `${total}곳 중 `, el('b', {}, `${visited}곳`), ' 다녀왔어요'),
-        log.length ? add : null),
+    const crowd = loadContrib(storage).crowd;
+    const stat = (label, n) => el('li', {}, el('span', {}, label), el('b', {}, n));
+    return el('section', { class: 'lg-act', 'aria-label': '내 활동' },
+      el('div', { class: 'lg-act-hd' },
+        seal(rank.level),
+        el('div', { class: 'lg-act-rank' },
+          el('p', {}, rank.name ? el('b', {}, rank.name) : '아직 등급 전이에요'),
+          el('p', { class: 'lg-act-next' }, nextSay)),
+        add),
       bar,
-      el('small', {}, log.length ? `기록 ${log.length}개${outside ? ` · 지금 목록에 없는 ${outside}곳은 진행률에서 빠져요` : ''}` : '다녀온 곳을 남기면 여기 채워져요.'));
+      el('ul', { class: 'lg-act-stats' },
+        stat('다녀온 곳', `${places}곳`), stat('방문', `${visits}번`), stat('이번 달', `${month}번`),
+        crowd ? stat('혼잡도 제보', `${crowd}번`) : null),
+      el('small', {}, `목록 ${total}곳 중 ${places}곳${outside ? ` · 지금 목록에 없는 ${outside}곳은 빠져요` : ''}`));
   }
 
   function tip() {
@@ -502,7 +545,7 @@ export function createLogView({
         type: 'button', class: 'cal-day', 'data-date': c.date, tabindex: c.date === focusDay ? '0' : '-1',
         'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}`,
         'aria-current': c.date === t ? 'date' : null,
-      }, n ? stamp(c.date, c.date === stamped ? 'stamp cal-stamp stamp-in' : 'stamp cal-stamp', byDay.get(c.date)[0].wall) : null,
+      }, n ? stamp(c.date === stamped ? 'cal-stamp stamp-in' : 'cal-stamp', byDay.get(c.date)) : null,
       el('span', { class: 'cal-n', 'aria-hidden': 'true' }, String(c.day)),
       n > 1 ? el('span', { class: 'cal-badge', 'aria-hidden': 'true' }, `+${n - 1}`) : null);
       if (c.date > t) b.classList.add('future');
@@ -572,7 +615,7 @@ export function createLogView({
         open.addEventListener('click', () => reveal(r.wall));
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
-        return el('li', {}, stamp(r.date, 'stamp rec-stamp', r.wall), open, del);
+        return el('li', {}, stamp('rec-stamp', [r]), open, del);
       })) : null,
       add,
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
@@ -581,9 +624,10 @@ export function createLogView({
   function render() {
     if (panel.hidden) return;
     const byDay = recordsByDay(log);
+    firsts = firstVisits(log);
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
-      progress(),
+      activity(),
       tip(),
       ...(log.length ? [calendar(byDay), dayList(byDay)] : [empty()]),
     ].filter(Boolean));

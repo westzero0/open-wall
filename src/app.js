@@ -22,6 +22,7 @@ import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
+import { bumpCrowd } from './rank.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -804,6 +805,7 @@ async function sendCrowd(name, level, date, time) {
     store(before);
     return false;
   }
+  bumpCrowd(storage); // 내 활동's 혼잡도 제보 count: only a report that went out
   return true;
 }
 // chip: level in words + a 1–3 bar meter (not colour alone)
@@ -1422,7 +1424,7 @@ if (sharedWall) {
   revealRow(sharedWall.name); // its group is only known after the first render
   if (invite) inviteView.banner(invite, sharedWall);
   const u = new URL(location.href);
-  for (const k of ['wall', 'at', 'n', 'tags', 'note']) u.searchParams.delete(k);
+  for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note']) u.searchParams.delete(k);
   history.replaceState(null, '', u);
 }
 showTab(ui.tab); // loadUi keeps it to TABS

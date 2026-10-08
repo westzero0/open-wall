@@ -6,7 +6,17 @@ export const COOLDOWN_MS = 10_000;
 const ENTRY = { name: 'entry.188461628', kind: 'entry.803930553', body: 'entry.2089578077', note: 'entry.750589902' };
 
 import { CHAT_URL_RE } from './store.js';
+import { cleanNote } from './invite.js';
 import { ymd } from './time.js';
+
+// 닉네임: the name a report is counted under (event ranking). cleanNote already drops markup, links, e-mails, phone-like
+// numbers and direction marks; the nickname is then cut at MAX_NICK code points. Typed text and a value read back from
+// localStorage take the same path, so a tampered saved nickname is cleaned like fresh input.
+export const MAX_NICK = 6;
+export const cleanNick = (v) => [...cleanNote(v)].slice(0, MAX_NICK).join('').trim();
+export const loadNick = cleanNick;
+// 'off' without an entry id (no field, nothing sent); 'optional' once the event is over (nickRequired: false); else 'required'.
+export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRequired === false ? 'optional' : 'required');
 
 export const PARKING = ['무료', '유료', '주차 불가', '모름'];
 // A choice in the sheet, not a kind of the Google Form (whose options are fixed): it goes out as 기타 with the link on the first line.
@@ -25,7 +35,7 @@ const isDate = (v) => {
 // 세팅일 sends one line ("마지막 세팅: … · 다음 예정: … · 메모: …"); the last setting within the 2 years up to today,
 // the next one from today to a year ahead (local dates; `now` is for tests).
 // -> { ok: true, report } | { ok: false, error }. honeypot: a filled hidden field means a bot; caller skips the send.
-export function validateReport(input = {}, now = new Date()) {
+export function validateReport(input = {}, now = new Date(), opts = {}) {
   const name = oneLine(input.name);
   const kind = s(input.kind);
   const memo = s(input.body);
@@ -33,6 +43,9 @@ export function validateReport(input = {}, now = new Date()) {
   const fail = (error) => ({ ok: false, error });
   if (!name) return fail('암장 이름이 없어요.');
   if (!KINDS.includes(kind) && kind !== CHAT_KIND) return fail('무엇이 달라졌는지 골라 주세요.');
+  const mode = opts.nick ?? 'off'; // 'off' | 'optional' | 'required' (nickMode)
+  const nick = mode === 'off' ? '' : cleanNick(input.nick);
+  if (mode === 'required' && !nick) return fail('닉네임을 적어 주세요.');
   if (memo.length > MAX_BODY) return fail(`내용은 ${MAX_BODY}자까지 적을 수 있어요.`);
   const lines = [];
   if (kind === '임시휴무') {
@@ -63,15 +76,19 @@ export function validateReport(input = {}, now = new Date()) {
   } else if (!memo) return fail('내용을 적어 주세요.');
   if (memo && kind !== '세팅일') lines.push(lines.length ? `메모: ${memo}` : memo);
   if (note.length > MAX_NOTE) return fail(`날짜·출처는 ${MAX_NOTE}자까지 적을 수 있어요.`);
-  return { ok: true, report: { name, kind: kind === CHAT_KIND ? '기타' : kind, body: lines.join('\n'), note }, honeypot: s(input.hp) !== '' };
+  const report = { name, kind: kind === CHAT_KIND ? '기타' : kind, body: lines.join('\n'), note };
+  if (nick) report.nick = nick;
+  return { ok: true, report, honeypot: s(input.hp) !== '' };
 }
 
-export function buildPayload({ name, kind, body, note }) {
+// nickEntry: the form's 닉네임 entry id (config.reportNickEntry); without it, or without a nickname, nothing extra goes out.
+export function buildPayload({ name, kind, body, note, nick }, nickEntry = '') {
   const p = new URLSearchParams();
   p.set(ENTRY.name, name);
   p.set(ENTRY.kind, kind);
   p.set(ENTRY.body, body);
   if (note) p.set(ENTRY.note, note);
+  if (nick && nickEntry) p.set(nickEntry, nick);
   return p.toString();
 }
 
