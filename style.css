@@ -333,6 +333,27 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 }
 /* 응달 / 방향 모름: same size, told apart by the word; unknown gets a dashed edge */
 .sunnow.shade { background: var(--sunken); }
+/* the picture form of 양달 / 응달 on a row (the word is its aria-label and title) and on the filter chips */
+.sunnow.pic { display: inline-flex; align-items: center; padding: 2px 6px; }
+/* 방향 모름: no chip and a dashed ring, so it weighs less than a known state; 실내: an outlined chip, the sun does not apply */
+.sunnow.unknown.pic { padding: 2px 6px; border: 0; background: transparent; color: var(--muted); } /* same height as the other chips */
+.sunnow.unknown.pic svg path:first-child { stroke-dasharray: 2.4 3; }
+.sunnow.indoor.pic { padding: 1px 5px; color: var(--muted); }
+.key li svg { width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px; }
+.sunnow.pic svg { width: 18px; height: 18px; }
+/* the sun icon: ink on the amber chip in light (the amber itself is 2.4:1 there), the amber in dark (6:1) */
+.sunnow.sun.pic { color: var(--fg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { color: var(--sun); } }
+:root[data-theme="dark"] .sunnow.sun.pic { color: var(--sun); }
+.sunnow.shade.pic { color: var(--muted); }
+/* 양달 | 응달: one capsule with two segments (the filter wears the same pictures as the rows). The pressed segment is filled; pressing it again clears it. */
+.sunfilter { flex: none; display: inline-flex; border-radius: var(--r-pill); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); } /* a ring inside, not a border: the buttons keep the full 44px tap height */
+.sunfilter-btn { display: inline-flex; align-items: center; gap: 3px; min-height: var(--tap); padding: 0 8px; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
+.sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
+.sunfilter-btn svg { width: 14px; height: 14px; flex: none; }
+.sunfilter-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: var(--fg); }
+.sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
 .rmeta { flex: 1 1 0; min-width: 5em; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; color: var(--open); }

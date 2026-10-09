@@ -45,6 +45,12 @@ const ICONS = {
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
+  // 양달 / 응달: a sun with rays; the same sun struck through. Same pair as the invitation picture (src/share-image.js drawIcon).
+  sun: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M2 12h2', 'M20 12h2', 'M4.9 19.1l1.4-1.4', 'M17.7 6.3l1.4-1.4'],
+  // 방향 모름: a ring drawn dashed by CSS (the first path) with a question mark; 실내: a roof over walls (no sun matters indoors)
+  unknown: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8', 'M12 17h.01'],
+  indoor: ['M3 12l9-9 9 9', 'M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10'],
+  shade: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M2 12h2', 'M20 12h2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M3 21L21 3'],
 };
 function icon(name, filled = false) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -55,6 +61,16 @@ function icon(name, filled = false) {
     svg.append(p);
   }
   return svg;
+}
+
+// The sun on an open row, in one place left of the name so the rows read as a column: 양달 / 응달 / 방향 모름 (no
+// information) / 실내 (the sun does not matter) as pictures. The word is the picture's name for readers and a long press, and
+// the key under the list spells all four out for touch users.
+const SUN_PIC = { sun: 'sun', shade: 'shade', unknown: 'unknown', indoor: 'indoor' };
+function sunChip(sun) {
+  const pic = sun && SUN_PIC[sun.tone];
+  if (!pic) return null;
+  return el('span', { class: `sunnow ${sun.tone} pic`, role: 'img', 'aria-label': sun.text, title: sun.text }, icon(pic));
 }
 
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
@@ -841,11 +857,11 @@ function timeRow(row, at) {
   const { sun } = m;
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
+      sunChip(sun), // first: the same column on every open row
       el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
       el('span', { class: 'rname' }, m.shortName),
       feeChip(m),
       m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
-      sun ? el('span', { class: `sunnow ${sun.tone}` }, sun.tone === 'sun' ? el('span', { 'aria-hidden': 'true' }, '☀ ') : null, sun.text) : null,
       m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
         el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
       basisTag(m), // own span: the region line may be cut short, this may not
@@ -1151,6 +1167,9 @@ $('search').addEventListener('input', (e) => {
   go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
 $('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
+for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.dataset.sunkey)); // the key under the list
+$('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the rows
+$('shadeOnly').prepend(icon('shade'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
 $('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== '0' ? '0' : '3'));
 $('nowBtn').addEventListener('click', () => go({ type: 'now' }));
