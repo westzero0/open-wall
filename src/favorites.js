@@ -1,5 +1,7 @@
 // src/favorites.js — the walls a visitor starred ("즐겨찾기"): kept by name, in this browser only. No DOM.
 
+import { getStatus } from './hours.js';
+
 export const FAV_KEY = 'open-wall:fav';
 export const MAX_FAVS = 100;
 
@@ -30,6 +32,9 @@ export function toggleFav(favs, name) {
   if (favs.includes(n)) return favs.filter((f) => f !== n);
   return favs.length >= MAX_FAVS ? favs : [...favs, n];
 }
+
+// 밤: every ♥ wall is known to be closed at `now` (자동 화면 turns dark then). No ♥ walls, or one open / without hours: not night.
+export const isNight = (walls, now) => walls.length > 0 && walls.every((w) => getStatus(w, now).state === 'closed');
 
 // ♥ 추천: walls already asked "♥ 즐겨찾기에 추가할까요?" (once per wall, whatever the answer). Same rules as favorites.
 export const FAV_ASKED_KEY = 'open-wall:fav-asked';

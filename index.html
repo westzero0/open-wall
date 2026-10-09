@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://docs.google.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
@@ -226,7 +226,7 @@
             <label><input type="radio" name="theme" value="light">라이트</label>
             <label><input type="radio" name="theme" value="dark">다크</label>
           </div>
-          <p class="sh-hint">자동은 휴대폰 설정을 따라요.</p>
+          <p class="sh-hint">자동은 휴대폰 설정을 따르고, 즐겨찾기한 암장이 모두 닫혀 있으면 다크로 바뀌어요.</p>
         </fieldset>
         <div class="sh-row pf-backup">
           <span class="sh-label">기록 백업</span>
@@ -247,8 +247,37 @@
           <a class="pf-link" id="pfReport" target="_blank" rel="noopener noreferrer">정보 제보하기 <span>구글 폼 · 새 창</span></a>
         </div>
         <div class="sh-row">
-          <a class="pf-link" id="pfAbout" href="#about">앱 정보 <span>자료 출처</span></a>
+          <a class="pf-link" id="pfAbout" href="#about-sheet">앱 정보 <span>자료 출처 · 개인정보</span></a>
         </div>
+      </form>
+    </dialog>
+    <dialog id="about-sheet" class="sheet" aria-labelledby="about-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="about-title">앱 정보</h2>
+          <button class="sh-done">닫기</button>
+        </div>
+        <section class="ab-sec">
+          <h3>운영시간</h3>
+          <p>확인일이 오래된 곳은 운영시간이 바뀌었을 수 있어요. 확인일이 최근이어도 공휴일·공사 등으로 달라질 수 있으니, 가기 전에 시설에 전화나 공지로 한 번 더 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
+        </section>
+        <section class="ab-sec">
+          <h3>자료 출처</h3>
+          <p>운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 사진 출처는 카드에 표시돼요. 지형은 Copernicus DEM, 지도는 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors예요.</p>
+        </section>
+        <section class="ab-sec">
+          <h3>개인정보</h3>
+          <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
+          <p>초대 그림을 카카오톡으로 보낼 때만 그림이 카카오 서버에 올라가요.</p>
+        </section>
+        <section class="ab-sec" id="report-note" hidden>
+          <h3>틀린 정보 제보</h3>
+          <p>틀린 정보는 펼친 카드의 ‘정보 수정 요청’ 버튼으로 알려 주세요.</p>
+        </section>
+        <section class="ab-sec">
+          <h3>만든 사람</h3>
+          <p>바위타는 은설 · <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">블로그</a> · <a href="https://www.instagram.com/burning__rock/" target="_blank" rel="noopener noreferrer">@burning__rock</a></p>
+        </section>
       </form>
     </dialog>
     <dialog id="log-add" class="sheet" aria-labelledby="log-add-title">
@@ -360,6 +389,8 @@
           <button type="button" class="inv-image" id="inv-image" aria-describedby="inv-why">그림으로 공유</button>
           <button type="button" class="inv-image" id="inv-dl" aria-describedby="inv-why">그림 저장</button>
         </div>
+        <button type="button" class="inv-image inv-kakao" id="inv-kakao" aria-disabled="true" aria-describedby="inv-why inv-kakao-note">카카오톡으로 보내기</button>
+        <p class="sh-hint inv-kakao-note" id="inv-kakao-note">그림은 카카오 서버에 올라가요.</p>
         <figure class="inv-pic" id="inv-pic" hidden>
           <img id="inv-pic-img" alt="" width="1080" height="1920">
           <figcaption>보낼 그림이에요. 저장이 안 되면 그림을 길게 눌러 저장하세요.</figcaption>
@@ -426,12 +457,9 @@
       </form>
     </dialog>
   </main>
-  <footer class="wrap foot" id="about" tabindex="-1">
-    <p>운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 꼭 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
-    <p>자료: 운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 지형: Copernicus DEM. 지도: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
-    <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
-    <p id="report-note" hidden>틀린 정보는 펼친 카드의 ‘정보 수정 요청’ 버튼으로 알려 주세요.</p>
-    <p class="brand"><strong>해벽</strong> · 지금 열린 외벽을 한눈에. Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></p>
+  <footer class="wrap foot">
+    <p class="foot-note">확인일이 오래된 곳은 방문 전에 시설에 직접 확인해 주세요.</p>
+    <p class="foot-row"><span class="brand"><strong>해벽</strong> · Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></span> <button type="button" class="foot-link" id="aboutOpen">앱 정보</button></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
   <script type="module" src="src/pwa.js"></script>

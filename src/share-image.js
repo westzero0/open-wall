@@ -11,6 +11,7 @@ const FONT = '"IBM Plex Sans KR", system-ui, sans-serif';
  * a word wider than the line, and ends with … when cut. balance: the narrowest width that keeps the same number of lines, so
  * the lines come out even and no word is left alone on the last one (CSS text-wrap: balance).
  */
+const graphemes = (s) => Array.from(new Intl.Segmenter().segment(s), (x) => x.segment); // an emoji (👍🏽, 👨‍👩‍👧) is never cut in half
 export function wrapLines(measure, text, maxWidth, maxLines, balance = false) {
   const words = String(text).split(/\s+/).filter(Boolean);
   const lay = (width) => {
@@ -23,10 +24,11 @@ export function wrapLines(measure, text, maxWidth, maxLines, balance = false) {
       line = '';
       let rest = word;
       while (measure(rest) > width) { // one long word: break between characters
-        let n = [...rest].length;
-        while (n > 1 && measure([...rest].slice(0, n).join('')) > width) n -= 1;
-        out.push([...rest].slice(0, n).join(''));
-        rest = [...rest].slice(n).join('');
+        const cs = graphemes(rest);
+        let n = cs.length;
+        while (n > 1 && measure(cs.slice(0, n).join('')) > width) n -= 1;
+        out.push(cs.slice(0, n).join(''));
+        rest = cs.slice(n).join('');
       }
       line = rest;
     }
@@ -47,7 +49,7 @@ export function wrapLines(measure, text, maxWidth, maxLines, balance = false) {
   if (lines.length <= maxLines) return lines;
   const kept = lines.slice(0, maxLines);
   let last = kept[maxLines - 1];
-  while (last && measure(`${last}…`) > maxWidth) last = [...last].slice(0, -1).join('');
+  while (last && measure(`${last}…`) > maxWidth) last = graphemes(last).slice(0, -1).join('');
   kept[maxLines - 1] = `${last}…`;
   return kept;
 }
@@ -153,6 +155,114 @@ export function sunParts(info) {
   return info.from === null ? [{ icon: 'shade' }] : [{ icon: 'shade' }, `${hhmm(info.from)}부터`, { icon: 'sun' }];
 }
 
+/**
+ * pillRows(wide, room, maxRows = Infinity, plus = () => 0, gap = 14) → { rows: [[index]], more }. Pills of the given widths in
+ * rows no wider than room, in order. Past maxRows the rest is cut and counted (more) and the last kept row gives up pills from
+ * its end until a '+more' pill (plus(more) wide) fits beside them; the first pill of a row always stays.
+ */
+export function pillRows(wide, room, maxRows = Infinity, plus = () => 0, gap = 14) {
+  if (!wide.length) return { rows: [], more: 0 };
+  const rows = [[]];
+  let used = 0;
+  wide.forEach((w, i) => {
+    if (rows.at(-1).length && used + gap + w > room) { rows.push([]); used = 0; }
+    used += (rows.at(-1).length ? gap : 0) + w;
+    rows.at(-1).push(i);
+  });
+  if (rows.length <= maxRows) return { rows, more: 0 };
+  const kept = rows.slice(0, maxRows);
+  const last = kept.at(-1);
+  const more = () => wide.length - kept.flat().length;
+  const span = () => last.reduce((s, i, k) => s + (k ? gap : 0) + wide[i], 0);
+  while (last.length > 1 && span() + gap + plus(more()) > room) last.pop();
+  return { rows: kept, more: more() };
+}
+
+/**
+ * INVITE_FITS — what gives way, in order, when the words and pills do not fit (both pictures take the first that fits, else the
+ * last): first the tag/head-count pills keep one row (+N for the rest), then they join the sun pill's row, then the note keeps
+ * one line, then the name. The note is the sender's own words, so it outranks the sun pill, which outranks the tags.
+ */
+export const INVITE_FITS = [
+  { note: 2, name: 2, tagRows: Infinity, merge: false },
+  { note: 2, name: 2, tagRows: 1, merge: false },
+  { note: 2, name: 2, tagRows: 1, merge: true },
+  { note: 1, name: 2, tagRows: 1, merge: true },
+  { note: 1, name: 1, tagRows: 1, merge: true },
+];
+
+// The words and pills of both pictures: one block set from the right margin, its bottom at `bottom`, no taller than `room`
+// (INVITE_FITS). The note comes last, under the pills, in paper colour within curly quotes.
+function block(g, { name, date, time, sunLine = null, sunInfo = null, tags = [], note = '' }, bottom, room) {
+  const PILL = 64;
+  const ICON = 54; // a pill part that is a picture is this wide
+  let y = 0;
+  let draw = false;
+  const text = (s, size, weight, color, maxLines, gap, lead = 0.3) => {
+    g.font = `${weight} ${size}px ${FONT}`;
+    g.fillStyle = color;
+    g.textAlign = 'right';
+    for (const line of wrapLines((t) => g.measureText(t).width, s, W - M * 2, maxLines, true)) {
+      y += size;
+      if (draw) g.fillText(line, W - M, y);
+      y += size * lead;
+    }
+    y += gap;
+    g.textAlign = 'left';
+  };
+  const font = (solid) => `${solid ? 700 : 400} 38px ${FONT}`;
+  const width = ({ parts, solid }) => {
+    g.font = font(solid);
+    return parts.reduce((w, p, k) => w + (k ? 10 : 0) + (typeof p === 'string' ? g.measureText(p).width : ICON), 0) + 56;
+  };
+  const pills = (list, maxRows) => { // right aligned rows; a pill is a run of parts: words or { icon }; solid: filled with the sun's colour
+    const wide = list.map(width);
+    const plus = (n) => ({ parts: [`+${n}`], solid: false });
+    const { rows, more } = pillRows(wide, W - M * 2, maxRows, (n) => width(plus(n)));
+    rows.forEach((row, r) => {
+      const items = row.map((i) => [list[i], wide[i]]);
+      if (more && r === rows.length - 1) items.push([plus(more), width(plus(more))]);
+      let x = W - M;
+      for (const [{ parts, solid }, w] of items.reverse()) {
+        x -= w;
+        if (draw) {
+          g.beginPath();
+          g.roundRect(x, y, w, PILL, PILL / 2);
+          if (solid) { g.fillStyle = SUN; g.fill(); } else { g.strokeStyle = 'rgba(244,242,236,0.55)'; g.lineWidth = 2; g.stroke(); }
+          g.font = font(solid);
+          g.fillStyle = solid ? INK : PAPER;
+          let px = x + 28;
+          parts.forEach((p, k) => {
+            if (k) px += 10;
+            if (typeof p === 'string') { g.fillText(p, px, y + 44); px += g.measureText(p).width; } else { drawIcon(g, p.icon, px + ICON / 2, y + PILL / 2, 17, solid ? INK : PAPER); px += ICON; }
+          });
+        }
+        x -= 14;
+      }
+      y += PILL + 14;
+    });
+  };
+  // the sun then is the app's own news: one pill, filled with the sun's colour when the wall is lit (a shape, so the
+  // brand rule holds: letters stay ink on it), outlined when it is not or when the hours need checking
+  const sun = sunInfo ? [{ parts: sunParts(sunInfo), solid: sunInfo.kind === 'lit' }] : sunLine ? [{ parts: [sunLine], solid: false }] : [];
+  const chips = tags.map((t) => ({ parts: [t], solid: false }));
+  const run = (fit, top) => {
+    y = top;
+    text('같이 가요', 44, 700, PAPER, 1, 14); // the sun colour is for shapes, never for letters (brand/design-system.md)
+    text(date, 64, 400, PAPER, 1, 0);
+    text(time, 200, 700, PAPER, 1, 22, 0.1);
+    text(name, 72, 700, PAPER, fit.name, 14);
+    if (fit.merge) pills([...sun, ...chips], fit.tagRows);
+    else { pills(sun); pills(chips, fit.tagRows); }
+    if (note) { y += 6; text(`“${note}”`, 50, 400, PAPER, fit.note, 0); } // the sender's own words: paper colour, curly quotes
+    return y - top;
+  };
+  const fit = INVITE_FITS.find((f) => run(f, 0) <= room) ?? INVITE_FITS.at(-1);
+  const h = run(fit, 0);
+  draw = true;
+  run(fit, bottom - h);
+}
+
 /** drawInvite(canvas, { name, date, time, at, open, sun, sunLine, sunInfo, tags, note, made } — tags: the chips (kinds, head-count)) — all strings already cleaned by the caller. */
 export async function drawInvite(canvas, { name, date, time, at, open = [], sun = [], sunLine = null, sunInfo = null, tags = [], note = '', made = '' }) {
   await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 같이 가요 0123')));
@@ -170,71 +280,9 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
   const BOTTOM = 1490;
   const RULER = 190; // from the ruler's top figures to its legend
   const GAP = 70;
-  let y = 0;
-  const PILL = 64;
-  const ICON = 54; // a pill part that is a picture is this wide
-  const chips = (list, solid) => {
-    if (!list.length) return;
-    g.font = `${solid ? 700 : 400} 38px ${FONT}`;
-    const items = list.map((c) => (Array.isArray(c) ? c : [c])); // a pill is a run of parts: words or { icon }
-    const wide = items.map((parts) => parts.reduce((w, p, k) => w + (k ? 10 : 0) + (typeof p === 'string' ? g.measureText(p).width : ICON), 0) + 56);
-    const rows = [[]];
-    let used = 0;
-    items.forEach((t, i) => {
-      if (rows[rows.length - 1].length && used + 14 + wide[i] > W - M * 2) { rows.push([]); used = 0; }
-      used += (rows[rows.length - 1].length ? 14 : 0) + wide[i];
-      rows[rows.length - 1].push(i);
-    });
-    for (const row of rows) {
-      let x = W - M;
-      for (const i of [...row].reverse()) {
-        x -= wide[i];
-        if (draw_) {
-          g.beginPath();
-          g.roundRect(x, y, wide[i], PILL, PILL / 2);
-          if (solid) { g.fillStyle = SUN; g.fill(); } else { g.strokeStyle = 'rgba(244,242,236,0.55)'; g.lineWidth = 2; g.stroke(); }
-          g.fillStyle = solid ? INK : PAPER;
-          let px = x + 28;
-          items[i].forEach((p, k) => {
-            if (k) px += 10;
-            if (typeof p === 'string') { g.fillText(p, px, y + 44); px += g.measureText(p).width; } else { drawIcon(g, p.icon, px + ICON / 2, y + PILL / 2, 17, solid ? INK : PAPER); px += ICON; }
-          });
-        }
-        x -= 14;
-      }
-      y += PILL + 14;
-    }
-  };
-  let draw_ = false;
-  const run = (draw) => {
-    draw_ = draw;
-    const text = (s, size, weight, color, maxLines, gap, lead = 0.3) => {
-      g.font = `${weight} ${size}px ${FONT}`;
-      g.fillStyle = color;
-      g.textAlign = 'right';
-      for (const line of wrapLines((t) => g.measureText(t).width, s, W - M * 2, maxLines, true)) {
-        y += size;
-        if (draw) g.fillText(line, W - M, y);
-        y += size * lead;
-      }
-      y += gap;
-      g.textAlign = 'left';
-    };
-    text('같이 가요', 44, 700, PAPER, 1, 14); // the sun colour is for shapes, never for letters (brand/design-system.md)
-    text(date, 64, 400, PAPER, 1, 0);
-    text(time, 200, 700, PAPER, 1, 22, 0.1);
-    text(name, 72, 700, PAPER, 2, 14);
-    // the sun then is the app's own news: one pill, filled with the sun's colour when the wall is lit (a shape, so the
-    // brand rule holds: letters stay ink on it), outlined when it is not or when the hours need checking
-    if (sunInfo) chips([sunParts(sunInfo)], sunInfo.kind === 'lit');
-    else if (sunLine) chips([sunLine], false);
-    chips(tags, false);
-    if (note) text(`"${note}"`, 40, 400, MUTED, 2, 0);
-  };
-  run(false);
-  y = BOTTOM - (y + (open.length ? GAP + RULER : 0));
-  run(true);
-  if (open.length) ruler(g, y + GAP + 56, { open, sun, at });
+  const bottom = BOTTOM - (open.length ? GAP + RULER : 0);
+  block(g, { name, date, time, sunLine, sunInfo, tags, note }, bottom, bottom - 270); // the block's top stays below the story's top bar
+  if (open.length) ruler(g, BOTTOM - RULER + 56, { open, sun, at });
   g.fillStyle = 'rgba(244,242,236,0.45)'; // a hairline sets the credit apart from the facts above
   g.fillRect(M, 1545, W - M * 2, 3);
   g.font = `400 34px ${FONT}`;
@@ -245,10 +293,46 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
   g.textAlign = 'left';
 }
 
-/** pictureBlob(picture) → the invite picture as a PNG Blob, drawn off screen (drawn ahead, so the tap needs no wait). */
-export async function pictureBlob(picture) {
+/**
+ * drawInviteCard(canvas, picture) — the same invite as a 3:4 card (600×800) for a KakaoTalk feed message. Same design as
+ * drawInvite (lockup top left at the same size, words set from the right margin, balanced lines, hairline + made + credit
+ * footer, sun colour on shapes only), laid out at 1080×1440 and scaled down, so the sizes are drawInvite's.
+ * No story bars here, so the lockup and the footer sit nearer the edges, and there is no day ruler (it does not fit under the
+ * lockup even beside the shortest invite). When the block does not fit, INVITE_FITS decides what gives way (the note never goes).
+ */
+const CARD_W = 600;
+const CARD_H = 800;
+export async function drawInviteCard(canvas, { name, date, time, sunLine = null, sunInfo = null, tags = [], note = '', made = '' }) {
+  await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 같이 가요 0123')));
+  canvas.width = CARD_W;
+  canvas.height = CARD_H;
+  const g = canvas.getContext('2d');
+  g.scale(CARD_W / W, CARD_W / W); // 1080 wide, 1440 tall from here on
+  const LH = (W * CARD_H) / CARD_W;
+  g.fillStyle = INK;
+  g.fillRect(0, 0, W, LH);
+  const sign = await lockup();
+  const TOP = 80;
+  const LOGO = 270; // drawInvite's lockup height: the logo never changes size
+  if (sign) g.drawImage(sign, M, TOP, (303 / 140) * LOGO, LOGO);
+  const FOOT = LH - 170; // the hairline; made and the credit under it as in drawInvite (+49, +93)
+  const BOTTOM = FOOT - 55;
+  const ROOM = BOTTOM - (TOP + LOGO + 24);
+  block(g, { name, date, time, sunLine, sunInfo, tags, note }, BOTTOM, ROOM);
+  g.fillStyle = 'rgba(244,242,236,0.45)';
+  g.fillRect(M, FOOT, W - M * 2, 3);
+  g.font = `400 34px ${FONT}`;
+  g.fillStyle = MUTED;
+  g.textAlign = 'right';
+  if (made) g.fillText(made, W - M, FOOT + 49);
+  g.fillText('created by 바위타는 은설', W - M, FOOT + 93);
+  g.textAlign = 'left';
+}
+
+/** pictureBlob(picture, draw = drawInvite) → the invite picture as a PNG Blob, drawn off screen (drawn ahead, so the tap needs no wait). */
+export async function pictureBlob(picture, draw = drawInvite) {
   const canvas = document.createElement('canvas');
-  await drawInvite(canvas, picture);
+  await draw(canvas, picture);
   const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
   if (!blob) throw new Error('no picture');
   return blob;
@@ -299,8 +383,8 @@ export function shareSay({ how, copied } = {}) {
   if (how === 'shared') return '공유 창을 열었어요. 그림과 문구를 함께 넘겼어요.';
   if (how === 'cancelled') return '';
   if (how === 'saved') {
-    return copied ? '그림을 저장했어요(다운로드 폴더). 문구도 복사했어요. 그림과 문구를 함께 보내세요.'
-      : '그림을 저장했어요(다운로드 폴더). 문구는 복사하지 못했어요. 위 보낼 문구를 길게 눌러 복사해 주세요.';
+    return copied ? '그림을 저장했어요(갤러리의 “다운로드” 앨범). 문구도 복사했어요. 그림과 문구를 함께 보내세요.'
+      : '그림을 저장했어요(갤러리의 “다운로드” 앨범). 문구는 복사하지 못했어요. 위 보낼 문구를 길게 눌러 복사해 주세요.';
   }
   return '';
 }
