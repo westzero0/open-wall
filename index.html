@@ -46,8 +46,10 @@
     <div class="wrap">
       <div class="filters" role="group" aria-label="걸러 보기">
         <button type="button" class="pill region-chip" id="regionChip" hidden><span></span><span class="x" aria-hidden="true">✕</span></button>
-        <button type="button" class="pill toggle" id="sunOnly" aria-pressed="false">양달</button>
-        <button type="button" class="pill toggle" id="shadeOnly" aria-pressed="false">응달</button>
+        <div class="sunfilter" role="group" aria-label="양달, 응달">
+          <button type="button" class="sunfilter-btn" id="sunOnly" aria-pressed="false">양달</button>
+          <button type="button" class="sunfilter-btn" id="shadeOnly" aria-pressed="false">응달</button>
+        </div>
         <button type="button" class="pill toggle" id="longOnly" aria-pressed="false">3시간+</button>
         <button type="button" class="pill toggle" id="nearFirst" aria-pressed="false">가까운 순</button>
         <button type="button" class="pill quiet" id="moreFilters" aria-haspopup="dialog">조건 ▾</button>
@@ -120,6 +122,12 @@
         <li><i class="k-sun" aria-hidden="true"></i>양달인 시간</li>
         <li><i class="k-past" aria-hidden="true"></i>이미 지난 시간</li>
         <li><i class="k-soon" aria-hidden="true"></i>1시간 안에 마감</li>
+      </ul>
+      <ul class="key" aria-label="해 아이콘 설명">
+        <li data-sunkey="sun">양달</li>
+        <li data-sunkey="shade">응달</li>
+        <li data-sunkey="unknown">방향 모름</li>
+        <li data-sunkey="indoor">실내</li>
       </ul>
     </div>
     <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>

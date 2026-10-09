@@ -55,7 +55,7 @@ function sunTag(row) {
 function sunNote(row) {
   if (row.wall.venue === 'indoor') return '실내 · 양달/응달 해당 없음';
   if (row.lit === null) return '벽 방향 미입력';
-  const label = row.lit ? '☀ 양달' : row.reason === 'terrain' ? '☁ 응달 · 산에 가려짐' : '☁ 응달';
+  const label = row.lit ? '양달' : row.reason === 'terrain' ? '응달 · 산에 가려짐' : '응달'; // words only: ☀/☁ are drawn differently on every phone
   return `${label}${row.method === 'azimuth' ? ' · 방위각 기준' : row.method === 'override' ? ' · 직접 입력' : ''}`;
 }
 
