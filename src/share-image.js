@@ -63,7 +63,7 @@ const image = (src) => new Promise((ok) => {
 // the horizontal lockup (mark + 해벽) with the wall in paper colour, for the dark ground
 const lockup = () => image('assets/haebyeok-lockup-dark.svg');
 
-const INK = '#17191c'; // the brand's 먹, the same as the logo's wall
+const INK = '#17191c'; // the brand's 먹 (the logo's text ink; the light-ground wall is #2a2d32)
 const PAPER = '#f4f2ec';
 const MUTED = '#9a9d98';
 const SUN = '#f4b942'; // the logo's sun: used only where the sun is meant

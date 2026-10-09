@@ -1143,23 +1143,19 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-say { min-height: 1.4em; margin: 0; padding-top: 6px; color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
 .inv-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
 .inv-send, .inv-copy, .inv-image { min-height: var(--tap); border-radius: var(--radius); font: inherit; font-weight: 700; }
-.inv-send { display: block; width: 100%; border: 0; background: var(--accent); color: var(--on-accent); }
+.inv-send { border: 0; background: var(--accent); color: var(--on-accent); }
 .inv-copy, .inv-image { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); white-space: nowrap; }
 .inv-save { display: block; width: 100%; min-height: var(--tap); margin-top: 8px; border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; white-space: nowrap; }
 .inv-save:disabled { opacity: 0.6; }
 .inv-why { margin: 6px 0 0; }
 .inv-why[hidden] { display: none; }
 .inv-why + .inv-actions { margin-top: 8px; }
-.inv-kakao[aria-disabled="true"] { opacity: 0.5; }
+.inv-image[aria-disabled="true"] { opacity: 0.5; }
 .inv-kakao { display: block; width: 100%; margin-top: 8px; }
 .inv-kakao-note { margin: 6px 0 0; font-size: var(--fs-sm); }
 .inv-link-hint { margin-top: 8px; font-size: var(--fs-sm); }
 .inv-pic { margin: 10px 0 0; }
 .inv-pic[hidden] { display: none; }
-.inv-pic-box { position: relative; width: min(540px, 100%); }
-.inv-pic-box img { transition: opacity 0.15s; }
-.inv-pic.stale img { opacity: 0.4; }
-.inv-pic-save { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; }
 .inv-pic img { display: block; width: min(540px, 100%); height: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
 .inv-pic figcaption { margin-top: 6px; font-size: var(--fs-sm); color: var(--muted); text-wrap: pretty; }
 :is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .inv-save, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1176,3 +1172,17 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .inv-spin { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.2em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
 @media (prefers-reduced-motion: no-preference) { .inv-spin { animation: inv-spin 800ms linear infinite; } }
 @keyframes inv-spin { to { transform: rotate(360deg); } }
+
+/* loading screen: the vertical lockup (light or dark) on the app background until the first list is drawn */
+#boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--bg); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
+#boot img { width: min(50vw, 252px); height: auto; margin-top: -8vh; }
+#boot .dk { display: none; }
+:root[data-theme="dark"] #boot .lt { display: none; }
+:root[data-theme="dark"] #boot .dk { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #boot .lt { display: none; }
+  :root:not([data-theme="light"]) #boot .dk { display: block; }
+}
+#boot.done { opacity: 0; pointer-events: none; }
+@keyframes boot-out { to { opacity: 0; visibility: hidden; pointer-events: none; } } /* never trap the page if the script fails */
+@media (prefers-reduced-motion: reduce) { #boot { transition: none; } }

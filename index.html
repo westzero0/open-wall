@@ -7,6 +7,7 @@
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
   <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <script src="src/boot-theme.js"></script><!-- 자동 + 마지막에 밤이었으면 로딩 화면도 다크로 (CSP: 외부 파일이라 해시 불필요) -->
   <title>해벽 · 지금 열린 외벽</title>
   <meta name="description" content="지금 열린 실외암벽을 시간표로, 양달·응달까지 한눈에 볼 수 있어요.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -28,6 +29,10 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="boot" role="status" aria-label="해벽 · 지금 열린 외벽 불러오는 중">
+    <img class="lt" src="assets/haebyeok-lockup-vertical.svg" alt="" width="252" height="524">
+    <img class="dk" src="assets/haebyeok-lockup-vertical-dark.svg" alt="" width="252" height="524">
+  </div>
   <noscript><p class="wrap">자바스크립트를 켜야 볼 수 있어요.</p></noscript>
   <header class="top">
     <div class="wrap">
@@ -372,17 +377,28 @@
           <label class="inv-field"><span class="sh-label">한마디</span><input type="text" name="note" autocomplete="off" placeholder="예) 초보 환영해요"></label>
           <p class="sh-hint">전화번호, 링크, 이메일은 지워져요. 연락은 대화방에서 해 주세요.</p>
         </fieldset>
+        <div class="sh-row inv-prev">
+          <span class="sh-label">보낼 문구</span>
+          <pre class="inv-preview" id="inv-preview"></pre>
+          <p class="sh-hint">받는 사람이 링크를 열면 그 시각 기준으로 카드가 열려요.</p>
+        </div>
         <p class="inv-say" id="inv-say" role="status"></p>
-        <button type="button" class="inv-send inv-kakao" id="inv-kakao" aria-disabled="true" aria-describedby="inv-kakao-note">카카오톡 공유하기</button>
+        <div class="inv-actions">
+          <button type="button" class="inv-send" id="inv-share">공유하기</button>
+          <button type="button" class="inv-copy" id="inv-copy">문구 복사</button>
+        </div>
+        <p class="sh-hint inv-link-hint">링크만 보내도 암장 미리보기가 떠요. 그림은 약속 시각까지 보여 주고 싶을 때 쓰세요.</p>
+        <button type="button" class="inv-save" id="inv-save">저장</button>
+        <p class="sh-hint inv-why" id="inv-why">먼저 저장을 눌러 주세요.</p>
+        <div class="inv-actions">
+          <button type="button" class="inv-image" id="inv-image" aria-describedby="inv-why">그림으로 공유</button>
+          <button type="button" class="inv-image" id="inv-dl" aria-describedby="inv-why">그림 저장</button>
+        </div>
+        <button type="button" class="inv-image inv-kakao" id="inv-kakao" aria-disabled="true" aria-describedby="inv-why inv-kakao-note">카카오톡으로 보내기</button>
         <p class="sh-hint inv-kakao-note" id="inv-kakao-note">그림은 카카오 서버에 올라가요.</p>
         <figure class="inv-pic" id="inv-pic" hidden>
-          <div class="inv-pic-box">
-            <img id="inv-pic-img" alt="" width="1080" height="1920">
-            <button type="button" class="inv-pic-save" id="inv-pic-save" aria-label="스토리용 그림 저장" title="그림 저장">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
-            </button>
-          </div>
-          <figcaption>스토리용 그림이에요. 길게 눌러 저장하거나 오른쪽 아래 아이콘을 누르세요.</figcaption>
+          <img id="inv-pic-img" alt="" width="1080" height="1920">
+          <figcaption>보낼 그림이에요. 저장이 안 되면 그림을 길게 눌러 저장하세요.</figcaption>
         </figure>
       </form>
     </dialog>
