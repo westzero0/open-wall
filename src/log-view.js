@@ -3,7 +3,7 @@
 import { el } from './dom.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
-import { axisFrac, formatRanges, orderForPick } from './viewmodel.js';
+import { axisFrac, formatRanges, pickChips, searchPicks } from './viewmodel.js';
 import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
@@ -65,18 +65,17 @@ box.addEventListener('focusout', armToast);
 
 /**
  * createLogView({storage, getWalls, getFavs, onChange, reveal, showList, crowdAsk, sendCrowd})
- * getWalls(): the current wall list (names = the progress denominator). getFavs(): ♥ names, listed first in the picker.
+ * getWalls(): the current wall list (names = the progress denominator). getFavs(): ♥ names, the first chips of the picker.
  * onChange(): the log changed (list rows redraw).
  * reveal(name): open that wall's card in the list. showList(): go to the 목록 tab.
  * crowdAsk(wall, date, time) → null | canReport's {ok: false, reason, waitMin} | 'ask': whether the sheet asks how crowded that visit was (app.js).
  * sendCrowd(wall, level, date, time) → Promise<boolean>: the 혼잡도 report (app.js; the record itself stays here).
- * getRegions(): 내 지역 (picker order). getOrigin(): {lat, lng} already in memory, or null — never asks for it.
- * requestLocate() → Promise<string>: asks for the position (only from the sheet's 내 위치로 정렬); '' on success, else the reason.
+ * getOrigin(): {lat, lng} already in memory, or null — never asks for it (the sheet sorts a search by it).
  * addFav(name): ♥ a wall (the ♥ 추천 toast's button).
  */
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
-  getRegions = () => [], getOrigin = () => null, requestLocate = async () => '위치를 쓸 수 없어요.', addFav = () => {},
+  getOrigin = () => null, addFav = () => {},
 }) {
   const panel = $('panel-log');
   let log = loadLog(storage, today(), nowMin());
@@ -108,51 +107,76 @@ export function createLogView({
   // ---- 기록 추가 sheet ----
   const dlg = $('log-add');
   const form = dlg.querySelector('form');
-  const pickSet = dlg.querySelector('.la-pick');
+  const chipBox = dlg.querySelector('.la-pick .la-chips');
+  const searchBox = dlg.querySelector('.la-search');
   const picks = dlg.querySelector('.la-picks');
-  const pickErr = $('la-pick-err');
+  const needHint = $('la-pick-err');
+  const saveBtn = dlg.querySelector('.la-save');
   const dateErr = $('la-date-err');
   let fixedWall = null;
   let choice = null;
+  let chipNames = []; // the ≤3 chips, fixed when the sheet opens so they don't shuffle under a finger
+  let extraWall = null; // a wall picked by search: it joins the chips, selected
   let opener = null;
 
-  const locBtn = dlg.querySelector('.la-locate');
-  const locNote = dlg.querySelector('.la-locate-note');
-  // order: orderForPick (내 지역 → 최근 기록 → 기록 많은 순 → ♥ → 가까운 순/목록 순); a search only filters that order
-  function drawPicks() {
-    const q = form.elements.q.value.trim().normalize('NFC').toLowerCase();
+  // chips: ♥ first, then the most recently logged (viewmodel.pickChips). Opened for a fixed wall: that wall, selected, not pressable.
+  function drawChips() {
+    if (fixedWall) {
+      chipBox.hidden = false;
+      return chipBox.replaceChildren(el('span', { class: 'la-chip fixed' }, fixedWall, el('span', { class: 'sr-only' }, ' (선택됨)')));
+    }
+    const names = extraWall && !chipNames.includes(extraWall) ? [...chipNames, extraWall] : chipNames;
+    chipBox.hidden = !names.length;
+    form.elements.q.placeholder = names.length ? '다른 암장 이름이나 지역으로 찾기' : '암장 이름이나 지역으로 찾기';
+    chipBox.replaceChildren(...names.map((n) => {
+      const b = el('button', { type: 'button', class: 'la-chip', 'aria-pressed': String(n === choice) }, n);
+      b.addEventListener('click', () => choose(n));
+      return b;
+    }));
+  }
+  // the save button names what it saves; without a wall it is off and says why
+  function drawSave() {
+    const wall = sheetWall();
+    saveBtn.disabled = !wall;
+    saveBtn.textContent = wall ? `${wall} 저장` : '저장';
+    needHint.hidden = Boolean(wall);
+  }
+  function choose(name) {
+    choice = name;
+    drawChips();
+    drawSave();
+    drawDay();
+    if (timeTouched) drawCrowd();
+    else resetTime();
+  }
+  // search: only after typing; matches by name or region, nearest first when the position is already known, else 가나다
+  function drawHits() {
+    const q = form.elements.q.value.trim();
+    picks.hidden = !q;
+    if (!q) return picks.replaceChildren();
     const favs = getFavs();
-    const origin = getOrigin();
-    locBtn.hidden = Boolean(origin);
-    const walls = getWalls().filter((w) => !q || w.name.toLowerCase().includes(q) || (w.region ?? '').toLowerCase().includes(q));
-    const items = orderForPick(walls, { favs, regions: getRegions(), origin, visits: visitStats(log), today: today() });
-    const row = ({ wall: w, km }) => {
-      const input = el('input', { type: 'radio', name: 'pick', value: w.name });
-      input.checked = w.name === choice;
-      return el('li', {}, el('label', {}, input,
+    const hits = searchPicks(getWalls(), q, { origin: getOrigin() });
+    picks.replaceChildren(...(hits.length ? hits.map(({ wall: w, km }) => {
+      const b = el('button', { type: 'button', class: 'la-hit' },
         el('span', { class: 'pn' }, favs.includes(w.name) ? el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥ ') : null, w.name),
         km != null ? el('span', { class: 'pd' }, formatDistance(km)) : null,
-        w.region ? el('span', { class: 'pr' }, w.region) : null));
-    };
-    const mine = items.filter((x) => x.mine);
-    const rest = items.filter((x) => !x.mine);
-    const group = (label, list) => el('li', { class: 'la-grp', role: 'group', 'aria-label': label },
-      el('p', { class: 'la-grp-hd', 'aria-hidden': 'true' }, label), el('ul', {}, ...list.map(row)));
-    picks.replaceChildren(...(!items.length ? [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]
-      : mine.length && rest.length ? [group('내 지역', mine), group('그 밖', rest)]
-        : items.map(row)));
+        w.region ? el('span', { class: 'pr' }, w.region) : null);
+      b.addEventListener('click', () => {
+        extraWall = w.name;
+        form.elements.q.value = '';
+        drawHits();
+        choose(w.name);
+        chipBox.querySelector('[aria-pressed="true"]')?.focus(); // the row that held the focus is gone
+      });
+      return el('li', {}, b);
+    }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
   }
-  // 내 위치로 정렬: the only place this sheet asks for the position; the answer stays in app.js memory
-  locBtn.addEventListener('click', async () => {
-    locBtn.disabled = true;
-    locNote.hidden = false;
-    locNote.textContent = '내 위치를 확인하는 중이에요…';
-    const why = await requestLocate();
-    locBtn.disabled = false;
-    if (!dlg.open) return;
-    locNote.textContent = why || '내 위치에서 가까운 순으로 정렬했어요. 직선거리예요.';
-    drawPicks();
-    if (!why) (picks.querySelector('input:checked') ?? picks.querySelector('input'))?.focus(); // the button is gone
+  form.elements.q.addEventListener('input', drawHits);
+  form.elements.q.addEventListener('keydown', (e) => { // Enter never saves; with exactly one match it picks that wall
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (e.isComposing) return; // a Korean IME's committing Enter must not pick early
+    if (picks.querySelectorAll('.la-hit').length === 1) picks.querySelector('.la-hit').click();
   });
   // ---- 방문 시각: the wall's hours of the picked day on the 06–24 axis, and an invisible range input over them ----
   const timeIn = $('la-time-in');
@@ -160,10 +184,21 @@ export function createLogView({
   const timeNote = $('la-time-note');
   const timeErr = $('la-time-err');
   const timeClear = dlg.querySelector('.la-time-clear');
+  const timeToggle = dlg.querySelector('.la-time-toggle');
+  const timeBody = $('la-time-body');
+  // the bar stays folded on the first screen (one summary line); 바꾸기/정하기 opens it, 접기 closes it
+  function setTimeOpen(open) {
+    timeBody.hidden = !open;
+    timeToggle.setAttribute('aria-expanded', String(open));
+    timeToggle.textContent = open ? '접기' : visitMin == null ? '정하기' : '바꾸기';
+  }
+  timeToggle.addEventListener('click', () => setTimeOpen(timeBody.hidden));
   const trk = dlg.querySelector('.vt-trk');
   const mark = dlg.querySelector('.vt-mark');
   const crowdRow = dlg.querySelector('.la-crowd');
   const crowdSentNote = dlg.querySelector('.la-crowd-sent');
+  const moreBox = dlg.querySelector('.la-more');
+  const moreNote = dlg.querySelector('.la-more-note');
   const crowdPills = [...crowdRow.querySelectorAll('.crowd-pill')];
   let visitMin = null; // minutes of the day, or null (시간 모름)
   let timeTouched = false; // set or cleared by the visitor: picking another wall keeps it
@@ -208,6 +243,8 @@ export function createLogView({
     const wall = sheetWall();
     const ask = wall && visitMin != null ? crowdAsk(wall, form.elements.date.value, timeOfMin(visitMin)) : null;
     const wait = ask && ask !== 'ask'; // reported a moment ago: the row stays, off, with the reason
+    moreNote.textContent = ask === 'ask' ? '혼잡도 제보 가능' : '선택'; // a closed fold still says the question is there
+    moreNote.classList.toggle('ask', ask === 'ask');
     crowdRow.hidden = !ask;
     crowdSentNote.hidden = !wait;
     if (wait) crowdSentNote.textContent = { dup: '이 방문은 이미 제보했어요.', wait: `방금 보냈어요. ${ask.waitMin}분 뒤에 다시 보낼 수 있어요.`, wall: '이 외벽은 오늘 두 번 보냈어요.', cap: '오늘은 더 보낼 수 없어요.' }[ask.reason];
@@ -228,6 +265,7 @@ export function createLogView({
     timeSay.classList.toggle('unset', !on);
     timeIn.setAttribute('aria-valuetext', on ? timeSpeech(visitMin) : '시간 모름');
     timeClear.hidden = !on;
+    setTimeOpen(!timeBody.hidden);
     drawCrowd();
   }
   // the default: today → half an hour ago on the half hour, moved into that day's hours; another day (or no wall
@@ -293,10 +331,38 @@ export function createLogView({
     timeIn.focus();
   });
   form.elements.date.addEventListener('change', () => {
+    if (!form.elements.date.value) form.elements.date.value = today(); // iOS 지우기: never leave the chips pressed with no date
     timeTouched = false;
     timeErr.hidden = true;
+    dateErr.hidden = true;
+    drawDate();
     drawDay();
     resetTime();
+  });
+  // 언제: 오늘 / 어제 chips set the date input; 날짜 고르기 opens the native calendar and shows the picked day on the chip
+  const dateIn = form.elements.date;
+  const dayChips = [...dlg.querySelectorAll('.la-when .la-chip')];
+  const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
+  function drawDate() {
+    const v = dateIn.value;
+    const kind = v === today() ? 'today' : v === addDays(-1) ? 'yesterday' : 'other';
+    for (const b of dayChips) b.setAttribute('aria-pressed', String(b.dataset.day === kind));
+    const other = dayChips.find((b) => b.dataset.day === 'other');
+    other.textContent = kind === 'other' && validDate(v) ? `${Number(v.slice(5, 7))}월 ${Number(v.slice(8))}일` : '날짜 고르기';
+  }
+  function setDate(v) {
+    dateIn.value = v;
+    dateIn.dispatchEvent(new Event('change')); // the handler above redraws the chips, the day's hours and the default time
+  }
+  for (const b of dayChips) {
+    if (b.dataset.day === 'other') continue; // that chip is only the look: the transparent date input over it takes the tap
+    b.addEventListener('click', () => setDate(b.dataset.day === 'today' ? today() : addDays(-1)));
+  }
+  dateIn.addEventListener('click', () => { try { dateIn.showPicker?.(); } catch { /* already open, or no support: the native tap does it */ } }); // desktop
+  dateIn.addEventListener('keydown', (e) => { // keyboard: Enter must not submit the form, Enter/Space open the calendar
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    try { dateIn.showPicker?.(); } catch { /* no support or already open */ }
   });
   for (const b of crowdPills) {
     b.addEventListener('click', () => {
@@ -305,36 +371,31 @@ export function createLogView({
     });
   }
 
-  picks.addEventListener('change', (e) => {
-    choice = e.target.value;
-    pickErr.hidden = true;
-    drawDay();
-    if (timeTouched) drawCrowd();
-    else resetTime();
-  });
-  form.elements.q.addEventListener('input', drawPicks);
-
   /** openAdd({wall, date, from}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today. */
   function openAdd({ wall = null, date = null, from = null } = {}) {
     form.reset();
     fixedWall = wall;
     choice = null;
+    extraWall = null;
     opener = from;
-    pickSet.hidden = Boolean(wall);
-    $('log-add-title').textContent = wall ?? '기록 추가';
+    chipNames = wall ? [] : pickChips(getWalls(), { favs: getFavs(), visits: visitStats(log) }).map((w) => w.name);
+    searchBox.hidden = Boolean(wall);
+    picks.hidden = true;
+    picks.replaceChildren();
     const t = today();
     form.elements.date.max = t;
     form.elements.date.value = date && date <= t ? date : t;
-    pickErr.hidden = true;
+    drawDate();
     dateErr.hidden = true;
     timeErr.hidden = true;
-    locNote.hidden = true;
-    locNote.textContent = '';
     timeTouched = false;
     crowdLevel = null;
+    setTimeOpen(false);
+    moreBox.open = false;
+    drawChips();
+    drawSave();
     drawDay();
     resetTime();
-    if (!wall) drawPicks();
     dlg.showModal();
   }
   for (const b of dlg.querySelectorAll('[data-close]')) b.addEventListener('click', () => dlg.close());
@@ -342,16 +403,14 @@ export function createLogView({
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const wall = fixedWall ?? choice;
-    if (!wall) {
-      pickErr.hidden = false;
-      return form.elements.q.focus();
-    }
+    const wall = sheetWall();
+    if (!wall) return;
     const time = visitMin == null ? '' : timeOfMin(visitMin);
     const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
       timeErr.hidden = false;
+      setTimeOpen(true);
       return timeIn.focus();
     }
     if (res.error) {

@@ -394,15 +394,15 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .crowdnow { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 6px; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; color: var(--fg); }
 /* 여유 · 보통 · 혼잡 in the 기록 추가 sheet: pressed shows ✓ and fills, so not by colour alone */
 .crowd-pills { display: flex; gap: 6px; }
-.crowd-pill {
+.crowd-pill, .la-chip {
   min-height: var(--tap); min-width: 64px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
   background: var(--surface); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
   transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out);
 }
 .crowd-pill:disabled { opacity: .45; cursor: default; }
-.crowd-pill:active { transform: scale(.97); }
-.crowd-pill[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
-.crowd-pill[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: 2px; }
+.crowd-pill:active, .la-chip:active { transform: scale(.97); }
+.crowd-pill[aria-pressed="true"], .la-chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.crowd-pill[aria-pressed="true"]::before, .la-chip[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: 2px; }
 .stale-note { margin-top: 4px; font-size: var(--fs-xs); color: var(--warn); }
 .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { display: inline-block; border: 1px solid var(--line); border-radius: var(--r-md); padding: 0 10px; font-size: var(--fs-xs); line-height: 2; }
@@ -923,33 +923,42 @@ dialog::backdrop { background: var(--scrim); }
   background: var(--bg); color: var(--fg); font: inherit;
 }
 .la-field textarea { resize: vertical; white-space: pre-wrap; }
-.la-picks { list-style: none; margin: 8px 0 0; padding: 0; max-height: 40dvh; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--r-md); }
+.la-chips { display: flex; flex-wrap: wrap; gap: 8px; clear: both; margin-bottom: 10px; }
+.la-chips[hidden] { display: none; }
+div.la-when { row-gap: 0; }
+.la-when .sh-label { flex-basis: 100%; margin: 0 0 8px; }
+.la-when .la-chips { flex-basis: 100%; margin-bottom: 0; }
+.la-datewrap { position: relative; display: inline-flex; max-width: 100%; }
+.la-datewrap:focus-within .la-chip { outline: 2px solid var(--accent); outline-offset: 2px; }
+.la-date { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; } /* 칩 위에 투명하게: 탭이 네이티브 달력을 직접 연다 */
+.la-chip { display: inline-flex; align-items: center; justify-content: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.la-chip.fixed { pointer-events: none; background: var(--sunken); border-color: var(--line); color: var(--fg); } /* 암장이 정해진 채 열림: 눌리는 칩(검정 ✓)과 달리 회색 이름표, 바꿀 수 없음 */
+.la-field input::placeholder { color: var(--muted); opacity: 1; } /* 기본 placeholder 는 대비 4.1:1 */
+.la-search { clear: both; }
+.la-picks { list-style: none; margin: 8px 0 0; padding: 0; max-height: calc(var(--tap) * 5); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--r-md); }
 .la-picks li + li { border-top: 1px solid var(--hair); }
-.la-picks label { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: var(--tap); padding: 10px 12px; cursor: pointer; }
-.la-picks input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.la-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; width: 100%; min-height: var(--tap); padding: 10px 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.la-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .la-picks .pn { font-weight: 500; }
 .la-picks .pr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); }
-.la-picks label:has(:checked) { background: var(--sunken); }
-.la-picks label:has(:checked) .pn { font-weight: 700; }
-.la-picks label:has(:checked) .pn::before { content: "✓ "; content: "✓ " / ""; color: var(--accent); }
-.la-picks label:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
 .la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
-.la-picks ul { list-style: none; margin: 0; padding: 0; }
-.la-grp + .la-grp { border-top: 1px solid var(--line); }
-.la-grp-hd { position: sticky; top: 0; z-index: 1; margin: 0; padding: 6px 12px; background: var(--sunken); font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
-.la-near { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
-.la-near .la-locate-note { flex: 1 1 12rem; }
 .la-picks .none { padding: 12px; font-size: var(--fs-sm); color: var(--muted); }
 .la-err { flex-basis: 100%; margin-top: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--warn); }
 .la-err::before { content: "! "; }
-.la-foot { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding-top: 14px; border-top: 1px solid var(--hair); }
-.la-save { min-height: var(--tap); border: 0; border-radius: var(--radius); background: var(--accent); color: var(--bg); font-weight: 700; white-space: nowrap; }
-#log-add-title { overflow-wrap: anywhere; }
+/* 저장 바: 시트가 스크롤돼도 항상 보인다(dialog 가 스크롤 상자). 음수 아래 마진 = 폼의 아래 안쪽 여백까지 덮는다. */
+.la-foot { position: sticky; bottom: 0; z-index: 1; display: grid; gap: 8px; margin: 0 -16px calc(-16px - env(safe-area-inset-bottom)); padding: 10px 16px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hair); background: var(--surface); box-shadow: 0 -6px 8px -8px rgb(0 0 0 / .25); }
+.la-need { margin: 0; text-align: center; }
+.la-need[hidden] { display: none; }
+.la-save { min-height: var(--tap); border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 16px; }
+.la-save:disabled { background: var(--sunken); color: var(--muted); }
 /* 방문 시각: the wall's hours of that day on the 06–24 axis (휴게 hatched). The bar (44px tall, full width) takes taps
    and sideways drags itself (log-view.js pointer handlers; pan-y keeps vertical swipes scrolling the sheet); an invisible
    range input over it, deaf to pointers, serves arrow keys and screen readers. .vt-mark draws the pick. */
 div.la-time { display: block; }
-.la-time-hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; }
+.la-time { border-top: 0; padding-top: 0; } /* 언제 칩 바로 아래 한 줄로 이어진다 */
+.la-time-toggle { margin: 0 -8px 0 auto; }
+#la-time-body[hidden] { display: none; }
+.la-time-hd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px; }
 .la-time-say { font-size: var(--fs-base); font-variant-numeric: tabular-nums; }
 .la-time-say.unset { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
 .vt { position: relative; height: var(--tap); margin-top: 6px; border-radius: var(--r-sm); cursor: pointer; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
@@ -977,6 +986,15 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .la-crowd-q { flex-basis: 100%; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .la-crowd-q span { font-weight: 400; }
 .la-crowd .crowd-pills { flex-wrap: wrap; }
+.la-more { display: block; }
+.la-more > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--tap); font-weight: 600; cursor: pointer; list-style: none; }
+.la-more > summary::-webkit-details-marker { display: none; }
+.la-more > summary::after { content: "▾"; content: "▾" / ""; margin-left: 6px; color: var(--muted); }
+.la-more[open] > summary::after { content: "▴"; content: "▴" / ""; }
+.la-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.la-more-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.la-more-note.ask { font-weight: 600; color: var(--accent); } /* 제보를 놓치지 않게 */
+.la-more > summary + .sh-row { border-top: 0; }
 
 /* ---- 다녀왔어요 / 내 기록 (open card) and "✓ 다녀옴 N번" (list row) ---- */
 .been { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
