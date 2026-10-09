@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://haebyeok.goatcounter.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
@@ -274,6 +274,7 @@
           <h3>개인정보</h3>
           <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
           <p>초대 그림을 카카오톡으로 보낼 때만 그림이 카카오 서버에 올라가요.</p>
+          <p>쿠키 없는 익명 방문 통계(GoatCounter)를 세요. 페이지 경로와 어떤 종류의 링크를 눌렀는지만 보내고, 위치·기록·제보 내용은 보내지 않아요.</p>
         </section>
         <section class="ab-sec" id="report-note" hidden>
           <h3>틀린 정보 제보</h3>
@@ -452,7 +453,6 @@
     </dialog>
   </main>
   <footer class="wrap foot">
-    <p class="foot-note">확인일이 오래된 곳은 방문 전에 시설에 직접 확인해 주세요.</p>
     <p class="foot-row"><span class="brand"><strong>해벽</strong> · Created by <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">바위타는 은설</a></span> <button type="button" class="foot-link" id="aboutOpen">앱 정보</button></p>
   </footer>
   <script src="vendor/leaflet/leaflet.js" defer></script>
@@ -463,3 +463,4 @@
   <script type="module" src="src/contrib-view.js"></script>
 </body>
 </html>
+  <script type="module" src="src/stats.js"></script>
