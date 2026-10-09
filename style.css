@@ -1143,7 +1143,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-say { min-height: 1.4em; margin: 0; padding-top: 6px; color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
 .inv-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
 .inv-send, .inv-copy, .inv-image { min-height: var(--tap); border-radius: var(--radius); font: inherit; font-weight: 700; }
-.inv-send { display: block; width: 100%; border: 0; background: var(--accent); color: var(--on-accent); }
+.inv-send { border: 0; background: var(--accent); color: var(--on-accent); }
 .inv-copy, .inv-image { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); white-space: nowrap; }
 .inv-save { display: block; width: 100%; min-height: var(--tap); margin-top: 8px; border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; white-space: nowrap; }
 .inv-save:disabled { opacity: 0.6; }
