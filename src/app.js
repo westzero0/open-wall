@@ -1,5 +1,5 @@
 import { buildList } from './listing.js';
-import { DAY_KO, hhmm } from './time.js';
+import { DAY_KO, hhmm, isNight } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
@@ -12,7 +12,7 @@ import {
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
-import { isNight, loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
@@ -60,14 +60,12 @@ function icon(name, filled = false) {
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
-const BOOT_NIGHT = 'open-wall:boot-night'; // '1' when the last 자동 turned dark: src/boot-theme.js and the first paint use it before the list is known
-let theme = ui.theme === 'auto' && storage.getItem(BOOT_NIGHT) === '1' ? 'dark' : ui.theme; // what applyTheme last got: 자동 turns 'dark' while every ♥ wall is closed
-applyTheme(theme);
+let theme; // what applyTheme last got: 자동 turns 'dark' from 23:00 to 08:00 (src/boot-theme.js does the same for the first paint)
 function syncTheme() {
-  const next = ui.theme === 'auto' && isNight(state.walls.filter((w) => favs.includes(w.name)), new Date()) ? 'dark' : ui.theme; // the real clock, not the picked moment
-  storage.setItem(BOOT_NIGHT, ui.theme === 'auto' && next === 'dark' ? '1' : '');
+  const next = ui.theme === 'auto' && isNight(new Date()) ? 'dark' : ui.theme; // the real clock, not the picked moment
   if (next !== theme) applyTheme((theme = next));
 }
+syncTheme();
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
 const logView = createLogView({
   storage,
@@ -469,7 +467,6 @@ function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
   renderFavStrip();
-  syncTheme();
 }
 function favBtn(name) {
   const btn = el('button', { type: 'button', class: 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기' });
@@ -1322,7 +1319,6 @@ document.addEventListener('keydown', (e) => {
 
 onChange(() => {
   syncRegions();
-  syncTheme();
   render();
 });
 // Live mode follows the clock. The minute tick skips while the map card's "자세히" is open, or while focus
