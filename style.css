@@ -1176,3 +1176,11 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .inv-spin { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.2em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
 @media (prefers-reduced-motion: no-preference) { .inv-spin { animation: inv-spin 800ms linear infinite; } }
 @keyframes inv-spin { to { transform: rotate(360deg); } }
+
+/* the logo shown while the app opens (src/splash.js takes it away) */
+#splash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: var(--bg); transition: opacity 0.2s; }
+#splash.done { opacity: 0; pointer-events: none; }
+.splash-mark { width: min(46vmin, 240px); aspect-ratio: 1; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .splash-mark { background-image: url("assets/haebyeok-mark-dark.svg"); } }
+:root[data-theme="dark"] .splash-mark { background-image: url("assets/haebyeok-mark-dark.svg"); }
+@media (prefers-reduced-motion: reduce) { #splash { transition: none; } }

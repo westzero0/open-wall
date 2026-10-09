@@ -1,3 +1,4 @@
+import { hideSplash } from './splash.js';
 import { buildList } from './listing.js';
 import { DAY_KO, hhmm } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
@@ -1396,3 +1397,4 @@ if (sharedWall) {
   history.replaceState(null, '', u);
 }
 showTab(ui.tab); // loadUi keeps it to TABS
+hideSplash(); // the app is up: the logo from index.html fades out
