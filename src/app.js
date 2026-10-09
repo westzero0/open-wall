@@ -77,9 +77,7 @@ const logView = createLogView({
   showList: () => showTab('list', true),
   crowdAsk: (wall, date, time) => crowdAsk(wall, date, time),
   sendCrowd: (wall, level, date, time) => sendCrowd(wall, level, date, time),
-  getRegions: () => ui.regions,
   getOrigin: () => vs.origin,
-  requestLocate: () => locate(false),
   addFav: (name) => {
     if (favs.includes(name)) return;
     favs = toggleFav(favs, name);
@@ -1268,9 +1266,9 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   showTab(tabs[(next + tabs.length) % tabs.length], true);
 });
 
-// Asks for the position (only on a press: 내 위치 / 가까운 순 / the 기록 sheet's 내 위치로 정렬); kept in memory only.
-// sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); false from the 기록 sheet, which shows the
-// reason itself. → Promise<string>: '' once the position is in, else why not.
+// Asks for the position (only on a press: 내 위치 / 가까운 순 in the list); kept in memory only.
+// sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); no caller passes false now (the 기록 sheet
+// never asks for the position). → Promise<string>: '' once the position is in, else why not.
 function locate(sort = true) {
   return new Promise((done) => {
     const fail = (why) => {

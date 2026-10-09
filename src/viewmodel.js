@@ -128,30 +128,39 @@ export function withDistance(rows, origin) {
   });
 }
 
-/**
- * orderForPick(walls, {favs, regions, origin, visits, today}) → [{wall, mine, km}] in the 기록 추가 sheet's order.
- * mine: the wall is in 내 지역 (always false without regions); km: straight-line distance, or null (no origin/position).
- * Order: 내 지역 first (with regions), then within each part ① logged in the last 30 days (today and the 29 days
- * before; newest first, then more visits) ② logged before that (more visits, then newest) ③ ♥ (list order)
- * ④ the rest. With an origin, ties and ④ go nearest first (no position: after those with one); otherwise list order.
- * visits: Map name → {last: 'YYYY-MM-DD', count} (visitStats in log.js); today: 'YYYY-MM-DD'. The input is not changed.
- */
-export const RECENT_DAYS = 30;
-const dayNum = (s) => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8)) / 864e5 : NaN);
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0); // Infinity-safe
-export function orderForPick(walls, { favs = [], regions = [], origin = null, visits = new Map(), today } = {}) {
-  const now = dayNum(today);
-  return walls.map((wall, i) => {
-    const p = origin ? wallPosition(wall) : null;
-    const km = p ? distanceKm(origin, p) : null;
-    const v = visits.get(wall.name);
-    const last = v ? dayNum(v.last) : NaN;
-    const tier = !v ? (favs.includes(wall.name) ? 2 : 3) : now - last < RECENT_DAYS ? 0 : 1;
-    const keys = tier === 0 ? [-last, -v.count] : tier === 1 ? [-v.count, -(last || 0)] : [0, 0];
-    const mine = regions.length > 0 && regions.includes(wall.region);
-    return { wall, mine, km, rank: [mine ? 0 : 1, tier, ...keys, km ?? Infinity, i] };
-  }).sort((a, b) => a.rank.reduce((d, x, k) => d || cmp(x, b.rank[k]), 0))
-    .map(({ wall, mine, km }) => ({ wall, mine, km }));
+
+/**
+ * pickChips(walls, {favs, visits, limit = 3}) → wall[]: the chips of the 기록 추가 sheet. ♥ first (saved order), then the
+ * walls logged most recently (newest last visit, then more visits). Names not in `walls` and repeats are dropped.
+ * visits: Map name → {last: 'YYYY-MM-DD', count} (visitStats in log.js).
+ */
+export function pickChips(walls, { favs = [], visits = new Map(), limit = 3 } = {}) {
+  const byName = new Map(walls.map((w) => [w.name, w]));
+  const out = [];
+  const take = (name) => {
+    const w = byName.get(name);
+    if (w && !out.includes(w)) out.push(w);
+  };
+  favs.forEach(take);
+  [...visits].sort(([, a], [, b]) => cmp(b.last, a.last) || b.count - a.count).forEach(([name]) => take(name));
+  return out.slice(0, limit);
+}
+
+/**
+ * searchPicks(walls, q, {origin}) → [{wall, km}]: the walls whose name or region holds `q`. With an origin ({lat, lng} already
+ * in memory) nearest first (no position: after those with one); otherwise 가나다 by name. km: null without a position.
+ */
+export function searchPicks(walls, q, { origin = null } = {}) {
+  const k = String(q ?? '').trim().normalize('NFC').toLowerCase();
+  const byName = (a, b) => a.wall.name.localeCompare(b.wall.name, 'ko');
+  return walls
+    .filter((w) => !k || w.name.toLowerCase().includes(k) || (w.region ?? '').toLowerCase().includes(k))
+    .map((wall) => {
+      const p = origin ? wallPosition(wall) : null;
+      return { wall, km: p ? distanceKm(origin, p) : null };
+    })
+    .sort((a, b) => (origin ? cmp(a.km ?? Infinity, b.km ?? Infinity) : 0) || byName(a, b));
 }
 
 function pinState(status) {

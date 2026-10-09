@@ -294,49 +294,64 @@
         </div>
         <fieldset class="sh-row la-pick">
           <legend>어디를 다녀왔나요</legend>
-          <label class="la-field"><span class="sr-only">암장 검색</span><input type="search" name="q" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off" aria-describedby="la-pick-err"></label>
-          <div class="la-near"><button type="button" class="sh-toggle la-locate">내 위치로 정렬</button><p class="sh-hint la-locate-note" role="status" hidden></p></div>
-          <ul class="la-picks"></ul>
-          <p class="la-err" id="la-pick-err" hidden>암장을 골라 주세요.</p>
+          <div class="la-chips"></div>
+          <div class="la-search">
+            <label class="la-field"><span class="sr-only">암장 검색</span><input type="search" name="q" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off"></label>
+            <ul class="la-picks" hidden></ul>
+          </div>
         </fieldset>
-        <div class="sh-row la-row">
-          <label class="la-field"><span class="sh-label">날짜</span><input type="date" name="date" required aria-describedby="la-date-err"></label>
+        <div class="sh-row la-row la-when" role="group" aria-labelledby="la-when-q">
+          <p class="sh-label" id="la-when-q">언제</p>
+          <div class="la-chips" data-days>
+            <button type="button" class="la-chip" data-day="today" aria-pressed="true">오늘</button>
+            <button type="button" class="la-chip" data-day="yesterday" aria-pressed="false">어제</button>
+            <span class="la-datewrap">
+              <button type="button" class="la-chip la-datebtn" data-day="other" aria-pressed="false" tabindex="-1" aria-hidden="true">날짜 고르기</button>
+              <input type="date" name="date" class="la-date" required aria-label="방문 날짜 고르기" aria-describedby="la-date-err">
+            </span>
+          </div>
           <p class="la-err" id="la-date-err" hidden></p>
         </div>
         <div class="sh-row la-row la-time">
           <div class="la-time-hd">
             <label class="sh-label" for="la-time-in" id="la-time-label">방문 시각 (선택)</label>
             <b class="la-time-say" id="la-time-say" aria-hidden="true">시간 모름</b>
+            <button type="button" class="sh-done la-time-toggle" aria-expanded="false" aria-controls="la-time-body">정하기</button>
           </div>
-          <div class="vt">
-            <div class="vt-trk" aria-hidden="true"></div>
-            <span class="vt-mark" aria-hidden="true" hidden></span>
-            <input type="range" id="la-time-in" name="time" min="360" max="1440" step="30" value="720" aria-describedby="la-time-note la-time-err">
+          <div id="la-time-body" hidden>
+            <div class="vt">
+              <div class="vt-trk" aria-hidden="true"></div>
+              <span class="vt-mark" aria-hidden="true" hidden></span>
+              <input type="range" id="la-time-in" name="time" min="360" max="1440" step="30" value="720" aria-describedby="la-time-note la-time-err">
+            </div>
+            <div class="vt-axis" aria-hidden="true"></div>
+            <div class="la-time-ft">
+              <p class="sh-hint" id="la-time-note"></p>
+              <button type="button" class="sh-toggle la-time-clear" hidden>시간 모름</button>
+            </div>
+            <p class="la-err" id="la-time-err" role="alert" hidden></p>
           </div>
-          <div class="vt-axis" aria-hidden="true"></div>
-          <div class="la-time-ft">
-            <p class="sh-hint" id="la-time-note"></p>
-            <button type="button" class="sh-toggle la-time-clear" hidden>시간 모름</button>
-          </div>
-          <p class="la-err" id="la-time-err" role="alert" hidden></p>
         </div>
-        <div class="sh-row la-row la-crowd" role="group" aria-labelledby="la-crowd-q" hidden>
-          <p class="la-crowd-q" id="la-crowd-q">그때 혼잡도는 어땠어요? <span>(선택)</span></p>
-          <div class="crowd-pills">
-            <button type="button" class="crowd-pill" aria-pressed="false" value="여유">여유</button>
-            <button type="button" class="crowd-pill" aria-pressed="false" value="보통">보통</button>
-            <button type="button" class="crowd-pill" aria-pressed="false" value="혼잡">혼잡</button>
+        <details class="sh-row la-more">
+          <summary><span>메모와 혼잡도 더 적기</span><span class="la-more-note">선택</span></summary>
+          <div class="sh-row la-row">
+            <label class="la-field"><span class="sh-label">메모 (선택)</span><textarea name="memo" rows="2" maxlength="100" placeholder="예: 오후엔 응달이라 시원했어요"></textarea></label>
+            <p class="sh-hint">100자까지. 이 기기에만 저장돼요.</p>
           </div>
-          <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(암장·시각·단계만).</p>
-        </div>
-        <p class="sh-row la-row sh-hint la-crowd-sent" hidden></p>
-        <div class="sh-row la-row">
-          <label class="la-field"><span class="sh-label">메모 (선택)</span><textarea name="memo" rows="2" maxlength="100" placeholder="예: 오후엔 응달이라 시원했어요"></textarea></label>
-          <p class="sh-hint">100자까지. 이 기기에만 저장돼요.</p>
-        </div>
+          <div class="sh-row la-row la-crowd" role="group" aria-labelledby="la-crowd-q" hidden>
+            <p class="la-crowd-q" id="la-crowd-q">그때 혼잡도는 어땠어요? <span>(선택)</span></p>
+            <div class="crowd-pills">
+              <button type="button" class="crowd-pill" aria-pressed="false" value="여유">여유</button>
+              <button type="button" class="crowd-pill" aria-pressed="false" value="보통">보통</button>
+              <button type="button" class="crowd-pill" aria-pressed="false" value="혼잡">혼잡</button>
+            </div>
+            <p class="sh-hint">고르면 기록과 함께 혼잡도 제보로 보내요(암장·시각·단계만).</p>
+          </div>
+          <p class="sh-row la-row sh-hint la-crowd-sent" hidden></p>
+        </details>
         <div class="la-foot">
-          <button type="button" class="sh-toggle" data-close>취소</button>
-          <button type="submit" class="la-save">저장</button>
+          <p class="sh-hint la-need" id="la-pick-err">암장을 골라 주세요</p>
+          <button type="submit" class="la-save" disabled aria-describedby="la-pick-err">저장</button>
         </div>
       </form>
     </dialog>
