@@ -1177,13 +1177,10 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 @media (prefers-reduced-motion: no-preference) { .inv-spin { animation: inv-spin 800ms linear infinite; } }
 @keyframes inv-spin { to { transform: rotate(360deg); } }
 
-/* the logo shown while the app opens (src/splash.js takes it away) */
-#splash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: var(--bg); color: var(--fg); transition: opacity 0.2s; }
-.splash-box { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.splash-name { margin: 12px 0 0; font-size: 1.75rem; font-weight: 800; letter-spacing: 0.02em; }
-.splash-sub { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+/* the logo shown while the app opens (src/splash.js takes it away): the brand's horizontal lockup, not letters set here */
+#splash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: var(--bg); transition: opacity 0.2s; }
 #splash.done { opacity: 0; pointer-events: none; }
-.splash-mark { width: min(46vmin, 240px); aspect-ratio: 1; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .splash-mark { background-image: url("assets/haebyeok-mark-dark.svg"); } }
-:root[data-theme="dark"] .splash-mark { background-image: url("assets/haebyeok-mark-dark.svg"); }
+.splash-logo { width: min(68vw, 320px); aspect-ratio: 303 / 140; background: url("assets/haebyeok-lockup.svg") center / contain no-repeat; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .splash-logo { background-image: url("assets/haebyeok-lockup-dark.svg"); } }
+:root[data-theme="dark"] .splash-logo { background-image: url("assets/haebyeok-lockup-dark.svg"); }
 @media (prefers-reduced-motion: reduce) { #splash { transition: none; } }
