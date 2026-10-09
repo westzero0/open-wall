@@ -1105,6 +1105,7 @@ function showTab(key, focus = false) {
     t.tabIndex = k === key ? 0 : -1;
     $(`panel-${k}`).hidden = k !== key;
   }
+  $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
   controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
