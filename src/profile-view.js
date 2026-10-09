@@ -1,4 +1,4 @@
-// src/profile-view.js — the 내 정보 sheet: 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link.
+// src/profile-view.js — the 내 정보 sheet: 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
 // 내 지역 sits in this sheet too, but app.js draws and handles it (it is a list filter).
 import { config } from './config.js';
 
@@ -43,11 +43,16 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile }
     $('pfReport').href = config.reportFormUrl;
     $('pfReportRow').hidden = false;
   }
+  // 앱 정보 sheet: opened from the footer and from 내 정보; focus returns to whatever opened it
+  const about = $('about-sheet');
+  let aboutOpener = null;
+  about.addEventListener('close', () => aboutOpener?.focus());
+  about.addEventListener('click', (e) => e.target === about && about.close()); // the backdrop
+  const openAbout = (from) => { aboutOpener = from; about.showModal(); };
+  $('aboutOpen').addEventListener('click', (e) => openAbout(e.currentTarget));
   $('pfAbout').addEventListener('click', (e) => {
     e.preventDefault();
     dlg.close();
-    const foot = $('about');
-    foot.focus({ preventScroll: true });
-    foot.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    openAbout($('meBtn'));
   });
 }

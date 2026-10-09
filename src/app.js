@@ -12,7 +12,7 @@ import {
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
-import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { isNight, loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
@@ -60,7 +60,12 @@ function icon(name, filled = false) {
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
-applyTheme(ui.theme);
+let theme = ui.theme; // what applyTheme last got: 자동 turns 'dark' while every ♥ wall is closed
+applyTheme(theme);
+function syncTheme() {
+  const next = ui.theme === 'auto' && isNight(state.walls.filter((w) => favs.includes(w.name)), new Date()) ? 'dark' : ui.theme; // the real clock, not the picked moment
+  if (next !== theme) applyTheme((theme = next));
+}
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
 const logView = createLogView({
   storage,
@@ -85,7 +90,7 @@ const logView = createLogView({
 });
 createProfileView({
   getTheme: () => ui.theme,
-  setTheme: (t) => { ui.theme = cleanTheme(t); saveUi(); applyTheme(ui.theme); },
+  setTheme: (t) => { ui.theme = cleanTheme(t); saveUi(); syncTheme(); },
   exportFile: logView.exportFile,
   importFile: logView.importFile,
 });
@@ -462,6 +467,7 @@ function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
   renderFavStrip();
+  syncTheme();
 }
 function favBtn(name) {
   const btn = el('button', { type: 'button', class: 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기' });
@@ -1314,6 +1320,7 @@ document.addEventListener('keydown', (e) => {
 
 onChange(() => {
   syncRegions();
+  syncTheme();
   render();
 });
 // Live mode follows the clock. The minute tick skips while the map card's "자세히" is open, or while focus
@@ -1321,6 +1328,7 @@ onChange(() => {
 // too) and "조건 지우기". Focus in a list row goes back to the same control of the same row, without scrolling.
 const FOCUSABLE = 'button, a, summary';
 const tick = () => {
+  syncTheme();
   const a = document.activeElement;
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
