@@ -60,10 +60,12 @@ function icon(name, filled = false) {
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
-let theme = ui.theme; // what applyTheme last got: 자동 turns 'dark' while every ♥ wall is closed
+const BOOT_NIGHT = 'open-wall:boot-night'; // '1' when the last 자동 turned dark: src/boot-theme.js and the first paint use it before the list is known
+let theme = ui.theme === 'auto' && storage.getItem(BOOT_NIGHT) === '1' ? 'dark' : ui.theme; // what applyTheme last got: 자동 turns 'dark' while every ♥ wall is closed
 applyTheme(theme);
 function syncTheme() {
   const next = ui.theme === 'auto' && isNight(state.walls.filter((w) => favs.includes(w.name)), new Date()) ? 'dark' : ui.theme; // the real clock, not the picked moment
+  storage.setItem(BOOT_NIGHT, ui.theme === 'auto' && next === 'dark' ? '1' : '');
   if (next !== theme) applyTheme((theme = next));
 }
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
@@ -1386,6 +1388,11 @@ if (sharedWall) {
 }
 syncRegions();
 render();
+{ // the loading screen (index.html #boot) leaves once the first list is drawn
+  const boot = document.getElementById('boot');
+  boot?.classList.add('done');
+  setTimeout(() => boot?.remove(), 400);
+}
 loadCrowd();
 if (sharedWall) {
   if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list

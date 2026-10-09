@@ -52,10 +52,10 @@ export function kakaoFail(e, stage) {
 /** What the sheet says after a try (cancelled: nothing). */
 export const KAKAO_SAY = {
   ok: '카카오톡을 열었어요. 받을 사람을 골라 보내세요.',
-  unavailable: '카카오톡 공유를 쓸 수 없어요. 암장 카드의 공유하기로 링크를 보내 주세요.',
-  key: '카카오톡 공유가 이 주소에서는 막혀 있어요. 암장 카드의 공유하기로 링크를 보내 주세요.',
+  unavailable: '카카오톡 공유를 쓸 수 없어요. 그림으로 공유나 문구 복사로 보내 주세요.',
+  key: '카카오톡 공유가 이 주소에서는 막혀 있어요. 그림으로 공유나 문구 복사로 보내 주세요.',
   upload: '그림을 카카오 서버에 올리지 못했어요. 잠시 뒤 다시 눌러 주세요.',
-  send: '카카오톡을 열지 못했어요. 암장 카드의 공유하기로 링크를 보내 주세요.',
+  send: '카카오톡을 열지 못했어요. 그림으로 공유나 문구 복사로 보내 주세요.',
   cancelled: '',
 };
 
