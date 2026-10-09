@@ -25,6 +25,13 @@ const msgEl = $('toast-msg');
 const act = $('toast-act');
 let toastTimer;
 let undoFn = null;
+// Shown in the top layer, so it is seen above an open sheet too; each toast re-raises it over a sheet opened since.
+box.popover = 'manual';
+const raise = () => {
+  if (!box.showPopover) return;
+  if (box.matches(':popover-open')) box.hidePopover();
+  box.showPopover();
+};
 const hideToast = () => {
   clearTimeout(toastTimer);
   if (box.contains(document.activeElement)) return; // never pull the focused button away
@@ -42,6 +49,7 @@ export function toast(msg, undo = null, label = '실행 취소') {
   msgEl.textContent = msg;
   act.textContent = label;
   act.hidden = !undo;
+  raise();
   box.classList.add('on');
   armToast();
 }

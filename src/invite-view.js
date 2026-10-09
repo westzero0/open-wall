@@ -8,6 +8,7 @@ import { MAX_COUNT, MAX_NOTE, TAGS, buildInviteUrl, checkMoment, cleanNote, clea
 import { drawInviteCard, pictureBlob, saveFile } from './share-image.js';
 import { KAKAO_SAY, kakaoPayload, loadKakao, shareKakao } from './kakao-share.js';
 import { openIntervals } from './hours.js';
+import { toast } from './log-view.js';
 
 const $ = (id) => document.getElementById(id);
 const toMin = (hhmm) => {
@@ -159,18 +160,31 @@ export function createInviteView({ getWalls }) {
 
   // 카카오톡 공유하기: the 3:4 card drawn for these values is uploaded (once per picture) and sent as a feed message with the
   // invite link. Only the upload is awaited; nothing is drawn here.
+  // KakaoTalk is blocked or failed: the invite link is copied instead, and a toast says so
+  async function copyInstead(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      prompt('링크를 복사하세요', url); // no clipboard (http, denied)
+      return;
+    }
+    feedback(KAKAO_SAY.copied);
+    toast(KAKAO_SAY.copied);
+  }
   kakaoBtn.addEventListener('click', async () => {
-    if (!kakao) return feedback(kakaoOff ? KAKAO_SAY.unavailable : '카카오톡 공유를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.');
     const now = keyOf();
     if (!now) return feedback(past ? ERR.past : ERR.empty);
+    const url = buildInviteUrl(location.href, { name: wall.name, ...fields() });
+    if (!kakao) return kakaoOff ? copyInstead(url) : feedback('카카오톡 공유를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.');
     if (ready?.key !== now) return feedback('그림을 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.');
-    if (!ready.card) return feedback(KAKAO_SAY.unavailable);
+    if (!ready.card) return copyInstead(url);
     const { key, card } = ready;
     const shown = picture;
-    const url = buildInviteUrl(location.href, { name: wall.name, ...fields() });
     if (uploaded.key !== key) feedback('그림을 카카오 서버에 올리는 중이에요…');
     const r = await shareKakao(kakao, { key, blob: card, build: (imageUrl) => kakaoPayload({ picture: shown, url, imageUrl }) }, uploaded);
-    if (key === keyOf()) feedback(r.ok ? KAKAO_SAY.ok : KAKAO_SAY[r.why]);
+    if (key !== keyOf() || r.why === 'cancelled') return;
+    if (r.ok) feedback(KAKAO_SAY.ok);
+    else copyInstead(url);
   });
   function startKakao() {
     if (kakao) return;

@@ -1133,6 +1133,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-when .inv-field { margin-top: 0; }
 .inv-count { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
 .inv-kind { display: flex; border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; }
+  top: auto; width: auto; height: auto; border: 0; overflow: visible; /* it is a popover (log-view.js): drop the UA box */
 .inv-kind button { min-height: var(--tap); padding: 0 14px; border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; }
 .inv-kind button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .inv-field input, .inv-field select { width: 100%; min-height: var(--tap); padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
