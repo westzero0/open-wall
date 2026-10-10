@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://haebyeok.goatcounter.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://haebyeok.goatcounter.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com https://api.open-meteo.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
@@ -225,11 +225,9 @@
           <h2 id="profile-title">내 정보</h2>
           <button class="sh-done">닫기</button>
         </div>
-        <p class="pf-local">로그인 없이 이 브라우저에만 저장돼요.</p>
-        <label class="sh-row rp-field pf-nick" id="pfNickRow" hidden><span id="pfNickLabel">닉네임</span><input id="pfNick" autocomplete="off"><span class="sh-hint">제보와 이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요. 다른 사람과 같은 이름일 수 있고, 바꾸면 이전 제보는 옛 이름으로 남아요.</span><span class="sh-hint" id="pfNickLock" hidden>이벤트 중에는 닉네임을 바꿀 수 없어요. 끝나면 바꿀 수 있어요.</span></label>
+        <label class="sh-row rp-field pf-nick" id="pfNickRow" hidden><span id="pfNickLabel">닉네임</span><input id="pfNick" autocomplete="off"></label>
         <fieldset class="sh-row" id="regionRow">
           <legend>내 지역</legend>
-          <p class="sh-hint">여러 권역을 고를 수 있어요. 고르지 않으면 전국이에요. 숫자는 암장 수예요.</p>
           <button type="button" class="sh-toggle" id="regionClear" hidden>선택 해제</button>
           <div id="regionOpts"></div>
         </fieldset>
@@ -240,11 +238,10 @@
             <label><input type="radio" name="theme" value="light">라이트</label>
             <label><input type="radio" name="theme" value="dark">다크</label>
           </div>
-          <p class="sh-hint">자동은 휴대폰 설정을 따라요.</p>
         </fieldset>
         <div class="sh-row pf-backup">
           <span class="sh-label">기록 백업</span>
-          <p class="sh-hint">기록은 이 기기에만 있어요. 휴대폰을 바꾸거나 브라우저 데이터를 지우기 전에 파일로 내보내 두세요.</p>
+          <p class="sh-hint">기록은 이 기기에만 있어요. 폰을 바꾸기 전에 내보내 두세요.</p>
           <div class="pf-btns">
             <button type="button" class="sh-toggle" id="logExport">내보내기</button>
             <button type="button" class="sh-toggle" id="logImport">가져오기</button>
@@ -277,10 +274,11 @@
         </section>
         <section class="ab-sec">
           <h3>자료 출처</h3>
-          <p>운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 사진 출처는 카드에 표시돼요. 지형은 Copernicus DEM, 지도는 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors예요.</p>
+          <p>운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 사진 출처는 카드에 표시돼요. 지형은 Copernicus DEM, 지도는 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors예요. 날씨 예보는 <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>(CC BY 4.0)에서 받아요.</p>
         </section>
         <section class="ab-sec">
           <h3>개인정보</h3>
+          <p>날씨 예보를 위해 암장의 대략적인 위치(좌표)만 Open-Meteo로 보내요. 내 위치는 보내지 않아요.</p>
           <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
           <p>초대 그림을 카카오톡으로 보낼 때만 그림이 카카오 서버에 올라가요.</p>
           <p>쿠키 없는 익명 방문 통계(GoatCounter)를 세요. 페이지 경로와 어떤 종류의 링크를 눌렀는지만 보내고, 위치·기록·제보 내용은 보내지 않아요.</p>
@@ -457,7 +455,7 @@
           </div>
         </fieldset>
         <label class="rp-field"><span class="rp-label">내용</span><textarea name="body" rows="4"></textarea></label>
-        <label class="rp-field rp-nick" hidden><span class="rp-nick-label">닉네임</span><input name="nick" maxlength="6" autocomplete="off"><span class="sh-hint">이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요.</span><span class="sh-hint rp-nick-lock" hidden>이벤트 중에는 닉네임을 바꿀 수 없어요. 끝나면 ‘내 정보’에서 바꿀 수 있어요.</span></label>
+        <label class="rp-field rp-nick" hidden><span class="rp-nick-label">닉네임</span><input name="nick" maxlength="6" autocomplete="off"><span class="sh-hint">이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요.</span><span class="sh-hint rp-nick-lock" hidden>이벤트 중에는 바꿀 수 없어요.</span></label>
         <label class="rp-field">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
         <input class="rp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="rp-status" role="status"></p>

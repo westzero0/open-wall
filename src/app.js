@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
+  scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
@@ -25,6 +25,7 @@ import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
+import { forecastUrl, parseForecast, pickHour, weatherFresh } from './weather.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -720,6 +721,7 @@ function rowDetails(m, wall, at, id) {
         // 오늘 운영 … and 다녀왔어요 at the right end of the same line (wraps to the right of the next line when long)
         el('div', { class: 'today-row' }, el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)), beenBtn(m)),
         ...crowdBox(m),
+        ...weatherBox(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
@@ -816,6 +818,44 @@ async function loadCrowd() {
 const crowdCtx = (name, at) => (!config.crowdCsvUrl ? null : {
   stat: crowd.byWall ? aggregate(crowd.byWall.get(name) ?? [], name, at, { live: vs.live, now: new Date() }) : null,
 });
+// ---- 날씨·바람 (weather.js; docs/system/permissions.md) ----
+// Fetched once per wall when its card is open (render → loadWeather), kept in memory only: a good answer for 3 hours,
+// a failed one for 5 minutes so the minute tick does not retry. The card reads it for the picked moment (weatherCtx).
+const wx = { byWall: new Map(), busy: new Set() };
+async function loadWeather(wall) {
+  const pos = wallPosition(wall); // location, else the sun coordinates; none → no request
+  if (!pos || wx.busy.has(wall.name)) return;
+  if (weatherFresh(wx.byWall.get(wall.name), Date.now())) return;
+  wx.busy.add(wall.name);
+  let hours = null;
+  try {
+    const res = await fetch(forecastUrl(pos.lat, pos.lng), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
+    if (res.ok) hours = parseForecast(await res.json());
+  } catch { /* quiet: no forecast line */ }
+  wx.byWall.set(wall.name, { hours, at: Date.now() });
+  wx.busy.delete(wall.name);
+  if (hours) refillOpen(wall.name);
+}
+// A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off); instead
+// the open card's body alone is drawn again — unless focus is already inside it.
+function refillOpen(name) {
+  const li = [...document.querySelectorAll('#panel-list .row.is-open')].find((x) => x.wallName === name);
+  const row = shown.rows.find((x) => x.wall.name === name);
+  const inner = li?.querySelector('.expand-in');
+  if (!inner || !row || inner.contains(document.activeElement)) return;
+  inner.replaceChildren(...rowDetails(modelOf(row, shown.at), row.wall, shown.at, li.querySelector('.expand').id).filter(Boolean));
+}
+// the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
+const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
+const weatherCtx = (name, at) => {
+  const hours = wx.byWall.get(name)?.hours;
+  return hours ? pickHour(hours, at) : null;
+};
+// the line (+ 바람 셈 pill) under 혼잡도; no forecast for the picked moment → nothing, not even a gap
+function weatherBox(m) {
+  if (!m.weather) return [];
+  return [el('p', { class: 'wx-line' }, m.weather.line, m.weather.windy ? ' ' : null, m.weather.windy ? el('span', { class: 'wx-strong' }, '바람 셈') : null)];
+}
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
 async function sendCrowd(name, level, date, time) {
@@ -844,6 +884,7 @@ function crowdBox(m) {
 }
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
+  weather: weatherCtx(row.wall.name, at),
 });
 
 let rowSeq = 0;
@@ -910,6 +951,7 @@ function toggleRow(li) {
   go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
   if (vs.openName !== li.wallName) return;
   li.fill();
+  weatherFor(li.wallName);
   seeSetting(li.wallName);
   li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
   setRowOpen(li, true);
@@ -1035,6 +1077,7 @@ function render() {
   mapApi?.setRows(all, at);
   renderFavStrip();
   renderPick();
+  if (vs.openName) weatherFor(vs.openName); // a cached forecast makes this a no-op on the minute tick
 }
 
 // ---- map tab ----

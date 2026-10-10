@@ -10,8 +10,8 @@ import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
-  firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount,
+  firstVisits, heatLevel, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearGrid, yearSummary, yearsOf,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -84,6 +84,8 @@ export function createLogView({
   let view = { year: now.getFullYear(), month: now.getMonth() + 1 };
   let picked = today();
   let focusDay = picked;
+  let yearView = now.getFullYear(); // the year the 올해 heatmap shows
+  let yearOpen = false; // the heatmap is folded until opened; it stays as the tab redraws
   let monthSay = '';
   let stamped = null; // the day a record was just added: its stamp lands with a short press, once
   let stampedWall = null; // ...and the wall, so its card's 다녀왔어요 pill gets the same press
@@ -600,6 +602,54 @@ export function createLogView({
       el('div', { class: 'lg-empty-btns' }, add, home));
   }
 
+  // 올해: every day of a year as a small cell, shaded by that day's record count. A look-only overview: nothing in it is
+  // pressable (the month calendar above holds the days); the group's label and the summary line carry the numbers.
+  function yearMap() {
+    const thisYear = now.getFullYear();
+    const years = yearsOf(log);
+    const lo = Math.min(...years, thisYear);
+    const hi = Math.max(...years, thisYear);
+    yearView = Math.min(Math.max(yearView, lo), hi);
+    const t = today();
+    const grid = yearGrid(yearView);
+    const sum = yearSummary(log, yearView);
+    const navBtn = (label, text, by, key) => {
+      const b = el('button', { type: 'button', class: 'cal-nav', 'aria-label': label, 'data-focus': key }, text);
+      b.disabled = yearView + by < lo || yearView + by > hi;
+      b.addEventListener('click', () => { yearView += by; render(); panel.querySelector(`[data-focus="${key}"]`)?.focus(); });
+      return b;
+    };
+    const cols = (node) => { node.style.setProperty('--weeks', String(grid.weeks.length)); return node; };
+    const months = cols(el('div', { class: 'hm-months', 'aria-hidden': 'true' }));
+    grid.weeks.forEach((w, i) => {
+      if (!w.month) return;
+      const m = el('span', {}, String(w.month)); // the number only: 13px "10월" would run into the next label
+      m.style.gridColumn = `${i + 1} / span 4`;
+      months.append(m);
+    });
+    const cells = cols(el('div', { class: 'hm-grid', role: 'group', 'aria-label': `${yearView}년 방문 히트맵` }));
+    cells.append(...grid.weeks.flatMap((w) => w.cells).map((date) => {
+      if (!date) return el('span', { class: 'hm-pad' });
+      const n = sum.days.get(date) ?? 0;
+      if (!n) return el('span', { class: date > t ? 'hm-cell future' : 'hm-cell' });
+      return el('span', { class: 'hm-cell', 'data-level': String(heatLevel(n)) });
+    }));
+    const fold = el('details', { class: 'hm' },
+      el('summary', {}, el('span', {}, '올해 기록 한눈에'), el('span', { class: 'hm-sum' }, sum.visits ? `${sum.visits}번 · ${sum.walls}곳` : '')),
+      el('div', { class: 'cal-head' },
+        navBtn('이전 해', '‹', -1, 'hm-prev'),
+        el('h3', {}, `${yearView}년`),
+        navBtn('다음 해', '›', 1, 'hm-next')),
+      el('p', { class: 'cal-sum' }, sum.visits
+        ? `${sum.visits}번 · ${sum.walls}곳${sum.top ? ` · 가장 많이 간 곳 ${sum.top.wall} ${sum.top.count}번` : ''}`
+        : '이 해에는 기록이 없어요'),
+      el('div', { class: 'hm-scroll' }, months, cells),
+      el('p', { class: 'cal-legend' }, '칸이 진할수록 그날 기록이 많아요'));
+    fold.open = yearOpen;
+    fold.addEventListener('toggle', () => { yearOpen = fold.open; });
+    return fold;
+  }
+
   // month grid: buttons in a role=grid table; arrows move the tab stop (crossing into the next/previous month),
   // Enter/Space picks the day. Switching months is instant; the month name is announced.
   function calendar(byDay) {
@@ -716,7 +766,7 @@ export function createLogView({
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
       activity(),
-      ...(log.length ? [calendar(byDay), dayList(byDay), backupNote()] : [empty()]),
+      ...(log.length ? [calendar(byDay), dayList(byDay), yearMap(), backupNote()] : [empty()]),
     ].filter(Boolean));
   }
 

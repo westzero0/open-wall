@@ -197,6 +197,46 @@ export function monthSummary(log, year, month) {
 }
 
 /**
+ * yearGrid(year) → {year, weeks}: Sunday-first weeks of 7 cells (null before Jan 1 / after Dec 31, else 'YYYY-MM-DD');
+ * a week's `month` is the month whose 1st falls in it (the column label), else null.
+ */
+export function yearGrid(year) {
+  const lead = new Date(year, 0, 1).getDay();
+  const days = new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
+  const cells = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => {
+    const d = new Date(year, 0, i + 1);
+    return dateOf(year, d.getMonth() + 1, d.getDate());
+  })];
+  while (cells.length % 7) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    const w = cells.slice(i, i + 7);
+    const first = w.find((c) => c?.endsWith('-01'));
+    weeks.push({ cells: w, month: first ? Number(first.slice(5, 7)) : null });
+  }
+  return { year, weeks };
+}
+
+/** yearSummary(log, year) → {visits, walls, days: Map date → count, top: {wall, count}|null} for that year's records. */
+export function yearSummary(log, year) {
+  const mine = log.filter((r) => r.date.startsWith(`${year}-`));
+  const days = new Map();
+  const perWall = new Map();
+  for (const r of mine) {
+    days.set(r.date, (days.get(r.date) ?? 0) + 1);
+    perWall.set(r.wall, (perWall.get(r.wall) ?? 0) + 1);
+  }
+  const [wall, count] = [...perWall].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))[0] ?? [];
+  return { visits: mine.length, walls: perWall.size, days, top: wall === undefined ? null : { wall, count } };
+}
+
+/** heatLevel(n) → 0–3: the shade of a heatmap cell for n records that day. */
+export const heatLevel = (n) => Math.min(n, 3);
+
+/** yearsOf(log) → the years that hold a record, ascending. */
+export const yearsOf = (log) => [...new Set(log.map((r) => Number(r.date.slice(0, 4))))].sort((a, b) => a - b);
+
+/**
  * visitedCount(log, names) → {visited, total, outside}. names: the current list's wall names (the denominator).
  * A wall counts once however often it was logged; a logged name not in the list counts in `outside` only.
  */

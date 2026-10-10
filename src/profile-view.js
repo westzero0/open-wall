@@ -42,7 +42,7 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile }
       nickIn.value = readNick();
       const locked = nickLocked(mode, nickIn.value);
       nickIn.readOnly = locked;
-      $('pfNickLock').hidden = !locked;
+      $('pfNickLabel').textContent = locked ? '닉네임 (이벤트 중에는 바꿀 수 없어요)' : `닉네임 (${MAX_NICK}자까지)`;
     }
     form.elements.theme.value = getTheme();
     status.textContent = '';

@@ -400,6 +400,9 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
 .crowd-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 2px 10px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 .crowd-chip.muted { color: var(--muted); border-style: dashed; font-size: var(--fs-xs); }
+/* 날씨·바람: one quiet line under the 혼잡도 chip; 바람 셈 is a neutral outlined pill (--warn already means 곧 닫힘 / 오래됨) */
+.wx-line { margin-top: 6px; font-size: var(--fs-sm); color: var(--muted); }
+.wx-strong { display: inline-block; margin-left: 2px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--fg); font-weight: 700; white-space: nowrap; }
 .crowd-meter { flex: none; display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
 .crowd-meter i { width: 4px; border: 1px solid currentColor; border-radius: 1px; }
 .crowd-meter i:nth-child(1) { height: 6px; }
@@ -861,7 +864,6 @@ dialog::backdrop { background: var(--scrim); }
 .l1 .fee { margin-left: 0; }
 
 /* 내 지역 (sheet checkboxes by 권역, ≤5) and 구분 */
-#regionRow .sh-hint { margin: 0 0 8px; }
 .region-now { flex-wrap: wrap; }
 #regionNow { flex: 1 1 0; min-width: 0; text-align: right; font-weight: 600; }
 #regionClear { margin: 0 0 8px; }
@@ -915,7 +917,6 @@ dialog::backdrop { background: var(--scrim); }
 .top .wrap > :not(h1):not(.me-btn) { grid-column: 1 / -1; }
 .me-btn { margin-right: -10px; color: var(--fg); }
 .me-btn svg { width: 24px; height: 24px; }
-.pf-local { padding: 4px 0 14px; font-size: var(--fs-sm); color: var(--muted); }
 .pf-backup { flex-wrap: wrap; }
 .pf-btns { display: flex; flex-wrap: wrap; gap: 8px; flex-basis: 100%; }
 .pf-btns .sh-toggle { flex: 1 1 8rem; }
@@ -1090,6 +1091,23 @@ p.setnew { margin-top: 8px; }
 .lg-empty p { margin: 6px 0 16px; color: var(--muted); font-size: var(--fs-sm); }
 .lg-empty-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 /* month calendar: 일~토, cells at least 44px; a record day carries the 해벽 mark as an ink stamp (+N when 2+), today a --fg border, the picked day an accent ring + tint */
+/* 올해 heatmap: weeks as columns, 일~토 as rows; the grid never scrolls sideways — cells shrink with the width. Empty days are outlined, a record day is filled (3 shades) */
+.hm { padding: 0 8px 4px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
+.hm > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--tap); padding: 0 8px; list-style: none; cursor: pointer; font-size: var(--fs-base); font-weight: 600; }
+.hm > summary::-webkit-details-marker { display: none; }
+.hm > summary::after { content: ""; flex: none; width: 9px; height: 9px; margin: -4px 4px 0 2px; border: solid var(--accent); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform var(--dur-ui) var(--ease-out); }
+.hm[open] > summary::after { transform: translateY(5px) rotate(-135deg); }
+.hm > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hm-sum { margin-left: auto; font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.hm-months, .hm-grid { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); gap: 1px; }
+.hm-months { margin-bottom: 3px; font-size: var(--fs-xs); line-height: 1.2; color: var(--muted); white-space: nowrap; }
+.hm-grid { grid-template-rows: repeat(7, auto); grid-auto-flow: column; }
+.hm-cell { display: block; aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: 2px; background: none; }
+.hm-cell.future { border-style: dotted; opacity: .5; }
+.hm-pad { display: block; aspect-ratio: 1; }
+.hm-cell[data-level] { border-color: var(--accent); background: var(--accent); }
+.hm-cell[data-level="1"] { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.hm-cell[data-level="2"] { background: color-mix(in srgb, var(--accent) 65%, transparent); }
 .cal { padding: 8px 8px 12px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
 .cal-head { display: flex; align-items: center; gap: 4px; }
 .cal-head h3 { flex: 1; text-align: center; font-size: var(--fs-base); }

@@ -5,6 +5,7 @@ import { hhmm, ymd } from './time.js';
 import { CHAT_URL_RE } from './store.js';
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
+import { weatherLine, windy } from './weather.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
 } from './viewmodel.js';
@@ -249,9 +250,10 @@ export function settingText(setting, today) {
  * at: the picked moment. now: the real clock, only to call the picked day "오늘".
  * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
  * crowd: see crowdOf. Without it (혼잡도 not set up), or with nothing to show, the model has no `crowd` key.
+ * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy}. Without it, no key.
  * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
  */
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -346,6 +348,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),
+    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather) } } : {}),
     ...(crowdModel?.chip?.level ? { crowdTag: crowdTagOf(crowd.stat) } : {}),
   };
 }
