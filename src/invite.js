@@ -1,6 +1,7 @@
 // src/invite.js — 같이 가요: an invite is a share link that also carries a moment ("토요일 14:00") and a few words.
 // Pure logic, no DOM: building and reading the link, cleaning what a stranger put in it, checking the moment against the
 // wall's hours and sun, and the message text. Everything read back from a link is untrusted (see cleanNote).
+import { cleanLine } from './clean-line.js';
 import { hasHours, openIntervals } from './hours.js';
 import { isSunlit } from './sun.js';
 import { dayText, fmtMin, sunIntervals } from './viewmodel.js';
@@ -23,20 +24,7 @@ const toDate = (ymd) => {
  * links, markup, e-mails and phone-like numbers are removed (no way to lead a stranger off the page or to a number), control and
  * direction-changing characters are dropped, spaces collapse, and it is cut at MAX_NOTE characters.
  */
-export function cleanNote(v) {
-  if (typeof v !== 'string') return '';
-  const s = v.normalize('NFC')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
-    .replace(/[​-‏‪-‮⁦-⁩﻿]/g, '')
-    .replace(/<[^>]*>/g, ' ') // markup: the tag goes, its text stays
-    .replace(/[<>]/g, ' ')
-    .replace(/(?:https?:\/\/|www\.)\S+/gi, ' ')
-    .replace(/\S+@\S+\.\S+/g, ' ')
-    .replace(/\+?(?:\d[\s().-]*){7,}/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return [...s].slice(0, MAX_NOTE).join('').trim();
-}
+export const cleanNote = (v) => cleanLine(v, MAX_NOTE);
 
 /** cleanTags(v) → the known tag ids, once each, in TAGS order. v: an array or a comma list. */
 export function cleanTags(v) {
