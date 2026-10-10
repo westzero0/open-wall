@@ -1,6 +1,6 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
-import { MAX_BODY, MAX_NICK, buildPayload, cooldownLeft, loadNick, nickMode, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, NICK_KEY, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -13,7 +13,6 @@ if (dlg) {
   // 닉네임 field: shown only while config.reportNickEntry is set; the last nickname is kept on this device (open-wall:nick, cleaned on read).
   const mode = nickMode(config);
   const nickBox = dlg.querySelector('.rp-nick');
-  const NICK_KEY = 'open-wall:nick';
   const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
   const saveNick = (v) => { try { localStorage.setItem(NICK_KEY, v); } catch { /* private mode: not remembered */ } };
   if (mode !== 'off') {
@@ -49,7 +48,12 @@ if (dlg) {
 
   document.addEventListener('wall:report', (e) => {
     f.reset();
-    if (mode !== 'off') f.elements.nick.value = readNick();
+    if (mode !== 'off') {
+      f.elements.nick.value = readNick();
+      const locked = nickLocked(mode, f.elements.nick.value);
+      f.elements.nick.readOnly = locked;
+      nickBox.querySelector('.rp-nick-lock').hidden = !locked;
+    }
     const { name, kind } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;

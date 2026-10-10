@@ -1,6 +1,7 @@
-// src/profile-view.js — the 내 정보 sheet: 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
+// src/profile-view.js — the 내 정보 sheet: 닉네임, 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
 // 내 지역 sits in this sheet too, but app.js draws and handles it (it is a list filter).
 import { config } from './config.js';
+import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from './report.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,7 +22,28 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile }
   const form = dlg.querySelector('form');
   const status = $('logBackupStatus');
 
+  // 닉네임: the same open-wall:nick the report sheet uses; shown only while the report form has a nickname question.
+  const mode = nickMode(config);
+  const nickIn = $('pfNick');
+  const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  if (mode !== 'off') {
+    $('pfNickRow').hidden = false;
+    $('pfNickLabel').textContent = `닉네임 (${MAX_NICK}자까지)`;
+    nickIn.maxLength = MAX_NICK;
+    nickIn.addEventListener('change', () => { // saved cleaned, shown as saved
+      const v = cleanNick(nickIn.value);
+      nickIn.value = v;
+      try { v ? localStorage.setItem(NICK_KEY, v) : localStorage.removeItem(NICK_KEY); } catch { /* private mode: not remembered */ }
+    });
+  }
+
   $('meBtn').addEventListener('click', () => {
+    if (mode !== 'off') {
+      nickIn.value = readNick();
+      const locked = nickLocked(mode, nickIn.value);
+      nickIn.readOnly = locked;
+      $('pfNickLock').hidden = !locked;
+    }
     form.elements.theme.value = getTheme();
     status.textContent = '';
     dlg.showModal();
