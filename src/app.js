@@ -26,6 +26,7 @@ import { applyTheme, createProfileView } from './profile-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
 import { forecastUrl, parseForecast, pickHour, weatherFresh } from './weather.js';
+import { boardBox } from './board-view.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -722,6 +723,7 @@ function rowDetails(m, wall, at, id) {
         el('div', { class: 'today-row' }, el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)), beenBtn(m)),
         ...crowdBox(m),
         ...weatherBox(m),
+        boardBox(m.name),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
@@ -836,14 +838,17 @@ async function loadWeather(wall) {
   wx.busy.delete(wall.name);
   if (hours) refillOpen(wall.name);
 }
-// A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off); instead
-// the open card's body alone is drawn again — unless focus is already inside it.
+// A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off). Instead only
+// the forecast line is put into the open card (after 오늘 운영 and the 혼잡도 chip, where rowDetails puts it), so nothing else
+// in the card (an opened fold, scroll, focus) is touched.
 function refillOpen(name) {
   const li = [...document.querySelectorAll('#panel-list .row.is-open')].find((x) => x.wallName === name);
   const row = shown.rows.find((x) => x.wall.name === name);
-  const inner = li?.querySelector('.expand-in');
-  if (!inner || !row || inner.contains(document.activeElement)) return;
-  inner.replaceChildren(...rowDetails(modelOf(row, shown.at), row.wall, shown.at, li.querySelector('.expand').id).filter(Boolean));
+  const today = li?.querySelector('.today-row');
+  if (!today || !row) return;
+  li.querySelector('.wx-line')?.remove();
+  const after = today.nextElementSibling?.classList.contains('crowd-chip') ? today.nextElementSibling : today;
+  after.after(...weatherBox(modelOf(row, shown.at)));
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
 const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
@@ -1211,13 +1216,13 @@ $('search').addEventListener('input', (e) => {
   if (e.target.id !== 'date' && e.target.id !== 'time') return;
   go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
-$('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
+$('nowBtn').addEventListener('click', () => go({ type: 'now' }));
 for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.dataset.sunkey)); // the key under the list
 $('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the rows
 $('shadeOnly').prepend(icon('shade'));
+$('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
 $('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== '0' ? '0' : '3'));
-$('nowBtn').addEventListener('click', () => go({ type: 'now' }));
 $('nearFirst').addEventListener('click', () => {
   if (ui.sortMode === 'distance') return setUi('sortMode', 'time');
   setUi('sortMode', 'distance');
