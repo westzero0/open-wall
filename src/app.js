@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  regionGroups, regionList, scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
+  scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
 import { hoursLine, reasonOf, weekendPicks } from './pick.js';
@@ -19,6 +19,7 @@ import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
 import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
+import { areaList } from './areas.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
@@ -1185,36 +1186,27 @@ $('regionChip').addEventListener('click', () => {
   $('sunOnly').focus(); // the chip is gone
 });
 
-// 내 지역 checkboxes, grouped by 시·도; rebuilt only when the walls' regions change, so a tick keeps focus.
-// The saved choice is pruned to regions that exist (not while the list failed to load).
+// 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5); rebuilt only when that list changes, so a tick keeps focus.
+// The saved choice is pruned to 권역 that exist (not while the list failed to load).
 let regionKey = null;
 function syncRegions() {
   if (!state.walls.length) return;
-  const list = regionList(state.walls);
-  ui.regions = cleanRegions(ui.regions, list);
-  $('regionRow').hidden = !list.length;
-  if (regionKey === list.join('|')) return;
-  regionKey = list.join('|');
-  // one folded <details> per 시·도 (경기 alone has 15 구·시): a group opens by itself when it holds a pick
-  $('regionOpts').replaceChildren(...regionGroups(list).map((g) => el('details', { class: 'rg', open: g.regions.some((r) => ui.regions.includes(r)) ? '' : null },
-    el('summary', { class: 'rg-name', 'data-total': String(g.regions.length) }, g.name, el('span', { class: 'rg-n' })),
-    el('div', { class: 'rg-list' }, ...g.regions.map((r) => el('label', {},
-      el('input', { type: 'checkbox', name: 'region', value: r }), r.slice(g.name.length).trim() || r))))));
+  const areas = areaList(state.walls);
+  ui.regions = cleanRegions(ui.regions, areas.map((a) => a.name));
+  $('regionRow').hidden = !areas.length;
+  const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
+  if (regionKey === key) return;
+  regionKey = key;
+  $('regionOpts').replaceChildren(el('div', { class: 'rg-list' }, ...areas.map((a) => el('label', {},
+    el('input', { type: 'checkbox', name: 'region', value: a.name }), a.name, el('span', { class: 'rg-n' }, `${a.total}`)))));
 }
-// "n곳" (how many to pick from) or "n곳 선택" on each 시·도 header
 function syncRegionCounts() {
   $('regionClear').hidden = !ui.regions.length;
-  for (const g of $('regionOpts').querySelectorAll('.rg')) {
-    const n = g.querySelectorAll('input:checked').length;
-    const sum = g.firstChild;
-    sum.lastChild.textContent = n ? `${n}곳 선택` : `${sum.dataset.total}곳`;
-    sum.lastChild.classList.toggle('on', n > 0);
-  }
 }
 
 $('regionClear').addEventListener('click', () => {
   setUi('regions', []);
-  $('regionOpts').querySelector('summary')?.focus(); // the button is gone
+  $('regionOpts').querySelector('input')?.focus(); // the button is gone
 });
 $('moreFilters').addEventListener('click', () => sheet.showModal());
 document.querySelector('#group-open .empty').addEventListener('click', (e) => {
