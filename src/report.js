@@ -15,6 +15,10 @@ import { ymd } from './time.js';
 export const MAX_NICK = 6;
 export const cleanNick = (v) => [...cleanNote(v)].slice(0, MAX_NICK).join('').trim();
 export const loadNick = cleanNick;
+export const NICK_KEY = 'open-wall:nick'; // shared by the report sheet and 내 정보
+// While the ranking runs (mode 'required') a saved nickname can't be changed: the ranking counts by the name's letters, so a new
+// name would split the old reports off. Client-side only (no server): clearing the browser's data gets around it.
+export const nickLocked = (mode, saved) => mode === 'required' && !!saved;
 // 'off' without an entry id (no field, nothing sent); 'optional' once the event is over (nickRequired: false); else 'required'.
 export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRequired === false ? 'optional' : 'required');
 
