@@ -868,7 +868,7 @@ dialog::backdrop { background: var(--scrim); }
 #regionNow { flex: 1 1 0; min-width: 0; text-align: right; font-weight: 600; }
 #regionClear { margin: 0 0 8px; }
 .sh-row .segs + .sh-hint { margin: 8px 0 0; }
-.rg-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.rg-list { clear: both; display: flex; flex-wrap: wrap; gap: 6px; } /* the legend floats in a .sh-row: start below it */
 .rg-n { margin-left: 6px; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
 .rg-list label:has(:checked) .rg-n { color: inherit; opacity: .75; }
 .rg-list label {
