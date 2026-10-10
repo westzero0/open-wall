@@ -1,6 +1,7 @@
 // src/ui-state.js — the saved screen state (filters, sort, tab, theme): defaults, cleaning old/broken values,
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
 // What is on screen but not saved (picked moment, open row, position) is view-state.js.
+import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
@@ -18,14 +19,13 @@ const MIN_HOURS = ['0', '3', '5', '8'];
 const migrateMinHours = (v) => ({ 1: '0', 2: '3' }[String(v)] ?? (MIN_HOURS.includes(String(v)) ? String(v) : '0'));
 
 export const cleanVenue = (v) => (VENUE_FILTERS.includes(v) ? v : 'any');
-// Saved selection: strings only, no repeats, and (when the list is known) only regions that exist.
+// Saved selection: 권역 names only (areas.js; an old "서울 동작구" becomes "서울"), no repeats, and (when the list is known) only 권역 that exist.
 export function cleanRegions(v, known = null) {
-  if (!Array.isArray(v)) return [];
-  return [...new Set(v.filter((r) => typeof r === 'string' && (!known || known.includes(r))))];
+  return normalizeAreas(v).filter((r) => !known || known.includes(r));
 }
 
 // The saved state over the defaults, every value checked. Bad JSON, no storage or a throwing one: defaults.
-// Regions are pruned to the walls' regions later, once the list has loaded (cleanRegions with `known`).
+// Regions are pruned to the 권역 the walls are in later, once the list has loaded (cleanRegions with `known`).
 export function loadUi(storage) {
   const ui = structuredClone(DEFAULTS);
   try {

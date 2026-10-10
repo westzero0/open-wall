@@ -1,6 +1,7 @@
 // src/viewmodel.js — DOM-free helpers for the list as a whole (scope, filters, order, distance, map pins),
 // the time words and slider, the bar/axis math and the hours tables of the "더 보기" pictures.
 // One card's values are composed in card-model.js; the saved filters live in ui-state.js.
+import { areaOf } from './areas.js';
 import { dayRule, hasHours, inWinter, nthOfMonth, openIntervals, orderIntervals, slotOf } from './hours.js';
 import { isSunlit, sunWindows } from './sun.js';
 import { DAY_KEYS, DAY_KO, toMin, ymd } from './time.js';
@@ -53,26 +54,11 @@ export const unknownText = (wall) => (wall?.timeBasis === 'indoor-missing' ? '�
 // ---- list: scope, filters, groups, order ----
 export const hasParking = (wall) => wall.parking?.status === 'free' || wall.parking?.status === 'paid';
 
-// Regions are the walls' `region` text ("서울 동작구"); the first word is the 시·도 they are grouped by.
-export function regionList(walls) {
-  return [...new Set(walls.map((w) => w.region).filter((r) => typeof r === 'string' && r.trim()))]
-    .sort((a, b) => a.localeCompare(b, 'ko'));
-}
-export function regionGroups(regions) {
-  const groups = new Map();
-  for (const r of regions) {
-    const top = r.trim().split(/\s+/)[0];
-    if (!groups.has(top)) groups.set(top, []);
-    groups.get(top).push(r);
-  }
-  return [...groups].map(([name, list]) => ({ name, regions: list }));
-}
-
 // The one place that narrows the walls themselves (every group, the map pins, the counts):
-// 내 지역, 실내/실외, 주차 가능만. The sun / minimum-stay filters stay with filterRows (open group only).
+// 내 지역 (권역 names, areas.js), 실내/실외, 주차 가능만. The sun / minimum-stay filters stay with filterRows (open group only).
 export function scopeRows(rows, { regions = [], venue = 'any', parkOnly = false } = {}) {
   return rows.filter(({ wall }) =>
-    (!regions.length || regions.includes(wall.region))
+    (!regions.length || regions.includes(areaOf(wall.region)))
     && (!VENUE_OK[venue] || VENUE_OK[venue].includes(venueOf(wall)))
     && (!parkOnly || hasParking(wall)));
 }
