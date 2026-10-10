@@ -1,6 +1,7 @@
 /* ---- tokens (palette B: moss green, wine, amber) ---- */
 :root {
   --paper: #f4f4f0;
+  --logo-paper: #f4f2ec; /* the logo's paper: manifest background_color, the app icons and the loading screen share it, so the OS start screen hands over without a seam */
   --sheet: #fafaf7;
   --panel: #e0e3db;
   --open-past: #c7dad5;
@@ -1225,18 +1226,21 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 @keyframes inv-spin { to { transform: rotate(360deg); } }
 
 /* loading screen: the vertical lockup (light or dark) on the app background until the first list is drawn */
-#boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--bg); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
-#boot img { width: min(50vw, 252px); height: auto; margin-top: -8vh; }
+#boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--logo-paper); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
+#boot img { width: min(32vw, 160px); height: auto; animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark; it fades in rather than appearing */
 #boot .dk { display: none; }
+:root[data-theme="dark"] #boot { background: var(--bg); }
 :root[data-theme="dark"] #boot .lt { display: none; }
 :root[data-theme="dark"] #boot .dk { display: block; }
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #boot { background: var(--bg); }
   :root:not([data-theme="light"]) #boot .lt { display: none; }
   :root:not([data-theme="light"]) #boot .dk { display: block; }
 }
 #boot.done { opacity: 0; pointer-events: none; }
+@keyframes boot-in { from { opacity: 0; } }
 @keyframes boot-out { to { opacity: 0; visibility: hidden; pointer-events: none; } } /* never trap the page if the script fails */
-@media (prefers-reduced-motion: reduce) { #boot { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #boot { transition: none; } #boot img { animation: none; } }
 
 /* 한 줄 타임라인 (src/board-view.js) */
 .bd-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
