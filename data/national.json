@@ -165,7 +165,11 @@
       "checked_at": "2026-10-08",
       "contact": {
         "notice_url": "https://www.yjuc.or.kr/sub/content.asp?cIdx=30&fboard=board_notice",
-        "phone": "031-828-9827"
+        "phone": "031-828-9827",
+        "reserve": {
+          "name": "양주시 예약",
+          "url": "https://reserve.yjuc.or.kr/"
+        }
       },
       "holiday": "closed",
       "venue": "both"
@@ -1852,7 +1856,13 @@
           "date": "2024-02-14"
         }
       ],
-      "checked_at": "2026-10-08"
+      "checked_at": "2026-10-08",
+      "contact": {
+        "reserve": {
+          "name": "포천도시공사 예약",
+          "url": "https://res.pcuc.kr/"
+        }
+      }
     },
     {
       "name": "한석봉체육관 클라이밍장",
@@ -3135,7 +3145,11 @@
       "checked_at": "2026-10-08",
       "contact": {
         "notice_url": "https://seoulmccenter.kr/notice.html",
-        "phone": "02-303-8858"
+        "phone": "02-303-8858",
+        "reserve": {
+          "name": "센터 홈페이지",
+          "url": "https://seoulmccenter.kr/"
+        }
       },
       "exceptions": {
         "closed_dates": [
@@ -4896,7 +4910,11 @@
         "note": ""
       },
       "contact": {
-        "phone": "055-339-8866"
+        "phone": "055-339-8866",
+        "reserve": {
+          "name": "김해시 공공예약포털",
+          "url": "https://www.gimhae.go.kr/yes/05561/05927/05931.web"
+        }
       },
       "holiday": "weekend",
       "checked_at": "2026-10-08",
@@ -5947,7 +5965,11 @@
       },
       "contact": {
         "phone": "043-850-3904",
-        "notice_url": "https://www.chungju.go.kr/rev/reserve/321?category_3=%EC%B2%B4%EC%9C%A1%EC%8B%9C%EC%84%A4"
+        "notice_url": "https://www.chungju.go.kr/rev/reserve/321?category_3=%EC%B2%B4%EC%9C%A1%EC%8B%9C%EC%84%A4",
+        "reserve": {
+          "name": "충주시 예약",
+          "url": "https://www.chungju.go.kr/rev/reserve/321?category_3=%EC%B2%B4%EC%9C%A1%EC%8B%9C%EC%84%A4"
+        }
       },
       "sun": {
         "facing": "E",
@@ -6569,7 +6591,11 @@
       "contact": {
         "phone": "053-802-0971",
         "naver_map": "https://naver.me/5Mv795rw",
-        "notice_url": "https://samseonghyeon.gbgs.go.kr/"
+        "notice_url": "https://samseonghyeon.gbgs.go.kr/",
+        "reserve": {
+          "name": "삼성현역사공원",
+          "url": "https://samseonghyeon.gbgs.go.kr/"
+        }
       },
       "checked_at": "2026-10-08",
       "sun": {
@@ -8192,7 +8218,11 @@
       },
       "venue": "outdoor",
       "contact": {
-        "phone": "033-632-6656"
+        "phone": "033-632-6656",
+        "reserve": {
+          "name": "숲나들e",
+          "url": "https://www.foresttrip.go.kr/"
+        }
       },
       "checked_at": "2026-10-08",
       "photo": "photos/nationalmt.jpg",
@@ -8331,7 +8361,11 @@
         "note": ""
       },
       "contact": {
-        "phone": "033-632-6656"
+        "phone": "033-632-6656",
+        "reserve": {
+          "name": "숲나들e",
+          "url": "https://www.foresttrip.go.kr/"
+        }
       },
       "checked_at": "2026-10-08"
     },

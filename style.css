@@ -439,16 +439,14 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   padding: 10px 12px 10px 8px; border-radius: var(--r-lg); background: color-mix(in srgb, var(--panel) 55%, transparent);
 }
 .sunbox.solo { grid-template-columns: minmax(0, 1fr); padding: 14px; }
-.sundial-slot { aspect-ratio: 1; }
-/* compass (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 160px slot renders it at 13.3px. */
+.sundial-slot { aspect-ratio: 216 / 146; }
+/* sun side view (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 160px slot renders it at 13.3px. */
 .dial { display: block; width: 100%; height: auto; overflow: visible; }
-.d-sky { fill: var(--paper); }
+.d-ground { stroke: var(--line-strong); stroke-width: 1; }
 .d-hill { fill: color-mix(in srgb, var(--fg) 28%, transparent); }
-.d-rim { fill: none; stroke: var(--line-strong); stroke-width: 1; }
-.d-t { font-size: 18px; font-weight: 700; fill: var(--muted); text-anchor: middle; dominant-baseline: central; }
-.d-wall { stroke: var(--fg); stroke-width: 6; stroke-linecap: round; }
-.d-wall.lit { stroke: var(--sun); filter: drop-shadow(0 0 5px var(--sun)); }
-.d-wall.dark { stroke: var(--muted); }
+.d-wall { fill: var(--fg); }
+.d-wall.lit { fill: var(--sun); filter: drop-shadow(0 0 5px var(--sun)); }
+.d-wall.dark { fill: var(--muted); }
 .d-beam { fill: var(--sun); fill-opacity: .32; stroke: var(--sun); stroke-width: 1.2; stroke-linejoin: round; }
 .d-beam.off { fill-opacity: 0; stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1.3; }
 .d-x { stroke: var(--soon); stroke-width: 2.4; stroke-linecap: round; fill: none; }
@@ -463,13 +461,13 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .d-lab.xl { fill: var(--soon); }
 /* 양달↔응달 flip: colours only, nothing moves (app.js marks the new SVG with what it was) */
 .d-wall, .d-beam, .d-halo, .d-lab.wall {
-  transition: stroke 140ms var(--ease-out), fill-opacity 140ms var(--ease-out), opacity 140ms var(--ease-out), filter 140ms var(--ease-out);
+  transition: fill 140ms var(--ease-out), stroke 140ms var(--ease-out), fill-opacity 140ms var(--ease-out), opacity 140ms var(--ease-out), filter 140ms var(--ease-out);
 }
 @starting-style {
-  .dial.from-dark .d-wall { stroke: var(--muted); filter: none; }
+  .dial.from-dark .d-wall { fill: var(--muted); filter: none; }
   .dial.from-dark .d-beam { fill-opacity: 0; stroke: var(--muted); }
   .dial.from-dark .d-halo { opacity: 0; }
-  .dial.from-lit .d-wall { stroke: var(--sun); }
+  .dial.from-lit .d-wall { fill: var(--sun); }
   .dial.from-lit .d-beam { fill-opacity: .32; stroke: var(--sun); }
   .dial.from-dark .d-lab.wall, .dial.from-lit .d-lab.wall { opacity: 0; }
 }

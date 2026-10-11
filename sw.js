@@ -1,14 +1,37 @@
-// 최소 서비스 워커: 저장소를 쓰지 않는 순수 네트워크 통과. 설치 가능 조건(fetch 핸들러)만 채운다.
-// 같은 출처 GET 만 다루고, 페이지 이동이 네트워크 오류일 때만 짧은 안내를 보인다. 그 외 요청은 건드리지 않는다.
+// 서비스 워커: 화면 틀(페이지·CSS·스크립트·로고·라이브러리)만 저장해 두고 먼저 보여 준 뒤 뒤에서 새로 받는다(stale-while-revalidate).
+// 홈 화면 앱의 시작 화면은 첫 그림이 나올 때까지 떠 있으므로, 틀을 폰에서 바로 꺼내 그 시간을 줄이는 게 목적이다.
+// 운영시간 등 데이터(data/), 암장 공유 페이지(w/), 이 파일 자신은 저장하지 않고 항상 네트워크에서 받는다(오래된 운영시간을 보이지 않기 위해).
+const CACHE = 'haebyeok-shell-v1'; // 저장 방식이 바뀌면 올린다(activate 가 다른 이름의 저장소를 지운다)
 const OFFLINE = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
   + '<title>해벽</title><body style="font:16px/1.6 sans-serif;word-break:keep-all;padding:2rem;text-align:center"><p>인터넷에 연결되면 다시 열어 주세요.</p></body></html>';
 
+// 이 워커가 있는 폴더 기준 경로: '' (첫 화면), index.html, style.css, manifest, src/*.js, assets/**, vendor/**
+const BASE = new URL('./', self.location.href).pathname;
+const SHELL = /^(?:|index\.html|style\.css|manifest\.webmanifest|src\/[^/]+\.js|assets\/.+|vendor\/.+)$/;
+
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (e) => e.waitUntil(
+  caches.keys().then((names) => Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
+    .then(() => self.clients.claim())));
+
+const offline = (req) => (req.mode === 'navigate'
+  ? new Response(OFFLINE, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } })
+  : Response.error());
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(fetch(req).catch(() => req.mode === 'navigate'
-    ? new Response(OFFLINE, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } })
-    : Response.error()));
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  const rel = url.pathname.startsWith(BASE) ? url.pathname.slice(BASE.length) : null;
+  if (rel === null || !SHELL.test(rel)) { // data, share pages, the worker: the network, as it is
+    e.respondWith(fetch(req).catch(() => offline(req)));
+    return;
+  }
+  const key = url.origin + url.pathname; // a share link's ?wall=… shares the stored page
+  e.respondWith(caches.open(CACHE).then(async (cache) => {
+    const hit = await cache.match(key);
+    const refresh = fetch(req).then((res) => { if (res.ok) cache.put(key, res.clone()); return res; });
+    if (hit) { e.waitUntil(refresh.catch(() => {})); return hit; }
+    return refresh.catch(() => offline(req));
+  }));
 });
