@@ -46,6 +46,16 @@ function cleanHours(v) {
   return out;
 }
 
+// contact.reserve = { name?, url }: a reservation site (http/https only, no spaces); no usable url = no reserve.
+export const HTTP_URL_RE = /^https?:\/\/\S+$/i;
+function cleanReserve(v) {
+  const r = getPlainObject(v);
+  const url = typeof r.url === 'string' ? r.url.trim() : '';
+  if (!HTTP_URL_RE.test(url) || url.length > 500) return null;
+  const name = typeof r.name === 'string' ? r.name.trim().slice(0, 20) : '';
+  return { ...(name ? { name } : {}), url };
+}
+
 function cleanContact(v) {
   const out = {};
   for (const k of CONTACT_KEYS) {
@@ -55,6 +65,8 @@ function cleanContact(v) {
       if (CHAT_URL_RE.test(s.trim())) out[k] = s.trim();
     } else out[k] = s;
   }
+  const reserve = cleanReserve(getPlainObject(v).reserve);
+  if (reserve) out.reserve = reserve;
   return out;
 }
 
@@ -275,6 +287,7 @@ export function keepGeo(old, next) {
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
+  if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
   for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
@@ -303,6 +316,7 @@ export function mergeWalls(existing, incoming, mode) {
       const fill = {};
       for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
+      if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
       // holiday / nth closures fill only walls that have none (an edited rule stays)
       if (w.holiday && !old.holiday) fill.holiday = w.holiday;
       if (w.exceptions.nth_closed && !old.exceptions?.nth_closed) fill.exceptions = { ...old.exceptions, nth_closed: w.exceptions.nth_closed };

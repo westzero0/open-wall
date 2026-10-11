@@ -9,7 +9,7 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // nickRequired — true while the ranking event runs; set false after it (the field stays, a report no longer needs a nickname).
 // 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
 export const config = {
-  boardUrl: '',
+  boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
   reportNickEntry: 'entry.1516503630', nickRequired: true,
   statsCode: 'haebyeok', // GoatCounter 사이트 코드(src/stats.js); 비우면 통계를 보내지 않는다

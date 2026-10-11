@@ -55,7 +55,7 @@ function build(wallName) {
   nick.value = loadNick(store.get(NICK_KEY) || '');
   const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
   if (lockedNick) nick.readOnly = true;
-  const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: '한 줄 남기기', 'aria-label': '한 줄 남기기', autocomplete: 'off' });
+  const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: '한 줄 남기기 · 모두에게 공개돼요', 'aria-label': '한 줄 남기기', autocomplete: 'off' });
   // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
   const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
   const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);

@@ -660,6 +660,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 }
 .expand-in .actions .btn svg { flex: none; width: 15px; height: 15px; }
 .expand-in .actions .btn::after { content: ""; position: absolute; inset: -5px 0; }
+.btn-sub { color: var(--muted); font-size: 13px; font-weight: 400; white-space: nowrap; }
 .expand-in .row-actions { margin: 8px 0 0; }
 .expand-in .row-actions button { font-size: var(--fs-sm); }
 

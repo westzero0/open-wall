@@ -180,8 +180,10 @@ const LINK_ICON = { 공지사항: 'megaphone', '인스타 공지': 'megaphone', 
 function actionLinks(links, last = null) { // last: one more pill at the end of the same wrapping row
   if (!links.length && !last) return null;
   return el('div', { class: 'actions' },
-    ...links.map(({ label, href, primary }) =>
-      el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer' }, LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)),
+    ...links.map(({ label, href, primary, sub }) => {
+      const kids = [LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label, sub ? el('span', { class: 'btn-sub' }, ` · ${sub}`) : null];
+      return el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기` } : {}) }, ...kids);
+    }),
     last);
 }
 

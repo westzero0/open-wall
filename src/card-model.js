@@ -136,6 +136,8 @@ const BASIS = { outdoor: '실외 시간 기준', indoor: '실내 시간 기준' 
 // 무료/유료 tags mean the entrance fee: shown beside the name, not among the chips (parking has its own).
 const isFee = (t) => t === '무료' || t === '유료';
 const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
+// 예약 pill: a link to the reservation site
+const reserveLink = (r) => safeUrl(r?.url) && { label: '예약', sub: r.name || null, href: r.url };
 
 // ---- memo ----
 // Memo text → [{label, value, key}] lines. Lines split on newlines, then on sentence-ending periods
@@ -331,6 +333,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
       // the order a visitor reaches for them: the notice (the evidence for the hours), the chat room, then the phone
       safeUrl(c.notice_url) && { label: '공지사항', href: c.notice_url },
       c.instagram && { label: '인스타 공지', href: `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/` },
+      reserveLink(c.reserve),
       hasChat && { label: '오픈채팅', href: c.chat_url },
       c.phone && { label: '전화', href: `tel:${c.phone.replace(/[^\d+]/g, '')}` },
       safeUrl(c.naver_map) && { label: '네이버지도', href: c.naver_map },
