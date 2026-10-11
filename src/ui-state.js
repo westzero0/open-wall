@@ -5,7 +5,7 @@ import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], venue: 'any', favOnly: false, theme: 'auto' };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto' };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
@@ -39,6 +39,7 @@ export function loadUi(storage) {
   ui.parkingOnly = ui.parkingOnly === true;
   ui.withBreaks = ui.withBreaks === true;
   ui.regions = cleanRegions(ui.regions);
+  ui.hidePick = ui.hidePick === true; // 이번 주말 추천 turned off in 내 정보
   ui.venue = cleanVenue(ui.venue);
   ui.favOnly = ui.favOnly === true;
   if (!TABS.includes(ui.tab)) ui.tab = 'list';

@@ -11,7 +11,7 @@ import {
   scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel } from './card-model.js';
-import { hoursLine, reasonOf, weekendPicks } from './pick.js';
+import { reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
@@ -526,11 +526,10 @@ const goToMoment = (date, min) => go({ type: 'moment', date, min });
 
 // A wall's picture for the pick: its photo (fixed box, lazy), else a grey mark of the logo and, on a tile, the wall's
 // height in metres. Decorative: the name and the reason beside it say everything.
-function pickMedia(wall, tile) {
-  const box = el('span', { class: `pick-media${tile ? ' tile' : ''}`, 'aria-hidden': 'true' });
+function pickMedia(wall) {
+  const box = el('span', { class: 'pick-media', 'aria-hidden': 'true' });
   const plain = () => box.replaceChildren(...[
     el('span', { class: 'pick-mono' }),
-    tile && wall.height_m ? el('span', { class: 'pick-height' }, `${wall.height_m}m`) : null,
   ].filter(Boolean)); // (replaceChildren would print a null as the word "null")
   if (!wall.photo) {
     plain();
@@ -543,15 +542,16 @@ function pickMedia(wall, tile) {
 }
 
 let pickBasisOpen = false; // the day / basis choices, shown only when asked for
+const hhShort = (m) => `${m < 600 ? '0' : ''}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`; // 540 → 09, 1290 → 21:30
 let pickRefocus = null;
 
-// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason). Opened: one row naming the
-// day and basis (it opens the choices), then up to three tiles side by side, swiped one at a time with the next peeking in:
-// a photo (or the grey logo mark with the height), the rank, the wall, one sentence of why. Hidden when the list has nothing
-// to say about the coming weekend.
+// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason). Opened: the day pills and the
+// basis button (it opens the choices), then up to three compact rows: rank, small photo (or the grey logo mark), the wall, the
+// sun as a picture + one line of why, the hours. Shown only with a 내 지역 set (a nationwide top 3 is too far to be a pick) and not turned off in 내 정보,
+// and hidden when that area has nothing to say about the coming weekend.
 function renderPick() {
   const box = $('pick');
-  const r = state.walls.length ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue }) : null;
+  const r = state.walls.length && ui.regions.length && !ui.hidePick ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue }) : null;
   box.hidden = !r || r.byDay.every((d) => !d.items.length);
   if (box.hidden) return;
   pickDay = Math.min(pickDay, r.days.length - 1);
@@ -562,33 +562,40 @@ function renderPick() {
     goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
     revealClearing(it.wall.name);
   };
-  $('pick-thumb').replaceChildren(...(top ? [pickMedia(top.wall, false)] : []));
+  $('pick-thumb').replaceChildren(...(top ? [pickMedia(top.wall)] : []));
   $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
 
   const kids = [];
   const set = el('button', { type: 'button', class: 'pick-set', 'aria-expanded': String(pickBasisOpen), 'data-focus': 'set' },
-    el('span', {}, `${dayText(cur.day.date)} · ${PICK_WORD[r.pref]}`), icon('sliders'));
+  // the day is chosen right here (pills); only the basis hides behind the small 기준 button
+  const days = el('div', { class: 'pick-days', role: 'group', 'aria-label': '요일' },
+    ...r.days.map((d, i) => {
+      const b = el('button', { type: 'button', class: 'pick-day', 'aria-pressed': String(i === pickDay), 'data-focus': `day-${i}` }, dayText(d.date));
+      b.addEventListener('click', () => { pickDay = i; pickRefocus = `day-${i}`; renderPick(); });
+      return b;
+    }));
+    el('span', {}, `기준 · ${PICK_WORD[r.pref]}`), icon('sliders'));
   set.addEventListener('click', () => { pickBasisOpen = !pickBasisOpen; pickRefocus = 'set'; renderPick(); });
-  kids.push(set);
+  kids.push(el('div', { class: 'pick-bar' }, days, set));
   if (pickBasisOpen) {
-    const group = (label, items, pressed, pick) => el('div', { class: 'pick-segs', role: 'group', 'aria-label': label },
-      ...items.map(([v, text]) => {
-        const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(pressed(v)), 'data-focus': `${label}-${v}` }, text);
-        b.addEventListener('click', () => { pick(v); pickRefocus = `${label}-${v}`; renderPick(); });
-        return b;
-      }));
-    if (r.days.length > 1) kids.push(group('요일', r.days.map((d, i) => [i, `${d.label}요일`]), (v) => v === pickDay, (v) => { pickDay = v; }));
-    kids.push(group('기준', PICK_PREFS, (v) => v === pickPref, (v) => { pickPref = v; }));
+    kids.push(el('div', { class: 'pick-segs', role: 'group', 'aria-label': '기준' }, ...PICK_PREFS.map(([v, text]) => {
+      const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(v === pickPref), 'data-focus': `기준-${v}` }, text);
+      b.addEventListener('click', () => { pickPref = v; pickRefocus = `기준-${v}`; renderPick(); });
+      return b;
+    })));
     if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
   }
   if (cur.items.length) {
-    kids.push(el('ul', { class: 'pick-rail' }, ...cur.items.map((it, i) => {
-      const b = el('button', { type: 'button', class: 'pick-tile' },
-        el('span', { class: 'pick-tile-media' }, pickMedia(it.wall, true), el('span', { class: 'pick-rankchip' }, `${i + 1}순위`)),
-        el('span', { class: 'pick-tile-text' },
+    // one compact row per wall: rank, small picture, name, the sun in a picture + the one-line reason, the hours at the right
+    kids.push(el('ul', { class: 'pick-list' }, ...cur.items.map((it, i) => {
+      const lean = it.wall.venue === 'indoor' ? 'indoor' : it.sunMin === null ? 'unknown' : (r.pref === 'shade' || (r.pref !== 'sun' && it.shadeMin > it.sunMin)) ? 'shade' : 'sun';
+      const b = el('button', { type: 'button', class: 'pick-row' },
+        el('span', { class: 'pick-rank' }, String(i + 1)),
+        el('span', { class: 'pick-rowthumb' }, pickMedia(it.wall)),
+        el('span', { class: 'pick-rowtext' },
           el('span', { class: 'pick-name' }, shortName(it.wall)),
-          el('span', { class: 'pick-why' }, reasonOf(it, r.pref).sentence),
-          el('span', { class: 'pick-hours' }, hoursLine(it))));
+          el('span', { class: `pick-why ${lean}` }, icon(lean), reasonOf(it, r.pref).short)),
+        el('span', { class: 'pick-hours' }, `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`));
       b.addEventListener('click', () => goPick(it));
       return el('li', {}, b);
     })));
@@ -716,16 +723,21 @@ function rowDetails(m, wall, at, id) {
   return [
     el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit)),
     el('div', { class: 'm-cols' },
-      el('div', { class: 'm-info' },
+      // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
+      el('div', { class: 'm-head' },
         el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
-        el('p', { class: 'x-sub' }, m.sub),
-        addrLine(m),
-        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        m.where || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.where : m.sub) : null,
         // 오늘 운영 … and 다녀왔어요 at the right end of the same line (wraps to the right of the next line when long)
-        el('div', { class: 'today-row' }, el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)), beenBtn(m)),
+        el('div', { class: 'today-row' },
+          el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
+          beenBtn(m))),
+      sunBox(dial, m.name, m.closedDay), // right under the decision line (right column when wide)
+      el('div', { class: 'm-info' },
         ...crowdBox(m),
         ...weatherBox(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
+        addrLine(m),
+        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
           ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t)),
@@ -735,12 +747,11 @@ function rowDetails(m, wall, at, id) {
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
         m.setting ? el('p', { class: 'checked setting' }, m.setting) : null,
         el('p', { class: 'checked' }, m.checked)),
-      more.childElementCount > 1 ? more : null, // hours / season tabs sit above the compass
-      sunBox(dial, m.name, m.closedDay)),
+      more.childElementCount > 1 ? more : null),
     visitLog(m),
-    blogBox(m.blog),
     boardBox(m.name), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
     helps,
+    blogBox(m.blog),
     rowButtons(m.name),
   ];
 }
@@ -841,16 +852,17 @@ async function loadWeather(wall) {
   if (hours) refillOpen(wall.name);
 }
 // A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off). Instead only
-// the forecast line is put into the open card (after 오늘 운영 and the 혼잡도 chip, where rowDetails puts it), so nothing else
-// in the card (an opened fold, scroll, focus) is touched.
+// the forecast line is put into the open card (first in .m-info, after the 혼잡도 chip, where rowDetails puts it), so nothing
+// else in the card (an opened fold, scroll, focus) is touched.
 function refillOpen(name) {
   const li = [...document.querySelectorAll('#panel-list .row.is-open')].find((x) => x.wallName === name);
   const row = shown.rows.find((x) => x.wall.name === name);
-  const today = li?.querySelector('.today-row');
-  if (!today || !row) return;
+  const info = li?.querySelector('.m-info');
+  if (!info || !row) return;
   li.querySelector('.wx-line')?.remove();
-  const after = today.nextElementSibling?.classList.contains('crowd-chip') ? today.nextElementSibling : today;
-  after.after(...weatherBox(modelOf(row, shown.at)));
+  const crowd = info.firstElementChild?.classList.contains('crowd-chip') ? info.firstElementChild : null;
+  const box = weatherBox(modelOf(row, shown.at));
+  if (crowd) crowd.after(...box); else info.prepend(...box);
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
 const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
@@ -1036,8 +1048,9 @@ function render() {
   rc.hidden = !ui.regions.length;
   rc.firstChild.textContent = fv.regionLabel;
   rc.setAttribute('aria-label', fv.regionChipLabel);
-  for (const box of $('regionOpts').querySelectorAll('input[name="region"]')) box.checked = ui.regions.includes(box.value);
-  $('regionNow').textContent = ui.regions.length ? ui.regions.join(', ') : '전국'; // the 조건 sheet only says it; 내 정보 changes it
+  for (const box of regionBoxes()) box.checked = ui.regions.includes(box.value);
+  if ($('pickRow')) $('pickRow').hidden = !ui.regions.length; // the pick shows only with a 내 지역; nothing to turn off before
+  if ($('pickOn')) $('pickOn').checked = !ui.hidePick; // (a cached older page may not have it yet: sw.js shows the stored page first)
   syncRegionCounts();
   const sheetOn = fv.sheetCount;
   $('moreFilters').classList.toggle('on', sheetOn > 0);
@@ -1236,8 +1249,10 @@ $('regionChip').addEventListener('click', () => {
   $('sunOnly').focus(); // the chip is gone
 });
 
-// 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5); rebuilt only when that list changes, so a tick keeps focus.
-// The saved choice is pruned to 권역 that exist (not while the list failed to load).
+// 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5), in both the 조건 sheet and 내 정보 (the same choice);
+// rebuilt only when that list changes, so a tick keeps focus. The saved choice is pruned to 권역 that exist (not while the list
+// failed to load).
+const regionBoxes = () => document.querySelectorAll('#regionOptsC input[name="region"], #regionOpts input[name="region"]');
 let regionKey = null;
 function syncRegions() {
   if (!state.walls.length) return;
@@ -1245,16 +1260,20 @@ function syncRegions() {
   ui.regions = cleanRegions(ui.regions, areas.map((a) => a.name));
   $('regionRow').hidden = !areas.length;
   const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
+  if ($('regionRowC')) $('regionRowC').hidden = !areas.length; // (a cached older page may lack the 조건 row)
   if (regionKey === key) return;
   regionKey = key;
-  $('regionOpts').replaceChildren(el('div', { class: 'rg-list' }, ...areas.map((a) => el('label', {},
-    el('input', { type: 'checkbox', name: 'region', value: a.name }), a.name, el('span', { class: 'rg-n' }, `${a.total}`)))));
+  for (const id of ['regionOpts', 'regionOptsC']) {
+    $(id)?.replaceChildren(el('div', { class: 'rg-list' }, ...areas.map((a) => el('label', {},
+      el('input', { type: 'checkbox', name: 'region', value: a.name }), a.name, el('span', { class: 'rg-n' }, `${a.total}`)))));
+  }
 }
 function syncRegionCounts() {
   $('regionClear').hidden = !ui.regions.length;
 }
 
 $('regionClear').addEventListener('click', () => {
+$('pickOn')?.addEventListener('change', (e) => setUi('hidePick', !e.target.checked));
   setUi('regions', []);
   $('regionOpts').querySelector('input')?.focus(); // the button is gone
 });
@@ -1309,7 +1328,9 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
 });
 // 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
-$('regionOpts').addEventListener('change', () => setUi('regions', [...$('regionOpts').querySelectorAll('input[name="region"]:checked')].map((b) => b.value)));
+for (const id of ['regionOpts', 'regionOptsC']) {
+  $(id)?.addEventListener('change', (e) => setUi('regions', [...e.currentTarget.querySelectorAll('input[name="region"]:checked')].map((b) => b.value)));
+}
 $('parkingOnly').addEventListener('click', () => setUi('parkingOnly', !ui.parkingOnly));
 $('favOnly').addEventListener('click', () => setUi('favOnly', !ui.favOnly));
 $('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBreaks));

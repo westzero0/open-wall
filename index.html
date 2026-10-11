@@ -39,13 +39,13 @@
       <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
       <button type="button" class="icon-btn me-btn" id="meBtn" aria-label="내 정보" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></button>
       <p id="summary" role="status"></p>
+      <button type="button" class="region-line" id="regionChip" hidden><span></span><span class="x" aria-hidden="true">· 전국 보기</span></button>
     </div>
   </header>
   <!-- filters + time stay in view while the list scrolls (sticky; app.js drops it when it would fill a short screen) -->
   <form id="search" class="controls" aria-label="시간과 조건">
     <div class="wrap">
       <div class="filters" role="group" aria-label="걸러 보기">
-        <button type="button" class="pill region-chip" id="regionChip" hidden><span></span><span class="x" aria-hidden="true">✕</span></button>
         <div class="sunfilter" role="group" aria-label="양달, 응달">
           <button type="button" class="sunfilter-btn" id="sunOnly" aria-pressed="false">양달</button>
           <button type="button" class="sunfilter-btn" id="shadeOnly" aria-pressed="false">응달</button>
@@ -187,6 +187,11 @@
             <label><input type="radio" name="minHours" value="8">8시간+</label>
           </div>
         </fieldset>
+        <fieldset class="sh-row" id="regionRowC" hidden>
+          <legend>내 지역</legend>
+          <div id="regionOptsC"></div>
+          <p class="sh-hint">내 지역을 설정하면 목록·지도·주말 추천이 그 지역 암장만 보여줘요. 미설정이면 전국을 기준으로 보여줘요.</p>
+        </fieldset>
         <div class="sh-row" id="breakRow">
           <span class="sh-label" id="break-label">휴게시간</span>
           <button type="button" class="sh-toggle" id="withBreaks" aria-pressed="false" aria-describedby="break-label">휴게 뒤 시간도 합산</button>
@@ -212,11 +217,6 @@
           <span class="sh-label">내 위치</span>
           <button type="button" class="sh-toggle" id="locate">내 위치 찾기</button>
         </div>
-        <div class="sh-row region-now">
-          <span class="sh-label">내 지역</span>
-          <span id="regionNow">전국</span>
-          <p class="sh-hint">오른쪽 위 ‘내 정보’에서 바꿀 수 있어요.</p>
-        </div>
       </form>
     </dialog>
     <dialog id="profile" class="sheet" aria-labelledby="profile-title">
@@ -230,6 +230,12 @@
           <legend>내 지역</legend>
           <button type="button" class="sh-toggle" id="regionClear" hidden>선택 해제</button>
           <div id="regionOpts"></div>
+          <p class="sh-hint">내 지역을 설정하면 목록·지도·주말 추천이 그 지역 암장만 보여줘요. 미설정이면 전국을 기준으로 보여줘요.</p>
+        </fieldset>
+        <fieldset class="sh-row" id="pickRow" hidden>
+          <legend>이번 주말 추천</legend>
+          <div class="rg-list"><label><input type="checkbox" id="pickOn">목록 위에 보기</label></div>
+          <p class="sh-hint">내 지역을 정하면 그 안에서 골라 보여줘요.</p>
         </fieldset>
         <fieldset class="sh-row">
           <legend>화면</legend>
@@ -274,7 +280,7 @@
         </section>
         <section class="ab-sec">
           <h3>자료 출처</h3>
-          <p>운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 사진 출처는 카드에 표시돼요. 지형은 Copernicus DEM, 지도는 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors예요. 날씨 예보는 <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>(CC BY 4.0)에서 받아요.</p>
+          <p>운영시간 등은 암장 공지·운영자 안내와 직접 방문 기록, 공개 자료를 정리했어요. 사진 출처는 카드에 표시돼요. 지형은 Copernicus DEM, 지도는 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors예요. 날씨 예보는 <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>(CC BY 4.0)에서 받아요. 아이콘 일부는 <a href="https://lucide.dev/license" target="_blank" rel="noopener noreferrer">Lucide</a>(ISC 라이선스, Copyright (c) Lucide Contributors / Cole Bemis 2013-2022)를 바탕으로 했어요. 이 저작권 표시와 허락 문구를 그대로 두는 조건으로 복사·수정·배포할 수 있어요.</p>
         </section>
         <section class="ab-sec">
           <h3>개인정보</h3>
