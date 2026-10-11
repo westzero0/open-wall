@@ -541,8 +541,8 @@ function pickMedia(wall) {
   return box;
 }
 
-let pickBasisOpen = false; // the day / basis choices, shown only when asked for
 const hhShort = (m) => `${m < 600 ? '0' : ''}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`; // 540 → 09, 1290 → 21:30
+let pickBasisOpen = false; // the day / basis choices, shown only when asked for
 let pickRefocus = null;
 
 // 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason). Opened: the day pills and the
@@ -566,7 +566,6 @@ function renderPick() {
   $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
 
   const kids = [];
-  const set = el('button', { type: 'button', class: 'pick-set', 'aria-expanded': String(pickBasisOpen), 'data-focus': 'set' },
   // the day is chosen right here (pills); only the basis hides behind the small 기준 button
   const days = el('div', { class: 'pick-days', role: 'group', 'aria-label': '요일' },
     ...r.days.map((d, i) => {
@@ -574,6 +573,7 @@ function renderPick() {
       b.addEventListener('click', () => { pickDay = i; pickRefocus = `day-${i}`; renderPick(); });
       return b;
     }));
+  const set = el('button', { type: 'button', class: 'pick-set', 'aria-expanded': String(pickBasisOpen), 'data-focus': 'set' },
     el('span', {}, `기준 · ${PICK_WORD[r.pref]}`), icon('sliders'));
   set.addEventListener('click', () => { pickBasisOpen = !pickBasisOpen; pickRefocus = 'set'; renderPick(); });
   kids.push(el('div', { class: 'pick-bar' }, days, set));
@@ -735,9 +735,9 @@ function rowDetails(m, wall, at, id) {
       el('div', { class: 'm-info' },
         ...crowdBox(m),
         ...weatherBox(m),
-        m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         addrLine(m),
         actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
           ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t)),
@@ -750,8 +750,8 @@ function rowDetails(m, wall, at, id) {
       more.childElementCount > 1 ? more : null),
     visitLog(m),
     boardBox(m.name), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
-    helps,
     blogBox(m.blog),
+    helps,
     rowButtons(m.name),
   ];
 }
@@ -1259,8 +1259,8 @@ function syncRegions() {
   const areas = areaList(state.walls);
   ui.regions = cleanRegions(ui.regions, areas.map((a) => a.name));
   $('regionRow').hidden = !areas.length;
-  const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
   if ($('regionRowC')) $('regionRowC').hidden = !areas.length; // (a cached older page may lack the 조건 row)
+  const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
   if (regionKey === key) return;
   regionKey = key;
   for (const id of ['regionOpts', 'regionOptsC']) {
@@ -1272,8 +1272,8 @@ function syncRegionCounts() {
   $('regionClear').hidden = !ui.regions.length;
 }
 
-$('regionClear').addEventListener('click', () => {
 $('pickOn')?.addEventListener('change', (e) => setUi('hidePick', !e.target.checked));
+$('regionClear').addEventListener('click', () => {
   setUi('regions', []);
   $('regionOpts').querySelector('input')?.focus(); // the button is gone
 });
