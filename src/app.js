@@ -110,6 +110,7 @@ createProfileView({
   setTheme: (t) => { ui.theme = cleanTheme(t); saveUi(); syncTheme(); },
   exportFile: logView.exportFile,
   importFile: logView.importFile,
+  getLogCount: logView.count,
 });
 // ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
 // Every change goes through go(event): view-state.js decides the next state and the follow-ups, run here in order.

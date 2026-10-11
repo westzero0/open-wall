@@ -927,6 +927,8 @@ dialog::backdrop { background: var(--scrim); }
 .pf-btns .sh-toggle { flex: 1 1 8rem; }
 .pf-status { flex-basis: 100%; min-height: 1.5em; font-size: var(--fs-sm); color: var(--muted); }
 .pf-link { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--tap); color: var(--fg); font-weight: 600; text-decoration: none; }
+button.pf-link { width: 100%; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.pf-ios { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .pf-link span { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); text-align: right; }
 .pf-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

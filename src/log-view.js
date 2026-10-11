@@ -1,6 +1,7 @@
 // src/log-view.js — the 기록 tab (progress, month calendar, the picked day's records), the 기록 추가 sheet and the
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
+import { saveBackupAt } from './backup.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
 import { axisFrac, formatRanges, pickChips, searchPicks } from './viewmodel.js';
@@ -465,6 +466,7 @@ export function createLogView({
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    saveBackupAt(storage); // 내 정보 says when
     return `기록 ${log.length}개를 파일로 내보냈어요.`;
   }
   // → the message to show; a refused file changes nothing
@@ -775,6 +777,7 @@ export function createLogView({
     openAdd,
     exportFile,
     importFile,
+    count: () => log.length,
     justStamped: (name) => stampedWall === name, // true only while changed() redraws after a save
     recordsFor: (name) => log.filter((r) => r.wall === name), // newest first (normalizeLog/addRecord keep that order)
   };

@@ -1,6 +1,8 @@
 // src/profile-view.js — the 내 정보 sheet: 닉네임, 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
 // 내 지역 sits in this sheet too, but app.js draws and handles it (it is a list filter).
 import { config } from './config.js';
+import { backupLine, loadBackupAt } from './backup.js';
+import { currentInstallMode, promptInstall } from './install.js';
 import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from './report.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,8 +18,8 @@ export function applyTheme(theme) {
   }
 }
 
-/** createProfileView({getTheme, setTheme, exportFile, importFile}): wires the static sheet in index.html. */
-export function createProfileView({ getTheme, setTheme, exportFile, importFile }) {
+/** createProfileView({getTheme, setTheme, exportFile, importFile, getLogCount}): wires the static sheet in index.html. */
+export function createProfileView({ getTheme, setTheme, exportFile, importFile, getLogCount = () => 0 }) {
   const dlg = $('profile');
   const form = dlg.querySelector('form');
   const status = $('logBackupStatus');
@@ -45,7 +47,12 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile }
       $('pfNickLabel').textContent = locked ? '닉네임 (이벤트 중에는 바꿀 수 없어요)' : `닉네임 (${MAX_NICK}자까지)`;
     }
     form.elements.theme.value = getTheme();
-    status.textContent = '';
+    let store = null; try { store = localStorage; } catch { /* blocked: no backup date */ }
+    status.textContent = backupLine(getLogCount(), loadBackupAt(store)); // the next export or import replaces it with its own message
+    const how = currentInstallMode();
+    $('pfInstallRow').hidden = how === 'none';
+    $('pfInstall').hidden = how !== 'prompt';
+    $('pfInstallIos').hidden = how !== 'ios';
     dlg.showModal();
   });
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
@@ -53,6 +60,7 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile }
     if (e.target.name === 'theme') setTheme(e.target.value);
   });
 
+  $('pfInstall').addEventListener('click', async () => { if (await promptInstall()) $('pfInstallRow').hidden = true; });
   $('logExport').addEventListener('click', () => { status.textContent = exportFile(); });
   $('logImport').addEventListener('click', () => $('logImportFile').click());
   $('logImportFile').addEventListener('change', async (e) => {
