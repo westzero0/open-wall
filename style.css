@@ -1248,12 +1248,12 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-post { padding: 6px 0; border-bottom: 1px solid var(--hair); }
 .bd-text { font-size: var(--fs-md); overflow-wrap: break-word; }
 .bd-by { font-weight: 600; }
-.bd-meta, .bd-status, .bd-count { font-size: var(--fs-xs); color: var(--muted); }
+.bd-meta, .bd-status, .bd-count, .bd-hint { font-size: var(--fs-xs); color: var(--muted); }
 .bd-status:empty { display: none; }
 .bd-status { margin-top: 6px; }
 .bd-rep, .bd-more { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); text-decoration: underline; white-space: nowrap; cursor: pointer; }
 .bd-rep:disabled { text-decoration: none; cursor: default; }
-.bd-more { display: block; margin-top: 6px; min-height: 32px; }
+.bd-more { display: block; margin-top: 6px; min-height: var(--tap); }
 .bd-more[hidden], .bd-retry[hidden] { display: none; }
 .bd-form { display: grid; gap: 6px; margin-top: 8px; }
 .bd-row { display: flex; gap: 6px; align-items: center; }
@@ -1262,5 +1262,5 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-nick { flex: 0 0 6.5em; width: 6.5em; }
 .bd-body { flex: 1; min-width: 0; }
 .bd-hp[hidden] { display: none; }
-.bd-send { min-height: 36px; padding: 0 16px; border: 1px solid var(--fg); border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; cursor: pointer; }
+.bd-send { min-height: var(--tap); padding: 0 20px; border: 1px solid var(--fg); border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; cursor: pointer; }
 .bd-send:disabled { opacity: .45; cursor: default; }

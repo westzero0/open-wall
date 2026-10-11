@@ -725,7 +725,6 @@ function rowDetails(m, wall, at, id) {
         el('div', { class: 'today-row' }, el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)), beenBtn(m)),
         ...crowdBox(m),
         ...weatherBox(m),
-        boardBox(m.name),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
@@ -740,6 +739,7 @@ function rowDetails(m, wall, at, id) {
       sunBox(dial, m.name, m.closedDay)),
     visitLog(m),
     blogBox(m.blog),
+    boardBox(m.name), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
     helps,
     rowButtons(m.name),
   ];

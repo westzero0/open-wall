@@ -55,13 +55,13 @@ function build(wallName) {
   nick.value = loadNick(store.get(NICK_KEY) || '');
   const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
   if (lockedNick) nick.readOnly = true;
-  const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: '한 줄 남기기 · 모두에게 공개돼요', 'aria-label': '한 줄 남기기', autocomplete: 'off' });
+  const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: '한 줄 남기기', 'aria-label': '한 줄 남기기', autocomplete: 'off' });
   // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
   const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
   const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);
   const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
   const send = el('button', { type: 'submit', class: 'bd-send' }, '남기기');
-  const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, count, send));
+  const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, el('span', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요'), send));
   const box = el('section', { class: 'bd-box', 'aria-label': '한 줄 타임라인' }, el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, form);
 
   const say = (t) => { status.textContent = t; };
