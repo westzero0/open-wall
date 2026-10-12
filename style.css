@@ -496,7 +496,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 /* icon-only actions (공유 beside the name, 길찾기 beside the address): a 44px tap area, the glyph in the text colour */
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); text-decoration: none; cursor: pointer; }
-.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn svg { width: 22px; height: 22px; transition: transform var(--dur-press) var(--ease-out), fill var(--dur-press) var(--ease-out), stroke var(--dur-press) var(--ease-out); }
+.icon-btn:active svg { transform: scale(.9); }
 .icon-btn:hover, .icon-btn.done { color: var(--accent); }
 .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .x-head { display: flex; align-items: flex-start; gap: 4px; margin: 12px 0 2px; }
@@ -695,7 +696,18 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   margin: auto auto 0; width: 100%; max-width: 560px; max-height: 88dvh; padding: 0;
   border-radius: 18px 18px 0 0; border-bottom: 0;
 }
-.sheet[open] { animation: sheet-in var(--dur-ui) var(--ease-out); }
+/* enter and exit are one transition, so the sheet leaves the way it came (closes faster, like .expand); the backdrop fades with it.
+   Browsers without allow-discrete / @starting-style keep the old enter-only keyframe and close instantly. */
+.sheet { transform: translateY(24px); opacity: 0; transition: transform var(--dur-exit) var(--ease-out), opacity var(--dur-exit) var(--ease-out), display var(--dur-exit) allow-discrete, overlay var(--dur-exit) allow-discrete; }
+.sheet[open] { transform: none; opacity: 1; transition-duration: var(--dur-ui); }
+.sheet:not([open]) { pointer-events: none; } /* leaving (display is held for --dur-exit): no clicks or second submit */
+.sheet::backdrop { opacity: 0; transition: opacity var(--dur-exit) var(--ease-out), display var(--dur-exit) allow-discrete, overlay var(--dur-exit) allow-discrete; }
+.sheet[open]::backdrop { opacity: 1; transition-duration: var(--dur-ui); }
+@starting-style { .sheet[open] { transform: translateY(24px); opacity: 0; } .sheet[open]::backdrop { opacity: 0; } }
+@supports not (transition-behavior: allow-discrete) {
+  .sheet, .sheet[open], .sheet::backdrop { transition: none; transform: none; opacity: 1; }
+  .sheet[open] { animation: sheet-in var(--dur-ui) var(--ease-out); }
+}
 @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
 .sheet form { display: grid; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
 .sheet form::before { content: ""; justify-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); }
@@ -840,6 +852,8 @@ dialog::backdrop { background: var(--scrim); }
   .expand, .row.is-open > .expand { transition-property: opacity, visibility; } /* fade only, no height change */
   button:active, .btn:active { transform: none !important; } /* press scale off; color transitions stay */
   .dial * { transition: none !important; } /* compass flips instantly */
+  .sheet, .sheet[open] { transform: none; } /* sheets fade, no slide */
+  .icon-btn:active svg { transform: none; } /* press scale off for icons too (svg is not a button) */
   .info-fold { transition: none; }
   .more2 .chev, .info-more::after, .blog-more::after { transition: none; } /* chevron flips instantly */
 }
@@ -1278,6 +1292,8 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .bd-list { list-style: none; margin: 6px 0 0; padding: 0; }
 .bd-post { padding: 6px 0; border-bottom: 1px solid var(--hair); }
+.bd-new { animation: bd-in var(--dur-ui) var(--ease-out); } /* a post that just arrived (board-view.js); the first load and redraws stay still */
+@keyframes bd-in { from { opacity: 0; transform: translateY(6px); } }
 .bd-text { font-size: var(--fs-md); overflow-wrap: break-word; }
 .bd-by { font-weight: 600; }
 .bd-meta, .bd-status, .bd-count, .bd-hint { font-size: var(--fs-xs); color: var(--muted); }

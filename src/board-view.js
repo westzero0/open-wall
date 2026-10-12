@@ -267,7 +267,7 @@ function build(wallName, mode, onOpenAll) {
     t.st.textContent = e?.failed ? '답글을 불러오지 못했어요' : e?.loading ? '불러오는 중…' : '';
     return t.box;
   }
-  function postItem(p, now) {
+  function postItem(p, now, fresh = false) {
     const n = p.replyCount || 0;
     let replyBtn = null;
     if (mode === 'full') {
@@ -277,11 +277,13 @@ function build(wallName, mode, onOpenAll) {
       replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp' }, `답글 ${n}`);
       replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
     }
-    return el('li', { class: 'bd-post' },
+    return el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
       el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body),
       el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', replyBtn, replyBtn ? ' · ' : null, actionFor(p, null)),
       mode === 'full' && open.has(p.id) ? threadFor(p.id) : null);
   }
+  let newest = 0; // created_at of the newest post drawn so far: only a post newer than that, arriving after the first load, animates in (not older ones from 더 보기)
+  let wasLoaded = false;
   function draw() {
     box.hidden = s.refused;
     const a = document.activeElement; // a redraw (the replies arriving) must not drop focus from the 답글 button that was pressed
@@ -290,7 +292,9 @@ function build(wallName, mode, onOpenAll) {
     refocus = null;
     const now = Date.now();
     const shown = mode === 'preview' ? s.posts.slice(0, PREVIEW) : s.posts;
-    list.replaceChildren(...shown.map((p) => postItem(p, now)));
+    list.replaceChildren(...shown.map((p) => postItem(p, now, wasLoaded && p.created_at > newest)));
+    for (const p of shown) newest = Math.max(newest, p.created_at);
+    wasLoaded = s.loaded;
     moreBtn.hidden = mode !== 'full' || !s.more;
     allBtn.hidden = mode !== 'preview' || !showAll(s.total, s.posts.length);
     allBtn.textContent = allLabel(s.total);
