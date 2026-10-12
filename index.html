@@ -167,7 +167,6 @@
       <form method="dialog">
         <div class="sh-head">
           <h2 id="conditions-title">조건</h2>
-          <button class="sh-done">닫기</button>
         </div>
         <fieldset class="sh-row">
           <legend>구분</legend>
@@ -217,13 +216,13 @@
           <span class="sh-label">내 위치</span>
           <button type="button" class="sh-toggle" id="locate">내 위치 찾기</button>
         </div>
+        <button class="inv-save" id="condDone">확인</button>
       </form>
     </dialog>
     <dialog id="profile" class="sheet" aria-labelledby="profile-title">
       <form method="dialog">
         <div class="sh-head">
           <h2 id="profile-title">내 정보</h2>
-          <button class="sh-done">닫기</button>
         </div>
         <label class="sh-row rp-field pf-nick" id="pfNickRow" hidden><span id="pfNickLabel">닉네임</span><input id="pfNick" autocomplete="off"></label>
         <fieldset class="sh-row" id="regionRow">
@@ -270,6 +269,8 @@
         <div class="sh-row">
           <a class="pf-link" id="pfAbout" href="#about-sheet">앱 정보 <span>자료 출처 · 개인정보</span></a>
         </div>
+        <p class="sh-hint">바꾼 내용은 바로 저장돼요.</p>
+        <button class="inv-save">확인</button>
       </form>
     </dialog>
     <dialog id="about-sheet" class="sheet" aria-labelledby="about-title">

@@ -1097,6 +1097,8 @@ function render() {
   $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn} ▾` : '조건 ▾';
 
   const n = open.length;
+  // filters apply as they are ticked: the sheet's 확인 button says what they left
+  if ($('condDone')) $('condDone').textContent = `확인 · ${n}곳`;
   // another day names the day (the live region is read without the date input)
   const lead = summaryLead(at, now, isNow);
   const key = `${lead}${n}`;
