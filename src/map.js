@@ -30,7 +30,7 @@ function pinStyle({ pin, approx }, selected) {
  * createMap(container, {onSelect, onError, onOk, covered, coveredTop}) → {select(name|null), setRows(rows, at), setUser(latlng|null), refresh(), fitAll()}
  * covered(): px of the map's foot hidden by the selected card; a tapped pin is panned above it.
  * coveredTop(): px of the map's top hidden by the page's sticky controls; the pin stays below them.
- * select(name|null): select a wall's pin from outside (e.g. the card's close button) without a click.
+ * select(name|null, fromClick?): select a wall's pin from outside (the card's close button, the search); fromClick also pans it clear of the card.
  * From zoom LABEL_ZOOM the pins carry their short names; names that would overlap are hidden.
  * onSelect(row|null, fromClick): a pin was clicked (row), the empty map was clicked (null), or
  * setRows refreshed/dropped the selected wall (fromClick = false). onError(): tiles never loaded.
@@ -115,7 +115,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   };
 
   return {
-    select: (name) => select(name, false),
+    select: (name, fromClick = false) => select(name, fromClick),
     setRows(rows, when) {
       at = when;
       pins = mapPins(rows).pins;

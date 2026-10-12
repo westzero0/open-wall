@@ -1031,6 +1031,18 @@ div.la-when { row-gap: 0; }
 .la-picks .pn { font-weight: 500; }
 .la-picks .pr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); }
 .la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
+.map-find-btn { position: absolute; top: 108px; left: 10px; z-index: 1; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 2px solid rgba(0,0,0,.2); border-radius: var(--r-md); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
+.map-find-btn svg { width: 22px; height: 22px; }
+.map-find-btn:focus-visible, .map-find-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.map-find { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 2; }
+.map-find-bar { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-8); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-float); }
+.map-find-bar .la-field { flex: 1; }
+.map-find-bar input { min-height: 36px; padding-block: var(--sp-4); }
+.map-find-close { flex: none; width: var(--tap); height: var(--tap); border: 0; background: none; color: var(--muted); font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
+.map-find .la-picks { margin-top: var(--sp-4); background: var(--surface); box-shadow: var(--shadow-float); }
+.find { margin: var(--sp-10) 0 0; }
+.find .la-picks { background: var(--surface); }
+.find .la-field input { min-height: 36px; padding-block: var(--sp-4); } /* 글자 크기는 그대로(작으면 iOS 가 확대함) */
 .la-picks .none { padding: var(--sp-12); font-size: var(--fs-sm); color: var(--muted); }
 .la-err { flex-basis: 100%; margin-top: var(--sp-6); font-size: var(--fs-sm); font-weight: 600; color: var(--warn); }
 .la-err::before { content: "! "; }

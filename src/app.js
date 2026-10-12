@@ -8,9 +8,9 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel } from './card-model.js';
+import { cardModel, formatDistance } from './card-model.js';
 import { reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
@@ -1260,13 +1260,69 @@ function revealFromLog(name) {
 // changed) and reveal again. → true when filters were cleared. Used by 내 암장 and 기록.
 function revealClearing(name) {
   if (revealRow(name)) return false;
+  clearFilters();
+  revealRow(name);
+  return true;
+}
+
+// for this visit only: nothing is saved until a filter is changed
+function clearFilters() {
   Object.assign(ui, CLEARED, { regions: [] });
   sheetForm.elements.minHours.value = ui.minHours;
   sheetForm.elements.venue.value = ui.venue;
   render();
-  revealRow(name);
-  return true;
 }
+
+// ---- find one wall: searches every wall (filters ignored); a pick says what to do with the chosen wall ----
+function wireFind(input, box, onPick) {
+  const draw = () => {
+    const q = input.value.trim();
+    box.hidden = !q;
+    if (!q) return box.replaceChildren();
+    const hits = searchPicks(state.walls, q, { origin: vs.origin }).slice(0, 30);
+    box.replaceChildren(...(hits.length ? hits.map(({ wall: w, km }) => {
+      const b = el('button', { type: 'button', class: 'la-hit' },
+        el('span', { class: 'pn' }, w.name),
+        km != null ? el('span', { class: 'pd' }, formatDistance(km)) : null,
+        w.region ? el('span', { class: 'pr' }, w.region) : null);
+      b.addEventListener('click', () => {
+        input.value = '';
+        draw();
+        onPick(w);
+      });
+      return el('li', {}, b);
+    }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
+  };
+  input.addEventListener('input', draw);
+  input.addEventListener('keydown', (e) => { // Enter with exactly one match opens it (not while a Korean IME is composing)
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!e.isComposing && box.querySelectorAll('.la-hit').length === 1) box.querySelector('.la-hit').click();
+  });
+  return draw;
+}
+wireFind($('findQ'), $('findHits'), (w) => { if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요'); });
+
+// the map's floating magnifier: opens a search bar over the map; a pick selects that pin (filters cleared if they hid it)
+function setMapFind(open) {
+  $('mapFind').hidden = !open;
+  $('mapFindBtn').hidden = open;
+  $('mapFindBtn').setAttribute('aria-expanded', String(open));
+  if (open) $('mapFindQ').focus();
+  else $('mapFindBtn').focus();
+}
+const drawMapFind = wireFind($('mapFindQ'), $('mapFindHits'), (w) => {
+  setMapFind(false);
+  if (!wallPosition(w)) return toast('이 암장은 지도에 위치 정보가 없어요');
+  if (!shown.rows.some((r) => r.wall.name === w.name)) {
+    clearFilters();
+    toast('조건을 모두 지우고 보여 드려요');
+  }
+  mapApi?.select(w.name, true);
+});
+$('mapFindBtn').addEventListener('click', () => setMapFind(true));
+$('mapFindClose').addEventListener('click', () => { $('mapFindQ').value = ''; drawMapFind(); setMapFind(false); });
+$('mapFindQ').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('mapFindClose').click(); });
 
 // ---- controls ----
 // fixed axis: hour ticks, grid lines, the chosen-time tag
