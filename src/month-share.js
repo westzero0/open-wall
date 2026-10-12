@@ -1,6 +1,6 @@
 // src/month-share.js — the sheet "이 달 그림으로 공유": the month picture (record-image.js), 암장 이름 넣기, 공유하기. DOM.
 // The picture is made on this device; nothing is sent anywhere but by the phone's own share sheet (or a download).
-import { drawMonth, monthPicture } from './record-image.js';
+import { canSaveMonth, drawMonth, monthPicture } from './record-image.js';
 import { shareInvite, shareSay } from './share-image.js';
 
 const $ = (id) => document.getElementById(id);
@@ -28,16 +28,16 @@ export function createMonthShare({ getWalls, icon = null }) {
     say.textContent = '';
     const pic = monthPicture(ctx.log, getWalls(), ctx.year, ctx.month, { names: names.getAttribute('aria-pressed') === 'true' });
     if (!pic) { say.textContent = '이 달에는 기록이 없어요.'; return; }
-    const d = new Date();
     try {
-      await drawMonth(canvas, pic, { made: `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())} 만듦` });
+      await drawMonth(canvas, pic);
       const b = await new Promise((ok) => canvas.toBlob(ok, 'image/png')); // ready before the tap, so sharing needs no wait
       if (mine !== token) return;
       if (!b) throw new Error('no picture');
       blob = b;
       text = `해벽 ${pic.year}년 ${pic.month}월 기록 · ${pic.visits}번 · ${pic.walls}곳\n${new URL('.', location.href).href}`;
       file = `haebyeok-${pic.year}-${p2(pic.month)}.png`;
-      go.disabled = false;
+      if (canSaveMonth(pic.year, pic.month)) go.disabled = false;
+      else say.textContent = `이번 달은 미리보기만 볼 수 있어요. ${pic.month % 12 + 1}월 1일부터 그림으로 저장하고 공유할 수 있어요.`; // a month still going on is not final
     } catch {
       if (mine === token) say.textContent = '그림을 만들지 못했어요. 잠시 뒤에 다시 열어 주세요.';
     }

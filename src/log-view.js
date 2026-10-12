@@ -10,6 +10,7 @@ import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import { createMonthShare } from './month-share.js';
+import { canSaveMonth } from './record-image.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, heatLevel, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
@@ -729,7 +730,7 @@ export function createLogView({
       }
       panel.querySelector(`.cal-day[data-date="${focusDay}"]`)?.focus();
     });
-    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, '이 달 그림으로 공유');
+    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, canSaveMonth(view.year, view.month) ? '이 달 그림으로 공유' : '이 달 그림 미리보기');
     shareBtn.addEventListener('click', () => monthShare.open({ log, year: view.year, month: view.month, from: shareBtn }));
     const say = el('p', { class: 'sr-only', 'aria-live': 'polite' });
     if (monthSay) setTimeout(() => { say.textContent = monthSay; monthSay = ''; }, 50); // after the new region is in the page
