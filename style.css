@@ -436,6 +436,12 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   background: var(--surface); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
   transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out);
 }
+/* 지금 어때요?: the one-tap report in the open card, under the 혼잡도 chip */
+.crowd-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.crowd-quick .crowd-pills { gap: 4px; }
+.crowd-quick .crowd-pill { min-height: 32px; min-width: 0; padding: 0 10px; font-size: var(--fs-xs); }
+.cq-q { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.cq-done { font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
 .crowd-pill:disabled { opacity: .45; cursor: default; }
 .crowd-pill:active, .la-chip:active { transform: scale(.97); }
 .crowd-pill[aria-pressed="true"], .la-chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }

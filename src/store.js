@@ -81,6 +81,11 @@ function cleanOverride(v) {
   return out;
 }
 
+// Text caps: well above the longest real value (name 17, region 7, memo 443, parking note 76) so shipped data is never cut, but a wall from an import or the editor can't grow without bound.
+export const MAX_NAME = 40;
+export const MAX_REGION = 40;
+export const MAX_MEMO = 600;
+export const MAX_PARKING_NOTE = 200;
 const PARKING = ['free', 'paid', 'none', 'unknown'];
 export const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
 // A wall's own stamp artwork (src/stamp.js): an svg under data/stamps/, never a path that can leave it.
@@ -103,7 +108,7 @@ function cleanLocation(v) {
 
 function cleanParking(v) {
   if (!isPlainObject(v) || !PARKING.includes(v.status)) return null;
-  const note = typeof v.note === 'string' ? v.note.trim() : '';
+  const note = typeof v.note === 'string' ? v.note.trim().slice(0, MAX_PARKING_NOTE) : '';
   return note ? { status: v.status, note } : { status: v.status };
 }
 
@@ -209,15 +214,15 @@ export function normalizeWall(raw) {
     };
   }
 
-  const name = typeof raw.name === 'string' ? raw.name.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
+  const name = typeof raw.name === 'string' ? raw.name.normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
   const tags = getStringArray(raw.tags);
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
   const exceptions = getExceptions(raw.exceptions);
   const contact = cleanContact(raw.contact);
   const sun = cleanSun(raw.sun);
-  const region = typeof raw.region === 'string' ? raw.region : '';
-  const memo = typeof raw.memo === 'string' ? raw.memo : '';
+  const region = typeof raw.region === 'string' ? raw.region.slice(0, MAX_REGION) : '';
+  const memo = typeof raw.memo === 'string' ? raw.memo.slice(0, MAX_MEMO) : '';
   const height_m = typeof raw.height_m === 'number' && isFinite(raw.height_m) ? raw.height_m : null;
   const checked_at = typeof raw.checked_at === 'string' ? raw.checked_at : null;
 

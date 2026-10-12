@@ -1,5 +1,5 @@
 // src/manage.js
-import { exportJson, keepGeo, mergeWalls, normalizeWall, parseJson } from './store.js';
+import { MAX_MEMO, MAX_NAME, MAX_REGION, exportJson, keepGeo, mergeWalls, normalizeWall, parseJson } from './store.js';
 import { CSV_HEADERS, csvToWalls, parseCsv, wallToRow } from './csv.js';
 import { state, setWalls } from './state.js';
 
@@ -33,6 +33,8 @@ function openEditor(wall) {
       input.value = values[i];
       input.placeholder = HINTS[header] ?? '';
       if (header === '이름') input.required = true;
+      const max = { 이름: MAX_NAME, 지역: MAX_REGION, 메모: MAX_MEMO }[header]; // same caps normalizeWall applies
+      if (max) input.maxLength = max;
       label.append(input);
       return label;
     }),

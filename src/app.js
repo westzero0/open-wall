@@ -1,5 +1,5 @@
 import { buildList } from './listing.js';
-import { DAY_KO, hhmm, isNight } from './time.js';
+import { DAY_KO, hhmm, isNight, ymd } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
@@ -23,7 +23,7 @@ import { areaList } from './areas.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
-import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
+import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
@@ -900,7 +900,7 @@ function refillOpen(name) {
   const info = li?.querySelector('.m-info');
   if (!info || !row) return;
   li.querySelector('.wx-line')?.remove();
-  const crowd = info.firstElementChild?.classList.contains('crowd-chip') ? info.firstElementChild : null;
+  const crowd = info.querySelector('.crowd-quick') ?? (info.firstElementChild?.classList.contains('crowd-chip') ? info.firstElementChild : null);
   const box = weatherBox(modelOf(row, shown.at));
   if (crowd) crowd.after(...box); else info.prepend(...box);
 }
@@ -939,7 +939,27 @@ function crowdBox(m) {
   if (!c) return [];
   return [el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
-    c.chip.text)];
+    c.chip.text),
+  crowdQuick(m.name)];
+}
+// "지금 어때요?": one tap on the open card reports the crowd of right now (same limits and data as the 기록 추가 sheet's
+// question). Only while the picked moment is now and the wall is open (crowdBox is for open walls); gone for good once the
+// limits say so (a re-render finds crowdAsk ≠ 'ask').
+function crowdQuick(name) {
+  const now = new Date();
+  const [date, time] = [ymd(now), hhmm(now)];
+  if (!vs.live || crowdAsk(name, date, time) !== 'ask') return null;
+  const box = el('div', { class: 'crowd-quick', role: 'group', 'aria-label': '지금 혼잡도 제보' }, el('span', { class: 'cq-q' }, '지금 어때요?'));
+  const pills = LEVELS.map((level) => el('button', { type: 'button', class: 'crowd-pill', value: level }, level));
+  for (const b of pills) {
+    b.addEventListener('click', async () => {
+      pills.forEach((x) => { x.disabled = true; });
+      if (await sendCrowd(name, b.value, date, time)) box.replaceChildren(el('span', { class: 'cq-done', role: 'status' }, '제보 고마워요'));
+      else { pills.forEach((x) => { x.disabled = false; }); toast('혼잡도를 보내지 못했어요 — 연결을 확인해 주세요.'); }
+    });
+  }
+  box.append(el('span', { class: 'crowd-pills' }, ...pills));
+  return box;
 }
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
@@ -967,7 +987,7 @@ function timeRow(row, at) {
         el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
       basisTag(m), // own span: the region line may be cut short, this may not
       m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
-      m.meta ? el('span', { class: 'rmeta' }, m.meta) : null,
+      m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
       el('span', { class: 'left' }, m.left)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       ...bar.segments.map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
