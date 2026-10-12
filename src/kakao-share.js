@@ -3,7 +3,7 @@
 // kakaoPayload, clip and kakaoFail are pure; loadKakao and shareKakao take the document / the SDK as arguments (tested with stubs).
 // What leaves the device: the card picture (uploaded to Kakao's server by Share.uploadImage) and the message the user sends.
 
-// The JavaScript key is public by design: Kakao only accepts it from the domains registered for the app (https://westzero0.github.io).
+// The JavaScript key is public by design: Kakao only accepts it from the domains registered for the app (https://haebyeok.app).
 export const KAKAO_JS_KEY = '6190c3972efc1f76b12408d8ee832981';
 export const SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.8.3/kakao.min.js';
 // sha384 of that file (docs/system/permissions.md: how it was taken and checked)
