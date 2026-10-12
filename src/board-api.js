@@ -1,5 +1,5 @@
 // src/board-api.js — fetch adapter for the 한 줄 타임라인 Worker (worker/API.md). Empty url = feature off: no request is ever made.
-import { PAGE, parseBoard, parseTotal } from './board.js';
+import { PAGE, parseBoard, parseToken, parseTotal } from './board.js';
 
 const fail = (code) => Object.assign(new Error(code), { code });
 const codeOf = (status) => (status === 429 ? 'rate_limited' : status >= 400 && status < 500 ? 'bad_request' : 'server');
@@ -31,7 +31,10 @@ export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs
       const raw = await call('/v1/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wall, nick, body, hp }) });
       const [p] = parseBoard({ posts: [raw?.post] }, wall, Date.now());
       if (!p) throw fail('server');
-      return p;
+      return { post: p, token: parseToken(raw) };
+    },
+    async remove(id, token) {
+      await call(`/v1/posts/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Delete-Token': token } });
     },
     async report(id) {
       await call(`/v1/posts/${encodeURIComponent(id)}/report`, { method: 'POST' });

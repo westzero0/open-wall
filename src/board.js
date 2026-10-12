@@ -41,6 +41,17 @@ export function parseBoard(raw, wallName, now) {
   return out;
 }
 
+const TOKEN_RE = /^[0-9a-f]{32}$/;
+export const MAX_MINE = 200;
+/** the delete token of a create response when it has the expected form, else null (old Workers send none). */
+export const parseToken = (raw) => (typeof raw?.delete_token === 'string' && TOKEN_RE.test(raw.delete_token) ? raw.delete_token : null);
+/** saved { postId: token } is untrusted storage: valid pairs only, the newest MAX_MINE (insertion order). */
+export function cleanMine(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const pairs = Object.entries(raw).filter(([id, t]) => ID_RE.test(id) && typeof t === 'string' && TOKEN_RE.test(t));
+  return Object.fromEntries(pairs.slice(-MAX_MINE));
+}
+
 /** parseTotal(raw) → the response's `total` when it is a whole number >= 0, else null (old Workers send none). */
 export const parseTotal = (raw) => (Number.isInteger(raw?.total) && raw.total >= 0 ? raw.total : null);
 

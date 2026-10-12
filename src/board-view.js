@@ -5,12 +5,12 @@ import { el } from './dom.js';
 import { config } from './config.js';
 import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
-import { MAX_BODY, MAX_NICK, PREVIEW, ageText, allLabel, hasMore, showAll, validatePost } from './board.js';
+import { MAX_BODY, MAX_NICK, PREVIEW, ageText, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
 
 export const COOLDOWN_MS = 20_000;
 const MAX_REPORTED = 200;
 const ID_RE = /^[A-Za-z0-9_-]{16,32}$/;
-const K_TS = 'open-wall:board-ts', K_REP = 'open-wall:board-reported';
+const K_TS = 'open-wall:board-ts', K_REP = 'open-wall:board-reported', K_MINE = 'open-wall:board-mine';
 
 /** append incoming posts to existing ones, skipping ids already shown (parseBoard does not dedupe). */
 export function mergePosts(existing, incoming) {
@@ -33,6 +33,13 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage may be blocked */ } },
 };
 const loadReported = () => { try { return cleanReported(JSON.parse(store.get(K_REP) || '[]')); } catch { return []; } };
+
+// The posts this device wrote and the token that deletes each one ({ postId: token }). Shared by every view; the token never leaves the device except in the DELETE header.
+let mine = null;
+const getMine = () => mine ??= (() => { try { return cleanMine(JSON.parse(store.get(K_MINE) || '{}')); } catch { return {}; } })();
+const saveMine = () => { mine = cleanMine(mine); store.set(K_MINE, JSON.stringify(mine)); };
+const rememberMine = (id, token) => { if (token) { getMine()[id] = token; saveMine(); } };
+const forgetMine = (id) => { delete getMine()[id]; saveMine(); };
 
 /** a cached box whose last load failed is worth another try when the card is shown again (and none is in flight). */
 export const needsRefetch = ({ failed, fetching }) => !!failed && !fetching;
@@ -61,14 +68,24 @@ export function makeBoardState(wallName, api) {
   };
   s.start = () => { if (!started) { started = true; s.fetchPage(); } }; // once: by the first view built
   s.retryIfFailed = () => { if (needsRefetch(s)) s.fetchPage(); };
-  /** throws the api's error; on success the new post is first and a known total grows by one. */
+  /** throws the api's error; on success the new post is first and a known total grows by one. Resolves { post, token }. */
   s.submit = async (post) => {
-    const p = await api.post(post);
+    const { post: p, token } = await api.post(post);
     s.posts = mergePosts([p], s.posts); // a later fetch returning it is deduped
     if (s.total != null) s.total += 1;
     s.failed = false;
     emit();
-    return p;
+    return { post: p, token };
+  };
+  const drop = (id) => {
+    s.posts = s.posts.filter((p) => p.id !== id);
+    if (s.total != null) s.total = Math.max(0, s.total - 1);
+    emit();
+  };
+  /** the author deletes: gone from the server (or already gone, 404) = gone from the list; other errors throw and keep the post. */
+  s.delete = async (id, token) => {
+    try { await api.remove(id, token); } catch (e) { if (!isRefused(e)) throw e; }
+    drop(id);
   };
   s.report = (id) => api.report(id);
   s.notify = emit; // views redraw (e.g. the post cooldown that one of them just started)
@@ -113,11 +130,30 @@ function build(wallName, mode, onOpenAll) {
   const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? null : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, form);
 
   const say = (t) => { status.textContent = t; };
+  /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. */
+  function deleteButton(id, token) {
+    const b = el('button', { type: 'button', class: 'bd-rep bd-del' }, '삭제');
+    let armed = 0;
+    b.addEventListener('click', async () => {
+      if (!armed) { b.textContent = '정말 삭제'; armed = setTimeout(() => { armed = 0; b.textContent = '삭제'; }, 4000); return; }
+      clearTimeout(armed); armed = 0; b.disabled = true;
+      try {
+        await s.delete(id, token);
+        forgetMine(id);
+      } catch {
+        b.disabled = false; b.textContent = '삭제';
+        say('지우지 못했어요. 잠시 뒤에 다시 눌러 주세요');
+      }
+    });
+    return b;
+  }
   function draw() {
     box.hidden = s.refused;
     const now = Date.now();
     const shown = mode === 'preview' ? s.posts.slice(0, PREVIEW) : s.posts;
     list.replaceChildren(...shown.map((p) => {
+      const token = getMine()[p.id];
+      if (token) return el('li', { class: 'bd-post' }, el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body), el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', deleteButton(p.id, token)));
       const rep = el('button', { type: 'button', class: 'bd-rep' }, reported.has(p.id) ? '신고했어요' : '신고');
       rep.disabled = reported.has(p.id);
       rep.addEventListener('click', async () => {
@@ -172,7 +208,8 @@ function build(wallName, mode, onOpenAll) {
     if (!v.ok) { say(v.error); return; }
     busy = true; tick();
     try {
-      await s.submit({ ...v.post, hp: hp.value }); // redraws every view of this wall
+      const made = await s.submit({ ...v.post, hp: hp.value }); // redraws every view of this wall
+      rememberMine(made.post.id, made.token);
       if (!lockedNick) store.set(NICK_KEY, v.post.nick);
       store.set(K_TS, String(Date.now()));
       body.value = ''; count.textContent = `0/${MAX_BODY}`;
