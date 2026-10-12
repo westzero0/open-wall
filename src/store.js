@@ -366,6 +366,13 @@ export async function fetchNational(fetchFn = fetch) {
   return list;
 }
 
+// Single-pitch crags (data/single-pitch.json), a separate list from the walls. Unlike fetchNational an empty list is fine.
+export async function fetchCrags(fetchFn = fetch) {
+  const r = await fetchFn('data/single-pitch.json');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
+}
+
 export function loadWalls(storage) {
   try {
     const raw = storage.getItem(KEY);
