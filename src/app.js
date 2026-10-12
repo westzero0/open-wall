@@ -1225,23 +1225,27 @@ function openMap() {
 }
 
 const tabs = TABS; // 목록 | 지도 | 기록
+const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): no 지도 tab
 function showTab(key, focus = false) {
+  if (wide.matches && key === 'map') key = 'list';
   ui.tab = key;
   saveUi();
+  const split = wide.matches && key === 'list';
   for (const k of tabs) {
     const t = $(`tab-${k}`);
     t.setAttribute('aria-selected', String(k === key));
     t.tabIndex = k === key ? 0 : -1;
-    $(`panel-${k}`).hidden = k !== key;
+    $(`panel-${k}`).hidden = k !== key && !(split && k === 'map');
   }
   $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
   controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
   if (focus) $(`tab-${key}`).focus();
-  if (key === 'map') openMap();
+  if (key === 'map' || split) openMap();
   if (key === 'log') logView.render();
 }
+wide.addEventListener('change', () => showTab(ui.tab));
 
 // A 기록 line opens that wall's card in the list. Filters that hide it are cleared for this visit (not saved), and a
 // toast says so; a name no longer in the list only gets the toast.
@@ -1369,20 +1373,21 @@ const fitSticky = () => {
     tabbar.classList.remove('unstuck');
     const root = document.documentElement.style;
     root.setProperty('--ctl-h', '0px');
-    root.setProperty('--stick-h', `${tabbar.offsetHeight}px`);
+    root.setProperty('--stick-h', `${wide.matches ? 0 : tabbar.offsetHeight}px`);
     return;
   }
   const box = controls.getBoundingClientRect();
   const off = Math.max(0, controls.querySelector('.scrub').getBoundingClientRect().top - box.top - 4);
   const h = box.height - off;
   const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
-  const stick = h + tabbar.offsetHeight + axisH <= innerHeight * 0.3;
+  const tabH = wide.matches ? 0 : tabbar.offsetHeight; // wide: the tab bar does not stick
+  const stick = h + tabH + axisH <= innerHeight * 0.3;
   controls.classList.toggle('unstuck', !stick);
   tabbar.classList.toggle('unstuck', !stick);
   controls.style.top = stick ? `${-off}px` : '';
   const root = document.documentElement.style;
   root.setProperty('--ctl-h', `${stick ? h : 0}px`);
-  root.setProperty('--stick-h', `${stick ? h + tabbar.offsetHeight : 0}px`);
+  root.setProperty('--stick-h', `${stick ? h + tabH : 0}px`);
 };
 new ResizeObserver(fitSticky).observe(controls);
 addEventListener('resize', fitSticky);
@@ -1407,11 +1412,12 @@ for (const k of tabs) {
   });
 }
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
-  const i = tabs.indexOf(ui.tab);
-  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  const order = wide.matches ? tabs.filter((k) => k !== 'map') : tabs; // no 지도 tab to land on when wide
+  const i = order.indexOf(ui.tab);
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: order.length - 1 }[e.key];
   if (next === undefined) return;
   e.preventDefault();
-  showTab(tabs[(next + tabs.length) % tabs.length], true);
+  showTab(order[(next + order.length) % order.length], true);
 });
 
 // Asks for the position (only on a press: 내 위치 / 가까운 순 in the list); kept in memory only.

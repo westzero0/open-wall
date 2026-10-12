@@ -215,6 +215,20 @@ main { padding-bottom: var(--sp-48); }
 #map.leaflet-container, #map .leaflet-control-attribution { font-size: var(--fs-xs); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #map .leaflet-tile-pane { filter: brightness(.85); } }
 :root[data-theme="dark"] #map .leaflet-tile-pane { filter: brightness(.85); } /* softer glare at night; pins stay as drawn */
+/* wide screens: the list and the map side by side. app.js (`wide`) shows the map panel with the 목록 tab and drops the
+   지도 tab; the 기록 tab keeps the single 680px column. The tab bar stops sticking (--stick-h = the controls only). */
+@media (min-width: 1024px) {
+  .wrap { max-width: 1200px; }
+  main.wrap { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: var(--sp-24); align-items: start; } /* 1fr: the map spans both rows, so the extra height goes to the list row, not the tab bar's */
+  main.wrap > * { grid-column: 1 / -1; }
+  main.wrap > .tabbar, main.wrap > #panel-list { grid-column: 1; }
+  main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
+  main.wrap:has(> #panel-log:not([hidden])) { display: block; max-width: 680px; }
+  .tabbar { position: static; box-shadow: none; }
+  .tabs { grid-template-columns: 1fr 1fr; }
+  #tab-map { display: none; }
+  #map { height: calc(100dvh - var(--stick-h, 0px) - 190px); } /* room for the strip under the controls and the legend below */
+}
 /* pin names (src/map.js) at street zoom; map.js hides the ones that would overlap */
 #map .pin-label { padding: 1px var(--sp-6); font: 600 .8125rem/1.3 var(--font); color: #1b1f1e; background: #fff; border-color: #b4baaf; white-space: nowrap; }
 .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-12); font-size: var(--fs-xs); color: var(--muted); }
