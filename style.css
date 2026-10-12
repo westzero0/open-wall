@@ -114,6 +114,10 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--
 .wrap { max-width: 680px; margin: 0 auto; padding: 0 var(--sp-16); }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3, h4 { text-wrap: balance; }
+/* 아주 크게: 늘 화면에 붙어 있는 상단(제목·필터·시간)만 '크게' 수준으로 두어 목록이 첫 화면에 보이게 한다(토큰 값 = 기본 × 1.25 ÷ 1.5) */
+html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
+html[data-text="xlarge"] .sunfilter-btn svg { display: none; } /* 글자(양달/응달)가 있으니 아이콘은 뺀다: 칩 4개가 한 줄에 들어가게 */
+html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
 p, li, dd { text-wrap: pretty; }
 input, select, button { font: inherit; color: var(--fg); }
 button, select, summary, .btn, .file-btn { cursor: pointer; }
