@@ -9,6 +9,7 @@ import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
+import { createMonthShare } from './month-share.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, heatLevel, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
@@ -79,6 +80,7 @@ export function createLogView({
   getOrigin = () => null, addFav = () => {},
 }) {
   const panel = $('panel-log');
+  const monthShare = createMonthShare({ getWalls, icon });
   let log = loadLog(storage, today(), nowMin());
   // the calendar: the month in view, the picked day, the day that holds the grid's tab stop
   const now = new Date();
@@ -727,6 +729,8 @@ export function createLogView({
       }
       panel.querySelector(`.cal-day[data-date="${focusDay}"]`)?.focus();
     });
+    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, '이 달 그림으로 공유');
+    shareBtn.addEventListener('click', () => monthShare.open({ log, year: view.year, month: view.month, from: shareBtn }));
     const say = el('p', { class: 'sr-only', 'aria-live': 'polite' });
     if (monthSay) setTimeout(() => { say.textContent = monthSay; monthSay = ''; }, 50); // after the new region is in the page
     return el('section', { class: 'cal', 'aria-label': '기록 달력' },
@@ -737,7 +741,8 @@ export function createLogView({
         todayBtn),
       el('p', { class: 'cal-sum' }, `${view.month}월 기록 ${sum.visits}번 · ${sum.walls}곳`),
       say, table,
-      el('p', { class: 'cal-legend' }, '도장의 점은 그날 해의 위치 · ● 양달 ○ 응달'));
+      el('p', { class: 'cal-legend' }, '도장의 점은 그날 해의 위치 · ● 양달 ○ 응달'),
+      sum.visits ? shareBtn : null);
   }
 
   // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)

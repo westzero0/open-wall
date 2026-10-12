@@ -24,7 +24,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -302,6 +302,21 @@
           <h3>만든 사람</h3>
           <p>바위타는 은설 · <a href="https://blog.naver.com/caramelsnow" target="_blank" rel="noopener noreferrer">블로그</a> · <a href="https://www.instagram.com/burning__rock/" target="_blank" rel="noopener noreferrer">@burning__rock</a></p>
         </section>
+      </form>
+    </dialog>
+    <dialog id="month-share" class="sheet" aria-labelledby="month-share-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="month-share-title">이 달 그림</h2>
+          <div class="ms-tools">
+            <button type="button" class="sh-toggle ms-names" id="ms-names" aria-pressed="false" aria-label="암장 이름 넣기">이름 넣기</button>
+            <button type="button" class="icon-btn ms-share" id="ms-share" aria-label="공유하기" title="공유하기" disabled></button>
+            <button class="sh-done">닫기</button>
+          </div>
+        </div>
+        <div class="ms-prev"><canvas id="ms-canvas" width="1080" height="1920" role="img" aria-label="이 달 기록 그림 미리보기"></canvas></div>
+        <p class="sh-hint ms-hint">이름 넣기를 꺼 두면 숫자와 도장만 보내요. 그림은 이 기기에서만 만들어요.</p>
+        <p class="sh-hint ms-say" id="ms-say" role="status"></p>
       </form>
     </dialog>
     <dialog id="log-add" class="sheet" aria-labelledby="log-add-title">

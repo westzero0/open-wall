@@ -1123,6 +1123,16 @@ p.setnew { margin-top: 8px; }
 .cal-nav, .cal-today { min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: var(--r-md); background: none; color: var(--fg); font-size: var(--fs-lg); line-height: 1; }
 .cal-today { padding: 0 10px; font-size: var(--fs-sm); font-weight: 600; color: var(--accent); white-space: nowrap; }
 .cal-legend { margin: 6px 4px 0; text-align: right; font-size: var(--fs-xs); color: var(--muted); }
+.cal-share { display: block; margin: 8px auto 0; min-height: var(--tap); padding: 0 16px; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.ms-prev { display: grid; place-items: center; margin: 4px 0 12px; }
+.ms-tools { display: flex; align-items: center; gap: 4px; }
+.ms-names { min-height: 36px; padding: 0 12px; font-size: var(--fs-sm); }
+.ms-share { color: var(--accent); }
+.ms-share:disabled { color: var(--muted); opacity: .45; cursor: default; }
+.ms-hint { text-align: center; }
+.ms-prev canvas { width: min(56vw, 240px); height: auto; aspect-ratio: 9 / 16; border-radius: 8px; background: #17191c; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+.ms-say:empty { display: none; }
+.ms-say { margin-top: 4px; text-align: center; }
 .cal-sum { margin: 2px 0 6px; text-align: center; font-size: var(--fs-sm); color: var(--muted); }
 .cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .cal-grid th { padding: 4px 0; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }

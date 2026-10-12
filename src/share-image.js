@@ -1,10 +1,10 @@
 // src/share-image.js — the invite as a 9:16 picture (1080×1920) for a messenger or a story. Canvas only; no new dependency.
 // wrapLines, sunParts and shareSay are pure (tested); drawInvite, pictureBlob and shareInvite need a browser. The picture cannot carry a link, so it is always
 // shared together with the invite text, or saved while the text is copied when the phone cannot share files.
-const W = 1080;
-const H = 1920;
-const M = 90;
-const FONT = '"IBM Plex Sans KR", system-ui, sans-serif';
+export const W = 1080;
+export const H = 1920;
+export const M = 90;
+export const FONT = '"IBM Plex Sans KR", system-ui, sans-serif';
 
 /**
  * wrapLines(measure, text, maxWidth, maxLines, balance = false) → lines. Breaks at spaces (a Korean word is never cut), splits
@@ -54,18 +54,18 @@ export function wrapLines(measure, text, maxWidth, maxLines, balance = false) {
   return kept;
 }
 
-const image = (src) => new Promise((ok) => {
+export const image = (src) => new Promise((ok) => {
   const img = new Image();
   img.onload = () => ok(img);
   img.onerror = () => ok(null); // no logo is better than no picture
   img.src = src;
 });
 // the horizontal lockup (mark + 해벽) with the wall in paper colour, for the dark ground
-const lockup = () => image('assets/haebyeok-lockup-dark.svg');
+export const lockup = () => image('assets/haebyeok-lockup-dark.svg');
 
-const INK = '#17191c'; // the brand's 먹 (the logo's text ink; the light-ground wall is #2a2d32)
-const PAPER = '#f4f2ec';
-const MUTED = '#9a9d98';
+export const INK = '#17191c'; // the brand's 먹 (the logo's text ink; the light-ground wall is #2a2d32)
+export const PAPER = '#f4f2ec';
+export const MUTED = '#9a9d98';
 const SUN = '#f4b942'; // the logo's sun: used only where the sun is meant
 
 // Small pictures for how the sun is, drawn in the pill's ink. r: the sun's radius. 'sun': a disc with eight rays (ink strokes, never
@@ -341,10 +341,10 @@ export async function pictureBlob(picture, draw = drawInvite) {
 const FILE_NAME = 'haebyeok-invite.png';
 
 // the download: an anchor in the page (some browsers ignore a detached one), its URL kept for a minute (a slow phone)
-export function saveFile(blob) {
+export function saveFile(blob, name = FILE_NAME) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = FILE_NAME;
+  a.download = name;
   a.hidden = true;
   document.body.append(a);
   a.click();
@@ -352,8 +352,8 @@ export function saveFile(blob) {
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
 
-function saveAndCopy(blob, text) {
-  saveFile(blob);
+function saveAndCopy(blob, text, name) {
+  saveFile(blob, name);
   let copy;
   try { copy = navigator.clipboard.writeText(text); } catch (e) { copy = Promise.reject(e); }
   return Promise.resolve(copy).then(() => ({ how: 'saved', copied: true }), () => ({ how: 'saved', copied: false }));
@@ -366,16 +366,16 @@ function saveAndCopy(blob, text) {
  * share sheet takes both; where files cannot be shared (or sharing fails) the picture is saved and the text copied.
  * A failed copy does not fail the picture (copied: false).
  */
-export function shareInvite(blob, text) {
-  const file = new File([blob], FILE_NAME, { type: 'image/png' });
+export function shareInvite(blob, text, name = FILE_NAME) {
+  const file = new File([blob], name, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file], text }) && matchMedia('(pointer: coarse)').matches) {
     return {
       via: 'share',
       done: navigator.share({ files: [file], text }).then(() => ({ how: 'shared' }),
-        (e) => (e?.name === 'AbortError' ? { how: 'cancelled' } : saveAndCopy(blob, text))),
+        (e) => (e?.name === 'AbortError' ? { how: 'cancelled' } : saveAndCopy(blob, text, name))),
     };
   }
-  return { via: 'save', done: saveAndCopy(blob, text) };
+  return { via: 'save', done: saveAndCopy(blob, text, name) };
 }
 
 /** shareSay(result) → what the sheet says after the picture went (stays until the next change). */
