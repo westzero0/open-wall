@@ -60,6 +60,11 @@
   --sp-12: 12px;
   --sp-14: 14px;
   --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-40: 40px;
+  --sp-48: 48px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --dur-press: 140ms;
   --dur-ui: 200ms;
@@ -109,15 +114,15 @@
 * { box-sizing: border-box; }
 html[data-text="large"] { font-size: 125%; --tap: 52px; } /* 글자 크기 (내 정보): rem scales, on top of the phone's own setting */
 html[data-text="xlarge"] { font-size: 150%; --tap: 60px; }
+/* 아주 크게: 늘 화면에 붙어 있는 상단(제목·필터·시간)만 '크게' 수준으로 두어 목록이 첫 화면에 보이게 한다(토큰 값 = 기본 × 1.25 ÷ 1.5) */
+html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
+html[data-text="xlarge"] .sunfilter-btn svg { display: none; } /* 글자(양달/응달)가 있으니 아이콘은 뺀다: 칩 4개가 한 줄에 들어가게 */
+html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--stick-h, 0px) + 8px); } /* focus/anchor scrolls land below the sticky controls */
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--font); font-variant-numeric: tabular-nums; overflow-x: hidden; word-break: keep-all; overflow-wrap: break-word; }
 .wrap { max-width: 680px; margin: 0 auto; padding: 0 var(--sp-16); }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3, h4 { text-wrap: balance; }
-/* 아주 크게: 늘 화면에 붙어 있는 상단(제목·필터·시간)만 '크게' 수준으로 두어 목록이 첫 화면에 보이게 한다(토큰 값 = 기본 × 1.25 ÷ 1.5) */
-html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
-html[data-text="xlarge"] .sunfilter-btn svg { display: none; } /* 글자(양달/응달)가 있으니 아이콘은 뺀다: 칩 4개가 한 줄에 들어가게 */
-html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
 p, li, dd { text-wrap: pretty; }
 input, select, button { font: inherit; color: var(--fg); }
 button, select, summary, .btn, .file-btn { cursor: pointer; }
@@ -189,7 +194,7 @@ button.pill:active, #nowBtn:active, .btn:active { transform: scale(.97); }
 #locateMsg { font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- tabs ---- */
-main { padding-bottom: 48px; }
+main { padding-bottom: var(--sp-48); }
 /* 목록/지도 stay in view under the date + slider, so the map is never a place you can't leave (app.js sets --ctl-h, and
    --stick-h = controls + this bar; .unstuck when even that would take over a short screen) */
 .tabbar { position: sticky; top: var(--ctl-h, 0px); z-index: 4; margin: 0 -16px; padding: var(--sp-8) var(--sp-16) var(--sp-6); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
@@ -302,7 +307,7 @@ main { padding-bottom: 48px; }
 }
 /* the map credit sits top right (map.js), clear of the card */
 #map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--radius) 0 6px; }
-#pin-card .head { padding-right: 40px; } /* room for the close button */
+#pin-card .head { padding-right: var(--sp-40); } /* room for the close button */
 .pin-close {
   position: absolute; top: 4px; right: 4px; z-index: 1; width: 44px; height: 44px; border: 0; border-radius: var(--r-md);
   background: transparent; color: var(--muted); font-size: var(--fs-lg); line-height: 1;
@@ -384,7 +389,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.soon .left { color: var(--soon); }
 .row.closed .rname, .row.unknown .rname { color: var(--muted); font-weight: 500; }
 .row.closed .left, .row.unknown .left { color: var(--muted); font-weight: 400; }
-.bar { position: relative; display: block; height: 15px; margin-top: 9px; }
+.bar { position: relative; display: block; height: 15px; margin-top: var(--sp-8); }
 .bar .seg { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--open); }
 .bar .seg.past { background: var(--open-past); }
 /* light bars (past, closed) get an edge with 3:1 against the sheet, so their length stays readable */
@@ -409,7 +414,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   transition: grid-template-rows var(--dur-ui) var(--ease-out), opacity var(--dur-ui) var(--ease-out), visibility 0s;
 }
 .expand-in { min-height: 0; overflow: hidden; padding: 0 var(--pad); }
-.row.is-open .expand-in { padding-bottom: 18px; }
+.row.is-open .expand-in { padding-bottom: var(--sp-16); }
 .herowrap { position: relative; margin-top: var(--sp-2); }
 .hero { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--r-lg); background: var(--off); }
 /* no photo: a low band, not a big grey box */
@@ -526,7 +531,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .m-info, .m-head { min-width: 0; }
 @media (min-width: 560px) { /* wide: name/hours left, sun box right (compass above words), the rest under the name */
   .hero { aspect-ratio: 21 / 9; }
-  .m-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; align-items: start; margin-top: var(--sp-14); }
+  .m-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-24); align-items: start; margin-top: var(--sp-14); }
   .m-cols .x-head { margin-top: 0; } /* top of the name = top of the sun box */
   .m-cols > .m-head { grid-column: 1; grid-row: 1; }
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
@@ -535,7 +540,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   .m-cols .sb-fig { width: 100%; max-width: 220px; margin: 0 auto; }
 }
 .expand-in .acts .btn, .expand-in .actions .btn {
-  flex: 1 1 auto; white-space: nowrap; justify-content: center; height: 46px; padding: 0 18px; border-radius: var(--radius);
+  flex: 1 1 auto; white-space: nowrap; justify-content: center; height: 46px; padding: 0 var(--sp-16); border-radius: var(--radius);
   border: 1px solid var(--fg); background: var(--fg); color: var(--bg); font-size: var(--fs-md); font-weight: 600;
 }
 .expand-in .acts .btn.sub, .expand-in .actions .btn { background: transparent; color: var(--fg); border-color: var(--line-strong); font-weight: 500; }
@@ -843,7 +848,7 @@ html[data-text] .segs label { flex: 1 1 auto; padding: 0 var(--sp-8); }
 .card.broken { grid-template-columns: 1fr; }
 
 /* ---- data management, editor (behaviour unchanged) ---- */
-#manage { margin-top: 32px; padding-top: var(--sp-12); border-top: 1px solid var(--line); }
+#manage { margin-top: var(--sp-32); padding-top: var(--sp-12); border-top: 1px solid var(--line); }
 #manage > summary { min-height: var(--tap); display: flex; align-items: center; font-weight: 600; color: var(--muted); }
 .manage-buttons, .row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0; }
 .manage-buttons button, .row-actions button, .file-btn {
@@ -882,17 +887,17 @@ dialog::backdrop { background: var(--scrim); }
 .card .stale-note { color: var(--warn); }
 
 .credit {
-  position: absolute; right: 10px; bottom: 10px; max-width: 55%; padding: 3px 9px; border-radius: var(--r-pill);
+  position: absolute; right: 10px; bottom: 10px; max-width: 55%; padding: 3px var(--sp-8); border-radius: var(--r-pill);
   font-size: var(--fs-xs); line-height: 18px; color: #fff; background: rgb(0 0 0 / .62);
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); text-decoration: none; overflow-wrap: anywhere;
 }
 .photo-send {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 11px; border-radius: var(--r-pill); font-size: var(--fs-xs); white-space: nowrap; text-decoration: none;
+  padding: 5px var(--sp-12); border-radius: var(--r-pill); font-size: var(--fs-xs); white-space: nowrap; text-decoration: none;
   color: var(--accent); background: var(--surface, #fff); border: 1px solid currentColor;
 }
 .photo-send svg { width: 14px; height: 14px; }
-.foot { display: grid; gap: var(--sp-6); padding-top: var(--sp-8); padding-bottom: 40px; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.foot { display: grid; gap: var(--sp-6); padding-top: var(--sp-8); padding-bottom: var(--sp-40); color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
 .foot p { text-wrap: pretty; }
 .foot a { color: var(--accent); padding-block: 13px; } /* inline padding: a taller touch area, same line layout */
 .foot .brand { margin-top: 0; }
@@ -907,7 +912,7 @@ dialog::backdrop { background: var(--scrim); }
 .foot .brand strong { color: var(--fg); font-weight: 700; }
 .load-error { margin: var(--sp-12) 0; padding: var(--sp-14) var(--sp-16); border: 2px solid var(--warn); border-radius: var(--radius); background: var(--surface); color: var(--fg); font-weight: 600; }
 .load-error p { margin: 0 0 var(--sp-10); text-wrap: pretty; }
-.load-error button { min-height: 44px; padding: 0 18px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font-weight: 600; white-space: nowrap; }
+.load-error button { min-height: 44px; padding: 0 var(--sp-16); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font-weight: 600; white-space: nowrap; }
 .load-error button:disabled { opacity: .6; }
 .load-failed .tabbar, .load-failed #panel-list, .load-failed #panel-map, .load-failed #panel-log { display: none; }
 
@@ -955,7 +960,7 @@ dialog::backdrop { background: var(--scrim); }
 .pf-rank-list b { display: inline-block; min-width: 2.2em; color: var(--accent); }
 .rp-chat-name { user-select: all; -webkit-user-select: all; color: var(--fg); overflow-wrap: anywhere; } /* one tap selects the whole name, to copy */
 /* the foot of a card: 정보가 달라요 · 오픈채팅방 알려주기, quiet text links (the 44px height is the tap area) */
-.help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 18px; margin-top: var(--sp-6); } /* right-aligned: out of the way of the card's content */
+.help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-16); margin-top: var(--sp-6); } /* right-aligned: out of the way of the card's content */
 .help-link { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .rp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rp-status { min-height: 1.4em; margin: var(--sp-6) 0; font-size: var(--fs-sm); white-space: pre-line; }
@@ -1329,7 +1334,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 html[data-text] .bd-row:not(.bd-foot) { flex-wrap: wrap; } /* 큰 글씨: 닉네임 한 줄, 글 입력칸 한 줄 */
 html[data-text] .bd-body { flex: 1 1 100%; }
 .bd-hp[hidden] { display: none; }
-.bd-send { min-height: var(--tap); padding: 0 20px; border: 1px solid var(--fg); border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; cursor: pointer; }
+.bd-send { min-height: var(--tap); padding: 0 var(--sp-20); border: 1px solid var(--fg); border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; cursor: pointer; }
 .bd-send:disabled { opacity: .45; cursor: default; }
 .bd-box:focus { outline: none; }
 .bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
