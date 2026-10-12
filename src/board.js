@@ -5,6 +5,8 @@ import { cleanLine } from './clean-line.js';
 export const MAX_BODY = 140;
 export const MAX_NICK = 6;
 export const PAGE = 5;
+export const PREVIEW = 3; // posts on the wall card; the rest is on the board page
+export const COUNT_FROM = 11; // the 전체 글 보기 button shows the count from this many posts up
 const MAX_ROWS = 100;
 const SKEW = 5 * 60 * 1000;
 const ID_RE = /^[A-Za-z0-9_-]{16,32}$/;
@@ -38,6 +40,16 @@ export function parseBoard(raw, wallName, now) {
   }
   return out;
 }
+
+/** parseTotal(raw) → the response's `total` when it is a whole number >= 0, else null (old Workers send none). */
+export const parseTotal = (raw) => (Number.isInteger(raw?.total) && raw.total >= 0 ? raw.total : null);
+
+/** more posts to fetch? The Worker's total when known, else a full last page; an empty last page always ends it (parseBoard may drop rows, so loaded can stay below total). */
+export const hasMore = (total, loaded, lastPage) => lastPage > 0 && (total != null ? loaded < total : lastPage >= PAGE);
+
+/** show the 전체 글 보기 button on the card? */
+export const showAll = (total, loaded) => (total ?? loaded) > PREVIEW;
+export const allLabel = (total) => (total != null && total >= COUNT_FROM ? `전체 글 보기 (${total})` : '전체 글 보기');
 
 /** ageText(createdAt, now) → '방금' / '12분 전' / '3시간 전' / 'M/D' (local date once a day has passed). */
 export function ageText(createdAt, now) {

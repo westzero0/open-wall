@@ -97,6 +97,9 @@ export function filterView(ui, { canPark, openTotal, isNow }) {
 // link preview (og tags, made at deploy) and sends the visitor on to ?wall=<name>, which is where wallFromSearch takes over.
 export const shareUrl = (href, name) => sharePageUrl(href, name).toString();
 
+/** does the link ask for the wall's board page (?wall=<name>&board)? */
+export const boardRequested = (search) => new URLSearchParams(search).has('board');
+
 // The wall a share link names: exact (NFC) name match in the loaded list, else null. Never trusted beyond that.
 // Old ?wall=<name> links still land here directly.
 export function wallFromSearch(walls, search) {

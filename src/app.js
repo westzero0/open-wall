@@ -17,7 +17,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
@@ -27,6 +27,7 @@ import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, pars
 import { bumpCrowd } from './rank.js';
 import { forecastUrl, parseForecast, pickHour, weatherFresh } from './weather.js';
 import { boardBox } from './board-view.js';
+import { openBoardPage } from './board-page.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -750,7 +751,7 @@ function rowDetails(m, wall, at, id) {
         el('p', { class: 'checked' }, m.checked)),
       more.childElementCount > 1 ? more : null),
     visitLog(m),
-    boardBox(m.name), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
+    boardBox(m.name, { onOpenAll: (btn) => openBoardPage(m.name, btn) }), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
     blogBox(m.blog),
     helps,
     rowButtons(m.name),
@@ -1476,8 +1477,9 @@ if (sharedWall) {
   if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list
   revealRow(sharedWall.name); // its group is only known after the first render
   if (invite) inviteView.banner(invite, sharedWall);
+  if (boardRequested(location.search)) openBoardPage(sharedWall.name, null, { push: false }); // ?wall=<name>&board: the link opens the board page; no board url = nothing opens
   const u = new URL(location.href);
-  for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note']) u.searchParams.delete(k);
+  for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board']) u.searchParams.delete(k);
   history.replaceState(null, '', u);
 }
 showTab(ui.tab); // loadUi keeps it to TABS

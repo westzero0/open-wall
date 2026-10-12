@@ -1271,3 +1271,15 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-hp[hidden] { display: none; }
 .bd-send { min-height: var(--tap); padding: 0 20px; border: 1px solid var(--fg); border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; cursor: pointer; }
 .bd-send:disabled { opacity: .45; cursor: default; }
+.bd-box:focus { outline: none; }
+.bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+/* the board page: a full-height sheet; the form comes first so a long list never hides it */
+.board-page { height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
+.bp-inner { display: grid; align-content: start; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
+.bp-back { margin-left: -8px; margin-right: 0; }
+.bp-title { flex: 1; min-width: 0; margin-left: 4px; overflow-wrap: anywhere; }
+.bp-title:focus { outline: none; }
+.sh-head:has(.bp-back) { justify-content: flex-start; }
+.bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
+.bd-full .bd-form { order: -1; margin: 0 0 8px; padding: 0; }
+.bd-full .bd-form::before { content: none; }
