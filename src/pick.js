@@ -73,22 +73,26 @@ function measure(wall, day, now) {
 
 // In a tie, a wall that has both sun and shade to move between is the better pick (-1: no sun facing known).
 const balanceOf = (m) => (m.sunMin === null ? -1 : Math.min(m.sunMin, m.shadeMin));
+// A rainy day pushes an outdoor wall behind the dry ones (indoor walls do not care). Only the order changes; nothing is dropped.
+const rainyOutdoor = (m) => !!m.wx?.rain && m.wall.venue !== 'indoor';
 const metricOf = (m, pref) => (pref === 'shade' ? m.shadeMin : pref === 'sun' ? m.sunMin : m.openMin);
 
 /**
  * weekendPicks(walls, now, {pref, regions, venue, limit}) → { pref, days, byDay: [{ day, items }] }
  * pref: 'auto' (by the season of the first day) | 'shade' | 'sun' | 'any'. regions / venue: the 내 지역 and 구분 choices.
+ * weather(wall, date) → { rain, windy, rainText } | null (see weather.js dayWeather): each item carries it as `wx`, and a rainy outdoor wall sorts after the dry ones.
  * Left out: no hours, hours not checked for over a year, under 2 h on the day, and (shade/sun) walls whose
  * facing is unknown or with under an hour of what is asked for.
  */
-export function weekendPicks(walls, now, { pref = 'auto', regions = [], venue = 'any', limit = 3 } = {}) {
+export function weekendPicks(walls, now, { pref = 'auto', regions = [], venue = 'any', limit = 3, weather = null } = {}) {
   const days = weekendDays(now);
   const resolved = pref === 'auto' ? seasonPref(days[0].date) : pref;
   const scoped = scopeRows(walls.map((w) => ({ wall: viewOf(w, venue) })), { regions, venue }).map((r) => r.wall);
   const byDay = days.map((day) => {
     const items = scoped.map((w) => measure(w, day, now))
+      .map((m) => m && { ...m, wx: weather?.(m.wall, day.date) ?? null })
       .filter((m) => m && metricOf(m, resolved) !== null && (resolved === 'any' || metricOf(m, resolved) >= MIN_PREF))
-      .sort((a, b) => metricOf(b, resolved) - metricOf(a, resolved) || b.openMin - a.openMin || balanceOf(b) - balanceOf(a)
+      .sort((a, b) => rainyOutdoor(a) - rainyOutdoor(b) || metricOf(b, resolved) - metricOf(a, resolved) || b.openMin - a.openMin || balanceOf(b) - balanceOf(a)
         || b.longestMin - a.longestMin || a.wall.name.localeCompare(b.wall.name, 'ko'))
       .slice(0, limit);
     return { day, items };

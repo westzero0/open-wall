@@ -275,6 +275,8 @@ main { padding-bottom: 48px; }
 .pick-why svg { flex: none; width: 16px; height: 16px; }
 .pick-why.sun { color: var(--fg); }
 .pick-why.sun svg { color: var(--sun); }
+.pick-wxs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.pick-wx { padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--fg); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
 .pick-hours { flex: none; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .pick-empty { margin: 0; padding: 12px 0; color: var(--muted); font-size: var(--fs-sm); }
 .pick-note { margin: 0; padding: 4px 0 12px; color: var(--muted); font-size: var(--fs-xs); }

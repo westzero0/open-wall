@@ -25,7 +25,7 @@ import { createLogView, toast } from './log-view.js';
 import { applyTheme, createProfileView } from './profile-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { forecastUrl, parseForecast, pickHour, weatherFresh } from './weather.js';
+import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openBoardPage } from './board-page.js';
 
@@ -551,9 +551,35 @@ let pickRefocus = null;
 // basis button (it opens the choices), then up to three compact rows: rank, small photo (or the grey logo mark), the wall, the
 // sun as a picture + one line of why, the hours. Shown only with a 내 지역 set (a nationwide top 3 is too far to be a pick) and not turned off in 내 정보,
 // and hidden when that area has nothing to say about the coming weekend.
+// 주말 추천의 날씨 (weather.js; docs/system/permissions.md): one request for every wall's daily rain / gust numbers, kept in memory
+// (3 hours; a failed one 5 minutes). It only reorders the picks and adds pills; without it the picks are as they were.
+const wxPick = { byName: new Map(), entry: null, busy: false };
+async function loadWeekendWeather() {
+  if (wxPick.busy || weatherFresh(wxPick.entry, Date.now())) return;
+  const spots = state.walls.map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
+  if (!spots.length) return;
+  wxPick.busy = true;
+  let days = null;
+  try {
+    const res = await fetch(weekendForecastUrl(spots.map(([, p]) => p)), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
+    if (res.ok) days = parseDaily(await res.json(), spots.length);
+  } catch { /* quiet: picks stay as they are */ }
+  wxPick.entry = { hours: days, at: Date.now() }; // the shape weatherFresh reads
+  wxPick.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
+  wxPick.busy = false;
+  if (days) {
+    const f = document.activeElement; // a late answer must not drop focus from a pick control
+    if (f?.closest?.('#pick-body') && f.dataset.focus) pickRefocus = f.dataset.focus;
+    renderPick();
+  }
+}
+const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get(dayKey(date)));
+const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
 function renderPick() {
   const box = $('pick');
-  const r = state.walls.length && ui.regions.length && !ui.hidePick ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue }) : null;
+  const wanted = state.walls.length && ui.regions.length && !ui.hidePick;
+  if (wanted) loadWeekendWeather();
+  const r = wanted ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue, weather: pickWeather }) : null;
   box.hidden = !r || r.byDay.every((d) => !d.items.length);
   if (box.hidden) return;
   pickDay = Math.min(pickDay, r.days.length - 1);
@@ -565,7 +591,7 @@ function renderPick() {
     revealClearing(it.wall.name);
   };
   $('pick-thumb').replaceChildren(...(top ? [pickMedia(top.wall)] : []));
-  $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
+  $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}${rainsOn(top) ? ' · 비 예보' : ''}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
 
   const kids = [];
   // the day is chosen right here (pills); only the basis hides behind the small 기준 button
@@ -596,7 +622,8 @@ function renderPick() {
         el('span', { class: 'pick-rowthumb' }, pickMedia(it.wall)),
         el('span', { class: 'pick-rowtext' },
           el('span', { class: 'pick-name' }, shortName(it.wall)),
-          el('span', { class: `pick-why ${lean}` }, icon(lean), reasonOf(it, r.pref).short)),
+          el('span', { class: `pick-why ${lean}` }, icon(lean), reasonOf(it, r.pref).short),
+          it.wx && it.wall.venue !== 'indoor' && (it.wx.rain || it.wx.windy) ? el('span', { class: 'pick-wxs' }, it.wx.rain ? el('span', { class: 'pick-wx' }, it.wx.rainText) : null, it.wx.windy ? el('span', { class: 'pick-wx' }, '바람 셈') : null) : null),
         el('span', { class: 'pick-hours' }, `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`));
       b.addEventListener('click', () => goPick(it));
       return el('li', {}, b);
@@ -604,7 +631,7 @@ function renderPick() {
   } else {
     kids.push(el('p', { class: 'pick-empty' }, '이 날은 조건에 맞는 곳이 없어요. 다른 날이나 기준을 골라 보세요.'));
   }
-  kids.push(el('p', { class: 'pick-note' }, '운영시간과 해 계산 기준이에요. 가기 전에 공지를 꼭 확인해 주세요.'));
+  kids.push(el('p', { class: 'pick-note' }, `운영시간과 해 계산 기준이에요.${wxPick.entry?.hours ? ' 비 예보인 외벽은 뒤에 둬요(예보는 틀릴 수 있어요).' : ''} 가기 전에 공지를 꼭 확인해 주세요.`));
   $('pick-body').replaceChildren(...kids);
   if (pickRefocus) $('pick-body').querySelector(`[data-focus="${pickRefocus}"]`)?.focus({ preventScroll: true });
   pickRefocus = null;

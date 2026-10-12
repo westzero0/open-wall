@@ -43,4 +43,45 @@ export const weatherFresh = (entry, now) => !!entry && now - entry.at < (entry.h
 
 export const windy = (h) => h.g >= GUST_STRONG;
 
+export const RAIN_MM = 1; // a day with at least this much rain, or ...
+export const RAIN_PROB = 60; // ... at least this chance of it (%), is a "비 예보" day
+
+/** weekendForecastUrl([{lat, lng}, ...]) → one request for every wall: daily rain / gust numbers for 7 days. Only coordinates (2 decimals) vary. */
+export const weekendForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
+  + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + '&daily=precipitation_sum,precipitation_probability_max,wind_gusts_10m_max&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=7';
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** parseDaily(json, n) → n Maps ('YYYY-MM-DD' → {mm, p (null when unknown), g}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
+export function parseDaily(json, n) {
+  const list = Array.isArray(json) ? json : [json];
+  if (list.length !== n || n < 1) return null;
+  const out = [];
+  for (const item of list) {
+    const d = item?.daily;
+    if (!d || !Array.isArray(d.time)) return null;
+    const { time, precipitation_sum: mm, precipitation_probability_max: p, wind_gusts_10m_max: g } = d;
+    if (!time.length || time.length > 16 || ![mm, p, g].every((a) => Array.isArray(a) && a.length === time.length)) return null;
+    const days = new Map();
+    for (let i = 0; i < time.length; i++) {
+      if (typeof time[i] !== 'string' || !DAY_RE.test(time[i])) return null;
+      if (!within(mm[i], 0, 1000) || !within(g[i], 0, 100) || !(p[i] === null || within(p[i], 0, 100))) return null;
+      days.set(time[i], { mm: mm[i], p: p[i], g: g[i] });
+    }
+    out.push(days);
+  }
+  return out;
+}
+
+/** local YYYY-MM-DD, the key of parseDaily's maps. */
+export const dayKey = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+
+/** dayWeather({mm, p, g}) → { rain, windy, rainText } for one wall on one day; undefined (no forecast) → null. */
+export function dayWeather(d) {
+  if (!d) return null;
+  const rain = d.mm >= RAIN_MM || (d.p ?? 0) >= RAIN_PROB;
+  const rainText = !rain ? null : d.p !== null && d.p >= RAIN_PROB ? `비 예보 ${Math.round(d.p)}%` : `비 예보 ${Math.round(d.mm)}mm`;
+  return { rain, windy: d.g >= GUST_STRONG, rainText };
+}
+
 export const weatherLine = (h) => `예보 · 기온 ${Math.round(h.t)}° · 바람 ${Math.round(h.w)}m/s · 돌풍 ${Math.round(h.g)}m/s`;
