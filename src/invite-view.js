@@ -52,6 +52,8 @@ export function createInviteView({ getWalls }) {
   form.elements.note.maxLength = MAX_NOTE;
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close());
+  const ban = $('invite-banner'); // no inline onclick: the CSP blocks it
+  ban.querySelector('[data-close]').addEventListener('click', () => { ban.hidden = true; });
 
   const fields = () => ({
     date: form.elements.date.value, min: toMin(form.elements.time.value),

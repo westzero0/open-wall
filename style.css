@@ -752,6 +752,9 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sh-head { display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
 .sh-head h2 { font-size: 1.125rem; }
 .sh-done { min-height: 44px; margin-right: -8px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--accent); font-weight: 600; white-space: nowrap; }
+/* every sheet ends with the same quiet 닫기 under its content (the header holds only the title) */
+.sh-close { min-height: var(--tap); margin-top: var(--sp-8); padding: 0 var(--sp-16); border: 1px solid var(--line-strong); border-radius: var(--radius); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.sh-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sh-row { margin: 0; padding: var(--sp-14) 0; border: 0; border-top: 1px solid var(--hair); min-width: 0; }
 div.sh-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); }
 .sh-row legend { float: left; width: 100%; margin-bottom: var(--sp-8); padding: 0; }
@@ -972,6 +975,10 @@ dialog::backdrop { background: var(--scrim); }
   border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg);
 }
 .rp-field textarea { resize: vertical; white-space: pre-wrap; }
+/* 7 kinds do not fit one row: swipe sideways inside the strip (a grid column would stretch the sheet and push 닫기 off screen) */
+#report .segs { display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; }
+#report .segs::-webkit-scrollbar { display: none; }
+#report .segs label { flex: 1 0 auto; padding: 0 var(--sp-12); scroll-snap-align: start; }
 .rp-extra[hidden], .rp-nick[hidden], .rp-note[hidden] { display: none; }
 .rp-photo-preview { display: block; width: 100%; max-height: 40dvh; margin: var(--sp-4) 0; border-radius: var(--r-md); object-fit: contain; background: var(--sunken); }
 .pf-rank[hidden] { display: none; }
@@ -1024,13 +1031,6 @@ div.la-when { row-gap: 0; }
 .la-chip.fixed { pointer-events: none; background: var(--sunken); border-color: var(--line); color: var(--fg); } /* 암장이 정해진 채 열림: 눌리는 칩(검정 ✓)과 달리 회색 이름표, 바꿀 수 없음 */
 .la-field input::placeholder { color: var(--muted); opacity: 1; } /* 기본 placeholder 는 대비 4.1:1 */
 .la-search { clear: both; }
-.la-picks { list-style: none; margin: var(--sp-8) 0 0; padding: 0; max-height: calc(var(--tap) * 5); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--r-md); }
-.la-picks li + li { border-top: 1px solid var(--hair); }
-.la-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); width: 100%; min-height: var(--tap); padding: var(--sp-10) var(--sp-12); border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.la-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.la-picks .pn { font-weight: 500; }
-.la-picks .pr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); }
-.la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
 .map-find-btn { position: absolute; top: 108px; left: 10px; z-index: 1; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 2px solid rgba(0,0,0,.2); border-radius: var(--r-md); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
 .map-find-btn svg { width: 22px; height: 22px; }
 .map-find-btn:focus-visible, .map-find-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1043,6 +1043,13 @@ div.la-when { row-gap: 0; }
 .find { margin: var(--sp-10) 0 0; }
 .find .la-picks { background: var(--surface); }
 .find .la-field input { min-height: 36px; padding-block: var(--sp-4); } /* 글자 크기는 그대로(작으면 iOS 가 확대함) */
+.la-picks { list-style: none; margin: var(--sp-8) 0 0; padding: 0; max-height: calc(var(--tap) * 5); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--r-md); }
+.la-picks li + li { border-top: 1px solid var(--hair); }
+.la-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); width: 100%; min-height: var(--tap); padding: var(--sp-10) var(--sp-12); border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.la-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.la-picks .pn { font-weight: 500; }
+.la-picks .pr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); }
+.la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
 .la-picks .none { padding: var(--sp-12); font-size: var(--fs-sm); color: var(--muted); }
 .la-err { flex-basis: 100%; margin-top: var(--sp-6); font-size: var(--fs-sm); font-weight: 600; color: var(--warn); }
 .la-err::before { content: "! "; }
@@ -1325,7 +1332,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 
 /* loading screen: the vertical lockup (light or dark) on the app background until the first list is drawn */
 #boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--logo-paper); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
-#boot img { width: min(32vw, 160px); height: auto; animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark; it fades in rather than appearing */
+#boot img { width: min(32vw, 160px); height: auto; transform: translateY(21.4%); animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark, and shifted so the mark (not the whole lockup) sits at screen centre where the OS splash draws it; it fades in rather than appearing */
 #boot .dk { display: none; }
 :root[data-theme="dark"] #boot { background: var(--bg); }
 :root[data-theme="dark"] #boot .lt { display: none; }

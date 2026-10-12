@@ -39,6 +39,43 @@ if (dlg) {
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
     '암장 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
   };
+  // One report per tab: each kind keeps its own memo/source draft, the send button lives only while the current kind has something to send,
+  // and a sent report empties just its own tab.
+  let cur = '';
+  let drafts = {};
+  let busy = false;
+  const hasContent = (kind) => {
+    const v = (n) => f.elements[n].value.trim();
+    switch (kind) {
+      case '': return false;
+      case '임시휴무': return !!v('from');
+      case '주차': return !!f.elements.parking.value;
+      case '오픈채팅방': return !!v('chat');
+      case '세팅일': return !!(v('setLast') || v('setNext') || v('body'));
+      case PHOTO_KIND: return !!f.elements.photo.files?.length;
+      default: return !!v('body'); // 운영시간, 기타
+    }
+  };
+  const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); };
+  const clearTab = (kind) => {
+    for (const x of f.querySelectorAll(`.rp-extra[data-kind="${kind}"]`)) {
+      for (const i of x.querySelectorAll('input, textarea')) { if (i.type === 'radio' || i.type === 'checkbox') i.checked = false; else i.value = ''; }
+    }
+    f.elements.body.value = ''; f.elements.note.value = '';
+    delete drafts[kind];
+    if (kind === PHOTO_KIND) clearPreview();
+  };
+  const onKind = () => {
+    const prev = cur;
+    if (prev) drafts[prev] = { body: f.elements.body.value, note: f.elements.note.value };
+    cur = f.elements.kind.value;
+    if (prev) { const d = drafts[cur] ?? {}; f.elements.body.value = d.body ?? ''; f.elements.note.value = d.note ?? ''; } // text typed before any kind was picked goes to the first one
+    syncKind();
+    refresh();
+  };
+  f.addEventListener('input', refresh);
+  f.addEventListener('change', refresh);
+
   const syncKind = () => {
     const kind = f.elements.kind.value;
     for (const x of f.querySelectorAll('.rp-extra')) x.hidden = x.dataset.kind !== kind;
@@ -61,6 +98,7 @@ if (dlg) {
     preview.hidden = false;
   });
   dlg.addEventListener('close', clearPreview);
+  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close()); // no inline onclick: the CSP blocks it
 
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
   async function sendPhoto() {
@@ -71,17 +109,20 @@ if (dlg) {
     if ([...note].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
-    f.elements.send.disabled = true;
-    if (f.elements.website.value !== '') { set(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
+    busy = true; refresh();
+    const done = () => { busy = false; refresh(); };
+    if (f.elements.website.value !== '') { set(); clearTab(PHOTO_KIND); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
     say('사진을 줄여서 보내는 중…');
     let blob;
-    try { blob = await shrinkToJpeg(file); } catch (e) { f.elements.send.disabled = false; return say(e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image); }
+    try { blob = await shrinkToJpeg(file); } catch (e) { done(); return say(e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image); }
     const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note });
-    if (!r.ok) { f.elements.send.disabled = false; return say(PHOTO_SAY[r.why]); }
+    if (!r.ok) { done(); return say(PHOTO_SAY[r.why]); }
     set();
+    clearTab(PHOTO_KIND); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
+    done();
     say(PHOTO_SAY.ok);
   }
-  for (const r of f.elements.kind) r.addEventListener('change', syncKind);
+  for (const r of f.elements.kind) r.addEventListener('change', onKind);
 
   document.addEventListener('wall:report', (e) => {
     f.reset();
@@ -95,10 +136,11 @@ if (dlg) {
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPreview();
+    drafts = {}; cur = f.elements.kind.value;
     syncKind();
     wallName = name; nameEl.textContent = name; // read-only text, never typed
     chatNameEl.textContent = `[해벽] ${name} 모임`;
-    f.elements.send.disabled = false;
+    busy = false; refresh();
     alt.hidden = true;
     say('');
     dlg.showModal();
@@ -118,7 +160,7 @@ if (dlg) {
     if (!v.ok) return say(v.error);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
-    f.elements.send.disabled = true;
+    busy = true; refresh();
     if (v.report.nick) saveNick(v.report.nick);
     if (!v.honeypot) {
       try {
@@ -127,12 +169,14 @@ if (dlg) {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report, config.reportNickEntry),
         });
       } catch {
-        f.elements.send.disabled = false;
+        busy = false; refresh();
         alt.hidden = false;
         return say('보내지 못했어요. 연결을 확인하거나 아래 링크로 직접 제보해 주세요.');
       }
       set();
     }
+    clearTab(f.elements.kind.value); // sent: this tab is emptied and the button goes off until it has new content
+    busy = false; refresh();
     say('제보 고마워요. 확인 후 반영해요.');
   });
 }
