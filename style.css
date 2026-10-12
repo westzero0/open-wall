@@ -118,14 +118,16 @@ html[data-text="xlarge"] { font-size: 150%; --tap: 60px; }
 html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
 html[data-text="xlarge"] .sunfilter-btn svg { display: none; } /* 글자(양달/응달)가 있으니 아이콘은 뺀다: 칩 4개가 한 줄에 들어가게 */
 html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--stick-h, 0px) + 8px); } /* focus/anchor scrolls land below the sticky controls */
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--stick-h, 0px) + 8px); } /* focus/anchor scrolls land below the sticky controls */
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--font); font-variant-numeric: tabular-nums; overflow-x: hidden; word-break: keep-all; overflow-wrap: break-word; }
-.wrap { max-width: 680px; margin: 0 auto; padding: 0 var(--sp-16); }
+.wrap { max-width: 680px; margin: 0 auto; padding: 0 max(var(--sp-16), env(safe-area-inset-left)) 0 max(var(--sp-16), env(safe-area-inset-right)); } /* viewport-fit=cover: keep landscape content out from under the notch */
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3, h4 { text-wrap: balance; }
 p, li, dd { text-wrap: pretty; }
 input, select, button { font: inherit; color: var(--fg); }
 button, select, summary, .btn, .file-btn { cursor: pointer; }
+button, a, summary, label, .btn, .file-btn { touch-action: manipulation; }
+button, summary, .btn, .file-btn { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } /* controls, not content */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted, .meta { color: var(--muted); font-size: var(--fs-sm); }
@@ -216,14 +218,15 @@ main { padding-bottom: var(--sp-48); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #map .leaflet-tile-pane { filter: brightness(.85); } }
 :root[data-theme="dark"] #map .leaflet-tile-pane { filter: brightness(.85); } /* softer glare at night; pins stay as drawn */
 /* wide screens: the list and the map side by side. app.js (`wide`) shows the map panel with the 목록 tab and drops the
-   지도 tab; the 기록 tab keeps the single 680px column. The tab bar stops sticking (--stick-h = the controls only). */
+   지도 tab; 기록 sits under the tab bar on the same left edge. The tab bar stops sticking (--stick-h = the controls only). */
 @media (min-width: 1024px) {
+  html { scrollbar-gutter: stable; } /* no 7px sideways shift when a tab is short enough to lose the scrollbar */
   .wrap { max-width: 1200px; }
   main.wrap { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: var(--sp-24); align-items: start; } /* 1fr: the map spans both rows, so the extra height goes to the list row, not the tab bar's */
   main.wrap > * { grid-column: 1 / -1; }
   main.wrap > .tabbar, main.wrap > #panel-list { grid-column: 1; }
   main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
-  main.wrap:has(> #panel-log:not([hidden])) { display: block; max-width: 680px; }
+  main.wrap > #panel-log { max-width: 680px; } /* 기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
   .tabbar { position: static; box-shadow: none; }
   .tabs { grid-template-columns: 1fr 1fr; }
   #tab-map { display: none; }
@@ -532,7 +535,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); text-decoration: none; cursor: pointer; }
 .icon-btn svg { width: 22px; height: 22px; transition: transform var(--dur-press) var(--ease-out), fill var(--dur-press) var(--ease-out), stroke var(--dur-press) var(--ease-out); }
 .icon-btn:active svg { transform: scale(.9); }
-.icon-btn:hover, .icon-btn.done { color: var(--accent); }
+.icon-btn.done { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .icon-btn:hover { color: var(--accent); } }
 .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .x-head { display: flex; align-items: flex-start; gap: var(--sp-4); margin: var(--sp-12) 0 var(--sp-2); }
 .x-head .x-name { flex: 1; min-width: 0; margin: 0; }
@@ -543,7 +547,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .fav-btn.on svg { fill: var(--fav); stroke: var(--fav-edge); }
 .rfav { margin-right: -4px; color: var(--fav); text-shadow: 0 0 1px var(--fav-edge), 0 0 1px var(--fav-edge); font-size: var(--fs-xs); } /* the mark after a favorite's name in the list; [hidden] hides it */
 .m-info, .m-head { min-width: 0; }
-@media (min-width: 560px) { /* wide: name/hours left, sun box right (compass above words), the rest under the name */
+@media (min-width: 560px) and (max-width: 1023px) { /* wide: name/hours left, sun box right (compass above words), the rest under the name. Stops at 1023px: from 1024px the open card sits in the 460px list column and stacks like on a phone */
   .hero { aspect-ratio: 21 / 9; }
   .m-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-24); align-items: start; margin-top: var(--sp-14); }
   .m-cols .x-head { margin-top: 0; } /* top of the name = top of the sun box */

@@ -48,7 +48,7 @@ export function isSunlit(wall, at) {
   return { lit: reason === 'sun', reason, method: wall.shadow ? 'terrain' : 'azimuth', ...p };
 }
 
-export const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
 export function sunWindows(wall, date, stepMin = 10) {
   const out = [];
@@ -63,20 +63,4 @@ export function sunWindows(wall, date, stepMin = 10) {
   }
   if (start !== null) out.push([fmt(start), '24:00']);
   return out;
-}
-
-// Sunrise and sunset as minutes after local midnight: the first minute the sun is high enough to count as day (the same
-// MIN_ALTITUDE isSunlit uses, so a minute inside the window is never "night"), and the minute after the last one. null when it never rises that day. Missing lat/lng fall back to Seoul, as isSunlit does.
-export function dayWindow(wall, date) {
-  const lat = Number.isFinite(wall.sun?.lat) ? wall.sun.lat : SEOUL.lat;
-  const lng = Number.isFinite(wall.sun?.lng) ? wall.sun.lng : SEOUL.lng;
-  let sunrise = null;
-  let sunset = null;
-  for (let m = 0; m < 1440; m++) {
-    if (sunPosition(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, m), lat, lng).altitude >= MIN_ALTITUDE) {
-      sunrise ??= m;
-      sunset = m + 1;
-    }
-  }
-  return sunrise === null ? null : { sunrise, sunset };
 }
