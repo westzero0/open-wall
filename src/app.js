@@ -17,12 +17,12 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
-import { applyTheme, createProfileView } from './profile-view.js';
+import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
 import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
@@ -87,6 +87,7 @@ function syncTheme() {
   if (next !== theme) applyTheme((theme = next));
 }
 syncTheme();
+applyTextSize(ui.textSize);
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
 const logView = createLogView({
   storage,
@@ -110,6 +111,8 @@ const logView = createLogView({
 createProfileView({
   getTheme: () => ui.theme,
   setTheme: (t) => { ui.theme = cleanTheme(t); saveUi(); syncTheme(); },
+  getTextSize: () => ui.textSize,
+  setTextSize: (s) => { ui.textSize = cleanTextSize(s); saveUi(); applyTextSize(ui.textSize); },
   exportFile: logView.exportFile,
   importFile: logView.importFile,
   getLogCount: logView.count,

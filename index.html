@@ -2,11 +2,11 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Iw58FhFIUE7mTN/FT4CPc0a3ZsUDb4AGqQ7CNu1vv8s=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://haebyeok.goatcounter.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com https://open-wall-board.westzero0103.workers.dev https://api.open-meteo.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-n7PFZEliYtXhM6NqnaJ1w487G3dx644ayNn0bYQA8JQ=' https://t1.kakaocdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://haebyeok.goatcounter.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://kapi.kakao.com https://open-wall-board.westzero0103.workers.dev https://api.open-meteo.com; frame-src 'self' kakaolink:; object-src 'none'; base-uri 'self'; form-action 'self' https://sharer.kakao.com">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <!-- 내 정보 › 화면 (라이트/다크) before the first paint; app.js keeps it in sync afterwards -->
-  <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <script>try { const t = JSON.parse(localStorage.getItem('open-wall:ui'))?.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; const s = JSON.parse(localStorage.getItem('open-wall:ui'))?.textSize; if (s === 'large' || s === 'xlarge') document.documentElement.dataset.text = s; } catch {}</script>
   <script src="src/boot-theme.js"></script><!-- 자동 + 마지막에 밤이었으면 로딩 화면도 다크로 (CSP: 외부 파일이라 해시 불필요) -->
   <title>해벽 · 지금 열린 외벽</title>
   <meta name="description" content="지금 열린 실외암벽을 시간표로, 양달·응달까지 한눈에 볼 수 있어요.">
@@ -242,6 +242,14 @@
             <label><input type="radio" name="theme" value="auto">자동</label>
             <label><input type="radio" name="theme" value="light">라이트</label>
             <label><input type="radio" name="theme" value="dark">다크</label>
+          </div>
+        </fieldset>
+        <fieldset class="sh-row">
+          <legend>글자 크기</legend>
+          <div class="segs">
+            <label><input type="radio" name="textSize" value="normal">기본</label>
+            <label><input type="radio" name="textSize" value="large">크게</label>
+            <label><input type="radio" name="textSize" value="xlarge">아주 크게</label>
           </div>
         </fieldset>
         <div class="sh-row pf-backup">

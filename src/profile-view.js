@@ -18,8 +18,13 @@ export function applyTheme(theme) {
   }
 }
 
-/** createProfileView({getTheme, setTheme, exportFile, importFile, getLogCount}): wires the static sheet in index.html. */
-export function createProfileView({ getTheme, setTheme, exportFile, importFile, getLogCount = () => 0 }) {
+export function applyTextSize(size) {
+  if (size === 'large' || size === 'xlarge') document.documentElement.dataset.text = size;
+  else delete document.documentElement.dataset.text;
+}
+
+/** createProfileView({getTheme, setTheme, getTextSize, setTextSize, exportFile, importFile, getLogCount}): wires the static sheet in index.html. */
+export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize, exportFile, importFile, getLogCount = () => 0 }) {
   const dlg = $('profile');
   const form = dlg.querySelector('form');
   const status = $('logBackupStatus');
@@ -47,6 +52,7 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile, 
       $('pfNickLabel').textContent = locked ? '닉네임 (이벤트 중에는 바꿀 수 없어요)' : `닉네임 (${MAX_NICK}자까지)`;
     }
     form.elements.theme.value = getTheme();
+    form.elements.textSize.value = getTextSize();
     let store = null; try { store = localStorage; } catch { /* blocked: no backup date */ }
     status.textContent = backupLine(getLogCount(), loadBackupAt(store)); // the next export or import replaces it with its own message
     const how = currentInstallMode();
@@ -58,6 +64,7 @@ export function createProfileView({ getTheme, setTheme, exportFile, importFile, 
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
   form.addEventListener('change', (e) => {
     if (e.target.name === 'theme') setTheme(e.target.value);
+    if (e.target.name === 'textSize') setTextSize(e.target.value);
   });
 
   $('pfInstall').addEventListener('click', async () => { if (await promptInstall()) $('pfInstallRow').hidden = true; });

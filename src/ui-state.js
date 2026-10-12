@@ -5,10 +5,12 @@ import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto' };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto', textSize: 'normal' };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
+// 글자 크기: html[data-text] scales the root font size (style.css), on top of the phone's own text-size setting
+export const cleanTextSize = (v) => (['large', 'xlarge'].includes(v) ? v : 'normal');
 // what "조건 지우기" resets (내 지역 has its own way back, 전국으로 보기; sort and 휴게 합산 stay)
 export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, venue: 'any', favOnly: false });
 
@@ -44,6 +46,7 @@ export function loadUi(storage) {
   ui.favOnly = ui.favOnly === true;
   if (!TABS.includes(ui.tab)) ui.tab = 'list';
   ui.theme = cleanTheme(ui.theme);
+  ui.textSize = cleanTextSize(ui.textSize);
   return ui;
 }
 
