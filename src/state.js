@@ -1,6 +1,6 @@
 import { saveWalls } from './store.js';
 
-export const state = { walls: [] };
+export const state = { walls: [], crags: [] }; // crags: single-pitch list, filled only while config.singlePitch is on
 
 // editing (and so every write to the saved list) is only on at ?edit; visitors always read the shipped list
 export const canEdit = new URLSearchParams(globalThis.location?.search).has('edit');

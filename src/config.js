@@ -8,9 +8,9 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 닉네임 (docs/superpowers/specs/2026-10-08-beta-form.md): reportNickEntry — the report form's 닉네임 entry (empty: no field, nothing sent);
 // nickRequired — true while the ranking event runs; set false after it (the field stays, a report no longer needs a nickname).
 // 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
-// 외벽 사진 제보: photoUploadUrl — 로그인 없이 올릴 수 있는 업로드 주소(예: Dropbox 파일 요청). 비면 버튼이 숨는다. 앱은 주소만 열고 아무것도 보내지 않는다.
+// 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
 export const config = {
-  photoUploadUrl: 'https://www.dropbox.com/request/sh8ajp2wxqvcvzikkjjm',
+  singlePitch: false,
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
   reportNickEntry: 'entry.1516503630', nickRequired: true,

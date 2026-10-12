@@ -1,6 +1,7 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
-import { MAX_BODY, MAX_NICK, NICK_KEY, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
+import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -36,7 +37,7 @@ if (dlg) {
     세팅일: ['메모 (선택)', '예) 왼쪽 벽 새 루트 12개, 공지에서 확인'],
     기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
-    '암장 사진': ['메모 (선택) · 사진을 올렸다면 보내기를 눌러 주세요. 사진에 찍힌 촬영 위치가 함께 올라갈 수 있어요', '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
+    '암장 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
   };
   const syncKind = () => {
     const kind = f.elements.kind.value;
@@ -44,7 +45,42 @@ if (dlg) {
     const [label, hint] = MEMO[kind] ?? ['내용', ''];
     f.querySelector('.rp-label').textContent = label;
     f.elements.body.placeholder = hint;
+    const photo = kind === PHOTO_KIND; // no nickname or source line for a photo; the Worker takes only the picture and a short memo
+    f.querySelector('.rp-note').hidden = photo;
+    nickBox.hidden = mode === 'off' || photo;
   };
+  const preview = dlg.querySelector('.rp-photo-preview');
+  let previewUrl = '';
+  const clearPreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; preview.hidden = true; preview.removeAttribute('src'); };
+  f.elements.photo.addEventListener('change', () => {
+    clearPreview();
+    const file = f.elements.photo.files?.[0];
+    if (!file) return;
+    previewUrl = URL.createObjectURL(file);
+    preview.src = previewUrl;
+    preview.hidden = false;
+  });
+  dlg.addEventListener('close', clearPreview);
+
+  // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
+  async function sendPhoto() {
+    if (!config.boardUrl) return say(PHOTO_SAY.network);
+    const file = f.elements.photo.files?.[0];
+    if (!file) return say('보낼 사진을 골라 주세요.');
+    const note = f.elements.body.value.replace(/\s+/g, ' ').trim();
+    if ([...note].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
+    const wait = cooldownLeft(get(), Date.now());
+    if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
+    f.elements.send.disabled = true;
+    if (f.elements.website.value !== '') { set(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
+    say('사진을 줄여서 보내는 중…');
+    let blob;
+    try { blob = await shrinkToJpeg(file); } catch (e) { f.elements.send.disabled = false; return say(e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image); }
+    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note });
+    if (!r.ok) { f.elements.send.disabled = false; return say(PHOTO_SAY[r.why]); }
+    set();
+    say(PHOTO_SAY.ok);
+  }
   for (const r of f.elements.kind) r.addEventListener('change', syncKind);
 
   document.addEventListener('wall:report', (e) => {
@@ -58,6 +94,7 @@ if (dlg) {
     const { name, kind } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
+    clearPreview();
     syncKind();
     wallName = name; nameEl.textContent = name; // read-only text, never typed
     chatNameEl.textContent = `[해벽] ${name} 모임`;
@@ -71,6 +108,7 @@ if (dlg) {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (f.elements.send.disabled) return;
+    if (f.elements.kind.value === PHOTO_KIND) return sendPhoto();
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,

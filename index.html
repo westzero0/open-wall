@@ -481,6 +481,11 @@
           <label class="rp-field">마지막 세팅일 (YYYY-MM-DD)<input type="date" name="setLast"></label>
           <label class="rp-field">다음 예정일 (선택)<input type="date" name="setNext"></label>
         </div>
+        <div class="rp-extra" data-kind="암장 사진" hidden>
+          <label class="rp-field">사진<input type="file" name="photo" accept="image/*"></label>
+          <img class="rp-photo-preview" alt="고른 사진 미리보기" hidden>
+          <p class="sh-hint">이름·이메일 없이 보낼 수 있어요. 사진은 운영자만 보고, 사진에 찍힌 촬영 위치는 지우고 올려요. 직접 찍은 사진만 보내 주세요.</p>
+        </div>
         <fieldset class="sh-row rp-extra" data-kind="주차" hidden>
           <legend>주차 상태</legend>
           <div class="segs">
@@ -492,7 +497,7 @@
         </fieldset>
         <label class="rp-field"><span class="rp-label">내용</span><textarea name="body" rows="4"></textarea></label>
         <label class="rp-field rp-nick" hidden><span class="rp-nick-label">닉네임</span><input name="nick" maxlength="6" autocomplete="off"><span class="sh-hint">이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요.</span><span class="sh-hint rp-nick-lock" hidden>이벤트 중에는 바꿀 수 없어요.</span></label>
-        <label class="rp-field">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
+        <label class="rp-field rp-note">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
         <input class="rp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="rp-status" role="status"></p>
         <a class="rp-alt" target="_blank" rel="noopener noreferrer" hidden>폼으로 직접 제보하기</a>

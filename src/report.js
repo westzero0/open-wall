@@ -25,7 +25,7 @@ export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRe
 export const PARKING = ['무료', '유료', '주차 불가', '모름'];
 // A choice in the sheet, not a kind of the Google Form (whose options are fixed): it goes out as 기타 with the link on the first line.
 export const CHAT_KIND = '오픈채팅방';
-// 암장 사진 is a choice of the form's 종류 question too: the photo itself goes to the Dropbox request (config.photoUploadUrl); this only tells which wall it was for.
+// 암장 사진 is a choice in the sheet but not a Google Form kind: the photo goes to the board Worker (src/photo-upload.js), never through validateReport.
 export const PHOTO_KIND = '암장 사진';
 
 const s = (v) => (typeof v === 'string' ? v.normalize('NFC').trim() : '');
@@ -48,7 +48,7 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
   const note = s(input.note);
   const fail = (error) => ({ ok: false, error });
   if (!name) return fail('암장 이름이 없어요.');
-  if (!KINDS.includes(kind) && kind !== CHAT_KIND && kind !== PHOTO_KIND) return fail('무엇이 달라졌는지 골라 주세요.');
+  if (!KINDS.includes(kind) && kind !== CHAT_KIND) return fail('무엇이 달라졌는지 골라 주세요.');
   const mode = opts.nick ?? 'off'; // 'off' | 'optional' | 'required' (nickMode)
   const nick = mode === 'off' ? '' : cleanNick(input.nick);
   if (mode === 'required' && !nick) return fail('닉네임을 적어 주세요.');
@@ -68,8 +68,6 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     const chat = s(input.chat);
     if (!CHAT_URL_RE.test(chat)) return fail('카카오톡 오픈채팅방 링크(https://open.kakao.com/o/…)를 적어 주세요.');
     lines.push(`오픈채팅: ${chat}`);
-  } else if (kind === PHOTO_KIND) {
-    lines.push('외벽 사진: Dropbox에 올렸어요');
   } else if (kind === '세팅일') {
     const last = s(input.setLast);
     const next = s(input.setNext);

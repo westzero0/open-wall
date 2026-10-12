@@ -1,6 +1,6 @@
 import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, ymd } from './time.js';
-import { fetchNational, loadWalls } from './store.js';
+import { fetchNational, fetchCrags, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
 import { createMap } from './map.js';
@@ -259,14 +259,13 @@ function creditChip(c) {
     : el('span', { class: 'credit' }, c.text);
 }
 
-// no photo yet: a camera chip on the placeholder band opens the upload link (config.photoUploadUrl; empty = no chip)
+// no photo yet: a camera chip on the placeholder band opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no chip)
 function photoSend(m) {
-  if (m.photo || !config.photoUploadUrl) return null;
-  const a = el('a', { class: 'photo-send', href: config.photoUploadUrl, target: '_blank', rel: 'noopener noreferrer', title: '외벽 사진 보내기', 'aria-label': `${m.name} 외벽 사진 보내기` },
+  if (m.photo || !config.boardUrl) return null;
+  const b = el('button', { type: 'button', class: 'photo-send', title: '외벽 사진 보내기', 'aria-label': `${m.name} 외벽 사진 보내기` },
     icon('camera'), '사진 보내기');
-  // the upload page can't be told which wall: the 제보 sheet opens behind it on 암장 사진 with the name filled in, to send once the photo is up
-  a.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
-  return a;
+  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
+  return b;
 }
 
 function hero(m) {
@@ -1526,6 +1525,7 @@ $('retry').addEventListener('click', async () => {
 
 const first = await loadList();
 state.walls = first ?? [];
+if (config.singlePitch) state.crags = await fetchCrags().catch(() => []);
 showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
 // memory only; nothing is saved until the visitor changes a filter) and starts on the list.
