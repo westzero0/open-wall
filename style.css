@@ -1282,6 +1282,10 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bp-title { flex: 1; min-width: 0; margin-left: 4px; overflow-wrap: anywhere; }
 .bp-title:focus { outline: none; }
 .sh-head:has(.bp-back) { justify-content: flex-start; }
+.bd-thread { margin: 4px 0 6px 10px; padding-left: 10px; border-left: 2px solid var(--hair); }
+.bd-replies { list-style: none; margin: 0; padding: 0; }
+.bd-reply { padding: 4px 0; border-bottom: 0; }
+.bd-rp[aria-expanded="true"] { color: var(--fg); }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
 .bd-full .bd-form { order: -1; margin: 0 0 8px; padding: 0; }
 .bd-full .bd-form::before { content: none; }

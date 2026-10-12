@@ -8,6 +8,7 @@ export const PAGE = 5;
 export const PREVIEW = 3; // posts on the wall card; the rest is on the board page
 export const COUNT_FROM = 11; // the 전체 글 보기 button shows the count from this many posts up
 const MAX_ROWS = 100;
+const MAX_REPLY_COUNT = 1000; // a reply_count above this (or not a whole number) is not believed
 const SKEW = 5 * 60 * 1000;
 const ID_RE = /^[A-Za-z0-9_-]{16,32}$/;
 
@@ -36,7 +37,8 @@ export function parseBoard(raw, wallName, now) {
     if (!Number.isInteger(t) || t < 0 || t > now + SKEW) continue;
     const nick = cleanBoardNick(r.nick);
     const body = cleanBody(r.body);
-    if (nick && body) out.push({ id: r.id, wall: r.wall, nick, body, created_at: t });
+    const rc = r.reply_count;
+    if (nick && body) out.push({ id: r.id, wall: r.wall, nick, body, created_at: t, replyCount: Number.isInteger(rc) && rc >= 0 && rc <= MAX_REPLY_COUNT ? rc : 0 });
   }
   return out;
 }
@@ -61,6 +63,9 @@ export const hasMore = (total, loaded, lastPage) => lastPage > 0 && (total != nu
 /** show the 전체 글 보기 button on the card? */
 export const showAll = (total, loaded) => (total ?? loaded) > PREVIEW;
 export const allLabel = (total) => (total != null && total >= COUNT_FROM ? `전체 글 보기 (${total})` : '전체 글 보기');
+
+/** parseReplies(raw, wallName, now) → the usable rows of an untrusted { replies: [...] } response (same checks as posts). */
+export const parseReplies = (raw, wallName, now) => parseBoard({ posts: raw?.replies }, wallName, now);
 
 /** ageText(createdAt, now) → '방금' / '12분 전' / '3시간 전' / 'M/D' (local date once a day has passed). */
 export function ageText(createdAt, now) {

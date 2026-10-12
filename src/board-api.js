@@ -1,5 +1,5 @@
 // src/board-api.js — fetch adapter for the 한 줄 타임라인 Worker (worker/API.md). Empty url = feature off: no request is ever made.
-import { PAGE, parseBoard, parseToken, parseTotal } from './board.js';
+import { PAGE, parseBoard, parseReplies, parseToken, parseTotal } from './board.js';
 
 const fail = (code) => Object.assign(new Error(code), { code });
 const codeOf = (status) => (status === 429 ? 'rate_limited' : status >= 400 && status < 500 ? 'bad_request' : 'server');
@@ -27,8 +27,12 @@ export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs
       const raw = await call(`/v1/posts?${q}`);
       return { posts: parseBoard(raw, wall, Date.now()), total: parseTotal(raw) };
     },
-    async post({ wall, nick, body, hp = '' }) {
-      const raw = await call('/v1/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wall, nick, body, hp }) });
+    async replies(wall, id) {
+      if (!base) return [];
+      return parseReplies(await call(`/v1/posts/${encodeURIComponent(id)}/replies`), wall, Date.now());
+    },
+    async post({ wall, nick, body, hp = '', parent }) {
+      const raw = await call('/v1/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wall, nick, body, hp, ...(parent ? { parent } : {}) }) });
       const [p] = parseBoard({ posts: [raw?.post] }, wall, Date.now());
       if (!p) throw fail('server');
       return { post: p, token: parseToken(raw) };

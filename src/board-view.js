@@ -41,12 +41,19 @@ const saveMine = () => { mine = cleanMine(mine); store.set(K_MINE, JSON.stringif
 const rememberMine = (id, token) => { if (token) { getMine()[id] = token; saveMine(); } };
 const forgetMine = (id) => { delete getMine()[id]; saveMine(); };
 
+/** replies are read oldest first, like a conversation (mergePosts sorts newest first). */
+export function mergeReplies(existing, incoming) {
+  const seen = new Set(existing.map((p) => p.id));
+  return [...existing, ...incoming.filter((p) => !seen.has(p.id) && seen.add(p.id))].sort((a, b) => a.created_at - b.created_at);
+}
+
 /** a cached box whose last load failed is worth another try when the card is shown again (and none is in flight). */
 export const needsRefetch = ({ failed, fetching }) => !!failed && !fetching;
 
 /** The posts of one wall plus what is known about them. Views subscribe and redraw on every change. */
 export function makeBoardState(wallName, api) {
   const s = { posts: [], total: null, more: false, loaded: false, failed: false, fetching: false, refused: false };
+  s.replies = new Map(); // post id -> { list (oldest first), loaded, failed, loading }
   const subs = new Set();
   const emit = () => subs.forEach((f) => f());
   let started = false;
@@ -77,7 +84,10 @@ export function makeBoardState(wallName, api) {
     emit();
     return { post: p, token };
   };
+  const entry = (id) => s.replies.get(id) || s.replies.set(id, { list: [], loaded: false, failed: false, loading: false }).get(id);
+  const bump = (id, by) => { s.posts = s.posts.map((p) => (p.id === id ? { ...p, replyCount: Math.max(0, (p.replyCount || 0) + by) } : p)); };
   const drop = (id) => {
+    s.replies.delete(id);
     s.posts = s.posts.filter((p) => p.id !== id);
     if (s.total != null) s.total = Math.max(0, s.total - 1);
     emit();
@@ -88,6 +98,38 @@ export function makeBoardState(wallName, api) {
     drop(id);
   };
   s.report = (id) => api.report(id);
+  /** the replies of one post, read once when it is first opened (again after a failure). A 404 means the post is gone. */
+  s.loadReplies = async (id) => {
+    const e = entry(id);
+    if (e.loaded || e.loading) return;
+    e.loading = true; e.failed = false;
+    emit();
+    try {
+      e.list = mergeReplies(e.list, await api.replies(wallName, id));
+      e.loaded = true;
+    } catch (err) {
+      if (isRefused(err)) { drop(id); return; }
+      e.failed = true;
+    }
+    e.loading = false;
+    emit();
+  };
+  /** like submit, under a post: appended last, the post's count + 1. Resolves { post, token }. */
+  s.submitReply = async (parent, post) => {
+    const { post: p, token } = await api.post({ ...post, parent });
+    const e = entry(parent);
+    e.list = mergeReplies(e.list, [p]);
+    bump(parent, 1);
+    emit();
+    return { post: p, token };
+  };
+  s.deleteReply = async (parent, id, token) => {
+    try { await api.remove(id, token); } catch (err) { if (!isRefused(err)) throw err; }
+    const e = entry(parent);
+    e.list = e.list.filter((p) => p.id !== id);
+    bump(parent, -1);
+    emit();
+  };
   s.notify = emit; // views redraw (e.g. the post cooldown that one of them just started)
   return s;
 }
@@ -108,37 +150,69 @@ export function boardBox(wallName, { mode = 'preview', onOpenAll } = {}) {
 }
 function build(wallName, mode, onOpenAll) {
   const s = boardState(wallName);
-  let busy = false;
   const reported = new Set(loadReported());
+  const open = new Set(); // posts whose replies are shown (full mode)
+  const threads = new Map(); // post id -> { box, ul, st }: built once, so a half-written reply survives a redraw
+  const forms = []; // { send, busy } of every form in this view: they share one cooldown
+  let refocus = null; // the post id whose 답글 button was just pressed
 
   const list = el('ul', { class: 'bd-list' });
   const status = el('p', { class: 'bd-status', role: 'status' });
   const retryBtn = el('button', { type: 'button', class: 'bd-more bd-retry', hidden: '' }, '다시 시도');
   const moreBtn = el('button', { type: 'button', class: 'bd-more', hidden: '' }, '더 보기');
   const allBtn = el('button', { type: 'button', class: 'bd-more bd-all', hidden: '' }, allLabel(null));
-  const nick = el('input', { class: 'bd-nick', type: 'text', maxlength: String(MAX_NICK), placeholder: '닉네임', 'aria-label': '닉네임', autocomplete: 'off' });
-  nick.value = loadNick(store.get(NICK_KEY) || '');
-  const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
-  if (lockedNick) nick.readOnly = true;
-  const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: '한 줄 남기기', 'aria-label': '한 줄 남기기', autocomplete: 'off' });
-  // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
-  const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
-  const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);
-  const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
-  const send = el('button', { type: 'submit', class: 'bd-send' }, '남기기');
-  const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, el('span', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요'), send));
-  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? null : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, form);
-
   const say = (t) => { status.textContent = t; };
-  /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. */
-  function deleteButton(id, token) {
+
+  /** the one-line form: a new post (parent null) or a reply under `parent`. Errors go to statusEl. */
+  function makeForm(parent, statusEl) {
+    const nick = el('input', { class: 'bd-nick', type: 'text', maxlength: String(MAX_NICK), placeholder: '닉네임', 'aria-label': '닉네임', autocomplete: 'off' });
+    nick.value = loadNick(store.get(NICK_KEY) || '');
+    const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
+    if (lockedNick) nick.readOnly = true;
+    const label = parent ? '답글 남기기' : '한 줄 남기기';
+    const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: label, 'aria-label': label, autocomplete: 'off' });
+    // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
+    const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
+    const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);
+    const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
+    const send = el('button', { type: 'submit', class: 'bd-send' }, '남기기');
+    const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, el('span', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요'), send));
+    const me = { send, busy: false };
+    forms.push(me);
+    body.addEventListener('input', () => { count.textContent = `${[...body.value].length}/${MAX_BODY}`; });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (send.disabled) return;
+      const v = validatePost({ wall: wallName, nick: nick.value, body: body.value });
+      if (!v.ok) { statusEl.textContent = v.error; return; }
+      me.busy = true; tick();
+      try {
+        const payload = { ...v.post, hp: hp.value };
+        const made = parent ? await s.submitReply(parent, payload) : await s.submit(payload); // redraws every view of this wall
+        rememberMine(made.post.id, made.token);
+        if (!lockedNick) store.set(NICK_KEY, v.post.nick);
+        store.set(K_TS, String(Date.now()));
+        body.value = ''; count.textContent = `0/${MAX_BODY}`;
+        s.notify();
+      } catch (err) {
+        statusEl.textContent = err.code === 'bad_request' ? (parent ? '이 글에는 답글을 달 수 없어요. 내용을 다시 확인해 주세요' : '내용을 다시 확인해 주세요') : '잠시 뒤에 다시 써 주세요';
+      }
+      me.busy = false; tick();
+    });
+    return form;
+  }
+  const mainForm = makeForm(null, status);
+  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? null : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
+
+  /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. `parent`: this is a reply under it. */
+  function deleteButton(id, token, parent) {
     const b = el('button', { type: 'button', class: 'bd-rep bd-del' }, '삭제');
     let armed = 0;
     b.addEventListener('click', async () => {
       if (!armed) { b.textContent = '정말 삭제'; armed = setTimeout(() => { armed = 0; b.textContent = '삭제'; }, 4000); return; }
       clearTimeout(armed); armed = 0; b.disabled = true;
       try {
-        await s.delete(id, token);
+        await (parent ? s.deleteReply(parent, id, token) : s.delete(id, token));
         forgetMine(id);
       } catch {
         b.disabled = false; b.textContent = '삭제';
@@ -147,36 +221,76 @@ function build(wallName, mode, onOpenAll) {
     });
     return b;
   }
+  function reportButton(p) {
+    const rep = el('button', { type: 'button', class: 'bd-rep' }, reported.has(p.id) ? '신고했어요' : '신고');
+    rep.disabled = reported.has(p.id);
+    rep.addEventListener('click', async () => {
+      rep.disabled = true;
+      try {
+        await s.report(p.id);
+      } catch (e) {
+        if (!isRefused(e)) { // not recorded: the user can press again
+          rep.disabled = false;
+          say('신고하지 못했어요. 잠시 뒤에 다시 눌러 주세요');
+          return;
+        } // 404: already hidden or gone, which is what the report wanted; count it as done
+      }
+      const saved = new Set(loadReported()); // re-read: another wall's box may have saved since
+      saved.add(p.id);
+      store.set(K_REP, JSON.stringify([...saved].slice(-MAX_REPORTED)));
+      reported.add(p.id);
+      rep.textContent = '신고했어요';
+    });
+    return rep;
+  }
+  const actionFor = (p, parent) => (getMine()[p.id] ? deleteButton(p.id, getMine()[p.id], parent) : reportButton(p));
+
+  function toggleThread(id) {
+    if (open.has(id)) open.delete(id); else { open.add(id); s.loadReplies(id); }
+    refocus = id;
+    draw();
+  }
+  /** the replies of one post and the form to answer, built once per post. */
+  function threadFor(id) {
+    let t = threads.get(id);
+    if (!t) {
+      const ul = el('ul', { class: 'bd-replies' });
+      const st = el('p', { class: 'bd-status', role: 'status' });
+      t = { box: el('div', { class: 'bd-thread' }, ul, st, makeForm(id, st)), ul, st };
+      threads.set(id, t);
+    }
+    const e = s.replies.get(id);
+    const now = Date.now();
+    t.ul.replaceChildren(...(e?.list ?? []).map((r) => el('li', { class: 'bd-post bd-reply' },
+      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, r.nick), ' ', r.body),
+      el('p', { class: 'bd-meta' }, ageText(r.created_at, now), ' · ', actionFor(r, id)))));
+    t.st.textContent = e?.failed ? '답글을 불러오지 못했어요' : e?.loading ? '불러오는 중…' : '';
+    return t.box;
+  }
+  function postItem(p, now) {
+    const n = p.replyCount || 0;
+    let replyBtn = null;
+    if (mode === 'full') {
+      replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp', 'aria-expanded': String(open.has(p.id)), 'data-toggle': p.id }, n ? `답글 ${n}` : '답글');
+      replyBtn.addEventListener('click', () => toggleThread(p.id));
+    } else if (n) {
+      replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp' }, `답글 ${n}`);
+      replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
+    }
+    return el('li', { class: 'bd-post' },
+      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body),
+      el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', replyBtn, replyBtn ? ' · ' : null, actionFor(p, null)),
+      mode === 'full' && open.has(p.id) ? threadFor(p.id) : null);
+  }
   function draw() {
     box.hidden = s.refused;
+    const a = document.activeElement; // a redraw (the replies arriving) must not drop focus from the 답글 button that was pressed
+    const keep = refocus ?? (a && list.contains(a) ? a.dataset.toggle : null);
+    const typing = a && list.contains(a) && !a.dataset.toggle && (a.tagName === 'INPUT') ? a : null; // a reply input: its thread box is kept, only detached by the redraw
+    refocus = null;
     const now = Date.now();
     const shown = mode === 'preview' ? s.posts.slice(0, PREVIEW) : s.posts;
-    list.replaceChildren(...shown.map((p) => {
-      const token = getMine()[p.id];
-      if (token) return el('li', { class: 'bd-post' }, el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body), el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', deleteButton(p.id, token)));
-      const rep = el('button', { type: 'button', class: 'bd-rep' }, reported.has(p.id) ? '신고했어요' : '신고');
-      rep.disabled = reported.has(p.id);
-      rep.addEventListener('click', async () => {
-        rep.disabled = true;
-        try {
-          await s.report(p.id);
-        } catch (e) {
-          if (!isRefused(e)) { // not recorded: the user can press again
-            rep.disabled = false;
-            say('신고하지 못했어요. 잠시 뒤에 다시 눌러 주세요');
-            return;
-          } // 404: already hidden or gone, which is what the report wanted; count it as done
-        }
-        const saved = new Set(loadReported()); // re-read: another wall's box may have saved since
-        saved.add(p.id);
-        store.set(K_REP, JSON.stringify([...saved].slice(-MAX_REPORTED)));
-        reported.add(p.id);
-        rep.textContent = '신고했어요';
-      });
-      return el('li', { class: 'bd-post' },
-        el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body),
-        el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', rep));
-    }));
+    list.replaceChildren(...shown.map((p) => postItem(p, now)));
     moreBtn.hidden = mode !== 'full' || !s.more;
     allBtn.hidden = mode !== 'preview' || !showAll(s.total, s.posts.length);
     allBtn.textContent = allLabel(s.total);
@@ -184,6 +298,8 @@ function build(wallName, mode, onOpenAll) {
     if (s.failed) say('지금은 불러올 수 없어요');
     else if (s.loaded && !s.posts.length) say('아직 글이 없어요. 첫 줄을 남겨 보세요.');
     else say('');
+    if (keep) list.querySelector(`[data-toggle="${keep}"]`)?.focus();
+    else if (typing?.isConnected) typing.focus({ preventScroll: true });
     tick();
   }
   retryBtn.addEventListener('click', () => s.retryIfFailed());
@@ -193,32 +309,13 @@ function build(wallName, mode, onOpenAll) {
     moreBtn.disabled = false;
   });
   allBtn.addEventListener('click', () => onOpenAll?.(allBtn));
-  body.addEventListener('input', () => { count.textContent = `${[...body.value].length}/${MAX_BODY}`; });
   let timer = 0;
   function tick() {
     clearTimeout(timer);
     const left = cooldownLeft(Number(store.get(K_TS)), Date.now());
-    send.disabled = busy || left > 0;
+    for (const f of forms) f.send.disabled = f.busy || left > 0;
     if (left > 0) timer = setTimeout(tick, Math.min(left, 1000));
   }
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (send.disabled) return;
-    const v = validatePost({ wall: wallName, nick: nick.value, body: body.value });
-    if (!v.ok) { say(v.error); return; }
-    busy = true; tick();
-    try {
-      const made = await s.submit({ ...v.post, hp: hp.value }); // redraws every view of this wall
-      rememberMine(made.post.id, made.token);
-      if (!lockedNick) store.set(NICK_KEY, v.post.nick);
-      store.set(K_TS, String(Date.now()));
-      body.value = ''; count.textContent = `0/${MAX_BODY}`;
-      s.notify();
-    } catch (err) {
-      say(err.code === 'bad_request' ? '내용을 다시 확인해 주세요' : '잠시 뒤에 다시 써 주세요');
-    }
-    busy = false; tick();
-  });
   s.subscribe(draw);
   box.retryIfFailed = () => s.retryIfFailed();
   draw();
