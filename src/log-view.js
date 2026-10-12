@@ -204,7 +204,6 @@ export function createLogView({
   const crowdRow = dlg.querySelector('.la-crowd');
   const crowdSentNote = dlg.querySelector('.la-crowd-sent');
   const moreBox = dlg.querySelector('.la-more');
-  const moreNote = dlg.querySelector('.la-more-note');
   const crowdPills = [...crowdRow.querySelectorAll('.crowd-pill')];
   let visitMin = null; // minutes of the day, or null (시간 모름)
   let timeTouched = false; // set or cleared by the visitor: picking another wall keeps it
@@ -249,8 +248,6 @@ export function createLogView({
     const wall = sheetWall();
     const ask = wall && visitMin != null ? crowdAsk(wall, form.elements.date.value, timeOfMin(visitMin)) : null;
     const wait = ask && ask !== 'ask'; // reported a moment ago: the row stays, off, with the reason
-    moreNote.textContent = ask === 'ask' ? '혼잡도 제보 가능' : '선택'; // a closed fold still says the question is there
-    moreNote.classList.toggle('ask', ask === 'ask');
     crowdRow.hidden = !ask;
     crowdSentNote.hidden = !wait;
     if (wait) crowdSentNote.textContent = { dup: '이 방문은 이미 제보했어요.', wait: `방금 보냈어요. ${ask.waitMin}분 뒤에 다시 보낼 수 있어요.`, wall: '이 외벽은 오늘 두 번 보냈어요.', cap: '오늘은 더 보낼 수 없어요.' }[ask.reason];

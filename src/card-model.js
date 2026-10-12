@@ -223,7 +223,7 @@ function crowdOf(crowd, state) {
   const chipOf = (level, text) => ({ text, level, bars: CROWD_LEVELS.indexOf(level) + 1, muted: false });
   const chip = !s ? null
     : s.recent ? chipOf(s.recent.level, `방금 제보 ${s.recent.level} · 제보 ${s.recent.n}건 · 최근 90분`)
-      : s.level ? chipOf(s.level, `이 시간대 ${s.level === '보통' ? '대개' : '보통'} ${s.level} · 제보 ${s.n}건 · ${s.basis}`) // not "보통 보통"
+      : s.level ? chipOf(s.level, `이 시간대 대개 ${s.level} · 제보 ${s.n}건 · ${s.basis}`) // "대개": the adverb "보통" would read as a level
         : { text: '제보 모으는 중', level: null, bars: 0, muted: true };
   return chip ? { chip } : null;
 }

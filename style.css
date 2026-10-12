@@ -427,6 +427,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .crowdnow[data-level="혼잡"] i:nth-child(-n+3) { background: currentColor; }
 /* list-row pill: same size as .sunnow, outlined so it doesn't read as sun */
 .crowdnow { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 6px; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; color: var(--fg); }
+/* 혼잡 stands out in the list: --soon (the warning colour) on the text and edge; the three filled bars still say it without colour */
+.crowdnow[data-level="혼잡"] { color: var(--soon); border-color: var(--soon); font-weight: 700; }
 /* 여유 · 보통 · 혼잡 in the 기록 추가 sheet: pressed shows ✓ and fills, so not by colour alone */
 .crowd-pills { display: flex; gap: 6px; }
 .crowd-pill, .la-chip {
@@ -1019,7 +1021,6 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .la-more[open] > summary::after { content: "▴"; content: "▴" / ""; }
 .la-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .la-more-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
-.la-more-note.ask { font-weight: 600; color: var(--accent); } /* 제보를 놓치지 않게 */
 .la-more > summary + .sh-row { border-top: 0; }
 
 /* ---- 다녀왔어요 / 내 기록 (open card) and "✓ 다녀옴 N번" (list row) ---- */
