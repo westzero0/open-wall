@@ -461,6 +461,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rhero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .55) 0%, rgb(0 0 0 / 0) 38%, rgb(0 0 0 / 0) 48%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
 .row.has-photo.is-open .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* as wide as the photo and right under it: the photo's own toolbar */
+/* the wide two-column card: a photo card has no head line, so the info starts in the first row (the strip above spans both columns) */
+@media (min-width: 560px) and (max-width: 1023px) { .row.has-photo .m-cols { margin-top: 0; } .row.has-photo .m-cols > .m-info { grid-row: 1; } }
 .rhero-foot { position: absolute; z-index: 1; left: var(--pad); right: var(--pad); bottom: var(--sp-12); display: flex; flex-direction: column; gap: var(--sp-10); }
 .rhero-line { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-8); }
 .rhero-wx { margin: 0; color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .5); font-size: var(--fs-sm); font-weight: 500; } 

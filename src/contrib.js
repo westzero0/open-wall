@@ -12,10 +12,14 @@ export const MAX_COUNT = 9999;
 
 const byCountThenName = (a, b) => b.count - a.count || a.nick.localeCompare(b.nick, 'ko');
 
-// reports: parseReports items with `review` merged in. -> [{ nick, count }], most first, ties by name.
-export function countContributors(reports) {
+// An approved photo (board Worker, status 'approved': it became the wall's picture) counts like an approved report, under its nickname.
+export const photoNick = (p) => (p && p.status === 'approved' ? cleanNick(p.nick) : '');
+
+// reports: parseReports items with `review` merged in; photos: the Worker's approved photos. -> [{ nick, count }], most first, ties by name.
+export function countContributors(reports, photos = []) {
   const n = new Map();
   for (const r of reports) if (countsForRanking(r)) n.set(r.nick, (n.get(r.nick) ?? 0) + 1);
+  for (const p of photos) { const nick = photoNick(p); if (nick) n.set(nick, (n.get(nick) ?? 0) + 1); }
   return [...n].map(([nick, count]) => ({ nick, count })).sort(byCountThenName);
 }
 
@@ -26,9 +30,9 @@ export function withRanks(rows) {
 }
 
 // The file the build tool writes. until: the last day the ranking is shown.
-export function buildContributors(reports, { until, today }) {
+export function buildContributors(reports, { until, today, photos = [] }) {
   if (!isDateStr(until)) throw new Error('until은 YYYY-MM-DD 형식의 실제 날짜여야 해요');
-  return { updated: today, until, rows: countContributors(reports) };
+  return { updated: today, until, rows: countContributors(reports, photos) };
 }
 
 // The app reads the published file: anything off is dropped row by row, a broken file or an ended event is null.

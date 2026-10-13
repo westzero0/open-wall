@@ -830,6 +830,7 @@ function rowDetails(m, wall, at, id) {
   const act = el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null, null); // the one filled pill; the crowd question is a text link
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
+    m.photo ? links : null, // a photo card: the strip hangs under the photo across both columns of the wide layout
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
@@ -843,7 +844,7 @@ function rowDetails(m, wall, at, id) {
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
-        links, ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
+        ...(m.photo ? [] : [links]), ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes].join(' · ')) : null, // facts, not controls: one muted line
