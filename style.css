@@ -444,12 +444,19 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .today-row .today { margin-top: 0; min-width: 0; }
 .today span { color: var(--muted); font-size: var(--fs-sm); margin-right: var(--sp-6); }
 /* the decision line: today's hours one step larger */
+.brk-row { margin-top: var(--sp-6); }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
+.act-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-6) var(--sp-10); margin-top: var(--sp-6); }
+.act-row .crowd-quick { margin: 0; }
 .crowd-chip { display: inline-flex; align-items: center; gap: var(--sp-6); margin-top: var(--sp-6); padding: var(--sp-2) var(--sp-10); border: 1px solid var(--line); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 .crowd-chip.muted { color: var(--muted); border-style: dashed; font-size: var(--fs-xs); }
 /* 날씨·바람: one quiet line under the 혼잡도 chip; 바람 셈 is a neutral outlined pill (--warn already means 곧 닫힘 / 오래됨) */
-.wx-line { margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--muted); }
+.wx-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-6); margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--muted); }
+.wx-k { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.wx-chip { padding: 1px var(--sp-8); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--fg); white-space: nowrap; }
+.wx-chip.wx-t { font-weight: 700; }
+.wx-chip.strong { border-color: var(--warn); color: var(--warn); font-weight: 700; }
 .wx-strong { display: inline-block; margin-left: var(--sp-2); padding: 0 var(--sp-8); border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--fg); font-weight: 700; white-space: nowrap; }
 .crowd-meter { flex: none; display: inline-flex; align-items: flex-end; gap: var(--sp-2); height: 12px; }
 .crowd-meter i { width: 4px; border: 1px solid currentColor; border-radius: 1px; }
@@ -478,6 +485,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .crowd-quick .crowd-pills { gap: var(--sp-4); }
 .crowd-quick .crowd-pill { min-height: 32px; min-width: 0; padding: 0 var(--sp-10); font-size: var(--fs-xs); }
 .cq-q { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.cq-open { display: inline-flex; align-items: center; gap: var(--sp-6); min-height: 32px; padding: 0 var(--sp-10); border: 1px dashed var(--line-strong); border-radius: var(--r-pill); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.cq-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cq-done { font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
 .crowd-pill:disabled { opacity: .45; cursor: default; }
 .crowd-pill:active, .la-chip:active { transform: scale(.97); }
@@ -553,8 +562,9 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   .m-cols .x-head { margin-top: 0; } /* top of the name = top of the sun box */
   .m-cols > .m-head { grid-column: 1; grid-row: 1; }
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
-  .m-cols .sunbox { grid-template-columns: minmax(0, 1fr); grid-column: 2; grid-row: 1 / span 2; margin-top: 0; padding: var(--sp-16); }
-  .m-cols > .more2 { grid-column: 1 / -1; grid-row: 3; margin-top: 0; }
+  .m-cols .sunbox { grid-template-columns: minmax(0, 1fr); grid-column: 2; grid-row: 1 / span 3; margin-top: 0; padding: var(--sp-16); }
+  .m-cols > .m-foot { grid-column: 1; grid-row: 3; }
+  .m-cols > .more2 { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
   .m-cols .sb-fig { width: 100%; max-width: 220px; margin: 0 auto; }
 }
 .expand-in .acts .btn, .expand-in .actions .btn {
@@ -617,19 +627,23 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .fees .f-won, .fees .f-all { text-align: right; white-space: nowrap; }
 .fees .f-all { text-align: center; }
 .fees thead th:nth-child(n+3) { text-align: right; }
+.fees .f-times { white-space: normal; font-size: var(--fs-xs); line-height: 1.5; }
+.fees .f-times span { display: block; white-space: nowrap; }
 .fees .f-note { color: var(--muted); font-size: var(--fs-xs); }
 .f-disc { margin: var(--sp-8) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .g-segrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); margin-bottom: var(--sp-8); }
-.g-segrow .g-seg { margin-bottom: 0; flex: 1 1 9rem; }
-.g-months { font-size: var(--fs-sm); color: var(--muted); }
-.g-months.shut { color: var(--warn); font-weight: 700; }
+.g-segrow .g-seg { margin-bottom: 0; flex: 1 1 100%; }
 .g-seg { display: flex; gap: var(--sp-6); margin-bottom: var(--sp-8); }
 .g-seg button {
   flex: 1; min-height: var(--tap); padding: 0 var(--sp-8); border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface);
   font-size: var(--fs-sm); white-space: nowrap; transition: background-color var(--dur-ui) var(--ease-out), color var(--dur-ui) var(--ease-out);
 }
 .g-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
-.g-seg button[aria-pressed="true"]::before { content: "✓ "; }
+.g-seg button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding-block: var(--sp-6); line-height: 1.25; } /* 하계 / 4~9월 on two lines */
+.g-seg .sw-m { font-size: var(--fs-xs); font-weight: 500; opacity: .8; }
+.g-seg button.shut:not([aria-pressed="true"]) { color: var(--warn); }
+.g-seg button.shut:not([aria-pressed="true"]) .sw-m { font-weight: 700; opacity: 1; }
+.g-seg button[aria-pressed="true"] .sw-k::before { content: "✓ "; }
 .g-lead { font-size: var(--fs-sm); margin-bottom: var(--sp-4); }
 .g-lead b { color: var(--open); }
 .g-lead.preview { color: var(--warn); font-weight: 600; }
@@ -705,7 +719,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .addr-btn { display: inline-flex; max-width: 100%; min-height: var(--tap); margin: -10px 0; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
 .addr-t { min-width: 0; overflow-wrap: anywhere; align-self: center; }
 .addr-ic { display: inline-flex; flex: none; align-self: center; margin-left: var(--sp-6); } /* the copy icon says the line can be tapped */
-.addr-ic svg { width: 14px; height: 14px; }
+.addr-ic svg { width: 18px; height: 18px; }
+.addr-line .icon-btn svg { width: 18px; height: 18px; } /* the copy and the route icon are one size */
 .addr-btn.done .addr-t { color: var(--accent); font-weight: 600; }
 .addr-btn.done svg { color: var(--accent); }
 .addr-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -953,7 +968,9 @@ dialog::backdrop { background: var(--scrim); }
 
 .checked { margin-top: var(--sp-6); font-size: var(--fs-xs); color: var(--muted); }
 
-.fee { margin-left: var(--sp-6); font-size: var(--fs-xs); font-weight: 500; letter-spacing: 0; color: var(--muted); white-space: nowrap; }
+.fee { display: inline-flex; align-items: center; gap: 3px; margin-left: var(--sp-6); vertical-align: middle; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0; color: var(--muted); white-space: nowrap; }
+.fee svg { width: 13px; height: 13px; flex: none; }
+.fee.free { padding: 0 var(--sp-6); border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-weight: 700; } /* 무료 a filled pill, 유료 plain grey: apart at a glance */
 .l1 .fee { margin-left: 0; }
 
 /* 내 지역 (sheet checkboxes by 권역, ≤5, in 조건 and 내 정보) and 구분 */
@@ -975,7 +992,7 @@ dialog::backdrop { background: var(--scrim); }
 .rg-list label:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* indoor-only: the word 실내 in place of 양달/응달, a solid edge (방향 모름 is dashed) */
 .sunnow.indoor { background: transparent; border: 1px solid var(--line-strong); padding: 0 5px; }
-.basis { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.basis { font-size: var(--fs-xs); font-weight: 600; color: var(--fg); white-space: nowrap; } /* darker than the region beside it: which hours these are matters */
 @media (hover: hover) and (pointer: fine) { .rg-list label:hover { border-color: var(--fg); } }
 
 /* report sheet (reuses .sheet / .segs) */
@@ -1120,12 +1137,12 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 p.setnew { margin-top: var(--sp-8); }
 /* the right end of the 오늘 운영 line: the link pills' size (34px seen, 44px tap via ::after), outline in the text colour */
 .expand-in .been-btn {
-  position: relative; display: inline-flex; align-items: center; gap: var(--sp-6); flex: none; height: 34px; min-height: 0; margin-left: auto; padding: 0 var(--sp-12);
+  position: relative; display: inline-flex; align-items: center; gap: var(--sp-6); flex: none; height: 30px; min-height: 0; margin-left: auto; padding: 0 var(--sp-10);
   border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: transparent; color: var(--fg);
-  font-family: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
+  font-family: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
 }
-.expand-in .been-btn svg { flex: none; width: 15px; height: 15px; }
-.expand-in .been-btn::after { content: ""; position: absolute; inset: -5px 0; }
+.expand-in .been-btn svg { flex: none; width: 13px; height: 13px; }
+.expand-in .been-btn::after { content: ""; position: absolute; inset: -7px 0; }
 .expand-in .been-btn:active { transform: scale(.97); }
 .been-stamp { flex: none; width: 20px; height: 20px; background: var(--fg); }
 .been-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }

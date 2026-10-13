@@ -49,6 +49,7 @@ const ICONS = {
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
+  ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
   // 양달 / 응달: a sun with rays; the same sun struck through. Same pair as the invitation picture (src/share-image.js drawIcon).
   sun: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M2 12h2', 'M20 12h2', 'M4.9 19.1l1.4-1.4', 'M17.7 6.3l1.4-1.4'],
@@ -144,7 +145,8 @@ let mapFailed = false;
 // ---- card ----
 // Every value below comes from cardModel (card-model.js); these functions only draw it.
 const basisTag = (m) => (m.basis ? el('span', { class: 'basis' }, m.basis) : null);
-const feeChip = (m) => (m.fee ? el('span', { class: 'fee' }, m.fee) : null);
+// 입장 유료/무료 as a ticket icon + the one word (the full phrase stays for screen readers); 무료 in the accent colour
+const feeChip = (m) => (m.fee ? el('span', { class: `fee ${m.fee.endsWith('무료') ? 'free' : 'paid'}`, role: 'img', 'aria-label': m.fee }, icon('ticket'), m.fee.replace(/^입장 /, '')) : null);
 
 function placeholder({ primary, secondary }) {
   return el('div', { class: 'thumb placeholder', 'aria-hidden': 'true' },
@@ -311,8 +313,11 @@ function hoursGrid(wall, at) {
   const sec = el('section', { class: 'hgrid', 'aria-label': '요일별 운영시간' });
 
   const seg = wk.hasWinter && ws ? el('div', { class: 'g-seg', role: 'group', 'aria-label': '계절 운영시간' },
-    ...[['summer', '하계'], ['winter', '동계']].map(([k, label]) => {
-      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k) }, label);
+    ...[['summer', '하계', ws.summer], ['winter', '동계', ws.winter]].map(([k, label, months]) => {
+      // the months sit inside the switch ("하계 4~9월 · 동계 10~3월"); a winter closure reads in the warning colour
+      const shut = k === 'winter' && ws.closed;
+      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k), class: shut ? 'shut' : null, 'aria-label': `${label} ${months ?? '연중'}${shut ? ' 외벽 휴장' : ''}` },
+        el('span', { class: 'sw-k' }, label), months ? el('span', { class: 'sw-m' }, months) : null);
       b.addEventListener('click', () => {
         go({ type: 'season', name: wall.name, pick: k, current: weeklyHours(wall, at).season });
         const next = hoursGrid(wall, at);
@@ -321,10 +326,7 @@ function hoursGrid(wall, at) {
       });
       return b;
     })) : null;
-  // the winter months in words beside the switch (month granularity: from_month/to_month); 외벽 휴장 stands out
-  const months = ws ? el('p', { class: `g-months${ws.closed ? ' shut' : ''}` },
-    ws.closed ? `동절기 외벽 휴장 ${ws.winter}` : `동계 ${ws.winter}`) : null;
-  const segRow = seg || months ? el('div', { class: 'g-segrow' }, seg, months) : null;
+  const segRow = seg ? el('div', { class: 'g-segrow' }, seg) : null;
 
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
@@ -418,22 +420,24 @@ function feesBlock(wall) {
   const body = el('tbody', {});
   for (const it of t.items) {
     if (it.noteOnly) {
-      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', it.note, { colspan: '3', class: 'f-note' })));
+      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', it.note, { colspan: t.split ? '3' : '2', class: 'f-note' })));
       continue;
     }
     it.rows.forEach((r, i) => {
       const tr = el('tr', {});
       if (i === 0) tr.append(cell('th', it.item, { scope: 'rowgroup', rowspan: String(it.rows.length + (it.note ? 1 : 0)) }));
       tr.append(cell('td', r.who, { class: 'f-who' }));
-      if (r.all !== undefined) tr.append(cell('td', r.all, { colspan: '2', class: 'f-all' }));
-      else tr.append(cell('td', r.weekday, { class: 'f-won' }), cell('td', r.weekend, { class: 'f-won' }));
+      // session times ("1부 13~17시 · 2부 18~22시") stack one session per line
+      const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, p))) : cell('td', text, attrs));
+      if (r.all !== undefined) tr.append(val(r.all, t.split ? { colspan: '2', class: 'f-all' } : { class: 'f-won' }));
+      else tr.append(val(r.weekday, { class: 'f-won' }), val(r.weekend, { class: 'f-won' }));
       body.append(tr);
     });
-    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: '3', class: 'f-note' })));
+    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: t.split ? '3' : '2', class: 'f-note' })));
   }
   return el('section', { class: 'fees', 'aria-label': '요금' },
     el('table', {},
-      el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'), cell('th', '평일'), cell('th', '휴일'))),
+      el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'), ...(t.split ? [cell('th', '평일'), cell('th', '휴일')] : [cell('th', '요금')]))),
       body),
     t.discount ? el('p', { class: 'f-disc' }, t.discount) : null);
 }
@@ -598,7 +602,7 @@ let pickRefocus = null;
 const wxPick = { byName: new Map(), entry: null, busy: false };
 async function loadWeekendWeather() {
   if (wxPick.busy || weatherFresh(wxPick.entry, Date.now())) return;
-  const spots = state.walls.map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
+  const spots = state.walls.filter((w) => w.venue !== 'indoor').map((w) => [w, wallPosition(w)]).filter(([, p]) => p); // indoor walls: no forecast
   if (!spots.length) return;
   wxPick.busy = true;
   let days = null;
@@ -797,27 +801,27 @@ function rowDetails(m, wall, at, id) {
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
-        m.where || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.where : m.sub) : null,
-        // 오늘 운영 … and 다녀왔어요 at the right end of the same line (wraps to the right of the next line when long)
+        m.place || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null,
         el('div', { class: 'today-row' },
-          el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text)),
-          beenBtn(m))),
-      sunBox(dial, m.name, m.closedDay), // right under the decision line (right column when wide)
+          el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
+        m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
+        addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         ...crowdBox(m),
+        // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
+        el('div', { class: 'act-row' }, m.crowd ? crowdQuick(m.name) : null, beenBtn(m)),
         ...weatherBox(m),
-        addrLine(m),
         actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         el('div', { class: 'tags' },
-          ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t)),
           ...m.tags.map((t) => el('span', { class: 'tag' }, t)),
           ...m.sizes.map((t) => el('span', { class: 'tag' }, t))),
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
-        m.setting ? el('p', { class: 'checked setting' }, m.setting) : null,
-        el('p', { class: 'checked' }, m.checked)),
+        m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
+      sunBox(dial, m.name, m.closedDay), // above 정보 확인일, after the facts (the right column when wide)
+      el('div', { class: 'm-foot' }, el('p', { class: 'checked' }, m.checked)),
       more.childElementCount > 1 ? more : null),
     visitLog(m),
     boardBox(m.name, { onOpenAll: (btn) => openBoardPage(m.name, btn) }), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
@@ -910,7 +914,7 @@ const crowdCtx = (name, at) => (!config.crowdCsvUrl ? null : {
 const wx = { byWall: new Map(), busy: new Set() };
 async function loadWeather(wall) {
   const pos = wallPosition(wall); // location, else the sun coordinates; none → no request
-  if (!pos || wx.busy.has(wall.name)) return;
+  if (!pos || wall.venue === 'indoor' || wx.busy.has(wall.name)) return; // an indoor wall has no weather to plan for
   if (weatherFresh(wx.byWall.get(wall.name), Date.now())) return;
   wx.busy.add(wall.name);
   let hours = null;
@@ -931,9 +935,9 @@ function refillOpen(name) {
   const info = li?.querySelector('.m-info');
   if (!info || !row) return;
   li.querySelector('.wx-line')?.remove();
-  const crowd = info.querySelector('.crowd-quick') ?? (info.firstElementChild?.classList.contains('crowd-chip') ? info.firstElementChild : null);
+  const anchor = info.querySelector('.act-row'); // the forecast goes right under it (the 지금 어때요? + 다녀왔어요 row)
   const box = weatherBox(modelOf(row, shown.at));
-  if (crowd) crowd.after(...box); else info.prepend(...box);
+  if (anchor) anchor.after(...box); else info.prepend(...box);
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
 const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
@@ -944,7 +948,13 @@ const weatherCtx = (name, at) => {
 // the line (+ 바람 셈 pill) under 혼잡도; no forecast for the picked moment → nothing, not even a gap
 function weatherBox(m) {
   if (!m.weather) return [];
-  return [el('p', { class: 'wx-line' }, m.weather.line, m.weather.windy ? ' ' : null, m.weather.windy ? el('span', { class: 'wx-strong' }, '바람 셈') : null)];
+  const w = m.weather;
+  return [el('p', { class: 'wx-line', 'aria-label': `${w.line}${w.windy ? ', 바람 셈' : ''}` },
+    el('span', { class: 'wx-k', 'aria-hidden': 'true' }, '예보'),
+    el('span', { class: 'wx-chip wx-t', 'aria-hidden': 'true' }, w.temp),
+    el('span', { class: 'wx-chip', 'aria-hidden': 'true' }, w.wind),
+    el('span', { class: `wx-chip${w.windy ? ' strong' : ''}`, 'aria-hidden': 'true' }, w.gust),
+    w.windy ? el('span', { class: 'wx-strong', 'aria-hidden': 'true' }, '바람 셈') : null)];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -967,11 +977,10 @@ async function sendCrowd(name, level, date, time) {
 // chip: level in words + a 1–3 bar meter (not colour alone)
 function crowdBox(m) {
   const c = m.crowd;
-  if (!c) return [];
+  if (!c || c.chip.muted) return []; // "제보 모으는 중" is only an empty state: the 지금 어때요? button next to it asks the same
   return [el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
-    c.chip.text),
-  crowdQuick(m.name)];
+    c.chip.text)];
 }
 // "지금 어때요?": one tap on the open card reports the crowd of right now (same limits and data as the 기록 추가 sheet's
 // question). Only while the picked moment is now and the wall is open (crowdBox is for open walls); gone for good once the
@@ -980,7 +989,11 @@ function crowdQuick(name) {
   const now = new Date();
   const [date, time] = [ymd(now), hhmm(now)];
   if (!vs.live || crowdAsk(name, date, time) !== 'ask') return null;
-  const box = el('div', { class: 'crowd-quick', role: 'group', 'aria-label': '지금 혼잡도 제보' }, el('span', { class: 'cq-q' }, '지금 어때요?'));
+  // folded to one small button ("지금 어때요?" + the meter); a tap opens 여유 · 보통 · 혼잡 in its place
+  const box = el('div', { class: 'crowd-quick', role: 'group', 'aria-label': '지금 혼잡도 제보' });
+  const open = el('button', { type: 'button', class: 'cq-open', 'aria-expanded': 'false' },
+    el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), '지금 어때요?');
+  box.append(open);
   const pills = LEVELS.map((level) => el('button', { type: 'button', class: 'crowd-pill', value: level }, level));
   for (const b of pills) {
     b.addEventListener('click', async () => {
@@ -989,7 +1002,10 @@ function crowdQuick(name) {
       else { pills.forEach((x) => { x.disabled = false; }); toast('혼잡도를 보내지 못했어요 — 연결을 확인해 주세요.'); }
     });
   }
-  box.append(el('span', { class: 'crowd-pills' }, ...pills));
+  open.addEventListener('click', () => {
+    box.replaceChildren(el('span', { class: 'cq-q' }, '지금'), el('span', { class: 'crowd-pills' }, ...pills));
+    pills[0].focus();
+  });
   return box;
 }
 const modelOf = (row, at) => cardModel(row, at, {
@@ -1016,9 +1032,9 @@ function timeRow(row, at) {
       m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
       m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
         el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
-      basisTag(m), // own span: the region line may be cut short, this may not
       m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
       m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
+      basisTag(m), // right of the region, own span: the region line may be cut short, this may not
       el('span', { class: 'left' }, m.left)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       ...bar.segments.map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),

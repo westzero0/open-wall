@@ -172,6 +172,7 @@ function cleanSeasons(v) {
 export const MAX_FEES = 20;
 const MAX_FEE_TEXT = 40;
 const MAX_FEE_NOTE = 120;
+const MAX_FEE_TIMES = 60;
 const MAX_DISCOUNT = 160;
 const MAX_WON = 10_000_000;
 const cleanWon = (n) => (Number.isInteger(n) && n >= 0 && n <= MAX_WON ? n : undefined);
@@ -181,6 +182,14 @@ function cleanWho(v) {
   for (const k of ['all', 'weekday', 'weekend']) if (cleanWon(v[k]) !== undefined) out[k] = v[k];
   if (out.all !== undefined) return { all: out.all }; // "all" says weekday and weekend are the same
   return Object.keys(out).length ? out : null;
+}
+// times: when the sessions run ("1부 13~17시 · 2부 18~22시"), {all} or {weekday?, weekend?}, one short line each
+function cleanTimes(v) {
+  if (!isPlainObject(v)) return null;
+  const t = {};
+  for (const k of ['all', 'weekday', 'weekend']) if (typeof v[k] === 'string' && v[k].trim()) t[k] = v[k].trim().slice(0, MAX_FEE_TIMES);
+  if (t.all !== undefined) return { all: t.all };
+  return Object.keys(t).length ? t : null;
 }
 function cleanFees(v) {
   if (!Array.isArray(v)) return [];
@@ -192,9 +201,11 @@ function cleanFees(v) {
       const w = cleanWho(f[who]);
       if (w) row[who] = w;
     }
+    const times = cleanTimes(f.times);
+    if (times) row.times = times;
     const note = typeof f.note === 'string' ? f.note.trim().slice(0, MAX_FEE_NOTE) : '';
     if (note) row.note = note;
-    if (row.adult || row.youth || row.child || row.note) out.push(row);
+    if (row.adult || row.youth || row.child || row.times || row.note) out.push(row);
     if (out.length === MAX_FEES) break;
   }
   return out;

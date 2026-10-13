@@ -169,28 +169,21 @@ const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
 // only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '-' when only one is known.
-// An item with only a note is one row (noteOnly). null without fees.
+// An item with only a note is one row (noteOnly). `split` false: every price is the same on weekdays and holidays. null without fees.
 export function feeTable(wall) {
   const fees = wall.fees ?? [];
   if (!fees.length) return null;
-  return {
-    items: fees.map((f) => {
+  const items = fees.map((f) => {
       const rows = WHO.filter(([k]) => f[k]).map(([k, who]) => (
         f[k].all !== undefined ? { who, all: won(f[k].all) }
           : { who, weekday: f[k].weekday !== undefined ? won(f[k].weekday) : '-', weekend: f[k].weekend !== undefined ? won(f[k].weekend) : '-' }));
-      return { item: f.item, rows, note: f.note ?? null, noteOnly: !rows.length };
-    }),
-    discount: wall.discount || null,
-  };
-}
-
-// The card's 이용료 line, from the first fee item's adult price; null when it has none (the memo's line stays).
-function feeMemoLine(wall) {
-  const a = wall.fees?.[0]?.adult;
-  if (!a) return null;
-  const value = a.all !== undefined ? `성인 ${won(a.all)}`
-    : `성인 ${[a.weekday !== undefined && `평일 ${won(a.weekday)}`, a.weekend !== undefined && `휴일 ${won(a.weekend)}`].filter(Boolean).join(' · ')}`;
-  return { label: '이용료', value, key: false };
+      const noteOnly = !rows.length && !f.times;
+      // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
+      if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
+      return { item: f.item, rows, note: f.note ?? null, noteOnly };
+  });
+  // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
+  return { items, split: items.some((it) => it.rows.some((r) => r.all === undefined)), discount: wall.discount || null };
 }
 
 // The memo sorted into what the expanded row draws. address: the 주소 line; sizes: 폭 (from "폭 30m") and
@@ -283,7 +276,7 @@ export function settingText(setting, today) {
  * at: the picked moment. now: the real clock, only to call the picked day "오늘".
  * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
  * crowd: see crowdOf. Without it (혼잡도 not set up), or with nothing to show, the model has no `crowd` key.
- * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy}. Without it, no key.
+ * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy, temp, wind, gust} (the chips of the line). Without it, no key.
  * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
  */
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null } = {}) {
@@ -300,12 +293,13 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
   const winterNote = status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null;
   const rainNote = wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
-  const feeLine = feeMemoLine(wall);
-  const memo = feeLine ? [...memoLines(wall.memo).filter((l) => l.label !== '이용료'), feeLine] : memoLines(wall.memo);
+  // a wall with a fee table keeps its prices in the 요금 tab only: no 이용료 line in the card's text
+  const memo = wall.fees?.length ? memoLines(wall.memo).filter((l) => l.label !== '이용료') : memoLines(wall.memo);
   const facts = memoFacts(wall, memo);
   // the 주소 row right below already starts with the region ("서울 광진구 자양동 …"): don't say it twice
   const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
   const where = [regionShown, distLine, basis].filter(Boolean).join(' · ');
+  const place = [regionShown, distLine].filter(Boolean).join(' · '); // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
   const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote }].filter(Boolean);
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
@@ -328,7 +322,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     distLine, // "직선 850m" (card)
     basis,
     meta: [wall.region, dist].filter(Boolean).join(' · ') || null, // list row
-    where, // expanded row
+    where,
+    place, // expanded row
     state: status.state,
     soon: endingSoon(row),
     short: Boolean(row.short),
@@ -356,7 +351,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     memo,
     fees: feeTable(wall),
     approxNote,
-    today: { lead: `${day.season ? `${day.season} · ` : ''}${dayLabel}${plain ? '' : ' 운영'}`, text: day.text },
+    today: { lead: `${day.season ? `${day.season} · ` : ''}${dayLabel}${plain ? '' : `${wall.timeBasis === 'outdoor' ? ' 실외' : ''} 운영`}`, text: day.text },
     holiday: day.holiday,
     closedDay: day.closed,
     dayLabel,
@@ -384,7 +379,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),
-    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather) } } : {}),
+    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather), temp: `${Math.round(weather.t)}°`, wind: `바람 ${Math.round(weather.w)}m/s`, gust: `돌풍 ${Math.round(weather.g)}m/s` } } : {}),
     ...(crowdModel?.chip?.level ? { crowdTag: crowdTagOf(crowd.stat) } : {}),
   };
 }
