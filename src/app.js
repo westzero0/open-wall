@@ -268,10 +268,10 @@ function creditChip(c) {
     : el('span', { class: 'credit' }, c.text);
 }
 
-// no photo yet: a quiet link at the card's foot opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
+// no photo yet: a quiet link at the right end of the name row opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
 function photoLink(m) {
   if (m.photo || !config.boardUrl) return null;
-  const b = el('button', { type: 'button', class: 'help-link', 'aria-label': `${m.name} 외벽 사진 보내기` }, '사진 보내기');
+  const b = el('button', { type: 'button', class: 'photo-ask', 'aria-label': `${m.name} 외벽 사진 보내기` }, icon('camera'), '사진 보내기');
   b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
   return b;
 }
@@ -291,6 +291,9 @@ function rowPhoto(m, li) {
         el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)),
         creditChip(m.credit?.text === '사진 · 직접 촬영' ? null : m.credit)), // our own photos need no credit; a licensed one keeps its line
       photoWeather(m)));
+  // the photo sits in a hidden box until the row opens (lazy never loads it): fetch it when the row nears the screen, so opening shows it at once
+  const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { img.loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
+  near.observe(li);
   img.addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
   return wrap;
 }
@@ -819,12 +822,11 @@ function rowDetails(m, wall, at, id) {
     sumTitle.textContent = more.open && panes.labels.length > 1 ? '상세 정보' : panes.labels.join(' · ');
   });
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
-  const photoAsk = photoLink(m);
-  const helps = config.reportEndpoint || photoAsk
-    ? el('div', { class: 'help-row' }, photoAsk,
-      ...(config.reportEndpoint ? [
-        el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
-        m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가')] : []))
+  const photoAsk = photoLink(m); // (this one is on the name row: a photo is what the card lacks most)
+  const helps = config.reportEndpoint
+    ? el('div', { class: 'help-row' },
+      el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
+      m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
     : null;
   // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
   const act = el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null, null); // the one filled pill; the crowd question is a text link
@@ -835,7 +837,7 @@ function rowDetails(m, wall, at, id) {
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row
-          : el('h3', { class: 'x-name' }, m.name, feeChip(m)), // ♥ and share are the end cells of the link strip
+          : el('div', { class: 'x-top' }, el('h3', { class: 'x-name' }, m.name, feeChip(m)), photoAsk), // ♥ and share are the end cells of the link strip
         (m.state === 'open' ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null, // a closed photo card: the pill on the photo already says when it opens
         m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
           el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
