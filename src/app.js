@@ -653,7 +653,7 @@ function renderPick() {
   // a pill that every pick would carry says nothing: wind that is strong on all of them goes to the note instead
   const shown = r.byDay.flatMap((d) => d.items).filter((it) => it.wall.venue !== 'indoor');
   const allWindy = shown.length > 1 && shown.every((it) => it.wx?.windy);
-  // one column per day: the first pick large with its day bar (09–21: sun amber, shade blue; none for indoor or unknown sun),
+  // one box per day, side by side: the first pick with its day bar (09–21: sun amber, shade blue; none for indoor or unknown sun),
   // The picks follow the filters (지역·구분·기준); a day with none says so.
   const bar = (it) => {
     const seg = (cls, [x, y]) => el('span', { class: cls, style: `left:${((x - WINDOW[0]) / (WINDOW[1] - WINDOW[0]) * 100).toFixed(1)}%;width:${((y - x) / (WINDOW[1] - WINDOW[0]) * 100).toFixed(1)}%` });
@@ -661,30 +661,34 @@ function renderPick() {
     return known ? el('span', { class: 'pick-tl', 'aria-hidden': 'true' }, ...it.sun.map((v) => seg('sun', v)), ...it.shade.map((v) => seg('shade', v))) : null; // indoor / sun unknown: the hours in the text say it
   };
   const hoursOf = (it) => `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`;
-  const colOf = (d) => {
-    const head = el('span', { class: 'pick-dh' }, dayText(d.day.date));
-    if (!d.items.length) return el('div', { class: 'pick-col' }, head, el('p', { class: 'pick-empty' }, '추천할 곳이 없어요'));
-    // rain / wind ride the reason line as text (a pill beside the name broke the narrow cells onto a line of its own)
-    const wxOf = (it) => (it.wx && it.wall.venue !== 'indoor' ? [it.wx.rain ? it.wx.rainText : null, it.wx.windy && !allWindy ? '바람 셈' : null] : []).filter(Boolean).map((t) => ` · ${t}`).join('');
+  // rain / wind ride the reason line as text (a pill beside the name broke the narrow cells); the lead's rain goes to the day's head instead
+  const wxOf = (it, noRain = false) => (it.wx && it.wall.venue !== 'indoor' ? [it.wx.rain && !noRain ? it.wx.rainText : null, it.wx.windy && !allWindy ? '바람 셈' : null] : []).filter(Boolean).map((t) => ` · ${t}`).join('');
+  const sigOf = (d) => d.items.map((it) => `${it.wall.name}|${reasonOf(it, r.pref).short}|${hoursOf(it)}|${wxOf(it)}`).join('/');
+  const same = r.byDay.length === 2 && r.byDay[0].items.length > 0 && sigOf(r.byDay[0]) === sigOf(r.byDay[1]); // 토 and 일 say the same: one box
+  const colOf = (d, title) => {
     const [lead, ...rest] = d.items;
+    const rain = lead && lead.wx?.rain && lead.wall.venue !== 'indoor' ? lead.wx.rainText : null; // a wet day shows it in the head: the first thing to weigh
+    const head = el('div', { class: `pick-dh${rain ? ' wet' : ''}` }, el('span', {}, title), ...(rain ? [el('em', {}, rain)] : []));
+    if (!lead) return el('div', { class: 'pick-col' }, head, el('p', { class: 'pick-empty' }, '추천할 곳이 없어요'));
+    const tl = bar(lead);
     const leadBtn = el('button', { type: 'button', class: 'pick-lead', 'data-focus': `lead-${d.day.label}` },
-      el('span', { class: 'pick-line' },
-        el('span', { class: 'pick-name' }, shortName(lead.wall)),
-        el('span', { class: 'pick-why' }, `${reasonOf(lead, r.pref).short} · ${hoursOf(lead)}${wxOf(lead)}`)),
-      bar(lead));
+      el('span', { class: 'pick-name' }, shortName(lead.wall)),
+      el('span', { class: 'pick-why' }, `${reasonOf(lead, r.pref).short} · ${hoursOf(lead)}${wxOf(lead, true)}`),
+      tl,
+      ...(tl ? [el('span', { class: 'pick-ax', 'aria-hidden': 'true' }, el('span', {}, '09'), el('span', {}, '15'), el('span', {}, '21'))] : []));
     leadBtn.addEventListener('click', () => goPick(lead));
     const others = rest.map((it) => {
       const b = el('button', { type: 'button', class: 'pick-next' },
         el('span', { class: 'pick-name' }, shortName(it.wall)),
-        el('span', { class: 'pick-why' }, `${reasonOf(it, r.pref).short}${wxOf(it)}`),
-        bar(it));
+        el('span', { class: 'pick-why' }, `${reasonOf(it, r.pref).short}${wxOf(it)}`));
       b.addEventListener('click', () => goPick(it));
       return b;
     });
     return el('div', { class: 'pick-col' }, head, leadBtn, ...(others.length ? [el('div', { class: 'pick-rest' }, ...others)] : []));
   };
-  kids.push(el('div', { class: `pick-cols${r.byDay.length === 1 ? ' one' : ''}` }, ...r.byDay.map(colOf)));
-  kids.push(el('p', { class: 'pick-key', 'aria-hidden': 'true' }, el('span', { class: 'k sun' }, '양달'), el('span', { class: 'k shade' }, '응달'), el('span', {}, '막대는 09시~21시')));
+  kids.push(el('div', { class: `pick-cols${r.byDay.length === 1 || same ? ' one' : ''}` },
+    ...(same ? [colOf(r.byDay[0], `${dayText(r.byDay[0].day.date)} · ${dayText(r.byDay[1].day.date)}`)] : r.byDay.map((d) => colOf(d, dayText(d.day.date))))));
+  kids.push(el('p', { class: 'pick-key', 'aria-hidden': 'true' }, el('span', { class: 'k sun' }, '양달'), el('span', { class: 'k shade' }, '응달')));
   const rainy = r.byDay.some((d) => d.items.some(rainsOn));
   kids.push(el('p', { class: 'pick-note' }, `${allWindy ? '바람이 센 예보예요. ' : ''}${rainy ? '비 예보인 외벽은 뒤에 둬요. ' : ''}운영시간·해 계산 기준이에요. 가기 전에 공지를 확인해 주세요.`));
   $('pick-body').replaceChildren(...kids);

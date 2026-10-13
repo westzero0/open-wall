@@ -306,23 +306,25 @@ main { padding-bottom: var(--sp-48); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bar-shade: #86a3c9; } }
 :root[data-theme="dark"] { --bar-shade: #86a3c9; }
 .pick-bar { justify-content: flex-start; margin-top: calc(var(--sp-8) * -1); } /* the day pills are gone: sit under the title line */
-.pick-cols { display: flex; flex-direction: column; gap: var(--sp-8); margin-bottom: var(--sp-8); }
+/* one box per day, stacked: 1위 on its own line with the bar, 2·3위 side by side under it at one height */
+.pick-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); margin-bottom: var(--sp-8); }
 .pick-col { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
-.pick-dh { padding: var(--sp-4) var(--sp-12); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 700; color: var(--accent); }
+.pick-dh { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-6); padding: var(--sp-4) var(--sp-12); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 700; color: var(--accent); }
+.pick-dh em { font-style: normal; font-weight: 700; color: var(--soon); white-space: nowrap; }
+.pick-dh.wet { background: color-mix(in srgb, var(--soon) 14%, var(--surface)); } /* a wet day: the head says so, in the same pink as 곧 마감 */
+.pick-ax { display: flex; justify-content: space-between; margin-top: var(--sp-2); color: var(--muted); font-size: var(--fs-xs); line-height: 1.2; }
 .pick-lead, .pick-next { display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; border: 0; background: transparent; color: var(--fg); font: inherit; text-align: left; }
 .pick-lead { min-height: var(--tap); padding: var(--sp-10) var(--sp-12); }
-.pick-next { min-height: var(--tap); padding: var(--sp-8) var(--sp-12); border-top: 1px solid var(--line); }
+.pick-next { min-height: var(--tap); padding: var(--sp-6) var(--sp-12); }
+.pick-next + .pick-next { border-left: 1px solid var(--line); }
 .pick-lead:active, .pick-next:active { background: var(--sunken); }
-.pick-lead .pick-name { font-size: var(--fs-base); font-weight: 700; }
-.pick-line { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--sp-8); }
+.pick-lead .pick-name { font-size: var(--fs-md); font-weight: 700; }
 .pick-rest { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
-.pick-rest > .pick-next { border-top: 0; }
-.pick-rest > .pick-next + .pick-next { border-left: 1px solid var(--line); }
+.pick-rest > .pick-next:only-child { grid-column: 1 / -1; }
 .pick-next .pick-name { font-size: var(--fs-sm); }
 .pick-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-6); }
 .pick-why { font-size: var(--fs-sm); color: var(--muted); }
 .pick-next .pick-why { font-size: var(--fs-xs); }
-.pick-next .pick-tl { height: 8px; margin-top: var(--sp-4); border-radius: 4px; }
 .pick-tl { position: relative; display: block; height: 16px; margin-top: var(--sp-6); border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); overflow: hidden; }
 .pick-tl > span { position: absolute; top: 0; bottom: 0; }
 .pick-tl .sun { background: var(--sun); }
@@ -461,12 +463,12 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rhero-cap { position: absolute; z-index: 1; left: var(--pad); right: var(--pad); bottom: var(--sp-12); color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 .rhero-cap small { display: block; font-size: var(--fs-sm); font-weight: 500; }
 .rhero-cap b { display: block; font-size: 2rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rhero .credit { z-index: 1; } /* the credit keeps its corner; the hours sit above its line */
+.rhero:has(.credit) .rhero-cap { bottom: 40px; }
 .rhero-act { position: absolute; z-index: 1; right: var(--sp-4); bottom: var(--sp-4); display: flex; }
 .rhero:has(.credit) .rhero-act { bottom: 36px; }
 .rhero-act .icon-btn { color: #fff; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .6)); }
 .rhero-act .fav-btn, .rhero-act .share-wrap { margin: 0; }
-.rhero .credit { z-index: 1; } /* the credit keeps its corner; the hours sit above its line */
-.rhero:has(.credit) .rhero-cap { bottom: 40px; }
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 .row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been) { color: #fff; }
 .row.has-photo.is-open .row-btn .fee.free { color: var(--on-accent); text-shadow: none; }
