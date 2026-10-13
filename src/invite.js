@@ -9,7 +9,8 @@ import { CHAT_URL_RE } from './store.js';
 import { sharePageUrl } from './share-id.js';
 
 // The only tags an invite can carry: an id in the link, a label on screen. Free text never becomes a tag.
-export const TAGS = [['beginner', '초보 환영'], ['lead', '리드'], ['rope', '로프 챙겨 와요'], ['meet', '주차장에서 만나요']];
+// 'pledge' is offered only after 안전수칙 약속 (pledge.js); the link itself cannot prove it, like any other tag.
+export const TAGS = [['beginner', '초보 환영'], ['lead', '리드'], ['rope', '로프 챙겨 와요'], ['meet', '주차장에서 만나요'], ['pledge', '안전수칙 지켜요']];
 export const MAX_NOTE = 40;
 export const MAX_COUNT = 10;
 

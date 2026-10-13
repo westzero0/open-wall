@@ -955,6 +955,19 @@ dialog::backdrop { background: var(--scrim); }
 .ab-sec h3 { margin: 0; font-size: var(--fs-base); }
 .ab-sec p { margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--muted); text-wrap: pretty; }
 .ab-sec a { color: var(--accent); padding-block: 13px; }
+.ab-sec ul { margin: 0; padding-left: 1.1em; display: grid; gap: var(--sp-6); font-size: var(--fs-sm); line-height: 1.6; text-wrap: pretty; }
+/* 안전수칙 sheet */
+.sf-mark { width: 40px; height: 40px; color: var(--fg); flex: none; }
+.sf-mark rect { fill: var(--accent); stroke: none; }
+.sf-lead { margin: 0 0 var(--sp-8); font-size: var(--fs-base); line-height: 1.6; font-weight: 600; text-wrap: pretty; }
+.sf-pledge-box { display: grid; gap: var(--sp-8); padding: var(--sp-12) 0; border-top: 1px solid var(--line); }
+.sf-pledge { min-height: var(--tap); padding: var(--sp-8) var(--sp-16); border: 0; border-radius: var(--radius); background: var(--fg); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
+.sf-pledge:active { transform: scale(.98); }
+.sf-pledge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sf-pledged { display: flex; align-items: center; gap: var(--sp-8); margin: 0; min-height: var(--tap); font-weight: 700; }
+.sf-pledged:focus { outline: none; }
+.sf-stamp { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 2px solid var(--accent); border-radius: 50%; color: var(--accent); font-size: var(--fs-sm); }
+.sf-note { margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--muted); text-wrap: pretty; }
 .foot .brand strong { color: var(--fg); font-weight: 700; }
 .load-error { margin: var(--sp-12) 0; padding: var(--sp-14) var(--sp-16); border: 2px solid var(--warn); border-radius: var(--radius); background: var(--surface); color: var(--fg); font-weight: 600; }
 .load-error p { margin: 0 0 var(--sp-10); text-wrap: pretty; }
@@ -1023,10 +1036,12 @@ dialog::backdrop { background: var(--scrim); }
 .rp-name { color: var(--fg); font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
 
 /* ---- 내 정보 (header button + sheet) ---- */
-.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.top .wrap > :not(h1):not(.me-btn) { grid-column: 1 / -1; }
+.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+.top .wrap > :not(h1):not(.me-btn):not(.safety-btn) { grid-column: 1 / -1; }
 .me-btn { margin-right: -10px; color: var(--fg); }
 .me-btn svg { width: 24px; height: 24px; }
+.safety-btn { color: var(--fg); }
+.safety-btn svg { width: 24px; height: 24px; }
 .pf-backup { flex-wrap: wrap; }
 .pf-btns { display: flex; flex-wrap: wrap; gap: var(--sp-8); flex-basis: 100%; }
 .pf-btns .sh-toggle { flex: 1 1 8rem; }

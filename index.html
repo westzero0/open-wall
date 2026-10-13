@@ -37,6 +37,7 @@
   <header class="top">
     <div class="wrap">
       <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
+      <button type="button" class="icon-btn safety-btn" id="safetyBtn" aria-label="안전수칙" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></button>
       <button type="button" class="icon-btn me-btn" id="meBtn" aria-label="내 정보" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></button>
       <p id="summary" role="status"></p>
       <button type="button" class="region-line" id="regionChip" hidden><span></span><span class="x" aria-hidden="true">· 전국 보기</span></button>
@@ -291,6 +292,50 @@
         </div>
         <p class="sh-hint">바꾼 내용은 바로 저장돼요.</p>
         <button class="inv-save">확인</button>
+      </form>
+    </dialog>
+    <dialog id="safety-sheet" class="sheet" aria-labelledby="safety-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="safety-title">안전수칙</h2>
+          <svg class="sf-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(12 12 12)"><path d="M9 2.8h2.2C15.6 2.8 18.6 7 18.6 12.8 18.6 17.6 16 21.2 12 21.2H10.6a3.4 3.4 0 0 1-3.4-3.4V9"/><path d="M7.2 9 8.8 2.8"/><rect x="5.9" y="9.2" width="2.6" height="4.2" rx=".6"/></g></svg>
+        </div>
+        <p class="sf-lead">빌레이는 확보자가 등반자의 안전을 책임지는 행위예요. 확보하는 동안엔 등반자에게 집중하세요.</p>
+        <section class="ab-sec">
+          <h3>오르기 전</h3>
+          <ul>
+            <li>장비를 올바르게 착용해요.</li>
+            <li>하네스, 되감기팔자매듭, 확보기 연결을 등반자와 확보자가 서로 확인한 뒤 등반 신호를 주고받아요.</li>
+            <li>혼자 오르지 않아요. 2인 1조가 원칙이고, 처음 가는 암장은 안전수칙 및 서약서를 확인해요.</li>
+            <li>확보는 확보 테스트를 통과했거나 교육을 받은 사람이 해요.</li>
+          </ul>
+        </section>
+        <section class="ab-sec">
+          <h3>오르는 중</h3>
+          <ul>
+            <li>모든 퀵드로우에 로프를 통과시키고, 건너뛰지 않아요.</li>
+            <li>첫 클립을 하기 전까지 확보자는 등반자의 등과 머리를 받칠 준비를 해요(스팟팅).</li>
+            <li>일정 높이 이상(최소 3퀵 이상) 클립하기 전에는 로프에 여유를 많이 주지 않아요.</li>
+            <li>확보자는 등반자에게서 눈을 떼지 않고, 확보자에게 말을 걸지 않아요.</li>
+            <li>추락할 때 손으로 로프나 퀵드로우를 잡지 않아요.</li>
+            <li>기다리는 사람이 많을 때에는 텐션을 많이 받지 않아요.</li>
+          </ul>
+        </section>
+        <section class="ab-sec">
+          <h3>내려올 때</h3>
+          <ul>
+            <li>확보자는 등반자를 발목에 충격이 가지 않도록 안전하게 내려줘요.</li>
+          </ul>
+        </section>
+        <section class="ab-sec">
+          <p>암장 안내판 등을 참고해 정리한 것이에요. 암장 안내판과 안전관리요원의 안내가 우선이고, 교육이나 확보 테스트가 필요한 암장도 있어요.</p>
+        </section>
+        <section class="sf-pledge-box">
+          <button type="button" class="sf-pledge" id="sf-pledge">알고 있어요. 지키겠습니다</button>
+          <p class="sf-pledged" id="sf-pledged" tabindex="-1" hidden><span class="sf-stamp" aria-hidden="true">✓</span>약속했어요 · <span id="sf-pledged-day"></span></p>
+          <p class="sf-note" id="sf-note">읽고 나 자신에게 하는 약속이에요. 같이 가요 초대에 ‘안전수칙 지켜요’가 붙어요.</p>
+        </section>
+        <button class="sh-close">닫기</button>
       </form>
     </dialog>
     <dialog id="about-sheet" class="sheet" aria-labelledby="about-title">

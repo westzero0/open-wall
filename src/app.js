@@ -23,6 +23,7 @@ import { areaList } from './areas.js';
 import { el } from './dom.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
+import { createSafetyView } from './safety-view.js';
 import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
@@ -118,6 +119,7 @@ createProfileView({
   importFile: logView.importFile,
   getLogCount: logView.count,
 });
+createSafetyView();
 // ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
 // Every change goes through go(event): view-state.js decides the next state and the follow-ups, run here in order.
 let vs = initialView();

@@ -9,12 +9,15 @@ import { drawInviteCard, pictureBlob, saveFile } from './share-image.js';
 import { KAKAO_SAY, kakaoPayload, loadKakao, shareKakao } from './kakao-share.js';
 import { openIntervals } from './hours.js';
 import { toast } from './log-view.js';
+import { loadPledge } from './pledge.js';
 
 const $ = (id) => document.getElementById(id);
 const toMin = (hhmm) => {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm ?? '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
+
+const pledgeDay = () => { try { return loadPledge(localStorage); } catch { return null; } };
 
 /** createInviteView({ getWalls }) → { openInvite(name), banner(invite, wall) } */
 export function createInviteView({ getWalls }) {
@@ -196,10 +199,14 @@ export function createInviteView({ getWalls }) {
   function openInvite(name) {
     wall = getWalls().find((w) => w.name === name) ?? null;
     if (!wall) return;
-    tags = new Set();
+    const pledged = !!pledgeDay();
+    tags = new Set(pledged ? ['pledge'] : []); // the pledge tag exists only for someone who pledged; it starts on
     kind = 'look';
     for (const b of kindBtns) b.setAttribute('aria-pressed', String(b.dataset.kind === 'look'));
-    for (const b of tagBox.children) b.setAttribute('aria-pressed', 'false');
+    for (const b of tagBox.children) {
+      b.hidden = b.dataset.tag === 'pledge' && !pledged;
+      b.setAttribute('aria-pressed', String(tags.has(b.dataset.tag)));
+    }
     form.reset();
     if (ready) { URL.revokeObjectURL(ready.url); ready = null; }
     const first = weekendDays(new Date())[0].date; // the nearest weekend day, 14:00: a sensible start to change
