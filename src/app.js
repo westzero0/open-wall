@@ -10,7 +10,7 @@ import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, formatDistance } from './card-model.js';
+import { cardModel, feeTable, formatDistance } from './card-model.js';
 import { reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
@@ -409,10 +409,39 @@ function seasonSunBlock(wall, at, d) {
       el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')));
 }
 
-// The folded part: one picture at a time, [운영시간] [계절별 양달] tabs (arrows/Home/End move). Starts on 운영시간
+// 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
+// a note: its name and the note over the other three. The discount is one line under the table.
+function feesBlock(wall) {
+  const t = feeTable(wall);
+  if (!t) return null;
+  const cell = (tag, text, attrs = {}) => el(tag, attrs, text);
+  const body = el('tbody', {});
+  for (const it of t.items) {
+    if (it.noteOnly) {
+      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', it.note, { colspan: '3', class: 'f-note' })));
+      continue;
+    }
+    it.rows.forEach((r, i) => {
+      const tr = el('tr', {});
+      if (i === 0) tr.append(cell('th', it.item, { scope: 'rowgroup', rowspan: String(it.rows.length + (it.note ? 1 : 0)) }));
+      tr.append(cell('td', r.who, { class: 'f-who' }));
+      if (r.all !== undefined) tr.append(cell('td', r.all, { colspan: '2', class: 'f-all' }));
+      else tr.append(cell('td', r.weekday, { class: 'f-won' }), cell('td', r.weekend, { class: 'f-won' }));
+      body.append(tr);
+    });
+    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: '3', class: 'f-note' })));
+  }
+  return el('section', { class: 'fees', 'aria-label': '요금' },
+    el('table', {},
+      el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'), cell('th', '평일'), cell('th', '휴일'))),
+      body),
+    t.discount ? el('p', { class: 'f-disc' }, t.discount) : null);
+}
+
+// The folded part: one picture at a time, [운영시간] [계절별 양달] (and [요금] with a fee table) tabs (arrows/Home/End move). Starts on 운영시간
 // each time the row opens (vs.moreTab resets with the row); the switch is instant, no motion.
 function moreTabs(wall, at, d, id) {
-  const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)]].filter(([, p]) => p);
+  const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)], ['요금', feesBlock(wall)]].filter(([, p]) => p);
   if (panes.length < 2) return panes.map(([, p]) => p);
   const tabs = panes.map(([label], i) => el('button', {
     type: 'button', role: 'tab', id: `${id}-t${i}`, 'aria-controls': `${id}-p${i}`,
@@ -748,7 +777,7 @@ function rowDetails(m, wall, at, id) {
   const sumState = el('span', { class: 'sum-s' }, vs.moreOpen ? '접기' : '더 보기');
   // folded: the pictures only, one at a time (hours grid | seasonal sun)
   const more = el('details', { class: 'more2' },
-    el('summary', {}, el('span', { class: 'sum-t' }, '시간표 · 계절'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
+    el('summary', {}, el('span', { class: 'sum-t' }, wall.fees?.length ? '시간표 · 계절 · 요금' : '시간표 · 계절'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
     ...moreTabs(wall, at, dial, id));
   more.open = vs.moreOpen;
   // one control opens the folded part: its summary row (the old "자세히" button did the same)

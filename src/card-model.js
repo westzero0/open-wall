@@ -162,6 +162,35 @@ function memoLines(memo) {
   return [...lines.filter((l) => l.key), ...lines.filter((l) => !l.key)];
 }
 
+// ---- fees (wall.fees / wall.discount, cleaned in normalizeWall) ----
+const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g, ',')}원`);
+const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
+// The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
+// only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '-' when only one is known.
+// An item with only a note is one row (noteOnly). null without fees.
+export function feeTable(wall) {
+  const fees = wall.fees ?? [];
+  if (!fees.length) return null;
+  return {
+    items: fees.map((f) => {
+      const rows = WHO.filter(([k]) => f[k]).map(([k, who]) => (
+        f[k].all !== undefined ? { who, all: won(f[k].all) }
+          : { who, weekday: f[k].weekday !== undefined ? won(f[k].weekday) : '-', weekend: f[k].weekend !== undefined ? won(f[k].weekend) : '-' }));
+      return { item: f.item, rows, note: f.note ?? null, noteOnly: !rows.length };
+    }),
+    discount: wall.discount || null,
+  };
+}
+
+// The card's 이용료 line, from the first fee item's adult price; null when it has none (the memo's line stays).
+function feeMemoLine(wall) {
+  const a = wall.fees?.[0]?.adult;
+  if (!a) return null;
+  const value = a.all !== undefined ? `성인 ${won(a.all)}`
+    : `성인 ${[a.weekday !== undefined && `평일 ${won(a.weekday)}`, a.weekend !== undefined && `휴일 ${won(a.weekend)}`].filter(Boolean).join(' · ')}`;
+  return { label: '이용료', value, key: false };
+}
+
 // The memo sorted into what the expanded row draws. address: the 주소 line; sizes: 폭 (from "폭 30m") and
 // 높이 (height_m); rest: the other lines as 안내, closures and warnings first, then lines about
 // hours/seasons, then the rest (each group in memo order).
@@ -269,7 +298,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
   const winterNote = status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null;
   const rainNote = wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
-  const memo = memoLines(wall.memo);
+  const feeLine = feeMemoLine(wall);
+  const memo = feeLine ? [...memoLines(wall.memo).filter((l) => l.label !== '이용료'), feeLine] : memoLines(wall.memo);
   const facts = memoFacts(wall, memo);
   // the 주소 row right below already starts with the region ("서울 광진구 자양동 …"): don't say it twice
   const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
@@ -322,6 +352,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     sizes: facts.sizes,
     address: facts.address,
     memo,
+    fees: feeTable(wall),
     approxNote,
     today: { lead: `${day.season ? `${day.season} · ` : ''}${dayLabel}${plain ? '' : ' 운영'}`, text: day.text },
     holiday: day.holiday,

@@ -167,6 +167,40 @@ function cleanSeasons(v) {
     .filter((s) => Object.keys(s.hours).length);
 }
 
+// fees: [{item, adult?, youth?, child?, note?}], each who = {all} or {weekday?, weekend?} in won (integers >= 0);
+// bad numbers/groups dropped, an item with no price and no note dropped; discount: one line of text.
+export const MAX_FEES = 20;
+const MAX_FEE_TEXT = 40;
+const MAX_FEE_NOTE = 120;
+const MAX_DISCOUNT = 160;
+const MAX_WON = 10_000_000;
+const cleanWon = (n) => (Number.isInteger(n) && n >= 0 && n <= MAX_WON ? n : undefined);
+function cleanWho(v) {
+  if (!isPlainObject(v)) return null;
+  const out = {};
+  for (const k of ['all', 'weekday', 'weekend']) if (cleanWon(v[k]) !== undefined) out[k] = v[k];
+  if (out.all !== undefined) return { all: out.all }; // "all" says weekday and weekend are the same
+  return Object.keys(out).length ? out : null;
+}
+function cleanFees(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const f of v) {
+    if (!isPlainObject(f) || typeof f.item !== 'string' || !f.item.trim()) continue;
+    const row = { item: f.item.trim().slice(0, MAX_FEE_TEXT) };
+    for (const who of ['adult', 'youth', 'child']) {
+      const w = cleanWho(f[who]);
+      if (w) row[who] = w;
+    }
+    const note = typeof f.note === 'string' ? f.note.trim().slice(0, MAX_FEE_NOTE) : '';
+    if (note) row.note = note;
+    if (row.adult || row.youth || row.child || row.note) out.push(row);
+    if (out.length === MAX_FEES) break;
+  }
+  return out;
+}
+const cleanDiscount = (v) => (typeof v === 'string' ? v.trim().slice(0, MAX_DISCOUNT) : '');
+
 export const isDateStr = (s) => {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(`${s}T00:00:00Z`);
@@ -227,6 +261,8 @@ export function normalizeWall(raw) {
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
   const seasons = cleanSeasons(raw.seasons);
+  const fees = cleanFees(raw.fees);
+  const discount = fees.length ? cleanDiscount(raw.discount) : ''; // a discount line belongs to a fee table
   const exceptions = getExceptions(raw.exceptions);
   const contact = cleanContact(raw.contact);
   const sun = cleanSun(raw.sun);
@@ -264,6 +300,8 @@ export function normalizeWall(raw) {
     sun,
     name,
     ...(seasons.length ? { seasons } : {}),
+    ...(fees.length ? { fees } : {}),
+    ...(discount ? { discount } : {}),
     ...(shadow ? { shadow } : {}),
     ...(sun_override.length ? { sun_override } : {}),
     ...(location ? { location } : {}),
@@ -303,7 +341,7 @@ export function keepGeo(old, next) {
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -329,7 +367,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
       // holiday / nth closures fill only walls that have none (an edited rule stays)

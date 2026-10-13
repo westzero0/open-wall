@@ -609,6 +609,16 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
    Hatching only ever means "not usable" (휴게, 휴무, 동절기 휴장). */
 .hgrid { --lab: 3.6rem; }
 .ssun { --lab: 0px; } /* rows carry their own text line, so the bars take the full width */
+.fees table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.fees th, .fees td { padding: var(--sp-6) var(--sp-6); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
+.fees tbody th { font-weight: 700; width: 34%; }
+.fees .f-who { color: var(--muted); white-space: nowrap; }
+.fees .f-won, .fees .f-all { text-align: right; white-space: nowrap; }
+.fees .f-all { text-align: center; }
+.fees thead th:nth-child(n+3) { text-align: right; }
+.fees .f-note { color: var(--muted); font-size: var(--fs-xs); }
+.f-disc { margin: var(--sp-8) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .g-segrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); margin-bottom: var(--sp-8); }
 .g-segrow .g-seg { margin-bottom: 0; flex: 1 1 9rem; }
 .g-months { font-size: var(--fs-sm); color: var(--muted); }
