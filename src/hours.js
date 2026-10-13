@@ -16,9 +16,12 @@ export function inWinter(wall, date) {
 // Hours value of a weekday key, or 'hol' (public holiday), in or out of the winter season:
 // a pair, a list of pairs, null (closed) or undefined (not entered / no holiday rule).
 // holiday 'weekend' reads Saturday's hours (Sunday can carry nth closures, e.g. 둘째·넷째 일요일).
-export function slotOf(wall, key, winter) {
+// `date` (optional): a wall.seasons entry covering its month replaces the default/winter hours (a winter closure still wins).
+export function slotOf(wall, key, winter, date) {
   if (winter && wall.winter?.type === 'closed') return null;
-  const src = winter && wall.winter?.type === 'changed' ? wall.winter.hours ?? {} : wall.hours;
+  const m = date && date.getMonth() + 1;
+  const season = m && wall.seasons?.find((s) => (s.from_month <= s.to_month ? m >= s.from_month && m <= s.to_month : m >= s.from_month || m <= s.to_month));
+  const src = season ? season.hours : winter && wall.winter?.type === 'changed' ? wall.winter.hours ?? {} : wall.hours;
   if (key === 'hol') return wall.holiday === 'closed' ? null : wall.holiday === 'weekend' ? src?.sat : undefined;
   return src?.[key];
 }
@@ -36,13 +39,13 @@ const nthClosed = (wall, date) => (wall.exceptions?.nth_closed ?? [])
 export function dayRule(wall, date) {
   const winter = inWinter(wall, date);
   const day = DAY_KEYS[date.getDay()];
-  const own = slotOf(wall, day, winter);
+  const own = slotOf(wall, day, winter, date);
   const holiday = holidayName(date);
   const key = holiday && own !== null && (wall.holiday === 'weekend' || wall.holiday === 'closed') ? 'hol' : day;
   const base = { key, winter, holiday };
   if (wall.exceptions?.closed_dates?.includes(ymd(date))) return { ...base, slot: null, why: 'closed_date' };
   if (nthClosed(wall, date)) return { ...base, slot: null, why: 'nth' };
-  return { ...base, slot: key === 'hol' ? slotOf(wall, 'hol', winter) : own, why: null };
+  return { ...base, slot: key === 'hol' ? slotOf(wall, 'hol', winter, date) : own, why: null };
 }
 
 // Day value (pair, list of pairs) for the calendar day, or null (closed / not entered).
@@ -111,7 +114,7 @@ export function openIntervals(wall, date) {
 
 export function hasHours(wall) {
   const defined = (h) => h && DAY_KEYS.some((k) => h[k] !== undefined);
-  return Boolean(defined(wall.hours) || (wall.winter?.type === 'changed' && defined(wall.winter.hours)));
+  return Boolean(defined(wall.hours) || (wall.winter?.type === 'changed' && defined(wall.winter.hours)) || wall.seasons?.some((s) => defined(s.hours)));
 }
 
 function baseStatus(wall, at) {

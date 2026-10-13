@@ -231,7 +231,7 @@ export function weeklyHours(wall, date, pick = null) {
     return { ...base, rows: [{ key: 'winter', days: '동절기', text: '외벽 휴장', range: '외벽 휴장', today: live, intervals: [], breaks: [], closed: true, nth: null }] };
   }
   const rows = [...WEEK, ['hol', '공휴일']].map(([key, days]) => {
-    const v = slotOf(wall, key, winter);
+    const v = slotOf(wall, key, winter, live ? date : undefined); // a previewed season has no date: seasons entries don't apply
     const nth = wall.exceptions?.nth_closed?.find((r) => r.day === key)?.nth ?? null;
     const today = live && rule.key === key;
     if (v === undefined) {
@@ -281,7 +281,8 @@ export function seasonSun(wall, at) {
   return seasonWindows(wall, at.getFullYear()).map((s, i) => {
     const [, , mo, d] = SEASON_DAYS[i];
     // the picked date's own season for its row (봄·가을 spans both), else the season day's
-    const v = slotOf(wall, key, inWinter(wall, i === cur ? at : new Date(at.getFullYear(), mo, d)));
+    const day = i === cur ? at : new Date(at.getFullYear(), mo, d);
+    const v = slotOf(wall, key, inWinter(wall, day), day);
     const open = v ? dayHours(v).intervals.map(([a, b]) => [a, Math.min(b, 1440)]) : [];
     const on = overlap(open, s.windows);
     return { ...s, open, on, closed: v === null, unknown: v === undefined, current: i === cur };

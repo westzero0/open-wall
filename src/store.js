@@ -159,6 +159,14 @@ function getWinter(v) {
   };
 }
 
+// seasons: [{from_month, to_month, hours}] — bad entries dropped (bad months, hours that are not an object)
+function cleanSeasons(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((s) => isPlainObject(s) && isMonth(s.from_month) && isMonth(s.to_month) && isPlainObject(s.hours))
+    .map((s) => ({ from_month: s.from_month, to_month: s.to_month, hours: cleanHours(s.hours) }))
+    .filter((s) => Object.keys(s.hours).length);
+}
+
 export const isDateStr = (s) => {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(`${s}T00:00:00Z`);
@@ -218,6 +226,7 @@ export function normalizeWall(raw) {
   const tags = getStringArray(raw.tags);
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
+  const seasons = cleanSeasons(raw.seasons);
   const exceptions = getExceptions(raw.exceptions);
   const contact = cleanContact(raw.contact);
   const sun = cleanSun(raw.sun);
@@ -254,6 +263,7 @@ export function normalizeWall(raw) {
     contact,
     sun,
     name,
+    ...(seasons.length ? { seasons } : {}),
     ...(shadow ? { shadow } : {}),
     ...(sun_override.length ? { sun_override } : {}),
     ...(location ? { location } : {}),
@@ -293,7 +303,7 @@ export function keepGeo(old, next) {
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['indoor_hours', 'indoor_winter', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -319,7 +329,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
       // holiday / nth closures fill only walls that have none (an edited rule stays)
