@@ -207,17 +207,17 @@ export const isDateStr = (s) => {
   return !Number.isNaN(+d) && d.toISOString().startsWith(s);
 };
 
-// [{ day: 'sun', nth: [2, 4] }] = 둘째·넷째 일요일 휴무. nth 1–5, sorted, no repeats; bad entries dropped,
-// entries of the same day merged.
+// [{ day: 'sun', nth: [2, 4] }] = 둘째·넷째 일요일 휴무. nth 1–5, or -1 = the month's last one (매월 마지막 주 월요일);
+// sorted (-1 last), no repeats; bad entries dropped, entries of the same day merged.
 function cleanNthClosed(v) {
   if (!Array.isArray(v)) return [];
   const byDay = new Map();
   for (const r of v) {
     if (!isPlainObject(r) || !DAYS.includes(r.day) || !Array.isArray(r.nth)) continue;
-    const nth = r.nth.filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+    const nth = r.nth.filter((n) => Number.isInteger(n) && (n === -1 || (n >= 1 && n <= 5)));
     if (nth.length) byDay.set(r.day, [...(byDay.get(r.day) ?? []), ...nth]);
   }
-  return [...byDay].map(([day, nth]) => ({ day, nth: [...new Set(nth)].sort((a, b) => a - b) }));
+  return [...byDay].map(([day, nth]) => ({ day, nth: [...new Set(nth)].sort((a, b) => (a === -1) - (b === -1) || a - b) }));
 }
 
 function getExceptions(v) {

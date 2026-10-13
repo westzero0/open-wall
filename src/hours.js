@@ -28,8 +28,15 @@ export function slotOf(wall, key, winter, date) {
 
 // 1 for the 1st–7th of the month, 2 for the 8th–14th, …: "둘째 일요일" is the Sunday with nth 2.
 export const nthOfMonth = (date) => Math.ceil(date.getDate() / 7);
-const nthClosed = (wall, date) => (wall.exceptions?.nth_closed ?? [])
-  .some((r) => r.day === DAY_KEYS[date.getDay()] && r.nth.includes(nthOfMonth(date)));
+// The nth (1–5, or -1 = the month's last) that closes this day, or null. A positive nth wins over -1.
+export function nthHit(wall, date) {
+  const r = (wall.exceptions?.nth_closed ?? []).find((x) => x.day === DAY_KEYS[date.getDay()]);
+  if (!r) return null;
+  const n = nthOfMonth(date);
+  if (r.nth.includes(n)) return n;
+  return r.nth.includes(-1) && date.getDate() + 7 > new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate() ? -1 : null;
+}
+const nthClosed = (wall, date) => nthHit(wall, date) !== null;
 
 // The one rule for a calendar day; every status, bar, table row and break reads it (through daySlot).
 // key: the timetable row the day follows ('hol' when a holiday rule replaces the weekday).

@@ -27,7 +27,7 @@ const DAY_KO_KEY = Object.fromEntries(DAY_COLS.map(([k, ko]) => [ko, k]));
 // '일 2,4; 토 1' → [{ day: 'sun', nth: [2, 4] }, { day: 'sat', nth: [1] }]
 function nthList(s) {
   return list(s).map((item) => {
-    const m = item.match(/^([월화수목금토일])\s*([1-5](?:\s*,\s*[1-5])*)$/);
+    const m = item.match(/^([월화수목금토일])\s*(-?[1-5](?:\s*,\s*-?[1-5])*)$/);
     if (!m) throw new Error(`격주휴무 형식 오류: ${item} (예: 일 2,4)`);
     return { day: DAY_KO_KEY[m[1]], nth: m[2].split(',').map(Number) };
   });

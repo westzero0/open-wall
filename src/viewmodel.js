@@ -2,7 +2,7 @@
 // the time words and slider, the bar/axis math and the hours tables of the "더 보기" pictures.
 // One card's values are composed in card-model.js; the saved filters live in ui-state.js.
 import { areaOf } from './areas.js';
-import { dayRule, hasHours, inWinter, nthOfMonth, openIntervals, orderIntervals, slotOf } from './hours.js';
+import { dayRule, hasHours, inWinter, nthHit, openIntervals, orderIntervals, slotOf } from './hours.js';
 import { isSunlit, sunWindows } from './sun.js';
 import { DAY_KEYS, DAY_KO, toMin, ymd } from './time.js';
 
@@ -217,6 +217,7 @@ function dayHours(v) {
   };
 }
 export const NTH_KO = ['', '첫째', '둘째', '셋째', '넷째', '다섯째'];
+NTH_KO[-1] = '마지막 주'; // nth -1: "마지막 주 월요일"
 const HOL_NONE = { weekday: '평소 요일대로' };
 export function weeklyHours(wall, date, pick = null) {
   const rule = dayRule(wall, date);
@@ -259,7 +260,7 @@ export function dayLine(wall, date) {
   if (!hasHours(wall)) return { season, closed: false, text: unknownText(wall), holiday };
   let text = '휴무';
   if (rule.why === 'closed_date') text = '임시 휴장 · 휴무';
-  else if (rule.why === 'nth') text = `${NTH_KO[nthOfMonth(date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
+  else if (rule.why === 'nth') text = `${NTH_KO[nthHit(wall, date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
   else if (season && wall.winter.type === 'closed') text = '외벽 휴장';
   else if (rule.key === 'hol' && wall.holiday === 'closed') text = '공휴일 휴무';
   else if (rule.slot === undefined) text = '운영시간 미입력';
