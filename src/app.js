@@ -462,7 +462,8 @@ function feesBlock(wall) {
 // each time the row opens (vs.moreTab resets with the row); the switch is instant, no motion.
 function moreTabs(wall, at, d, id) {
   const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)], ['요금', feesBlock(wall)]].filter(([, p]) => p);
-  if (panes.length < 2) return panes.map(([, p]) => p);
+  const labels = panes.map(([label]) => label); // the fold's title names what is in it (an indoor wall has no 계절별 양달)
+  if (panes.length < 2) return Object.assign(panes.map(([, p]) => p), { labels });
   const tabs = panes.map(([label], i) => el('button', {
     type: 'button', role: 'tab', id: `${id}-t${i}`, 'aria-controls': `${id}-p${i}`,
   }, label));
@@ -486,7 +487,7 @@ function moreTabs(wall, at, d, id) {
     });
   });
   pick(Math.min(vs.moreTab, tabs.length - 1), false);
-  return [el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels];
+  return Object.assign([el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels], { labels });
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -804,14 +805,18 @@ function rowDetails(m, wall, at, id) {
   // the 안내 overflow folds again and the "더 보기" fold survives re-renders (slider) through vs.infoOpen / vs.moreOpen
   const sumState = el('span', { class: 'sum-s' }, vs.moreOpen ? '접기' : '더 보기');
   // folded: the pictures only, one at a time (hours grid | seasonal sun)
+  const panes = moreTabs(wall, at, dial, id);
+  // folded: the title says what is inside; opened: the tabs say it, so the title gives way (no same names twice in a row)
+  const sumTitle = el('span', { class: 'sum-t' }, vs.moreOpen && panes.labels.length > 1 ? '상세 정보' : panes.labels.join(' · '));
   const more = el('details', { class: 'more2' },
-    el('summary', {}, el('span', { class: 'sum-t' }, wall.fees?.length ? '시간표 · 계절 · 요금' : '시간표 · 계절'), sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
-    ...moreTabs(wall, at, dial, id));
+    el('summary', {}, sumTitle, sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
+    ...panes);
   more.open = vs.moreOpen;
   // one control opens the folded part: its summary row (the old "자세히" button did the same)
   more.addEventListener('toggle', () => {
     if (more.closest('.row.is-open')) go({ type: 'more', open: more.open }); // a row being closed doesn't speak for the open one
     sumState.textContent = more.open ? '접기' : '더 보기';
+    sumTitle.textContent = more.open && panes.labels.length > 1 ? '상세 정보' : panes.labels.join(' · ');
   });
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
   const photoAsk = photoLink(m);
