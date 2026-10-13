@@ -24,7 +24,7 @@ export function applyTextSize(size) {
 }
 
 /** createProfileView({getTheme, setTheme, getTextSize, setTextSize, exportFile, importFile, getLogCount}): wires the static sheet in index.html. */
-export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize, exportFile, importFile, getLogCount = () => 0 }) {
+export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize, exportFile, importFile, getLogCount = () => 0, getWallNames = () => [] }) {
   const dlg = $('profile');
   const form = dlg.querySelector('form');
   const status = $('logBackupStatus');
@@ -76,9 +76,12 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     status.textContent = await importFile(file);
   });
 
-  if (config.reportFormUrl) { // fixed constant, not user input
-    $('pfReport').href = config.reportFormUrl;
+  if (config.reportEndpoint) { // 정보 제보하기 opens the report sheet with a wall picker (the sheet itself falls back to the form link)
     $('pfReportRow').hidden = false;
+    $('pfReport').addEventListener('click', () => {
+      dlg.close();
+      document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: '', names: getWallNames() } }));
+    });
   }
   // 앱 정보 sheet: opened from the footer and from 내 정보; focus returns to whatever opened it
   const about = $('about-sheet');

@@ -285,7 +285,7 @@
           <p class="pf-ios" id="pfInstallIos" hidden>홈 화면에 추가하려면 공유 버튼 ▸ ‘홈 화면에 추가’를 누르세요.</p>
         </div>
         <div class="sh-row" id="pfReportRow" hidden>
-          <a class="pf-link" id="pfReport" target="_blank" rel="noopener noreferrer">정보 제보하기 <span>구글 폼 · 새 창</span></a>
+          <button type="button" class="pf-link" id="pfReport">정보 제보하기 <span>암장 고르기</span></button>
         </div>
         <div class="sh-row">
           <a class="pf-link" id="pfAbout" href="#about-sheet">앱 정보 <span>자료 출처 · 개인정보</span></a>
@@ -512,6 +512,7 @@
           <h2 id="report-title">정보 수정 요청</h2>
         </div>
         <p class="rp-field">암장 이름<strong class="rp-name"></strong></p>
+        <label class="rp-field rp-pick" hidden>암장 고르기<select name="wall"></select></label>
         <fieldset class="sh-row">
           <legend>무엇이 달라졌나요</legend>
           <div class="segs">
@@ -552,6 +553,11 @@
           </div>
         </fieldset>
         <label class="rp-field"><span class="rp-label">내용</span><textarea name="body" rows="4"></textarea></label>
+        <div class="rp-evidence" hidden>
+          <label class="rp-field">사진 첨부 (선택)<input type="file" name="evidence" accept="image/*"></label>
+          <img class="rp-photo-preview" alt="고른 사진 미리보기" hidden>
+          <p class="sh-hint">안내문·시간표·요금표처럼 근거가 되는 사진을 붙일 수 있어요. 글 없이 사진만 보내도 돼요. 사진은 운영자만 보고, 촬영 위치는 지우고 올려요.</p>
+        </div>
         <label class="rp-field rp-nick" hidden><span class="rp-nick-label">닉네임</span><input name="nick" maxlength="6" autocomplete="off"><span class="sh-hint">이벤트 랭킹에 공개돼요. 본명·연락처는 적지 마세요.</span><span class="sh-hint rp-nick-lock" hidden>이벤트 중에는 바꿀 수 없어요.</span></label>
         <label class="rp-field rp-note">확인한 날짜 또는 출처 링크 (선택)<input name="note" maxlength="300" autocomplete="off"></label>
         <input class="rp-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">

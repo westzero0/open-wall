@@ -25,6 +25,10 @@ if (dlg) {
   const nameEl = dlg.querySelector('.rp-name');
   const chatNameEl = dlg.querySelector('.rp-chat-name'); // the suggested room name, one tap selects it
   const say = (msg) => { status.textContent = msg; };
+  const pickBox = dlg.querySelector('.rp-pick');
+  const pickEl = f.elements.wall;
+  const setWall = (n) => { wallName = n; nameEl.textContent = n; chatNameEl.textContent = n ? `[해벽] ${n} 모임` : '[해벽] 암장이름 모임'; };
+  pickEl.addEventListener('change', () => setWall(pickEl.value));
 
   f.elements.body.maxLength = MAX_BODY;
   alt.href = config.reportFormUrl; // fixed constant, not user input
@@ -41,10 +45,13 @@ if (dlg) {
   };
   // One report per tab: each kind keeps its own memo/source draft, the send button lives only while the current kind has something to send,
   // and a sent report empties just its own tab.
+  const EVIDENCE_OK = (kind) => !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방'; // kinds that can carry a supporting picture
   let cur = '';
   let drafts = {};
   let busy = false;
-  const hasContent = (kind) => {
+  const hasEvidence = (kind) => EVIDENCE_OK(kind) && !!f.elements.evidence.files?.length;
+  const hasContent = (kind) => hasText(kind) || hasEvidence(kind);
+  const hasText = (kind) => {
     const v = (n) => f.elements[n].value.trim();
     switch (kind) {
       case '': return false;
@@ -64,6 +71,7 @@ if (dlg) {
     f.elements.body.value = ''; f.elements.note.value = '';
     delete drafts[kind];
     if (kind === PHOTO_KIND) clearPreview();
+    else { f.elements.evidence.value = ''; clearEvidencePreview(); }
   };
   const onKind = () => {
     const prev = cur;
@@ -85,7 +93,20 @@ if (dlg) {
     const photo = kind === PHOTO_KIND; // no nickname or source line for a photo; the Worker takes only the picture and a short memo
     f.querySelector('.rp-note').hidden = photo;
     nickBox.hidden = mode === 'off' || photo;
+    evidenceBox.hidden = !EVIDENCE_OK(kind);
   };
+  const evidenceBox = dlg.querySelector('.rp-evidence');
+  const evidencePreview = evidenceBox.querySelector('.rp-photo-preview');
+  let evidenceUrl = '';
+  const clearEvidencePreview = () => { if (evidenceUrl) URL.revokeObjectURL(evidenceUrl); evidenceUrl = ''; evidencePreview.hidden = true; evidencePreview.removeAttribute('src'); };
+  f.elements.evidence.addEventListener('change', () => {
+    clearEvidencePreview();
+    const file = f.elements.evidence.files?.[0];
+    if (!file) return;
+    evidenceUrl = URL.createObjectURL(file);
+    evidencePreview.src = evidenceUrl;
+    evidencePreview.hidden = false;
+  });
   const preview = dlg.querySelector('.rp-photo-preview');
   let previewUrl = '';
   const clearPreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; preview.hidden = true; preview.removeAttribute('src'); };
@@ -97,31 +118,41 @@ if (dlg) {
     preview.src = previewUrl;
     preview.hidden = false;
   });
-  dlg.addEventListener('close', clearPreview);
+  dlg.addEventListener('close', () => { clearPreview(); clearEvidencePreview(); });
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close()); // no inline onclick: the CSP blocks it
 
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
-  async function sendPhoto() {
-    if (!config.boardUrl) return say(PHOTO_SAY.network);
-    const file = f.elements.photo.files?.[0];
+  // Shrink + upload one picked file. Returns '' on success, else the message to show.
+  async function postPhoto(file, note) {
+    if (!config.boardUrl) return PHOTO_SAY.network;
+    let blob;
+    try { blob = await shrinkToJpeg(file); } catch (e) { return e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image; }
+    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note });
+    return r.ok ? '' : PHOTO_SAY[r.why];
+  }
+  // Photo-only send: the 암장 사진 tab, or any other kind that has a picture but no text.
+  async function sendPhoto(kind) {
+    const input = kind === PHOTO_KIND ? f.elements.photo : f.elements.evidence;
+    const file = input.files?.[0];
+    if (!wallName) return say('암장을 먼저 골라 주세요.');
     if (!file) return say('보낼 사진을 골라 주세요.');
-    const note = f.elements.body.value.replace(/\s+/g, ' ').trim();
-    if ([...note].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
+    const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
+    if ([...memo].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
     busy = true; refresh();
     const done = () => { busy = false; refresh(); };
-    if (f.elements.website.value !== '') { set(); clearTab(PHOTO_KIND); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
+    if (f.elements.website.value !== '') { set(); clearTab(kind); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
     say('사진을 줄여서 보내는 중…');
-    let blob;
-    try { blob = await shrinkToJpeg(file); } catch (e) { done(); return say(e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image); }
-    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note });
-    if (!r.ok) { done(); return say(PHOTO_SAY[r.why]); }
+    const err = await postPhoto(file, kind === PHOTO_KIND ? memo : evidenceNote(kind, memo));
+    if (err) { done(); return say(err); }
     set();
-    clearTab(PHOTO_KIND); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
+    clearTab(kind); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
     done();
     say(PHOTO_SAY.ok);
   }
+  // The Worker keeps only a wall + short memo per photo, so the kind rides in the memo: "[운영시간] 입구 안내문".
+  const evidenceNote = (kind, memo) => [...`[${kind}] ${memo}`.trim()].slice(0, MAX_NOTE).join('');
   for (const r of f.elements.kind) r.addEventListener('change', onKind);
 
   document.addEventListener('wall:report', (e) => {
@@ -132,14 +163,18 @@ if (dlg) {
       f.elements.nick.readOnly = locked;
       nickBox.querySelector('.rp-nick-lock').hidden = !locked;
     }
-    const { name, kind } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind
+    const { name, kind, names } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
+    const picking = Array.isArray(names) && !name;
+    pickBox.hidden = !picking;
+    nameEl.hidden = picking;
+    pickEl.replaceChildren(new Option('암장을 골라 주세요', ''), ...(picking ? names.map((n) => new Option(n, n)) : []));
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
-    clearPreview();
+    clearPreview(); clearEvidencePreview();
     drafts = {}; cur = f.elements.kind.value;
     syncKind();
-    wallName = name; nameEl.textContent = name; // read-only text, never typed
-    chatNameEl.textContent = `[해벽] ${name} 모임`;
+    setWall(name || ''); // read-only text or a pick from the list, never typed
+    if (picking) pickEl.value = '';
     busy = false; refresh();
     alt.hidden = true;
     say('');
@@ -150,7 +185,8 @@ if (dlg) {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (f.elements.send.disabled) return;
-    if (f.elements.kind.value === PHOTO_KIND) return sendPhoto();
+    const kind = f.elements.kind.value;
+    if (kind === PHOTO_KIND || (hasEvidence(kind) && !hasText(kind))) return sendPhoto(kind);
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
@@ -175,8 +211,12 @@ if (dlg) {
       }
       set();
     }
-    clearTab(f.elements.kind.value); // sent: this tab is emptied and the button goes off until it has new content
+    // text report went out; a attached picture goes to the board Worker after it (a failed picture must not hide that the text was sent)
+    const ev = hasEvidence(kind) ? f.elements.evidence.files[0] : null;
+    const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
+    const err = ev && !v.honeypot ? await postPhoto(ev, evidenceNote(kind, memo)) : '';
+    clearTab(kind); // sent: this tab is emptied and the button goes off until it has new content
     busy = false; refresh();
-    say('제보 고마워요. 확인 후 반영해요.');
+    say(err ? `글은 보냈어요. 사진은 보내지 못했어요: ${err}` : '제보 고마워요. 확인 후 반영해요.');
   });
 }

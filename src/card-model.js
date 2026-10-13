@@ -383,7 +383,6 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
       primary: wall.height_m ? `${wall.height_m}m` : '외벽',
       secondary: ['스피드월', '리드', '볼더', '실내벽'].find((t) => tags.includes(t)) ?? '',
     },
-    heroText: `${wall.height_m ? `높이 ${wall.height_m}m · ` : ''}사진 준비 중`,
     credit,
     // 다녀왔어요 pill: "다녀왔어요" until the first record, then "다녀옴 N번" (a tap adds one more)
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',

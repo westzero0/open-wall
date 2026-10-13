@@ -11,7 +11,7 @@ import {
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, formatDistance } from './card-model.js';
-import { reasonOf, weekendPicks } from './pick.js';
+import { WINDOW, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
@@ -118,6 +118,7 @@ createProfileView({
   exportFile: logView.exportFile,
   importFile: logView.importFile,
   getLogCount: logView.count,
+  getWallNames: () => state.walls.map((w) => w.name),
 });
 createSafetyView();
 // ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
@@ -187,12 +188,16 @@ function dayBarBlock(bar) {
 
 // 길찾기 · 공지사항 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
 const LINK_ICON = { 길찾기: 'nav', 공지사항: 'megaphone', '인스타 공지': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone', 문의: 'phone', 네이버지도: 'pin' };
-function linkBar(links) {
+function linkBar(links, copyText = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins
   if (!links.length) return null;
   const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
   return el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
-    ...ordered.map(({ label, href, sub }) => el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
-      LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)));
+    ...ordered.map(({ label, href, sub, primary }) => {
+      const a = el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
+        LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label);
+      if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
+      return a;
+    }));
 }
 
 const rowButtons = (name, ...extra) => {
@@ -261,30 +266,21 @@ function creditChip(c) {
     : el('span', { class: 'credit' }, c.text);
 }
 
-// no photo yet: a camera chip on the placeholder band opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no chip)
-function photoSend(m) {
+// no photo yet: a quiet link at the card's foot opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
+function photoLink(m) {
   if (m.photo || !config.boardUrl) return null;
-  const b = el('button', { type: 'button', class: 'photo-send', title: '외벽 사진 보내기', 'aria-label': `${m.name} 외벽 사진 보내기` },
-    icon('camera'), '사진 보내기');
+  const b = el('button', { type: 'button', class: 'help-link', 'aria-label': `${m.name} 외벽 사진 보내기` }, '사진 보내기');
   b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
   return b;
 }
 
-function hero(m) {
-  // no photo: a low band instead of a big grey box ("높이 15.5m · 사진 준비 중")
-  const ph = () => el('div', { class: 'hero ph', 'aria-hidden': 'true' }, el('span', {}, m.heroText));
-  if (!m.photo) return ph();
-  const img = el('img', { class: 'hero', src: m.photo, decoding: 'async', alt: `${m.name} 외벽 사진` });
-  img.addEventListener('error', () => img.replaceWith(ph()), { once: true });
-  return img;
-}
-
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
-// today's hours ride on its foot. The photo and its credit leave the expanded part, which would repeat them.
+// today's hours ride on its foot, ♥ and share on its corner. The photo, its credit and those icons leave the expanded part.
 function rowPhoto(m, li) {
   const img = el('img', { src: m.photo, decoding: 'async', loading: 'lazy', alt: `${m.name} 외벽 사진` });
   const wrap = el('div', { class: 'herowrap rhero' }, img,
-    el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)), creditChip(m.credit));
+    el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)),
+    el('div', { class: 'rhero-act' }, favBtn(m.name), shareBtn(m.name)), creditChip(m.credit));
   img.addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
   return wrap;
 }
@@ -486,7 +482,7 @@ function moreTabs(wall, at, d, id) {
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
 // "✓ 복사했어요" and the icon into a check for a moment). Next to it, an icon opens the route.
 function addrLine(m) {
-  if (!m.address) return null; // the route is the first cell of the link strip (linkBar), not an icon here
+  if (!m.address || m.route) return null; // with a route the 길찾기 cell stands for the address (and copies it); without one the address is all there is
   const text = el('span', { class: 'addr-t' }, m.address);
   const glyph = el('span', { class: 'addr-ic', 'aria-hidden': 'true' }, icon('copy'));
   const btn = el('button', { type: 'button', class: 'addr-btn', 'aria-label': `주소 복사: ${m.address}` }, text, glyph);
@@ -574,7 +570,6 @@ function renderFavStrip() {
 }
 
 // ---- 이번 주말 추천 (src/pick.js): a folded line above the timetable ----
-let pickDay = 0;
 let pickPref = 'auto';
 const PICK_PREFS = [['auto', '자동'], ['shade', '응달'], ['sun', '양달'], ['any', '오래']];
 const PICK_WORD = { shade: '응달 우선', sun: '양달 우선', any: '오래 탈 수 있는 곳' };
@@ -582,19 +577,13 @@ const PICK_WORD = { shade: '응달 우선', sun: '양달 우선', any: '오래 �
 // Jump the date and time controls to a moment (the same state a visitor gets by picking it), then re-render.
 const goToMoment = (date, min) => go({ type: 'moment', date, min });
 
-// A wall's picture for the pick: its photo (fixed box, lazy), else a grey mark of the logo and, on a tile, the wall's
-// height in metres. Decorative: the name and the reason beside it say everything.
+// A wall's picture for the pick: its photo (fixed box, lazy), else null (no tile: a grey mark read as a picture that failed
+// to load). Decorative: the name and the reason beside it say everything.
 function pickMedia(wall) {
+  if (!wall.photo) return null;
   const box = el('span', { class: 'pick-media', 'aria-hidden': 'true' });
-  const plain = () => box.replaceChildren(...[
-    el('span', { class: 'pick-mono' }),
-  ].filter(Boolean)); // (replaceChildren would print a null as the word "null")
-  if (!wall.photo) {
-    plain();
-    return box;
-  }
   const img = el('img', { src: `data/${wall.photo}`, alt: '', loading: 'lazy', decoding: 'async' });
-  img.addEventListener('error', plain, { once: true });
+  img.addEventListener('error', () => box.remove(), { once: true });
   box.append(img);
   return box;
 }
@@ -638,29 +627,21 @@ function renderPick() {
   const r = wanted ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue, weather: pickWeather }) : null;
   box.hidden = !r || r.byDay.every((d) => !d.items.length);
   if (box.hidden) return;
-  pickDay = Math.min(pickDay, r.days.length - 1);
-  const cur = r.byDay[pickDay];
-  const top = cur.items[0];
+  const top = r.byDay.find((d) => d.items.length)?.items[0]; // the folded line: the first pick of the first day that has one
   const goPick = (it) => {
     const first = (r.pref === 'shade' ? it.shade : r.pref === 'sun' ? it.sun : it.open)?.[0]?.[0] ?? it.open[0][0];
     goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
     revealClearing(it.wall.name);
   };
-  $('pick-thumb').replaceChildren(...(top ? [pickMedia(top.wall)] : []));
-  $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}${rainsOn(top) ? ' · 비 예보' : ''}` : `${cur.day.label}요일은 추천할 곳이 없어요`;
+  $('pick-thumb').replaceChildren(...[top && pickMedia(top.wall)].filter(Boolean)); // (replaceChildren would print a null as the word "null")
+  $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}${rainsOn(top) ? ' · 비 예보' : ''}` : '';
 
   const kids = [];
-  // the day is chosen right here (pills); only the basis hides behind the small 기준 button
-  const days = el('div', { class: 'pick-days', role: 'group', 'aria-label': '요일' },
-    ...r.days.map((d, i) => {
-      const b = el('button', { type: 'button', class: 'pick-day', 'aria-pressed': String(i === pickDay), 'data-focus': `day-${i}` }, dayText(d.date));
-      b.addEventListener('click', () => { pickDay = i; pickRefocus = `day-${i}`; renderPick(); });
-      return b;
-    }));
+  // the basis (자동 / 응달 / 양달 / 오래) is the one control; the days sit side by side, so there are no day pills
   const set = el('button', { type: 'button', class: 'pick-set', 'aria-expanded': String(pickBasisOpen), 'data-focus': 'set' },
     el('span', {}, `기준 · ${PICK_WORD[r.pref]}`), icon('sliders'));
   set.addEventListener('click', () => { pickBasisOpen = !pickBasisOpen; pickRefocus = 'set'; renderPick(); });
-  kids.push(el('div', { class: 'pick-bar' }, days, set));
+  kids.push(el('div', { class: 'pick-bar' }, set));
   if (pickBasisOpen) {
     kids.push(el('div', { class: 'pick-segs', role: 'group', 'aria-label': '기준' }, ...PICK_PREFS.map(([v, text]) => {
       const b = el('button', { type: 'button', class: 'pick-seg', 'aria-pressed': String(v === pickPref), 'data-focus': `기준-${v}` }, text);
@@ -669,25 +650,43 @@ function renderPick() {
     })));
     if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
   }
-  if (cur.items.length) {
-    // one compact row per wall: rank, small picture, name, the sun in a picture + the one-line reason, the hours at the right
-    kids.push(el('ul', { class: 'pick-list' }, ...cur.items.map((it, i) => {
-      const lean = it.wall.venue === 'indoor' ? 'indoor' : it.sunMin === null ? 'unknown' : (r.pref === 'shade' || (r.pref !== 'sun' && it.shadeMin > it.sunMin)) ? 'shade' : 'sun';
-      const b = el('button', { type: 'button', class: 'pick-row' },
-        el('span', { class: 'pick-rank' }, String(i + 1)),
-        el('span', { class: 'pick-rowthumb' }, pickMedia(it.wall)),
-        el('span', { class: 'pick-rowtext' },
-          el('span', { class: 'pick-name' }, shortName(it.wall)),
-          el('span', { class: `pick-why ${lean}` }, icon(lean), reasonOf(it, r.pref).short),
-          it.wx && it.wall.venue !== 'indoor' && (it.wx.rain || it.wx.windy) ? el('span', { class: 'pick-wxs' }, it.wx.rain ? el('span', { class: 'pick-wx' }, it.wx.rainText) : null, it.wx.windy ? el('span', { class: 'pick-wx' }, '바람 셈') : null) : null),
-        el('span', { class: 'pick-hours' }, `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`));
+  // a pill that every pick would carry says nothing: wind that is strong on all of them goes to the note instead
+  const shown = r.byDay.flatMap((d) => d.items).filter((it) => it.wall.venue !== 'indoor');
+  const allWindy = shown.length > 1 && shown.every((it) => it.wx?.windy);
+  // one column per day: the first pick large with its day bar (09–21: sun amber, shade blue; none for indoor or unknown sun),
+  // The picks follow the filters (지역·구분·기준); a day with none says so.
+  const bar = (it) => {
+    const seg = (cls, [x, y]) => el('span', { class: cls, style: `left:${((x - WINDOW[0]) / (WINDOW[1] - WINDOW[0]) * 100).toFixed(1)}%;width:${((y - x) / (WINDOW[1] - WINDOW[0]) * 100).toFixed(1)}%` });
+    const known = it.wall.venue !== 'indoor' && it.sun;
+    return known ? el('span', { class: 'pick-tl', 'aria-hidden': 'true' }, ...it.sun.map((v) => seg('sun', v)), ...it.shade.map((v) => seg('shade', v))) : null; // indoor / sun unknown: the hours in the text say it
+  };
+  const hoursOf = (it) => `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`;
+  const colOf = (d) => {
+    const head = el('span', { class: 'pick-dh' }, dayText(d.day.date));
+    if (!d.items.length) return el('div', { class: 'pick-col' }, head, el('p', { class: 'pick-empty' }, '추천할 곳이 없어요'));
+    // rain / wind ride the reason line as text (a pill beside the name broke the narrow cells onto a line of its own)
+    const wxOf = (it) => (it.wx && it.wall.venue !== 'indoor' ? [it.wx.rain ? it.wx.rainText : null, it.wx.windy && !allWindy ? '바람 셈' : null] : []).filter(Boolean).map((t) => ` · ${t}`).join('');
+    const [lead, ...rest] = d.items;
+    const leadBtn = el('button', { type: 'button', class: 'pick-lead', 'data-focus': `lead-${d.day.label}` },
+      el('span', { class: 'pick-line' },
+        el('span', { class: 'pick-name' }, shortName(lead.wall)),
+        el('span', { class: 'pick-why' }, `${reasonOf(lead, r.pref).short} · ${hoursOf(lead)}${wxOf(lead)}`)),
+      bar(lead));
+    leadBtn.addEventListener('click', () => goPick(lead));
+    const others = rest.map((it) => {
+      const b = el('button', { type: 'button', class: 'pick-next' },
+        el('span', { class: 'pick-name' }, shortName(it.wall)),
+        el('span', { class: 'pick-why' }, `${reasonOf(it, r.pref).short}${wxOf(it)}`),
+        bar(it));
       b.addEventListener('click', () => goPick(it));
-      return el('li', {}, b);
-    })));
-  } else {
-    kids.push(el('p', { class: 'pick-empty' }, '이 날은 조건에 맞는 곳이 없어요. 다른 날이나 기준을 골라 보세요.'));
-  }
-  kids.push(el('p', { class: 'pick-note' }, `운영시간과 해 계산 기준이에요.${wxPick.entry?.hours ? ' 비 예보인 외벽은 뒤에 둬요(예보는 틀릴 수 있어요).' : ''} 가기 전에 공지를 꼭 확인해 주세요.`));
+      return b;
+    });
+    return el('div', { class: 'pick-col' }, head, leadBtn, ...(others.length ? [el('div', { class: 'pick-rest' }, ...others)] : []));
+  };
+  kids.push(el('div', { class: `pick-cols${r.byDay.length === 1 ? ' one' : ''}` }, ...r.byDay.map(colOf)));
+  kids.push(el('p', { class: 'pick-key', 'aria-hidden': 'true' }, el('span', { class: 'k sun' }, '양달'), el('span', { class: 'k shade' }, '응달'), el('span', {}, '막대는 09시~21시')));
+  const rainy = r.byDay.some((d) => d.items.some(rainsOn));
+  kids.push(el('p', { class: 'pick-note' }, `${allWindy ? '바람이 센 예보예요. ' : ''}${rainy ? '비 예보인 외벽은 뒤에 둬요. ' : ''}운영시간·해 계산 기준이에요. 가기 전에 공지를 확인해 주세요.`));
   $('pick-body').replaceChildren(...kids);
   if (pickRefocus) $('pick-body').querySelector(`[data-focus="${pickRefocus}"]`)?.focus({ preventScroll: true });
   pickRefocus = null;
@@ -800,17 +799,19 @@ function rowDetails(m, wall, at, id) {
     sumState.textContent = more.open ? '접기' : '더 보기';
   });
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
-  const helps = config.reportEndpoint
-    ? el('div', { class: 'help-row' },
-      el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
-      m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
+  const photoAsk = photoLink(m);
+  const helps = config.reportEndpoint || photoAsk
+    ? el('div', { class: 'help-row' }, photoAsk,
+      ...(config.reportEndpoint ? [
+        el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
+        m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가')] : []))
     : null;
   return [
-    m.photo ? null : el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit), photoSend(m)),
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
-        el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
+        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row; ♥ and share are on the photo
+          : el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
         m.place || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null,
         m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
           el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
@@ -821,7 +822,7 @@ function rowDetails(m, wall, at, id) {
         // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
         el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null), // the one filled pill; the crowd question is a text link
         ...weatherBox(m),
-        linkBar(m.links), // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        linkBar(m.links, m.navAddress ?? m.address), // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes].join(' · ')) : null, // facts, not controls: one muted line
