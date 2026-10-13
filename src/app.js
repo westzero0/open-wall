@@ -185,16 +185,14 @@ function dayBarBlock(bar) {
     bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
 }
 
-// contact links; the expanded row leaves out 길찾기 (primary), it has its own button
-const LINK_ICON = { 공지사항: 'megaphone', '인스타 공지': 'megaphone', 오픈채팅: 'chat', 전화: 'phone', 네이버지도: 'pin' };
-function actionLinks(links, last = null) { // last: one more pill at the end of the same wrapping row
-  if (!links.length && !last) return null;
-  return el('div', { class: 'actions' },
-    ...links.map(({ label, href, primary, sub }) => {
-      const kids = [LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label, sub ? el('span', { class: 'btn-sub' }, ` · ${sub}`) : null];
-      return el('a', { class: `btn${primary ? ' primary' : ''}`, href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기` } : {}) }, ...kids);
-    }),
-    last);
+// 길찾기 · 공지사항 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
+const LINK_ICON = { 길찾기: 'nav', 공지사항: 'megaphone', '인스타 공지': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone', 문의: 'phone', 네이버지도: 'pin' };
+function linkBar(links) {
+  if (!links.length) return null;
+  const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
+  return el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
+    ...ordered.map(({ label, href, sub }) => el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
+      LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label)));
 }
 
 const rowButtons = (name, ...extra) => {
@@ -279,6 +277,16 @@ function hero(m) {
   const img = el('img', { class: 'hero', src: m.photo, decoding: 'async', alt: `${m.name} 외벽 사진` });
   img.addEventListener('error', () => img.replaceWith(ph()), { once: true });
   return img;
+}
+
+// An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
+// today's hours ride on its foot. The photo and its credit leave the expanded part, which would repeat them.
+function rowPhoto(m, li) {
+  const img = el('img', { src: m.photo, decoding: 'async', loading: 'lazy', alt: `${m.name} 외벽 사진` });
+  const wrap = el('div', { class: 'herowrap rhero' }, img,
+    el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)), creditChip(m.credit));
+  img.addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
+  return wrap;
 }
 
 // ---- '더 보기' pictures (mockup 2026-10-08): hours grid, seasonal sun, month strip, memo, parking ----
@@ -478,8 +486,7 @@ function moreTabs(wall, at, d, id) {
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
 // "✓ 복사했어요" and the icon into a check for a moment). Next to it, an icon opens the route.
 function addrLine(m) {
-  const nav = m.route && el('a', { class: 'icon-btn', href: m.route, target: '_blank', rel: 'noopener noreferrer', 'aria-label': '길찾기', title: '길찾기' }, icon('nav'));
-  if (!m.address) return nav ? el('p', { class: 'addr-line' }, nav) : null;
+  if (!m.address) return null; // the route is the first cell of the link strip (linkBar), not an icon here
   const text = el('span', { class: 'addr-t' }, m.address);
   const glyph = el('span', { class: 'addr-ic', 'aria-hidden': 'true' }, icon('copy'));
   const btn = el('button', { type: 'button', class: 'addr-btn', 'aria-label': `주소 복사: ${m.address}` }, text, glyph);
@@ -505,7 +512,8 @@ function addrLine(m) {
       say.textContent = '주소를 선택했어요. 길게 눌러 복사하세요';
     }
   });
-  return el('p', { class: 'addr-line' }, btn, nav, say);
+  const line = el('p', { class: 'addr-line' }, btn, say);
+  return m.navAddress ? el('div', {}, line, el('p', { class: 'addr-nav' }, `내비 검색 · ${m.navAddress}`)) : line;
 }
 
 // ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
@@ -798,27 +806,25 @@ function rowDetails(m, wall, at, id) {
       m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
     : null;
   return [
-    el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit), photoSend(m)),
+    m.photo ? null : el('div', { class: 'herowrap' }, hero(m), creditChip(m.credit), photoSend(m)),
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
         m.place || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null,
-        el('div', { class: 'today-row' },
+        m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
           el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         ...crowdBox(m),
         // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
-        el('div', { class: 'act-row' }, m.crowd ? crowdQuick(m.name) : null, beenBtn(m)),
+        el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null), // the one filled pill; the crowd question is a text link
         ...weatherBox(m),
-        actionLinks(m.links.filter((l) => !l.primary)), // 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        linkBar(m.links), // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
-        el('div', { class: 'tags' },
-          ...m.tags.map((t) => el('span', { class: 'tag' }, t)),
-          ...m.sizes.map((t) => el('span', { class: 'tag' }, t))),
+        [...m.tags, ...m.sizes].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes].join(' · ')) : null, // facts, not controls: one muted line
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
         m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
@@ -1044,8 +1050,8 @@ function timeRow(row, at) {
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at, id) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}` },
-    btn, el('div', { class: 'expand', id }, inner));
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}` });
+  li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at, id).filter(Boolean));
   li.wallName = m.name;

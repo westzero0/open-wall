@@ -193,17 +193,25 @@ const SIZE_RE = /^(\d+(?:\.\d+)?)\s*m$/;
 const WARN_RE = /주의|금지|제한|불가|⚠/;
 const TIME_RE = /휴게|하계|동계|하절기|동절기|평일|주말|운영|개장|재개|\d:\d\d|\d시(?!간)/;
 const restRank = (l) => (l.key || WARN_RE.test(l.value) ? 0 : TIME_RE.test(`${l.label ?? ''} ${l.value}`) ? 1 : 2);
+const PHONE_RE = /^\+?[\d][\d\- ]{6,}\d$/;
+const digits = (v) => String(v ?? '').replace(/\D/g, '');
 function memoFacts(wall, lines) {
   let address = null;
+  let navAddress = null; // "내비 주소": what to type into a navigation app; it rides under the address, not as another 안내 row
+  const phones = []; // "문의 010-…": a phone number in the memo goes to the phone cell, unless it is the contact's own number
   const sizes = [];
   const rest = [];
   for (const l of lines) {
     if (l.label === '주소' && !address) address = l.value;
+    else if (!l.label && /^내비 주소\s/.test(l.value) && !navAddress) navAddress = l.value.replace(/^내비 주소\s+/, '');
+    else if (l.label === '문의' && PHONE_RE.test(l.value.trim())) {
+      if (digits(l.value) !== digits(wall.contact?.phone)) phones.push(l.value.trim());
+    }
     else if (l.label === '폭' && SIZE_RE.test(l.value)) sizes.push(`폭 ${l.value.match(SIZE_RE)[1]}m`);
     else rest.push(l);
   }
   if (wall.height_m) sizes.push(`높이 ${wall.height_m}m`);
-  return { address, sizes, rest: rest.sort((a, b) => restRank(a) - restRank(b)) };
+  return { address, navAddress, phones, sizes, rest: rest.sort((a, b) => restRank(a) - restRank(b)) };
 }
 
 // 안내 lines in the first view: the first `limit` show, the rest fold. Warning/closure lines come first,
@@ -348,6 +356,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     info: splitInfo([...notes.filter((n) => n.key), ...facts.rest, ...notes.filter((n) => !n.key)]), // expanded row's 안내
     sizes: facts.sizes,
     address: facts.address,
+    navAddress: facts.navAddress,
     memo,
     fees: feeTable(wall),
     approxNote,
@@ -364,6 +373,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
       reserveLink(c.reserve),
       hasChat && { label: '오픈채팅', href: c.chat_url },
       c.phone && { label: '전화', href: `tel:${c.phone.replace(/[^\d+]/g, '')}` },
+      ...facts.phones.map((n) => ({ label: '문의', sub: n, href: `tel:${n.replace(/[^\d+]/g, '')}` })),
       safeUrl(c.naver_map) && { label: '네이버지도', href: c.naver_map },
       route && { label: '길찾기', href: route, primary: true },
     ].filter(Boolean),
