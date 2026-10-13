@@ -188,16 +188,18 @@ function dayBarBlock(bar) {
 
 // 길찾기 · 공지사항 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
 const LINK_ICON = { 길찾기: 'nav', 공지사항: 'megaphone', '인스타 공지': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone', 문의: 'phone', 네이버지도: 'pin' };
-function linkBar(links, copyText = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins
-  if (!links.length) return null;
+function linkBar(links, copyText = null, edge = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins. edge: {start, end} cells at the two ends (♥ and share)
+  if (!links.length && !edge) return null;
   const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
   return el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
+    edge?.start ?? null,
     ...ordered.map(({ label, href, sub, primary }) => {
       const a = el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
         LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label);
       if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
       return a;
-    }));
+    }),
+    edge?.end ?? null);
 }
 
 const rowButtons = (name, ...extra) => {
@@ -275,12 +277,20 @@ function photoLink(m) {
 }
 
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
-// today's hours ride on its foot, ♥ and share on its corner. The photo, its credit and those icons leave the expanded part.
+// today's hours ride on its foot. The photo and its credit leave the expanded part, which would repeat them.
+// the forecast under the hours on the photo (an open card gets it again when the forecast arrives: refillOpen)
+function photoWeather(m) {
+  const w = m.weather;
+  return w ? el('p', { class: 'rhero-wx', 'aria-label': w.line }, `${w.temp} · ${w.wind} · `, el('span', { class: w.windy ? 'strong' : null }, w.gust), w.windy ? ' · 바람 셈' : '') : null;
+}
 function rowPhoto(m, li) {
   const img = el('img', { src: m.photo, decoding: 'async', loading: 'lazy', alt: `${m.name} 외벽 사진` });
   const wrap = el('div', { class: 'herowrap rhero' }, img,
-    el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)),
-    el('div', { class: 'rhero-act' }, favBtn(m.name), shareBtn(m.name)), creditChip(m.credit));
+    el('div', { class: 'rhero-foot' }, // the hours and the photo credit share one bottom line
+      el('div', { class: 'rhero-line' },
+        el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)),
+        creditChip(m.credit?.text === '사진 · 직접 촬영' ? null : m.credit)), // our own photos need no credit; a licensed one keeps its line
+      photoWeather(m)));
   img.addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
   return wrap;
 }
@@ -533,7 +543,7 @@ function paintStar(btn) {
   const on = favs.includes(btn.dataset.fav);
   btn.setAttribute('aria-pressed', String(on));
   btn.classList.toggle('on', on);
-  btn.replaceChildren(icon('heart', on));
+  btn.replaceChildren(icon('heart', on), ...(btn.dataset.label ? [btn.dataset.label] : []));
 }
 // Every heart and name mark of a wall is repainted in place, so the tapped button keeps focus.
 function syncFavs() {
@@ -541,8 +551,8 @@ function syncFavs() {
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
   renderFavStrip();
 }
-function favBtn(name) {
-  const btn = el('button', { type: 'button', class: 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기' });
+function favBtn(name, label = null) { // label: a word under the heart (the link strip's cell)
+  const btn = el('button', { type: 'button', class: label ? 'lb-item fav-btn' : 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기', ...(label ? { 'data-label': label } : {}) });
   btn.addEventListener('click', () => {
     favs = toggleFav(favs, name);
     saveFavs(storage, favs);
@@ -698,8 +708,9 @@ function renderPick() {
 
 // 공유하기 icon at the end of the name line: the link is copied right away (the icon turns into a check for a moment and
 // the live note says so), and the toast offers 같이 가요 초대 for that wall.
-function shareBtn(name) {
-  const btn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, icon('share'));
+function shareBtn(name, label = null) { // label: a word under the icon (the link strip's cell)
+  const face = () => [icon('share'), ...(label ? [label] : [])];
+  const btn = el('button', { type: 'button', class: label ? 'lb-item' : 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, ...face());
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
   let timer;
   btn.addEventListener('click', async () => {
@@ -711,10 +722,10 @@ function shareBtn(name) {
       return;
     }
     btn.classList.add('done');
-    btn.replaceChildren(icon('check'));
+    btn.replaceChildren(icon('check'), ...(label ? ['복사됨'] : []));
     say.textContent = '링크를 복사했어요';
     clearTimeout(timer);
-    timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(icon('share')); say.textContent = ''; }, 1800);
+    timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(...face()); say.textContent = ''; }, 1800);
     toast('링크를 복사했어요', () => inviteView.openInvite(name), '같이 가요 초대 만들기');
   });
   return el('span', { class: 'share-wrap' }, btn, say);
@@ -810,23 +821,23 @@ function rowDetails(m, wall, at, id) {
         el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
         m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가')] : []))
     : null;
+  // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
+  const act = el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null, null); // the one filled pill; the crowd question is a text link
+  const links = linkBar(m.links, m.navAddress ?? m.address, m.photo ? { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') } : null); // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
-        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row; ♥ and share are on the photo
+        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row; ♥ and share are in the link strip
           : el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
-        m.place || m.state !== 'open' ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null,
+        (m.state === 'open' ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null, // a closed photo card: the pill on the photo already says when it opens
         m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
           el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
-        ...crowdBox(m),
-        // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
-        el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null), // the one filled pill; the crowd question is a text link
-        ...weatherBox(m),
-        linkBar(m.links, m.navAddress ?? m.address), // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
+        // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
+        ...(m.photo ? [links, ...crowdBox(m), act] : [...crowdBox(m), act, ...weatherBox(m), links]), // a photo card: the forecast is on the photo, ♥ and share are the last cells of the strip
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes].join(' · ')) : null, // facts, not controls: one muted line
@@ -947,9 +958,16 @@ function refillOpen(name) {
   const row = shown.rows.find((x) => x.wall.name === name);
   const info = li?.querySelector('.m-info');
   if (!info || !row) return;
+  const m = modelOf(row, shown.at);
+  if (m.photo) { // a photo card wears the forecast on the photo
+    li.querySelector('.rhero-wx')?.remove();
+    const p = photoWeather(m);
+    if (p) li.querySelector('.rhero-foot')?.append(p);
+    return;
+  }
   li.querySelector('.wx-line')?.remove();
   const anchor = info.querySelector('.act-row'); // the forecast goes right under it (the 지금 어때요? + 다녀왔어요 row)
-  const box = weatherBox(modelOf(row, shown.at));
+  const box = weatherBox(m);
   if (anchor) anchor.after(...box); else info.prepend(...box);
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
