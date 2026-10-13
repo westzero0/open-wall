@@ -1113,9 +1113,8 @@ function toggleRow(li) {
   seeSetting(li.wallName);
   li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
   setRowOpen(li, true);
-  // opened near the foot of the screen: the details would appear below the fold, so bring the row up
-  const btn = li.querySelector('.row-btn');
-  if (btn.getBoundingClientRect().top > innerHeight * 0.6) btn.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  // always bring the opened row up: collapsing the previous one shifts the list, so it may no longer be where it was clicked
+  li.querySelector('.row-btn').scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
