@@ -144,7 +144,8 @@ const reserveLink = (r) => safeUrl(r?.url) && { label: '예약', sub: r.name || 
 // (not "..." and not after a single letter/digit like "A. B."); a known word at the start becomes the
 // label, "짧은 말: 값" too (a colon followed by a space, so "11:00" stays a time). Closures
 // (휴무·휴관·휴장·미운영) go first, unless the line says there is none ("정기휴무 없음").
-const MEMO_LABEL = /^(?:(주소|폭|정기휴무|겨울 휴장|이용료|문의)(?=[\s(])\s*|([^:()]{1,12}):\s+)(.*)$/;
+const MEMO_LABEL = /^(?:(주소|폭|정기휴무|정기휴장|휴무|휴관|휴장|겨울 휴장|이용료|문의)(?=[\s(])\s*|([^:()]{1,12}):\s+)(.*)$/;
+const CLOSED_LABEL = /^(?:정기\s*)?(?:휴무|휴관|휴장)$/; // 정기휴무 · 휴관 · 휴장 · 정기휴장 read as one 정기휴무 line
 const MEMO_KEY = /휴무|휴관|휴장|미운영/;
 const MEMO_NONE = /(휴무|휴관|휴장|미운영)\S*\s*없/;
 function memoLines(memo) {
@@ -155,7 +156,8 @@ function memoLines(memo) {
   const lines = parts.map((s) => {
     const key = MEMO_KEY.test(s) && !MEMO_NONE.test(s);
     const m = s.match(MEMO_LABEL);
-    const label = (m?.[1] ?? m?.[2])?.trim();
+    const raw = (m?.[1] ?? m?.[2])?.trim();
+    const label = raw && CLOSED_LABEL.test(raw) ? '정기휴무' : raw;
     const value = m?.[3].replace(/^\(([^()]*)\)$/, '$1').trim();
     return label && value ? { label, value, key } : { label: null, value: s, key };
   });
