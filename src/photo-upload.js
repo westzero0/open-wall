@@ -13,7 +13,7 @@ export function fitSize(w, h, max = MAX_EDGE) {
 }
 
 /** photoPath(wall, note) → '/v1/photos?wall=…&note=…' (note omitted when empty). */
-export const photoPath = (wall, note = '') => `/v1/photos?wall=${encodeURIComponent(wall)}${note ? `&note=${encodeURIComponent(note)}` : ''}`;
+export const photoPath = (wall, note = '', nick = '') => `/v1/photos?wall=${encodeURIComponent(wall)}${note ? `&note=${encodeURIComponent(note)}` : ''}${nick ? `&nick=${encodeURIComponent(nick)}` : ''}`;
 
 /** What the sheet says for each outcome of an upload. */
 export const PHOTO_SAY = {
@@ -46,14 +46,14 @@ export async function shrinkToJpeg(file, {
   return blob;
 }
 
-/** uploadPhoto({ url, wall, blob, note, fetchFn }) → { ok: true } | { ok: false, why }. Empty url = feature off: nothing is sent. */
-export async function uploadPhoto({ url, wall, blob, note = '', fetchFn = (...a) => fetch(...a), timeoutMs = 20000 }) {
+/** uploadPhoto({ url, wall, blob, note, nick, fetchFn }) → { ok: true } | { ok: false, why }. Empty url = feature off: nothing is sent. */
+export async function uploadPhoto({ url, wall, blob, note = '', nick = '', fetchFn = (...a) => fetch(...a), timeoutMs = 20000 }) {
   const base = String(url || '').replace(/\/+$/, '');
   if (!base) return { ok: false, why: 'network' };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetchFn(base + photoPath(wall, note), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob, credentials: 'omit', signal: ctl.signal });
+    const r = await fetchFn(base + photoPath(wall, note, nick), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob, credentials: 'omit', signal: ctl.signal });
     return r.ok ? { ok: true } : { ok: false, why: whyOf(r.status) };
   } catch {
     return { ok: false, why: 'network' };

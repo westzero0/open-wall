@@ -1,6 +1,6 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
-import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
@@ -90,9 +90,9 @@ if (dlg) {
     const [label, hint] = MEMO[kind] ?? ['내용', ''];
     f.querySelector('.rp-label').textContent = label;
     f.elements.body.placeholder = hint;
-    const photo = kind === PHOTO_KIND; // no nickname or source line for a photo; the Worker takes only the picture and a short memo
+    const photo = kind === PHOTO_KIND; // no source-link line for a photo; the nickname stays (it is the photo's credit and counts for the ranking)
     f.querySelector('.rp-note').hidden = photo;
-    nickBox.hidden = mode === 'off' || photo;
+    nickBox.hidden = mode === 'off';
     evidenceBox.hidden = !EVIDENCE_OK(kind);
   };
   const evidenceBox = dlg.querySelector('.rp-evidence');
@@ -123,11 +123,11 @@ if (dlg) {
 
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
   // Shrink + upload one picked file. Returns '' on success, else the message to show.
-  async function postPhoto(file, note) {
+  async function postPhoto(file, note, nick) {
     if (!config.boardUrl) return PHOTO_SAY.network;
     let blob;
     try { blob = await shrinkToJpeg(file); } catch (e) { return e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image; }
-    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note });
+    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick });
     return r.ok ? '' : PHOTO_SAY[r.why];
   }
   // Photo-only send: the 암장 사진 tab, or any other kind that has a picture but no text.
@@ -136,6 +136,8 @@ if (dlg) {
     const file = input.files?.[0];
     if (!wallName) return say('암장을 먼저 골라 주세요.');
     if (!file) return say('보낼 사진을 골라 주세요.');
+    const nick = mode === 'off' ? '' : cleanNick(f.elements.nick.value);
+    if (mode === 'required' && !nick) return say('닉네임을 적어 주세요.');
     const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
     if ([...memo].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
@@ -144,8 +146,9 @@ if (dlg) {
     const done = () => { busy = false; refresh(); };
     if (f.elements.website.value !== '') { set(); clearTab(kind); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
     say('사진을 줄여서 보내는 중…');
-    const err = await postPhoto(file, kind === PHOTO_KIND ? memo : evidenceNote(kind, memo));
+    const err = await postPhoto(file, kind === PHOTO_KIND ? memo : evidenceNote(kind, memo), nick);
     if (err) { done(); return say(err); }
+    if (nick) saveNick(nick);
     set();
     clearTab(kind); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
     done();
@@ -214,7 +217,7 @@ if (dlg) {
     // text report went out; a attached picture goes to the board Worker after it (a failed picture must not hide that the text was sent)
     const ev = hasEvidence(kind) ? f.elements.evidence.files[0] : null;
     const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
-    const err = ev && !v.honeypot ? await postPhoto(ev, evidenceNote(kind, memo)) : '';
+    const err = ev && !v.honeypot ? await postPhoto(ev, evidenceNote(kind, memo), v.report.nick) : '';
     clearTab(kind); // sent: this tab is emptied and the button goes off until it has new content
     busy = false; refresh();
     say(err ? `글은 보냈어요. 사진은 보내지 못했어요: ${err}` : '제보 고마워요. 확인 후 반영해요.');

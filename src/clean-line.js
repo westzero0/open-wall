@@ -11,7 +11,7 @@ export function cleanLine(v, max) {
     .replace(/<[^>]*>/g, ' ') // markup: the tag goes, its text stays
     .replace(/[<>]/g, ' ')
     .replace(/(?:https?:\/\/|www\.)\S+/gi, ' ')
-    .replace(/\S+@\S+\.\S+/g, ' ')
+    .replace(/[^\s@]+@[^\s@]+\.\S+/g, ' ')
     .replace(/\+?(?:\d[\s().-]*){7,}/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
