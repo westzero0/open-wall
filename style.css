@@ -461,7 +461,6 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rhero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .55) 0%, rgb(0 0 0 / 0) 38%, rgb(0 0 0 / 0) 48%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
 .row.has-photo.is-open .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* as wide as the photo and right under it: the photo's own toolbar */
-.row.has-photo .act-row { margin-top: var(--sp-12); }
 .rhero-foot { position: absolute; z-index: 1; left: var(--pad); right: var(--pad); bottom: var(--sp-12); display: flex; flex-direction: column; gap: var(--sp-10); }
 .rhero-line { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-8); }
 .rhero-wx { margin: 0; color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .5); font-size: var(--fs-sm); font-weight: 500; } 
@@ -473,7 +472,9 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 .row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been) { color: #fff; }
 .row.has-photo.is-open .row-btn .fee.free { color: var(--on-accent); text-shadow: none; }
-.row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); text-shadow: none; }
+.row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: #1f5f55; text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
+.row.has-photo.is-open.soon .row-btn .left { color: #a8325a; }
+.row.has-photo.is-open:is(.closed, .unknown) .row-btn .left { color: #555c58; }
 .row.has-photo.is-open .row-btn .sunnow { text-shadow: none; }
 .row.has-photo.is-open .bar .seg, .row.has-photo.is-open.soon .bar .seg { background: #fff; box-shadow: none; }
 .row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .5); box-shadow: none; }
@@ -491,7 +492,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .brk-row { margin-top: var(--sp-6); }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
-.act-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-6) var(--sp-10); margin-top: var(--sp-6); }
+.act-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-6) var(--sp-10); margin: var(--sp-12) 0; }
 .act-row .crowd-quick { margin: 0; }
 .crowd-chip { display: inline-flex; align-items: center; gap: var(--sp-6); margin-top: var(--sp-6); padding: var(--sp-2) var(--sp-10); border: 1px solid var(--line); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 .crowd-chip.muted { color: var(--muted); border-style: dashed; font-size: var(--fs-xs); }

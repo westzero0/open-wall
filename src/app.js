@@ -823,21 +823,22 @@ function rowDetails(m, wall, at, id) {
     : null;
   // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
   const act = el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null, null); // the one filled pill; the crowd question is a text link
-  const links = linkBar(m.links, m.navAddress ?? m.address, m.photo ? { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') } : null); // 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
+  const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
-        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row; ♥ and share are in the link strip
-          : el('div', { class: 'x-head' }, favBtn(m.name), el('h3', { class: 'x-name' }, m.name, feeChip(m)), shareBtn(m.name)),
+        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row
+          : el('h3', { class: 'x-name' }, m.name, feeChip(m)), // ♥ and share are the end cells of the link strip
         (m.state === 'open' ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null, // a closed photo card: the pill on the photo already says when it opens
         m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
           el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
+        ...(m.photo ? [] : weatherBox(m)), // the forecast right under the hours (a photo card wears it on the photo)
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
-        ...(m.photo ? [links, ...crowdBox(m), act] : [...crowdBox(m), act, ...weatherBox(m), links]), // a photo card: the forecast is on the photo, ♥ and share are the last cells of the strip
+        links, ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes].join(' · ')) : null, // facts, not controls: one muted line
@@ -966,9 +967,9 @@ function refillOpen(name) {
     return;
   }
   li.querySelector('.wx-line')?.remove();
-  const anchor = info.querySelector('.act-row'); // the forecast goes right under it (the 지금 어때요? + 다녀왔어요 row)
+  const anchor = [...li.querySelectorAll('.m-head .brk-row, .m-head .today-row')].pop(); // the forecast goes right under the hours
   const box = weatherBox(m);
-  if (anchor) anchor.after(...box); else info.prepend(...box);
+  if (anchor) anchor.after(...box);
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
 const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
