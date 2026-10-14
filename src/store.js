@@ -86,6 +86,9 @@ export const MAX_NAME = 40;
 export const MAX_REGION = 40;
 export const MAX_MEMO = 600;
 export const MAX_PARKING_NOTE = 200;
+export const MAX_PARKING_FEE = 80;
+export const MAX_PARKING_LOTS = 6;
+export const MAX_PARKING_LOT_NAME = 40;
 const PARKING = ['free', 'paid', 'none', 'unknown'];
 export const PHOTO_RE = /^photos\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(jpe?g|png|webp)$/i;
 // A wall's own stamp artwork (src/stamp.js): an svg under data/stamps/, never a path that can leave it.
@@ -106,10 +109,18 @@ function cleanLocation(v) {
   return v.approx === true ? { lat, lng, approx: true } : { lat, lng };
 }
 
+// Lot names for the 외벽 앞 / 주변 lines; ';' is the CSV list separator, so it never stays inside a name.
+const cleanLots = (v) => (Array.isArray(v)
+  ? v.filter((s) => typeof s === 'string').map((s) => s.replaceAll(';', ',').trim().slice(0, MAX_PARKING_LOT_NAME).trim()).filter(Boolean).slice(0, MAX_PARKING_LOTS)
+  : []);
+
 function cleanParking(v) {
   if (!isPlainObject(v) || !PARKING.includes(v.status)) return null;
   const note = typeof v.note === 'string' ? v.note.trim().slice(0, MAX_PARKING_NOTE) : '';
-  return note ? { status: v.status, note } : { status: v.status };
+  const fee = typeof v.fee === 'string' ? v.fee.trim().slice(0, MAX_PARKING_FEE) : ''; // the price in one line, apart from the lot names
+  const onsite = cleanLots(v.onsite);
+  const nearby = cleanLots(v.nearby);
+  return { status: v.status, ...(note ? { note } : {}), ...(fee ? { fee } : {}), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}) };
 }
 
 // indoor/outdoor: absent means 'outdoor' (the app is about outdoor walls); anything else is dropped

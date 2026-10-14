@@ -97,20 +97,24 @@ function breakTags(wall, at) {
 
 // ---- facts ----
 const PARKING_TEXT = {
-  free: ['주차 무료', 'good'],
-  paid: ['주차 유료', 'neutral'],
+  free: ['주차 가능', 'good'], // 무료·유료 is no reason to leave the car at home: both read 가능 (the price is the 요금 line)
+  paid: ['주차 가능', 'good'],
   none: ['주차 불가', 'warn'],
 };
 function parkingLabel(parking) {
   const [text, tone] = PARKING_TEXT[parking?.status] ?? ['주차 확인 필요', 'muted'];
-  return { text, word: text.replace(/^주차 /, ''), tone, note: parking?.note ?? '' };
+  return { text, word: text.replace(/^주차 /, ''), tone, note: parking?.note ?? '', ...(parking?.fee ? { fee: parking.fee } : {}) };
 }
 // Parking names from the note ("외벽 앞 · 롯데몰 · 공영주차장").
 const parkingNames = (parking) => (parking?.note ?? '').split(/\s*·\s*/).map((s) => s.trim()).filter(Boolean);
 // The note mixes the wall's own lot ("외벽 앞(협소)", "건물 주차장") with lots nearby; the first kind is told apart
 // by its wording, everything else reads as 주변.
 const ON_SITE = /^(?:(?:인공)?(?:외벽|암벽장)\s*앞|(?:건물|센터)\s*주차장)/;
+// Lists kept in the data (parking.onsite / nearby) win; a wall without them (older storage, an import) falls back to the note's wording.
+// A fee counts too: a wall that has its price in the data has its note as advice, not as lot names.
+const hasLots = (parking) => Boolean(parking?.onsite?.length || parking?.nearby?.length || parking?.fee);
 const parkingWhere = (parking) => {
+  if (hasLots(parking)) return { onsite: parking.onsite ?? [], nearby: parking.nearby ?? [] };
   const names = parkingNames(parking);
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
 };
@@ -384,6 +388,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     parking: parkingLabel(wall.parking),
     parkingNames: parkingNames(wall.parking),
     parkingWhere: parkingWhere(wall.parking),
+    parkingTip: hasLots(wall.parking) ? wall.parking.note ?? '' : '', // with the lots in the data the note is not names to split but a line of advice
     parkingMemo: wall.parking?.note ? `주차 메모 · ${wall.parking.note}` : null,
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,

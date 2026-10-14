@@ -160,7 +160,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "서부권스포츠센터"
+        "nearby": [
+          "서부권스포츠센터"
+        ]
       },
       "checked_at": "2026-10-08",
       "contact": {
@@ -359,7 +361,13 @@
       },
       "parking": {
         "status": "paid",
-        "note": "외벽 앞은 협소 · 고양종합운동장 주차장 이용 시 2시간 무료 주차등록"
+        "fee": "고양종합운동장 주차장 이용 시 2시간 무료 주차등록",
+        "onsite": [
+          "외벽 앞(협소)"
+        ],
+        "nearby": [
+          "고양종합운동장 주차장"
+        ]
       },
       "checked_at": "2026-07-10",
       "photo": "photos/goyang.jpg",
@@ -422,7 +430,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "건물 주차장"
+        "onsite": [
+          "건물 주차장"
+        ]
       },
       "checked_at": "2026-10-13",
       "venue": "indoor",
@@ -490,7 +500,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "광명시민체육관"
+        "nearby": [
+          "광명시민체육관"
+        ]
       },
       "checked_at": "2026-10-09",
       "holiday": "weekend",
@@ -632,7 +644,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "부천종합운동장주차장"
+        "nearby": [
+          "부천종합운동장주차장"
+        ]
       },
       "checked_at": "2026-10-08",
       "contact": {
@@ -908,7 +922,10 @@
       },
       "parking": {
         "status": "paid",
-        "note": "1일 주차 2,000원 · 외벽 앞"
+        "fee": "1일 2,000원",
+        "onsite": [
+          "외벽 앞"
+        ]
       },
       "checked_at": "2026-07-10",
       "contact": {
@@ -1108,7 +1125,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "시흥시체육관"
+        "nearby": [
+          "시흥시체육관"
+        ]
       },
       "checked_at": "2026-10-08",
       "holiday": "closed",
@@ -1287,7 +1306,11 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "새물공원 주차장1만 이용 가능(3시간 주차권 지급)"
+        "note": "주차장 1만 이용 가능",
+        "fee": "3시간 주차권 지급",
+        "nearby": [
+          "새물공원 주차장 1"
+        ]
       },
       "checked_at": "2026-07-10",
       "contact": {
@@ -1531,7 +1554,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "화랑유원지 주차장"
+        "nearby": [
+          "화랑유원지 주차장"
+        ]
       },
       "checked_at": "2026-10-08",
       "holiday": "weekend"
@@ -1698,7 +1723,11 @@
       },
       "parking": {
         "status": "paid",
-        "note": "광교복합체육센터 주차장(3시간 이내 1,000원·3~6시간 2,000원·일 최대 5,000원). 행복한들 공영주차장도 있음"
+        "fee": "3시간 이내 1,000원 · 3~6시간 2,000원 · 일 최대 5,000원",
+        "nearby": [
+          "광교복합체육센터 주차장",
+          "행복한들 공영주차장"
+        ]
       },
       "checked_at": "2026-10-13",
       "exceptions": {
@@ -1986,7 +2015,10 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "소흘생활체육공원 주차장 1(50대)·주차장 2(100대, 축구장과 함께 사용)"
+        "nearby": [
+          "소흘생활체육공원 주차장 1(50대)",
+          "주차장 2(100대, 축구장과 함께 사용)"
+        ]
       },
       "checked_at": "2026-07-10",
       "venue": "outdoor",
@@ -2168,7 +2200,9 @@
       "venue": "indoor",
       "parking": {
         "status": "unknown",
-        "note": "소흘국민체육센터"
+        "nearby": [
+          "소흘국민체육센터"
+        ]
       },
       "blog_posts": [
         {
@@ -2381,7 +2415,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "외벽 앞"
+        "onsite": [
+          "외벽 앞"
+        ]
       },
       "checked_at": "2026-10-08",
       "photo": "photos/namyangju.jpg",
@@ -2500,7 +2536,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "성남종합운동장 공영주차"
+        "nearby": [
+          "성남종합운동장 공영주차"
+        ]
       },
       "checked_at": "2026-10-12",
       "holiday": "weekend",
@@ -2681,7 +2719,11 @@
       },
       "parking": {
         "status": "paid",
-        "note": "석란빌딩 일일권 4,000원(모두의주차장에서 구매 후 입차)"
+        "note": "모두의주차장에서 구매 후 입차",
+        "fee": "일일권 4,000원",
+        "nearby": [
+          "석란빌딩"
+        ]
       },
       "checked_at": "2026-10-08",
       "photo": "photos/pangyo.jpg",
@@ -2956,7 +2998,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "인공암벽장 앞 주차장"
+        "onsite": [
+          "인공암벽장 앞 주차장"
+        ]
       },
       "checked_at": "2026-07-10"
     },
@@ -3289,8 +3333,12 @@
         }
       },
       "parking": {
-        "status": "free",
-        "note": "공원 주차장 4시간 무료(회차 불가 시 다시 4시간) · 당고개아래 공영주차장"
+        "status": "paid",
+        "fee": "4시간 무료 (회차 불가 시 다시 4시간)",
+        "nearby": [
+          "공원 주차장",
+          "당고개아래 공영주차장"
+        ]
       },
       "checked_at": "2026-07-10",
       "photo": "photos/danggogae.jpg",
@@ -3474,7 +3522,13 @@
       },
       "parking": {
         "status": "free",
-        "note": "외벽 앞(협소) · 은평 롯데몰(평일 3시간 주차권) · 구파발역 공영주차장"
+        "onsite": [
+          "외벽 앞(협소)"
+        ],
+        "nearby": [
+          "은평 롯데몰(평일 3시간 주차권)",
+          "구파발역 공영주차장"
+        ]
       },
       "checked_at": "2026-10-08",
       "photo": "photos/eunpyeong.jpg",
@@ -3659,7 +3713,8 @@
       },
       "parking": {
         "status": "paid",
-        "note": "최초 5분 150원, 추가 5분당 150원, 최대 43,200원. 주차 할인은 1회 최대 3시간(상세는 센터 안내). 노을공원주차장 아님"
+        "note": "주차 할인은 1회 최대 3시간(상세는 센터 안내). 노을공원주차장 아님",
+        "fee": "최초 5분 150원, 추가 5분당 150원, 최대 43,200원"
       },
       "checked_at": "2026-10-08",
       "contact": {
@@ -3873,7 +3928,9 @@
       },
       "parking": {
         "status": "free",
-        "note": "강서한강공원 공영주차장"
+        "nearby": [
+          "강서한강공원 공영주차장"
+        ]
       },
       "checked_at": "2026-10-08"
     },
@@ -4197,7 +4254,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "암벽장 앞(공터 포함)"
+        "onsite": [
+          "암벽장 앞(공터 포함)"
+        ]
       },
       "checked_at": "2026-07-10",
       "contact": {
@@ -4336,7 +4395,9 @@
       },
       "parking": {
         "status": "unknown",
-        "note": "뚝섬한강공원 뚝섬4주차장"
+        "nearby": [
+          "뚝섬한강공원 뚝섬4주차장"
+        ]
       },
       "contact": {
         "phone": "02-3780-0521"
@@ -4545,7 +4606,10 @@
       },
       "parking": {
         "status": "paid",
-        "note": "영등포다목적배드민턴체육관 · 4시간 무료 주차등록 후 5분당 150원"
+        "fee": "4시간 무료 주차등록 후 5분당 150원",
+        "nearby": [
+          "영등포다목적배드민턴체육관"
+        ]
       },
       "checked_at": "2026-10-08",
       "photo": "photos/yeongdeungpo.jpg",
@@ -4731,7 +4795,10 @@
       },
       "parking": {
         "status": "free",
-        "note": "보라매병원앞노상 공영주차장 · 보라매상업 공영주차장"
+        "nearby": [
+          "보라매병원앞노상 공영주차장",
+          "보라매상업 공영주차장"
+        ]
       },
       "checked_at": "2026-10-08",
       "fees": [
@@ -4879,7 +4946,10 @@
       },
       "parking": {
         "status": "none",
-        "note": "강남구견인차량보관소 노상주차장 이용 · 할인권은 유수지 체육공원 관리사무소"
+        "note": "할인권은 유수지 체육공원 관리사무소",
+        "nearby": [
+          "강남구견인차량보관소 노상주차장"
+        ]
       },
       "photo": "photos/gangnam.jpg",
       "photo_credit": {
@@ -5057,8 +5127,14 @@
         "indoor_note": "동절기에는 실내 리드월 중심으로 운영해요(외벽 운영은 공지 확인)"
       },
       "parking": {
-        "status": "free",
-        "note": "스타디움 내 180분 무료 · 암벽장 앞은 15대가량이라 오픈 직후 만차 · 주말·공휴일 무료개방"
+        "status": "paid",
+        "fee": "180분 무료 · 주말·공휴일 무료개방",
+        "onsite": [
+          "암벽장 앞(15대가량, 오픈 직후 만차)"
+        ],
+        "nearby": [
+          "스타디움 내"
+        ]
       },
       "location": {
         "lat": 37.7573239,
@@ -5563,7 +5639,11 @@
       "venue": "both",
       "parking": {
         "status": "free",
-        "note": "실내체육관 인근 주차장이나 하천변에 주차 후 다리 건너 도보"
+        "note": "주차 후 다리 건너 도보",
+        "nearby": [
+          "실내체육관 인근 주차장",
+          "하천변"
+        ]
       },
       "contact": {
         "phone": "041-360-1368"
@@ -5897,7 +5977,7 @@
       "venue": "outdoor",
       "parking": {
         "status": "paid",
-        "note": "최초 30분 400원 · 추가 10분당 200원 · 최대 6,000원"
+        "fee": "최초 30분 400원 · 추가 10분당 200원 · 최대 6,000원"
       },
       "contact": {
         "phone": "031-727-9990",
@@ -6440,7 +6520,10 @@
       },
       "parking": {
         "status": "free",
-        "note": "만날공원 공영주차장 안쪽으로 진입해 오르막길 중간 좌측 주차공간에 주차 후 도보"
+        "note": "안쪽으로 진입해 오르막길 중간 좌측 주차공간에 주차 후 도보",
+        "nearby": [
+          "만날공원 공영주차장"
+        ]
       },
       "contact": {
         "phone": "055-245-9100",
@@ -7315,7 +7398,9 @@
       "venue": "outdoor",
       "parking": {
         "status": "free",
-        "note": "암벽장 맞은편 주차장"
+        "onsite": [
+          "암벽장 맞은편 주차장"
+        ]
       },
       "contact": {
         "phone": "063-581-4738",
@@ -9748,7 +9833,10 @@
       "venue": "outdoor",
       "parking": {
         "status": "unknown",
-        "note": "선암호수공원 축구장 쪽 주차장 이용 후 도보"
+        "note": "이용 후 도보",
+        "nearby": [
+          "선암호수공원 축구장 쪽 주차장"
+        ]
       },
       "contact": {
         "phone": "052-256-6476",

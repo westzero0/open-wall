@@ -19,6 +19,7 @@ export const CSV_HEADERS = [
   '오픈채팅', // same: an older CSV without it keeps the stored chat link (keepGeo)
   '세팅일', '다음세팅', // same: absent or empty keeps the stored date (keepGeo)
   '예약이름', '예약주소', // same: absent or empty keeps the stored reserve (keepGeo)
+  '요금', '외벽앞주차', '주변주차', // parking.fee / onsite / nearby; the two lists are ;-separated names. Unlike the columns above, empty means empty: the editor can clear them, and an older CSV without them clears them like it does 주차 itself
 ];
 const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
 const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
@@ -165,7 +166,12 @@ export function csvToWalls(rows, opts = {}) {
       const pk = get('주차');
       const pkNote = get('주차메모');
       if (pk && !Object.hasOwn(PARKING_KO, pk)) throw new Error('주차는 무료/유료/없음/모름 중 하나여야 해요');
-      const parking = pk || pkNote ? compact({ status: pk ? PARKING_KO[pk] : 'unknown', note: pkNote }) : null;
+      const onsite = list(get('외벽앞주차'));
+      const nearby = list(get('주변주차'));
+      const pkFee = get('요금');
+      const parking = pk || pkNote || pkFee || onsite.length || nearby.length
+        ? { ...compact({ status: pk ? PARKING_KO[pk] : 'unknown', note: pkNote, fee: pkFee }), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}) }
+        : null;
       const venue = get('구분');
       if (venue && !Object.hasOwn(VENUE_KO, venue)) throw new Error('구분은 실외/실내/실내외 중 하나여야 해요');
       const holiday = get('공휴일');
@@ -223,6 +229,7 @@ export function wallToRow(w) {
     방향: w.sun?.facing ?? '', 위도: w.sun?.lat ?? '', 경도: w.sun?.lng ?? '',
     주차: w.parking ? PARKING_LABEL[w.parking.status] : '',
     주차메모: w.parking?.note ?? '',
+    요금: w.parking?.fee ?? '', 외벽앞주차: (w.parking?.onsite ?? []).join(';'), 주변주차: (w.parking?.nearby ?? []).join(';'),
     구분: VENUE_LABEL[w.venue] ?? '',
     공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
     격주휴무: nthText(w.exceptions?.nth_closed),

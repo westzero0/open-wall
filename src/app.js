@@ -867,7 +867,9 @@ function infoBlock(m) {
   const { onsite, nearby } = m.parkingWhere;
   parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
     el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '',
-      nearby.length ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '주변'), nearby.join(' · ')) : null)));
+      m.parking.fee ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '요금'), m.parking.fee) : null,
+      nearby.length ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '주변'), nearby.join(' · ')) : null,
+      m.parkingTip ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '참고'), m.parkingTip) : null)));
   return parts;
 }
 
