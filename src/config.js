@@ -12,7 +12,7 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
 export const config = {
-  climberTest: false,
+  climberTest: true,
   singlePitch: false,
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,

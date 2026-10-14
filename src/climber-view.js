@@ -127,7 +127,7 @@ export function createClimberView({ getOpenCount = () => null, isCardDone = () =
     stage.style.setProperty('--tint', t.tint);
     stage.style.setProperty('--sun-x', `${t.wall.sun.x}%`);
     stage.style.setProperty('--lift', String(t.wall.sun.lift));
-    const plate = el('article', { class: 'cr-plate' },
+    const plate = el('article', { class: 'cr-plate reveal' }, // 'reveal': the plate arrives with a short sunrise (style.css; none under reduced motion)
       el('div', { class: 'cr-head' },
         el('p', { class: 'cr-fig' }, `FIG. ${String(CODES.indexOf(r.type) + 1).padStart(2, '0')} / ${String(CODES.length).padStart(2, '0')}`),
         el('span', { class: 'cr-animal' }, t.animal)),

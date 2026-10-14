@@ -36,13 +36,13 @@ export const TYPES = Object.freeze({
     safety: null, tip: 'solo',
   },
   cat: {
-    animal: '고양이', tint: '#f0cfd9', wall: { sun: { x: 4, lift: 0.25 }, shade: 'r' }, name: '갑자기 날아오르는 타입', nick: '아무도 못 본 사이에 정상',
+    animal: '고양이', tint: '#ddd3ec', wall: { sun: { x: 4, lift: 0.25 }, shade: 'r' }, name: '갑자기 날아오르는 타입', nick: '아무도 못 본 사이에 정상',
     strengths: ['감각으로 동작을 만든다', '폭발적인 한 동작이 나온다'],
     caution: '컨디션이 안 맞는 날엔 확 가라앉아요', shine: '다이나믹한 동작이 필요한 루트에서',
     safety: '도약 전에는 낙하 지점과 주변을 꼭 확인해요.', tip: 'solo',
   },
   raccoon: {
-    animal: '너구리', tint: '#f3e7b4', wall: { sun: { x: 54, lift: 0.15 }, shade: 'l' }, name: '어디서든 어울리는 인싸형', nick: '암장 인싸, 누구와도 한 팀',
+    animal: '너구리', tint: '#cfe6d6', wall: { sun: { x: 54, lift: 0.15 }, shade: 'l' }, name: '어디서든 어울리는 인싸형', nick: '암장 인싸, 누구와도 한 팀',
     strengths: ['분위기를 편하게 만든다', '누구와도 꾸준히 즐겁게 오른다'],
     caution: '이야기가 길어져 오르는 시간이 줄어요', shine: '모르는 사람과 한 문제를 같이 풀 때',
     safety: null, tip: 'social',
