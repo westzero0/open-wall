@@ -1702,9 +1702,9 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .ys-month { font: 11px var(--font); fill: var(--muted); }
 html[data-text="large"] .ys-month { font-size: 12px; }
 html[data-text="xlarge"] .ys-month { font-size: 13px; }
-.ys-day { fill-opacity: .66; }
-.ys-day.edge { fill-opacity: 1; }
-.ys-night { fill: var(--shade-bar); fill-opacity: .3; }
+.ys-day { fill-opacity: var(--ys-band); }
+.ys-day.edge { fill-opacity: var(--ys-band-edge); }
+.ys-night { fill: var(--shade-bar); fill-opacity: var(--ys-band-night); }
 .ys-day.dim, .ys-night.dim { opacity: .42; }
 .ys-orbit { fill: none; stroke: var(--fg); stroke-width: 1; stroke-dasharray: 1.2 5; stroke-linecap: round; }
 .ys-orbit.past { stroke-opacity: .38; }
@@ -1727,9 +1727,9 @@ html[data-text="xlarge"] .ys-month { font-size: 13px; }
 .ys-mark.unknown .core { display: inline; fill: none; stroke: var(--surface); stroke-width: 1.3; stroke-linecap: round; } /* a hollow capsule: where it was, and that the sun is not known */
 .ys-ring { display: none; fill: none; stroke: var(--accent); stroke-width: 1.6; pointer-events: none; }
 .ys-ring.on { display: inline; }
-:root { --ys-sun: #d9840f; --ys-shade: #4d82b0; --ys-night: #252a2e; --ys-unknown: #6a706c; } /* what an arc says about the sun: lit, shade, after sunset, not known */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; } }
-:root[data-theme="dark"] { --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; }
+:root { --ys-band: .18; --ys-band-edge: .32; --ys-band-night: .1; --ys-sun: #d9840f; --ys-shade: #4d82b0; --ys-night: #252a2e; --ys-unknown: #6a706c; } /* what an arc says about the sun: lit, shade, after sunset, not known */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ys-band: .26; --ys-band-edge: .45; --ys-band-night: .14; --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; } }
+:root[data-theme="dark"] { --ys-band: .26; --ys-band-edge: .45; --ys-band-night: .14; --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; }
 .ys-key { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4) var(--sp-12); margin: var(--sp-4) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .ys-key span { display: inline-flex; align-items: center; gap: var(--sp-4); white-space: nowrap; }
 .ys-key i { display: inline-block; width: 14px; height: 5px; border-radius: 3px; background: var(--ys-sun); }
