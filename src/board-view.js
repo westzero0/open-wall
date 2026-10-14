@@ -5,12 +5,12 @@ import { el } from './dom.js';
 import { config } from './config.js';
 import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
-import { MAX_BODY, MAX_NICK, PREVIEW, ageText, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
+import { MAX_BODY, MAX_NICK, PREVIEW, ageText, cleanBoardNick, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
 
 export const COOLDOWN_MS = 20_000;
 const MAX_REPORTED = 200;
 const ID_RE = /^[A-Za-z0-9_-]{16,32}$/;
-const K_TS = 'open-wall:board-ts', K_REP = 'open-wall:board-reported', K_MINE = 'open-wall:board-mine';
+const K_TS = 'open-wall:board-ts', K_REP = 'open-wall:board-reported', K_MINE = 'open-wall:board-mine', K_NICK_DRAFT = 'open-wall:board-nick-draft';
 
 /** append incoming posts to existing ones, skipping ids already shown (parseBoard does not dedupe). */
 export function mergePosts(existing, incoming) {
@@ -166,9 +166,10 @@ function build(wallName, mode, onOpenAll) {
   /** the one-line form: a new post (parent null) or a reply under `parent`. Errors go to statusEl. */
   function makeForm(parent, statusEl) {
     const nick = el('input', { class: 'bd-nick', type: 'text', maxlength: String(MAX_NICK), placeholder: '닉네임', 'aria-label': '닉네임', autocomplete: 'off' });
-    nick.value = loadNick(store.get(NICK_KEY) || '');
+    nick.value = loadNick(store.get(NICK_KEY) || store.get(K_NICK_DRAFT) || ''); // a typed nickname that was never posted survives a reload (the saved one stays locked while the ranking runs)
     const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
     if (lockedNick) nick.readOnly = true;
+    nick.addEventListener('input', () => { if (!lockedNick) store.set(K_NICK_DRAFT, cleanBoardNick(nick.value)); });
     const label = parent ? '답글 남기기' : '한 줄 남기기';
     const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: label, 'aria-label': label, autocomplete: 'off' });
     // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
@@ -191,6 +192,7 @@ function build(wallName, mode, onOpenAll) {
         const made = parent ? await s.submitReply(parent, payload) : await s.submit(payload); // redraws every view of this wall
         rememberMine(made.post.id, made.token);
         if (!lockedNick) store.set(NICK_KEY, v.post.nick);
+        store.set(K_NICK_DRAFT, '');
         store.set(K_TS, String(Date.now()));
         body.value = ''; count.textContent = `0/${MAX_BODY}`;
         s.notify();

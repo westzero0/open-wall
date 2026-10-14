@@ -188,20 +188,51 @@ function dayBarBlock(bar) {
     bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
 }
 
-// 길찾기 · 공지사항 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
-const LINK_ICON = { 길찾기: 'nav', 공지사항: 'megaphone', '인스타 공지': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone', 문의: 'phone', 네이버지도: 'pin' };
+// 길찾기 · 공지 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
+const LINK_ICON = { 길찾기: 'nav', 공지: 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone' };
+// 길찾기: the first tap asks which map app (the web cannot see what is installed); the pick is remembered, later taps open it directly.
+const NAV_KEY = 'open-wall:nav-app';
+const navPref = () => { try { return localStorage.getItem(NAV_KEY); } catch { return null; } };
+function openNav(choice, copyText, nav, choices) {
+  try { localStorage.setItem(NAV_KEY, choice.id); } catch { /* private mode: asks again next time */ }
+  window.open(choice.href, '_blank', 'noopener,noreferrer');
+  if (copyText) navigator.clipboard?.writeText(copyText).catch(() => {});
+  toast(`${choice.label} 열었어요${copyText ? ' · 주소도 복사했어요' : ''}`, () => pickNav(nav, choices, copyText), '바꾸기');
+}
+function pickNav(nav, choices, copyText, ask = null) { // ask: the cell's word (공지, 전화): plain links to pick from, nothing remembered or copied
+  nav.parentElement.querySelector('.nav-pick')?.remove();
+  const btn = (text, run, cls = null) => {
+    const b = el('button', { type: 'button', ...(cls ? { class: cls } : {}) }, text);
+    b.addEventListener('click', () => { panel.remove(); run(); });
+    return b;
+  };
+  const panel = el('div', { class: 'nav-pick', role: 'group', 'aria-label': ask ? `${ask} 고르기` : '길찾기 앱 고르기' },
+    ...choices.map((c) => btn(c.label, () => (ask ? (c.href.startsWith('tel:') ? location.assign(c.href) : window.open(c.href, '_blank', 'noopener,noreferrer')) : openNav(c, copyText, nav, choices)))),
+    ask ? null : btn('주소 복사', () => navigator.clipboard?.writeText(copyText ?? '').then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}), 'plain'));
+  nav.after(panel);
+  panel.firstChild.focus();
+  const off = (e) => { if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', off, true); } };
+  setTimeout(() => document.addEventListener('click', off, true));
+}
 function linkBar(links, copyText = null, edge = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins. edge: {start, end} cells at the two ends (♥ and share)
   if (!links.length && !edge) return null;
   const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
-  return el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
+  const nav = el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
     edge?.start ?? null,
-    ...ordered.map(({ label, href, sub, primary }) => {
+    ...ordered.map(({ label, href, sub, primary, choices, ask }) => {
       const a = el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
         LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label);
-      if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
+      if (choices) {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const mine = ask ? null : choices.find((c) => c.id === navPref());
+          if (mine) openNav(mine, copyText, nav, choices); else pickNav(nav, choices, copyText, ask ? label : null);
+        });
+      } else if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
       return a;
     }),
     edge?.end ?? null);
+  return nav;
 }
 
 const rowButtons = (name, ...extra) => {
@@ -281,9 +312,13 @@ function photoLink(m) {
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
 // today's hours ride on its foot. The photo and its credit leave the expanded part, which would repeat them.
 // the forecast under the hours on the photo (an open card gets it again when the forecast arrives: refillOpen)
+// An outdoor wall with a position gets a forecast: until it arrives (or when it has none for this moment) the line stays as an
+// empty row, so the hours above it do not jump up when the forecast lands.
+const weatherExpected = (name) => { const w = state.walls.find((x) => x.name === name); return !!w && w.venue !== 'indoor' && !!wallPosition(w); };
 function photoWeather(m) {
   const w = m.weather;
-  return w ? el('p', { class: 'rhero-wx', 'aria-label': w.line }, `${w.temp} · ${w.wind} · `, el('span', { class: w.windy ? 'strong' : null }, w.gust), w.windy ? ' · 바람 셈' : '') : null;
+  if (!w) return weatherExpected(m.name) ? el('p', { class: 'rhero-wx', 'aria-hidden': 'true' }, ' ') : null;
+  return el('p', { class: 'rhero-wx', 'aria-label': `${w.line}${w.windy ? ', 바람 셈' : ''}` }, `${w.temp} · ${w.wind} · ${w.gust}`, w.windy ? el('span', { class: 'wx-pill' }, '바람 셈') : null);
 }
 const CARD_PHOTOS = 5; // the card swipes the main photo and the newest four; the gallery has them all (at most 10)
 const CARD_DOTS = 5;
@@ -1031,7 +1066,7 @@ function weatherBox(m) {
     el('span', { class: 'wx-chip wx-t', 'aria-hidden': 'true' }, w.temp),
     el('span', { class: 'wx-chip', 'aria-hidden': 'true' }, w.wind),
     el('span', { class: `wx-chip${w.windy ? ' strong' : ''}`, 'aria-hidden': 'true' }, w.gust),
-    w.windy ? el('span', { class: 'wx-strong', 'aria-hidden': 'true' }, '바람 셈') : null)];
+    w.windy ? el('span', { class: 'wx-pill', 'aria-hidden': 'true' }, '바람 셈') : null)];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -1358,6 +1393,7 @@ function showTab(key, focus = false) {
     $(`panel-${k}`).hidden = k !== key && !(split && k === 'map');
   }
   $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
+  $('find').hidden = key === 'log'; // 기록 has its own wall search
   controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
@@ -1422,7 +1458,20 @@ function wireFind(input, box, onPick) {
   });
   return draw;
 }
-wireFind($('findQ'), $('findHits'), (w) => { if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요'); });
+// one search under the headline for 목록 and 지도: a pick reveals the row (목록), or selects the pin (지도; both when the list and map sit side by side)
+function pickOnMap(w) {
+  if (!wallPosition(w)) return toast('이 암장은 지도에 위치 정보가 없어요');
+  if (!shown.rows.some((r) => r.wall.name === w.name)) {
+    clearFilters();
+    toast('조건을 모두 지우고 보여 드려요');
+  }
+  mapApi?.select(w.name, true);
+}
+wireFind($('findQ'), $('findHits'), (w) => {
+  if (ui.tab === 'map') return pickOnMap(w);
+  if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요');
+  if (wide.matches && wallPosition(w)) mapApi?.select(w.name, true);
+});
 
 // the map's floating magnifier: opens a search bar over the map; a pick selects that pin (filters cleared if they hid it)
 function setMapFind(open) {
@@ -1434,12 +1483,7 @@ function setMapFind(open) {
 }
 const drawMapFind = wireFind($('mapFindQ'), $('mapFindHits'), (w) => {
   setMapFind(false);
-  if (!wallPosition(w)) return toast('이 암장은 지도에 위치 정보가 없어요');
-  if (!shown.rows.some((r) => r.wall.name === w.name)) {
-    clearFilters();
-    toast('조건을 모두 지우고 보여 드려요');
-  }
-  mapApi?.select(w.name, true);
+  pickOnMap(w);
 });
 $('mapFindBtn').addEventListener('click', () => setMapFind(true));
 $('mapFindClose').addEventListener('click', () => { $('mapFindQ').value = ''; drawMapFind(); setMapFind(false); });
@@ -1584,7 +1628,10 @@ $('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBrea
 for (const k of tabs) {
   $(`tab-${k}`).addEventListener('click', () => {
     showTab(k);
-    if (k === 'map') $('map').scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' }); // whole map in view
+    // the tab's content lands right under the sticky date/slider/tab bar (never up at the filter row, never behind it)
+    const panel = $(`panel-${ui.tab}`); // showTab has just set --stick-h; reading the rect lays the page out first
+    const top = panel.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stick-h') || '0') - 8;
+    scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
   });
 }
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {

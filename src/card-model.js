@@ -137,6 +137,26 @@ const BASIS = { outdoor: '실외 시간 기준', indoor: '실내 시간 기준' 
 const isFee = (t) => t === '무료' || t === '유료';
 const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
 // 예약 pill: a link to the reservation site
+// 공지: one cell however many places the wall posts its notices (its site, its Naver place page, Instagram); with several the card asks which.
+function noticeLink(c) {
+  const from = [
+    safeUrl(c.notice_url) && { id: 'site', label: '공지사항', href: c.notice_url },
+    safeUrl(c.naver_map) && { id: 'naver', label: '네이버', href: c.naver_map },
+    c.instagram && { id: 'insta', label: '인스타그램', href: `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/` },
+  ].filter(Boolean);
+  if (!from.length) return null;
+  return from.length === 1 ? { label: '공지', href: from[0].href } : { label: '공지', href: from[0].href, choices: from, ask: true };
+}
+
+// 전화: one cell however many numbers (the wall's own, plus any 문의 number from the memo, all just 전화); with several the card asks which to call.
+function phoneLink(main, extra) {
+  const tel = (n) => `tel:${n.replace(/[^\d+]/g, '')}`;
+  const nums = [main && { id: 'main', label: main, href: tel(main) }, ...extra.map((n, i) => ({ id: `x${i}`, label: n, href: tel(n) }))].filter(Boolean);
+  if (!nums.length) return null;
+  if (nums.length > 1) return { label: '전화', href: nums[0].href, choices: nums.map(({ id, label, href }) => ({ id, label, href })), ask: true };
+  return { label: '전화', href: nums[0].href };
+}
+
 const reserveLink = (r) => safeUrl(r?.url) && { label: '예약', sub: r.name || null, href: r.url };
 
 // ---- memo ----
@@ -313,6 +333,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
   const route = pos ? `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}` : null;
+  const routeNaver = pos ? `https://map.naver.com/p/directions/-/${pos.lng},${pos.lat},${encodeURIComponent(wall.name)}/-/transit` : null;
   const c = wall.contact ?? {};
   const hasChat = CHAT_URL_RE.test(c.chat_url ?? '');
   const photo = wall.photo ? `data/${wall.photo}` : null;
@@ -373,14 +394,11 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     hasChat, // the card offers 오픈채팅 추가 only while there is none
     links: [
       // the order a visitor reaches for them: the notice (the evidence for the hours), the chat room, then the phone
-      safeUrl(c.notice_url) && { label: '공지사항', href: c.notice_url },
-      c.instagram && { label: '인스타 공지', href: `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/` },
+      noticeLink(c),
       reserveLink(c.reserve),
       hasChat && { label: '오픈채팅', href: c.chat_url },
-      c.phone && { label: '전화', href: `tel:${c.phone.replace(/[^\d+]/g, '')}` },
-      ...facts.phones.map((n) => ({ label: '문의', sub: n, href: `tel:${n.replace(/[^\d+]/g, '')}` })),
-      safeUrl(c.naver_map) && { label: '네이버지도', href: c.naver_map },
-      route && { label: '길찾기', href: route, primary: true },
+      phoneLink(c.phone, facts.phones),
+      route && { label: '길찾기', href: route, primary: true, choices: [{ id: 'kakao', label: '카카오맵', href: route }, { id: 'naver', label: '네이버지도', href: routeNaver }] }, // the card asks which app, once
     ].filter(Boolean),
     blog: blogOf(wall),
     photo,

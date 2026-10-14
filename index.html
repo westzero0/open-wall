@@ -74,6 +74,10 @@
       <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.</p>
       <button type="button" id="retry">다시 시도</button>
     </div>
+    <div class="find" id="find">
+      <label class="la-field"><span class="sr-only">암장 찾기</span><input type="search" id="findQ" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off"></label>
+      <ul id="findHits" class="la-picks" hidden></ul>
+    </div>
     <div class="tabbar">
       <div role="tablist" aria-label="보기 방식" class="tabs">
         <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list">목록</button>
@@ -82,10 +86,6 @@
       </div>
     </div>
     <div id="panel-list" role="tabpanel" aria-labelledby="tab-list">
-      <div class="find">
-        <label class="la-field"><span class="sr-only">암장 찾기</span><input type="search" id="findQ" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off"></label>
-        <ul id="findHits" class="la-picks" hidden></ul>
-      </div>
       <aside id="invite-banner" class="invite-banner" role="note" hidden>
         <p id="ib-title" class="ib-title"></p>
         <p id="ib-meta" class="ib-meta"></p>

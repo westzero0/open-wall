@@ -37,11 +37,17 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     $('pfNickRow').hidden = false;
     $('pfNickLabel').textContent = `닉네임 (${MAX_NICK}자까지)`;
     nickIn.maxLength = MAX_NICK;
-    nickIn.addEventListener('change', () => { // saved cleaned, shown as saved
+    // Saved cleaned, shown as saved. Not only on `change` (it needs the field to lose focus): closing the sheet by the backdrop,
+    // the back button or swiping the app away while the field is focused never fires it, so the last typed name was lost.
+    const saveNick = () => {
+      if (nickIn.readOnly) return; // locked: the saved name stays
       const v = cleanNick(nickIn.value);
       nickIn.value = v;
       try { v ? localStorage.setItem(NICK_KEY, v) : localStorage.removeItem(NICK_KEY); } catch { /* private mode: not remembered */ }
-    });
+    };
+    nickIn.addEventListener('change', saveNick);
+    dlg.addEventListener('close', saveNick);
+    document.addEventListener('visibilitychange', () => { if (dlg.open && document.visibilityState === 'hidden') saveNick(); });
   }
 
   $('meBtn').addEventListener('click', () => {

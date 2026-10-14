@@ -1,9 +1,12 @@
 // src/map.js — Leaflet wrapper (global `L` from vendor/leaflet/leaflet.js). No DOM outside `container`.
 import { mapPins, shortName } from './viewmodel.js';
+import { clusterPins } from './cluster.js';
 
 const SEOUL = [37.5665, 126.978];
 const FIT = { padding: [30, 30], maxZoom: 12 };
 const LABEL_ZOOM = 13; // pin names only from street level; below it they would cover the map
+const CLUSTER_PX = 30; // pins closer than this on screen merge into one numbered dot…
+const CLUSTER_MAX_ZOOM = 14; // …until this zoom; two walls on the same spot would never part
 const RANK = { soon: 0, open: 0, closed: 1, unknown: 2 }; // whose name wins when two would overlap
 const dark = matchMedia('(prefers-color-scheme: dark)');
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -52,7 +55,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
 
   const layer = L.layerGroup().addTo(map);
   let pins = [];
-  let markers = [];
+  let markers = []; // markers[i] belongs to pins[i]; a hole while that pin sits inside a cluster
   let selected = null; // wall name
   let user = null;
   let at = null;
@@ -76,7 +79,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     if (!on) return;
     const first = (i) => (pins[i].row.wall.name === selected ? -1 : RANK[pins[i].pin]);
     const kept = [];
-    for (const i of markers.map((_, i) => i).sort((a, b) => first(a) - first(b))) {
+    for (const i of pins.map((_, i) => i).filter((i) => markers[i]).sort((a, b) => first(a) - first(b))) {
       const box = markers[i].getTooltip()?.getElement();
       if (!box) continue;
       box.style.visibility = '';
@@ -89,9 +92,10 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
 
   const select = (name, fromClick) => {
     selected = name;
+    const p = pins.find((x) => x.row.wall.name === name);
+    if (p && !markers[pins.indexOf(p)]) draw(); // picked from outside (the search) while inside a cluster: it steps out
     restyle();
     labels();
-    const p = pins.find((x) => x.row.wall.name === name);
     markers[pins.indexOf(p)]?.bringToFront();
     onSelect(p?.row ?? null, fromClick, at);
     // the selected card covers the map's foot: keep the tapped pin above it
@@ -104,7 +108,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   };
 
   map.on('click', () => selected && select(null, true));
-  map.on('zoomend', labels);
+  map.on('zoomend', () => { draw(); labels(); });
   dark.addEventListener('change', restyle);
   new MutationObserver(restyle).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); // 내 정보 › 화면
 
@@ -114,26 +118,54 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     return pts.length ? L.latLngBounds(pts) : null;
   };
 
+  const clusterDot = (members, lat, lng) => {
+    const live = members.some((p) => p.pin === 'open' || p.pin === 'soon');
+    const n = document.createElement('span');
+    n.className = `pin-cluster${live ? '' : ' idle'}`;
+    n.textContent = String(members.length);
+    return L.marker([lat, lng], { icon: L.divIcon({ html: n, className: '', iconSize: [30, 30] }), keyboard: false })
+      .on('click', () => map.fitBounds(L.latLngBounds(members.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: CLUSTER_MAX_ZOOM + 1 }));
+  };
+  const draw = () => {
+    layer.clearLayers();
+    markers = [];
+    const pick = (p) => () => select(p.row.wall.name, true);
+    const groups = map.getZoom() > CLUSTER_MAX_ZOOM
+      ? pins.map((_, i) => [i])
+      : clusterPins(pins.map((p) => ({ lat: p.lat, lng: p.lng, keep: p.row.wall.name === selected })), (lat, lng) => map.project([lat, lng]), CLUSTER_PX);
+    const lone = groups.filter((g) => g.length === 1).map((g) => g[0]);
+    // drawn in order, so every visible pin sits above every hit area:
+    // 44px invisible hit areas, then 양달 rings (shape, not only color), then the pins
+    for (const i of lone) {
+      const p = pins[i];
+      L.circleMarker([p.lat, p.lng], { radius: 22, stroke: false, fillOpacity: 0, bubblingMouseEvents: false })
+        .on('click', pick(p)).addTo(layer);
+    }
+    for (const i of lone) {
+      const p = pins[i];
+      if (p.row.lit !== true || (p.pin !== 'open' && p.pin !== 'soon')) continue;
+      L.circleMarker([p.lat, p.lng], { radius: 16, weight: 3, color: cssVar('--pin-sun'), fill: false, interactive: false }).addTo(layer);
+    }
+    for (const i of lone) {
+      const p = pins[i];
+      markers[i] = L.circleMarker([p.lat, p.lng], { bubblingMouseEvents: false, ...pinStyle(p, false) })
+        .on('click', pick(p))
+        .addTo(layer);
+    }
+    for (const g of groups.filter((g) => g.length > 1)) {
+      const m = g.map((i) => pins[i]);
+      clusterDot(m, m.reduce((t, p) => t + p.lat, 0) / m.length, m.reduce((t, p) => t + p.lng, 0) / m.length).addTo(layer);
+    }
+    user?.bringToFront();
+    restyle(); // the selected pin keeps its big ring
+  };
+
   return {
     select: (name, fromClick = false) => select(name, fromClick),
     setRows(rows, when) {
       at = when;
       pins = mapPins(rows).pins;
-      layer.clearLayers();
-      const pick = (p) => () => select(p.row.wall.name, true);
-      // drawn in order, so every visible pin sits above every hit area:
-      // 44px invisible hit areas, then 양달 rings (shape, not only color), then the pins
-      for (const p of pins) {
-        L.circleMarker([p.lat, p.lng], { radius: 22, stroke: false, fillOpacity: 0, bubblingMouseEvents: false })
-          .on('click', pick(p)).addTo(layer);
-      }
-      for (const p of pins) {
-        if (p.row.lit !== true || (p.pin !== 'open' && p.pin !== 'soon')) continue;
-        L.circleMarker([p.lat, p.lng], { radius: 16, weight: 3, color: cssVar('--pin-sun'), fill: false, interactive: false }).addTo(layer);
-      }
-      markers = pins.map((p) => L.circleMarker([p.lat, p.lng], { bubblingMouseEvents: false, ...pinStyle(p, false) })
-        .on('click', pick(p))
-        .addTo(layer));
+      draw();
       user?.bringToFront();
       if (selected) select(pins.some((p) => p.row.wall.name === selected) ? selected : null, false);
       else labels();
