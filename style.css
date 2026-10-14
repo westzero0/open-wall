@@ -1294,7 +1294,7 @@ p.setnew { margin-top: var(--sp-8); }
 .ml-m { min-width: 0; overflow-wrap: anywhere; }
 
 /* ---- 기록 tab ---- */
-#panel-log { margin-top: var(--sp-14); display: grid; gap: var(--sp-14); }
+#panel-log { margin-top: var(--sp-14); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-14); } /* minmax(0,…): a wide child (the year map) scrolls inside its card instead of widening the page */
 /* 내 활동: the 등급 seal + name, the bar to the next tier, the numbers */
 .lg-act { padding: var(--sp-14) var(--sp-16); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
 .lg-act-hd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8) var(--sp-8); }
@@ -1352,7 +1352,7 @@ p.setnew { margin-top: var(--sp-8); }
 .lg-empty h3 { font-size: var(--fs-lg); }
 .lg-empty p { margin: var(--sp-6) 0 var(--sp-16); color: var(--muted); font-size: var(--fs-sm); }
 .lg-empty-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-8); }
-/* 올해 heatmap: weeks as columns, 일~토 as rows; the grid never scrolls sideways — cells shrink with the width. Empty days are outlined, a record day is filled (3 shades) */
+/* 올해 도장 fold: a details card; the seal itself is .ys-* below */
 .hm { padding: 0 var(--sp-8) var(--sp-4); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
 .hm > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); min-height: var(--tap); padding: 0 var(--sp-8); list-style: none; cursor: pointer; font-size: var(--fs-base); font-weight: 600; }
 .hm > summary::-webkit-details-marker { display: none; }
@@ -1360,15 +1360,6 @@ p.setnew { margin-top: var(--sp-8); }
 .hm[open] > summary::after { transform: translateY(5px) rotate(-135deg); }
 .hm > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hm-sum { margin-left: auto; font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
-.hm-months, .hm-grid { display: grid; grid-template-columns: repeat(var(--weeks), minmax(0, 1fr)); gap: 1px; }
-.hm-months { margin-bottom: 3px; font-size: var(--fs-xs); line-height: 1.2; color: var(--muted); white-space: nowrap; }
-.hm-grid { grid-template-rows: repeat(7, auto); grid-auto-flow: column; }
-.hm-cell { display: block; aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-xs); background: none; }
-.hm-cell.future { border-style: dotted; opacity: .5; }
-.hm-pad { display: block; aspect-ratio: 1; }
-.hm-cell[data-level] { border-color: var(--accent); background: var(--accent); }
-.hm-cell[data-level="1"] { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-.hm-cell[data-level="2"] { background: color-mix(in srgb, var(--accent) 65%, transparent); }
 /* month calendar: 일~토, cells at least 44px; a record day carries the 해벽 mark as an ink stamp (+N when 2+), today a --fg border, the picked day an accent ring + tint */
 .cal { padding: var(--sp-8) var(--sp-8) var(--sp-12); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
 .cal-head { display: flex; align-items: center; gap: var(--sp-4); }
@@ -1618,7 +1609,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .cq-bolts i.here::after { background: #2a2d32; }
 .cq-count { flex: none; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
 .cq-count b { color: var(--fg); }
-.cq-opts { display: grid; grid-auto-rows: 1fr; gap: var(--sp-14); margin: 0 0 var(--sp-8); }
+.cq-opts { display: grid; grid-auto-rows: 1fr; gap: var(--sp-16); margin: 0 0 var(--sp-8); }
 /* a hold: an uneven outline, a darker lip along the bottom, the bolt in it; the first statement is the sun's yellow, the second green */
 .cq-hold { position: relative; display: flex; align-items: center; gap: var(--sp-12); width: 100%; min-height: calc(var(--tap) * 2); padding: var(--sp-14) var(--sp-20) var(--sp-14) var(--sp-16); border: 0; background: color-mix(in srgb, var(--hold) 30%, var(--surface)); box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--hold) 45%, transparent), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: var(--fg); font: inherit; font-size: var(--fs-base); line-height: 1.45; text-align: left; cursor: pointer; }
 .cq-hold.a { --hold: var(--hold-a); border-radius: 62px 26px 54px 30px / 48px 30px 50px 36px; }
@@ -1628,7 +1619,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .cq-hold[aria-pressed="true"] { background: var(--hold); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: #1b1f1e; font-weight: 700; }
 .cq-hold:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .cq-title { margin: 0 0 var(--sp-16); font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; letter-spacing: -.02em; text-wrap: balance; }
-.climber-res { display: grid; gap: var(--sp-12); padding: var(--sp-8) 0; }
+.climber-res { display: grid; gap: var(--sp-16); padding: var(--sp-8) 0; }
 /* the plate: a double frame, FIG. n / 08, the stage, the name, the bars. The shared picture (climber-image.js) is drawn the same way. */
 .cr-plate { position: relative; padding: var(--sp-14) var(--sp-14) var(--sp-10); border: 2px solid var(--fg); background: var(--plate); }
 .cr-plate::before { content: ""; position: absolute; inset: 5px; border: 1px solid var(--fg); pointer-events: none; }
@@ -1667,7 +1658,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .cr-read b { margin-right: var(--sp-4); }
 .cr-btns { display: flex; flex-wrap: wrap; gap: var(--sp-8); }
 .cr-share { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.cr-share-note { margin: calc(var(--sp-4) * -1) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.cr-share-note { margin: calc(var(--sp-8) * -1) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .cr-status { margin: 0; min-height: 1.2em; font-size: var(--fs-xs); color: var(--soon); }
 .cr-more { border-top: 1px solid var(--hair); }
 .cr-more summary { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); font-weight: 600; list-style: none; cursor: pointer; }
@@ -1702,3 +1693,52 @@ html[data-text] .bd-body { flex: 1 1 100%; }
   .cr-plate.reveal .cr-dots i:nth-child(3) { animation-delay: 840ms; }
   .cr-plate.reveal .cr-route { animation: cr-rise 360ms var(--ease-out) 900ms both; }
 }
+
+/* 올해 도장 (src/year-seal-view.js): angle = the day, ring = the hour, the daylight band behind, one short arc per visit */
+.ys { display: block; width: 100%; max-width: 340px; margin: 0 auto; touch-action: manipulation; }
+.ys-rim { fill: none; stroke: var(--fg); stroke-opacity: .85; stroke-width: 1.4; }
+.ys-rim.thin { stroke-opacity: .5; stroke-width: .7; }
+.ys-tick { stroke: var(--fg); stroke-width: 1; }
+.ys-month { font: 11px var(--font); fill: var(--muted); }
+html[data-text="large"] .ys-month { font-size: 12px; }
+html[data-text="xlarge"] .ys-month { font-size: 13px; }
+.ys-day { fill-opacity: .66; }
+.ys-day.edge { fill-opacity: 1; }
+.ys-night { fill: var(--shade-bar); fill-opacity: .3; }
+.ys-day.dim, .ys-night.dim { opacity: .42; }
+.ys-orbit { fill: none; stroke: var(--fg); stroke-width: 1; stroke-dasharray: 1.2 5; stroke-linecap: round; }
+.ys-orbit.past { stroke-opacity: .38; }
+.ys-orbit.future { stroke-opacity: .14; }
+.ys-today-line { stroke: var(--fg); stroke-opacity: .3; stroke-width: 1; }
+.ys-sun-halo { fill: none; stroke: var(--pin-sun); stroke-opacity: .8; stroke-width: 1; }
+.ys-sun { fill: var(--pin-sun); stroke: var(--surface); stroke-width: 1.6; }
+.ys-num { font: 300 34px var(--font); fill: var(--fg); }
+.ys-unit { font: 12px var(--font); fill: var(--muted); }
+.ys-title { display: flex; flex: 1; align-items: center; justify-content: center; }
+.ys-title h3 { flex: 0 1 auto; }
+.ys-mark { cursor: pointer; outline: none; }
+.ys-mark .under { fill: none; stroke: var(--surface); stroke-width: 5.2; stroke-linecap: round; }
+.ys-mark .over { fill: none; stroke-width: 3; stroke-linecap: round; }
+.ys-mark.sun .over { stroke: var(--ys-sun); }
+.ys-mark.shade .over { stroke: var(--ys-shade); }
+.ys-mark.night .over { stroke: var(--ys-night); }
+.ys-mark.unknown .over { stroke: var(--ys-unknown); }
+.ys-mark .core { display: none; }
+.ys-mark.unknown .core { display: inline; fill: none; stroke: var(--surface); stroke-width: 1.3; stroke-linecap: round; } /* a hollow capsule: where it was, and that the sun is not known */
+.ys-ring { display: none; fill: none; stroke: var(--accent); stroke-width: 1.6; pointer-events: none; }
+.ys-ring.on { display: inline; }
+:root { --ys-sun: #d9840f; --ys-shade: #4d82b0; --ys-night: #252a2e; --ys-unknown: #6a706c; } /* what an arc says about the sun: lit, shade, after sunset, not known */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; } }
+:root[data-theme="dark"] { --ys-sun: #f0a040; --ys-shade: #6aa3d2; --ys-night: #cfd5d0; --ys-unknown: #a8afaa; }
+.ys-key { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4) var(--sp-12); margin: var(--sp-4) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.ys-key span { display: inline-flex; align-items: center; gap: var(--sp-4); white-space: nowrap; }
+.ys-key i { display: inline-block; width: 14px; height: 5px; border-radius: 3px; background: var(--ys-sun); }
+.ys-key i.shade { background: var(--ys-shade); }
+.ys-key i.night { background: var(--ys-night); }
+.ys-key i.unknown { background: none; box-shadow: inset 0 0 0 1.3px var(--ys-unknown); }
+.yi-list { display: grid; gap: var(--sp-12); margin: var(--sp-4) 0 var(--sp-12); padding: 0; list-style: none; }
+.yi-list li { display: grid; gap: var(--sp-2); }
+.yi-list b { font-size: var(--fs-base); }
+.yi-list span { font-size: var(--fs-sm); color: var(--muted); }
+.ys-plot { padding: var(--sp-4) 0 0; }
+.ys-cap { min-height: 1.5rem; margin: var(--sp-4) 0 0; text-align: center; font-size: var(--fs-sm); color: var(--muted); }

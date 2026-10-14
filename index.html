@@ -239,6 +239,9 @@
           <h2 id="profile-title">내 정보</h2>
         </div>
         <label class="sh-row rp-field pf-nick" id="pfNickRow" hidden><span id="pfNickLabel">닉네임</span><input id="pfNick" autocomplete="off"></label>
+        <div class="sh-row" id="pfClimberRow" hidden>
+          <button type="button" class="pf-link" id="pfClimber">클라이머 유형 테스트 <span>나는 어떤 클라이머?</span></button>
+        </div>
         <fieldset class="sh-row" id="regionRow">
           <legend>내 지역</legend>
           <button type="button" class="sh-toggle" id="regionClear" hidden>선택 해제</button>
@@ -287,9 +290,6 @@
         </div>
         <div class="sh-row" id="pfReportRow" hidden>
           <button type="button" class="pf-link" id="pfReport">정보 제보하기 <span>암장 고르기</span></button>
-        </div>
-        <div class="sh-row" id="pfClimberRow" hidden>
-          <button type="button" class="pf-link" id="pfClimber">클라이머 유형 테스트 <span>나는 어떤 클라이머?</span></button>
         </div>
         <div class="sh-row">
           <a class="pf-link" id="pfAbout" href="#about-sheet">앱 정보 <span>자료 출처 · 개인정보</span></a>
@@ -476,6 +476,21 @@
         </div>
         <p class="sh-hint" id="rank-info-note"></p>
         <ol class="ri-list" id="rank-info-list"></ol>
+        <button class="sh-close">닫기</button>
+      </form>
+    </dialog>
+    <dialog id="year-info" class="sheet" aria-labelledby="year-info-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="year-info-title">올해 도장 읽는 법</h2>
+        </div>
+        <ul class="yi-list">
+          <li><b>각도 = 날짜</b><span>맨 위가 1월 1일이고, 시계 방향으로 한 해가 돌아요. 바깥 숫자는 달이에요.</span></li>
+          <li><b>안쪽에서 바깥쪽 = 시각</b><span>안쪽이 새벽 5시, 바깥쪽이 밤 11시예요. 줄 하나가 한 시간이에요.</span></li>
+          <li><b>호 하나 = 다녀온 한 번</b><span>그 시각에 그 암장이 양달이었는지로 색이 달라져요. 호를 누르면 날짜와 시각이 나와요.</span></li>
+          <li><b>바탕의 점 = 그날의 햇빛</b><span>안쪽 호박색은 해가 막 뜬 때, 바깥쪽 파란색은 해 지기 전이에요. 띠가 여름에 두껍고 겨울에 얇아져요. 해 뜨고 지는 시각은 서울 기준으로 계산해요.</span></li>
+          <li><b>점선 원과 주황 점</b><span>점선 원은 한낮 해의 길이고, 주황 점은 오늘 해가 있는 자리예요.</span></li>
+        </ul>
         <button class="sh-close">닫기</button>
       </form>
     </dialog>
