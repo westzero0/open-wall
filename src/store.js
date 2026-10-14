@@ -120,6 +120,24 @@ const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.inclu
 
 // 내 블로그 후기: at most 3 {title, url, date}; only https://blog.naver.com/caramelsnow/<digits> links survive
 export const BLOG_URL_RE = /^https:\/\/blog\.naver\.com\/caramelsnow\/\d+$/;
+// 사진 여러 장: at most MAX_PHOTOS of { src, credit?, date?, main? } in the order they were approved (oldest first), one at most `main`.
+// `photo` / `photo_credit` stay as the card's first picture (the main one, else the newest), so a reader of the single photo keeps working.
+export const MAX_PHOTOS = 10;
+function cleanPhotos(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const p of v) {
+    const src = isPlainObject(p) ? cleanPhoto(p.src) : null;
+    if (!src || out.some((x) => x.src === src)) continue;
+    const credit = cleanCredit(p.credit);
+    out.push({ src, ...(credit ? { credit } : {}), ...(isDateStr(p.date) ? { date: p.date } : {}), ...(p.main === true && !out.some((x) => x.main) ? { main: true } : {}) });
+    if (out.length === MAX_PHOTOS) break;
+  }
+  return out;
+}
+/** coverOf(photos) → the item the card shows first: the main one, else the newest; undefined for none. */
+export const coverOf = (photos) => photos.find((p) => p.main) ?? photos[photos.length - 1];
+
 
 function cleanBlogPosts(v) {
   if (!Array.isArray(v)) return [];
@@ -286,9 +304,11 @@ export function normalizeWall(raw) {
   const sun_override = cleanOverride(raw.sun_override);
   const location = cleanLocation(raw.location);
   const parking = cleanParking(raw.parking);
-  const photo = cleanPhoto(raw.photo);
+  const photos = cleanPhotos(raw.photos);
+  const cover = coverOf(photos); // with a photos list, photo and photo_credit follow its cover and never disagree with it
+  const photo = cover ? cover.src : cleanPhoto(raw.photo);
   const stamp = cleanStamp(raw.stamp);
-  const photo_credit = photo ? cleanCredit(raw.photo_credit) : null;
+  const photo_credit = cover ? cover.credit ?? null : photo ? cleanCredit(raw.photo_credit) : null;
   const short_name = typeof raw.short_name === 'string' ? raw.short_name.trim() : '';
   const venue = VENUES.includes(raw.venue) ? raw.venue : null;
   // optional indoor timetable of a wall with an indoor part ('both'); same shapes as hours / winter
@@ -320,6 +340,7 @@ export function normalizeWall(raw) {
     ...(photo ? { photo } : {}),
     ...(stamp ? { stamp } : {}),
     ...(photo_credit ? { photo_credit } : {}),
+    ...(photos.length ? { photos } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
     ...(venue ? { venue } : {}),
     ...(Object.keys(indoor_hours).length ? { indoor_hours } : {}),
@@ -348,6 +369,7 @@ export function keepGeo(old, next) {
     out.photo = old.photo;
     if (old.photo_credit) out.photo_credit = old.photo_credit;
   } else if (!out.photo_credit && out.photo === old.photo && old.photo_credit) out.photo_credit = old.photo_credit;
+    if (old.photos) out.photos = old.photos;
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
@@ -382,6 +404,7 @@ export function mergeWalls(existing, incoming, mode) {
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
       // holiday / nth closures fill only walls that have none (an edited rule stays)
+      if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.holiday && !old.holiday) fill.holiday = w.holiday;
       if (w.exceptions.nth_closed && !old.exceptions?.nth_closed) fill.exceptions = { ...old.exceptions, nth_closed: w.exceptions.nth_closed };
       // 세팅일: only the dates this wall lacks (a date the user set stays)
