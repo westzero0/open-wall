@@ -317,9 +317,14 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const hasChat = CHAT_URL_RE.test(c.chat_url ?? '');
   const photo = wall.photo ? `data/${wall.photo}` : null;
   const crowdModel = crowdOf(crowd, status.state);
-  const credit = wall.photo_credit && photo
-    ? { text: `사진 · ${wall.photo_credit.text}${wall.photo_credit.license ? ` · ${wall.photo_credit.license}` : ''}`, url: wall.photo_credit.url || null }
-    : null;
+  const creditOf = (c) => c ? { text: `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`, url: c.url || null } : null;
+  const credit = photo ? creditOf(wall.photo_credit) : null;
+  // every picture of the wall, the main one first then the newest approved (the list is oldest first); the card swipes the first CARD_PHOTOS, the gallery shows all
+  const list = Array.isArray(wall.photos) ? wall.photos : [];
+  const photos = photo
+    ? list.length ? [...list.filter((p) => p.main), ...list.filter((p) => !p.main).reverse()].map((p) => ({ src: `data/${p.src}`, credit: creditOf(p.credit), date: p.date ?? null }))
+      : [{ src: photo, credit, date: null }]
+    : [];
   return {
     name: wall.name,
     shortName: shortName(wall),
@@ -384,6 +389,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
       secondary: ['스피드월', '리드', '볼더', '실내벽'].find((t) => tags.includes(t)) ?? '',
     },
     credit,
+    photos,
     // 다녀왔어요 pill: "다녀왔어요" until the first record, then "다녀옴 N번" (a tap adds one more)
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),

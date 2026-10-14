@@ -29,6 +29,7 @@ import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openBoardPage } from './board-page.js';
+import { openGallery } from './gallery-view.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -45,6 +46,7 @@ const ICONS = {
   chat: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
   phone: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'],
   camera: ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z'],
+  'camera-plus': ['M14.5 5h-5L7 8H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4', 'M11 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M19 1v6', 'M16 4h6'],
   pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
   sliders: ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
@@ -283,18 +285,53 @@ function photoWeather(m) {
   const w = m.weather;
   return w ? el('p', { class: 'rhero-wx', 'aria-label': w.line }, `${w.temp} · ${w.wind} · `, el('span', { class: w.windy ? 'strong' : null }, w.gust), w.windy ? ' · 바람 셈' : '') : null;
 }
+const CARD_PHOTOS = 5; // the card swipes the main photo and the newest four; the gallery has them all (at most 10)
+const CARD_DOTS = 5;
 function rowPhoto(m, li) {
-  const img = el('img', { src: m.photo, decoding: 'async', loading: 'lazy', alt: `${m.name} 외벽 사진` });
-  const wrap = el('div', { class: 'herowrap rhero' }, img,
-    el('div', { class: 'rhero-foot' }, // the hours and the photo credit share one bottom line
-      el('div', { class: 'rhero-line' },
-        el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)),
-        creditChip(m.credit?.text === '사진 · 직접 촬영' ? null : m.credit)), // our own photos need no credit; a licensed one keeps its line
-      photoWeather(m)));
-  // the photo sits in a hidden box until the row opens (lazy never loads it): fetch it when the row nears the screen, so opening shows it at once
-  const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { img.loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
+  const list = m.photos.slice(0, CARD_PHOTOS), many = m.photos.length > 1;
+  const imgs = list.map((p, i) => el('img', { src: p.src, decoding: 'async', loading: 'lazy', alt: `${m.name} 외벽 사진${many ? ` ${i + 1}/${list.length}` : ''}` }));
+  const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
+    ...imgs.map((img) => el('div', { class: 'rhero-slide' }, img)));
+  let credit = null;
+  const line = el('div', { class: 'rhero-line' }, el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)));
+  const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
+    const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
+    if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
+    next?.setAttribute('title', c.text);
+    if (credit) credit.replaceWith(...(next ? [next] : [])); else if (next) line.append(next);
+    credit = next;
+  };
+  setCredit(list[0].credit ?? m.credit);
+  const wrap = el('div', { class: 'herowrap rhero' }, track, el('div', { class: 'rhero-foot' }, line, photoWeather(m)));
+  // the photo sits in a hidden box until the row opens (lazy never loads it): fetch the first when the row nears the screen, so opening shows it at once
+  const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { imgs[0].loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
   near.observe(li);
-  img.addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
+  imgs[0].addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
+  imgs.slice(1).forEach((img, k) => img.addEventListener('error', () => img.closest('.rhero-slide')?.remove(), { once: true }));
+  const add = config.boardUrl ? el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 사진 더 보내기`, title: '사진 더 보내기' }, icon('camera-plus')) : null;
+  add?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
+  if (!many && !add) return wrap;
+  // right-bottom: faint dots say where we are (the current one stretches out when it changes), the camera sends one more
+  const dots = el('span', { class: 'rhero-dots', 'aria-hidden': 'true' });
+  const count = el('span', { class: 'sr-only', 'aria-live': 'polite' });
+  let cur = 0;
+  const paint = (i) => { // at most CARD_DOTS dots: a window that follows the photo; a smaller dot at an end says there are more
+    const n = list.length, d = Math.min(n, CARD_DOTS), start = n <= CARD_DOTS ? 0 : Math.max(0, Math.min(n - CARD_DOTS, i - 2));
+    if (dots.children.length !== d) dots.replaceChildren(...Array.from({ length: d }, () => el('i')));
+    [...dots.children].forEach((x, k) => { x.classList.toggle('on', start + k === i); x.classList.toggle('edge', n > CARD_DOTS && ((k === 0 && start > 0) || (k === d - 1 && start + d < n))); });
+    count.textContent = `${i + 1} / ${n}`;
+    setCredit(list[i].credit ?? (i === 0 ? m.credit : null));
+  };
+  const goTo = (i, smooth) => track.scrollTo({ left: Math.max(0, Math.min(list.length - 1, i)) * track.clientWidth, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant' });
+  if (many) {
+    paint(0);
+    track.addEventListener('scroll', () => { const i = Math.max(0, Math.min(list.length - 1, Math.round(track.scrollLeft / track.clientWidth))); if (i !== cur) { cur = i; paint(i); } }, { passive: true });
+    const open = () => openGallery({ name: m.name, photos: m.photos, index: cur, canSend: Boolean(config.boardUrl), onClose: (i) => { cur = Math.min(i, list.length - 1); goTo(cur, false); paint(cur); } });
+    track.addEventListener('click', open);
+    track.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); else if (e.key === 'ArrowRight') goTo(cur + 1, true); else if (e.key === 'ArrowLeft') goTo(cur - 1, true); });
+  }
+  wrap.classList.add('has-tools');
+  wrap.append(el('div', { class: 'rhero-tools' }, many ? dots : null, many ? count : null, add));
   return wrap;
 }
 
