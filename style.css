@@ -20,12 +20,20 @@
   --open-bar: var(--open); /* day bar fill */
   --warn: var(--soon);    /* text on surface */
   --sun-bar: var(--sun);
+  --shade-bar: #4d6a8f; /* the 응달 stretch of a day bar (the pick) */
   --closed: var(--off);
   --accent: var(--open);
   --accent-soft: var(--open-past);
   --scrim: rgb(0 0 0 / .45);
   --on-accent: #fff; /* text on an --accent fill (dark: the accent is light, so the text is dark) */
   --on-photo: #fff; /* text and marks laid over a photo, in both themes */
+  --plate: #f4f2ec; /* the 클라이머 유형 테스트 plate (도감 card): the logo's paper, apart from the page */
+  --sun-disc: #f4b942; /* the logo's sun on the plate's wall */
+  --hold-a: #f4b942; /* the question's two holds: the first statement is the sun's yellow, */
+  --hold-b: #7cc47f; /* the second a green of the characters' holds */
+  --hold-edge: #1b1f1e; /* what a hold's outline is mixed with (white on the dark page) */
+  --shade-ink: rgba(42, 45, 50, .22); /* the logo's slab as shade */
+  --sticker: #fff; /* the sticker edge round the character */
   --open-on-white: #1f5f55; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
   --shadow-seg: 0 1px 2px rgb(0 0 0 / .12); /* the raised segment of a segmented control */
   --shadow-float: 0 4px 16px rgb(0 0 0 / .25); /* floating card, toast */
@@ -94,7 +102,13 @@
     --open: #6cc4b0;
     --scrim: rgb(0 0 0 / .6);
     --on-accent: #101312;
+    --shade-bar: #86a3c9;
     /* pins sit on light OSM tiles in both themes; the legend sits on the dark page */
+    --plate: #1a1e1c;
+    --sun-disc: #f4b942;
+    --shade-ink: rgba(0, 0, 0, .32);
+    --hold-edge: #fff;
+    --sticker: #e9ece9;
     --pin-open: #2f8f7c;
     --pin-soon: #d0587f;
     --pin-closed: #8d958f;
@@ -107,8 +121,14 @@
   --paper: #101312; --sheet: #141716; --panel: #1f2422; --open-past: #284039; --soon: #f08aa8; --sun: #f2b25c;
   --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #202523; --fg: #e9ece9; --muted: #a3aaa6;
   --line: #343a37; --line-strong: #4a514d; --open: #6cc4b0; --scrim: rgb(0 0 0 / .6); --on-accent: #101312;
+  --shade-bar: #86a3c9;
   --pin-open: #2f8f7c; --pin-soon: #d0587f; --pin-closed: #8d958f; --pin-unknown: #a3aaa6; --pin-edge: #0d100f; --pin-me: #3b82f6;
   color-scheme: dark;
+    --plate: #1a1e1c;
+    --sun-disc: #f4b942;
+    --shade-ink: rgba(0, 0, 0, .32);
+    --hold-edge: #fff;
+    --sticker: #e9ece9;
 }
 :root[data-theme="light"] { color-scheme: light; } /* form controls and scrollbars follow the picked theme */
 
@@ -285,15 +305,13 @@ main { padding-bottom: var(--sp-48); }
 .pick-sum::after { content: ""; flex: none; width: 9px; height: 9px; margin: -4px var(--sp-4) 0 0; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform var(--dur-ui) var(--ease-out); }
 .pick[open] > .pick-sum::after { transform: translateY(5px) rotate(-135deg); }
 .pick-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.pick-thumb { flex: none; width: 40px; height: 40px; border-radius: var(--r-md); overflow: hidden; }
-.pick-thumb:empty { display: none; } /* no photo: no tile */
+.pick-chip { flex: none; display: flex; }
+.pick-chip:empty { display: none; }
 .pick-sumtext { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .pick-eyebrow { font-size: var(--fs-xs); font-weight: 700; color: var(--accent); }
-.pick[open] :is(.pick-thumb, .pick-hint) { display: none; } /* opened: the list below says it */
+.pick[open] :is(.pick-chip, .pick-hint) { display: none; } /* opened: the list below says it */
 .pick[open] > .pick-sum { min-height: 44px; }
 .pick-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pick-media { position: relative; display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; background: var(--sunken); }
-.pick-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .pick-body { padding: 0 var(--pad); }
 .pick-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--sp-8); padding-bottom: var(--sp-8); }
 .pick-set { flex: none; display: flex; align-items: center; gap: var(--sp-6); min-height: var(--tap); padding: 0 var(--sp-2); border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -302,13 +320,10 @@ main { padding-bottom: var(--sp-48); }
 .pick-seg { min-height: var(--tap); border: 0; border-radius: var(--r-md); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .pick-seg[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-seg); }
 .pick-basis { margin: 0 0 var(--sp-8); color: var(--muted); font-size: var(--fs-xs); }
-.pick-name { font-size: var(--fs-base); font-weight: 600; line-height: 1.3; overflow-wrap: break-word; }
+.pick-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-6); font-size: var(--fs-base); font-weight: 600; line-height: 1.3; overflow-wrap: break-word; }
 /* the first pick leads: a larger name and picture; 2nd and 3rd stay compact */
 .pick-empty { margin: 0; padding: var(--sp-12) 0; color: var(--muted); font-size: var(--fs-sm); }
 /* two days side by side; each column: day, the first pick large with its 09–21 day bar, the others as two short lines */
-:root { --bar-shade: #4d6a8f; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bar-shade: #86a3c9; } }
-:root[data-theme="dark"] { --bar-shade: #86a3c9; }
 .pick-bar { justify-content: flex-start; margin-top: calc(var(--sp-8) * -1); } /* the day pills are gone: sit under the title line */
 /* one box per day, stacked: 1위 on its own line with the bar, 2·3위 side by side under it at one height */
 .pick-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); margin-bottom: var(--sp-8); }
@@ -326,19 +341,26 @@ main { padding-bottom: var(--sp-48); }
 .pick-rest { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .pick-rest > .pick-next:only-child { grid-column: 1 / -1; }
 .pick-next .pick-name { font-size: var(--fs-sm); }
-.pick-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-6); }
 .pick-why { font-size: var(--fs-sm); color: var(--muted); }
 .pick-next .pick-why { font-size: var(--fs-xs); }
 .pick-tl { position: relative; display: block; height: 16px; margin-top: var(--sp-6); border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); overflow: hidden; }
 .pick-tl > span { position: absolute; top: 0; bottom: 0; }
-.pick-tl .sun { background: var(--sun); }
-.pick-tl .shade { background: var(--bar-shade); }
+.pick-tl .sun { background: var(--sun-bar); }
+.pick-tl .shade { background: var(--shade-bar); }
 .pick-tl::after { content: ""; position: absolute; inset: 0 auto 0 50%; width: 1px; background: rgb(255 255 255 / .55); } /* 15:00 */
-.pick-key { display: flex; flex-wrap: wrap; gap: 0 var(--sp-12); margin: 0 0 var(--sp-6); color: var(--muted); font-size: var(--fs-xs); }
-.pick-key .k::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: var(--sp-4); border-radius: 3px; vertical-align: -1px; }
-.pick-key .k.sun::before { background: var(--sun); }
-.pick-key .k.shade::before { background: var(--bar-shade); }
+.pick-key { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-6); margin: 0 0 var(--sp-6); color: var(--muted); font-size: var(--fs-xs); }
+.pick-key .sunnow { margin-right: 0; }
+.pick-name .fee { margin-left: 0; }
+:is(.pick-why, .pick-key) .sunnow.pic { padding: 1px var(--sp-4); } /* (.sunnow.pic alone is as specific as a bare descendant rule: spell it out) */
+.pick-why .sunnow { margin-right: var(--sp-4); vertical-align: -3px; }
+:is(.pick-why, .pick-key) .sunnow.pic svg { width: 14px; height: 14px; }
+.pick-key .sunnow.shade { background: var(--shade-bar); } /* the key and the bar share the shade tone */
+.pick-lead:focus-visible, .pick-next:focus-visible { outline-offset: -2px; } /* inside the day box (overflow hidden) */
 .pick-col .pick-empty { padding: var(--sp-12); }
+.pick-name .rfav { margin-right: 0; font-size: var(--fs-sm); } /* a 내 암장 leads: the heart sits before the name */
+.pick-skip { margin: 0; padding: var(--sp-6) var(--sp-12); border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); }
+.pick-alt { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); border-top: 1px solid var(--line); background: var(--sunken); } /* the 대안: a row of its own, a step quieter */
+.pick-altk { color: var(--accent); font-size: var(--fs-xs); font-weight: 700; }
 .pick-note { margin: 0; padding: var(--sp-4) 0 var(--sp-12); color: var(--muted); font-size: var(--fs-xs); }
 .card.no-photo { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: no-preference) {
@@ -660,6 +682,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); text-decoration: none; cursor: pointer; }
 .icon-btn svg { width: 22px; height: 22px; transition: transform var(--dur-press) var(--ease-out), fill var(--dur-press) var(--ease-out), stroke var(--dur-press) var(--ease-out); }
 .icon-btn:active svg { transform: scale(.9); }
+.sun-limit { margin: var(--sp-6) 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .icon-btn.done { color: var(--accent); }
 @media (hover: hover) and (pointer: fine) { .icon-btn:hover { color: var(--accent); } }
 .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -1530,3 +1553,126 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
 .bd-full .bd-form { order: -1; margin: 0 0 var(--sp-8); padding: 0; }
 .bd-full .bd-form::before { content: none; }
+
+/* 클라이머 유형 테스트 (src/climber-view.js): the intro / friend card, the sheet's question and result (the result is one 도감 plate) */
+.climber-card[hidden] { display: none; }
+.climber-card { overflow: hidden; margin: var(--sp-10) 0 0; border: 2px solid var(--fg); border-radius: var(--radius); background: var(--plate); }
+/* the entry card: one wall (bolt holes, the sun, the slab's shade) with the characters standing on it, the words and one button; × sits in the top corner */
+.cc-wall { position: relative; isolation: isolate; height: 132px; overflow: hidden; background-color: color-mix(in srgb, var(--tint, #dfe7bf) var(--tint-mix, 55%), var(--plate)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cc-wall { --tint-mix: 30%; } }
+:root[data-theme="dark"] .cc-wall { --tint-mix: 30%; }
+.cc-wall::before { content: ""; position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 14%, transparent) 2px, transparent 2.6px); background-size: 26px 26px; background-position: 13px 13px; }
+.cc-sun { position: absolute; z-index: 1; top: -46px; right: 58px; width: 120px; height: 120px; border-radius: 50%; background: var(--sun-disc); }
+.cc-shade { position: absolute; z-index: 2; top: 0; bottom: 0; right: 0; width: 38%; background: var(--shade-ink); clip-path: polygon(0 0, 100% 0, 100% 100%, 42% 100%); }
+.cc-cast { position: absolute; z-index: 3; left: 0; right: 0; bottom: -6px; display: flex; justify-content: center; }
+.cc-cast img { width: 92px; height: 92px; margin: 0 -9px; filter: drop-shadow(2px 0 0 var(--sticker)) drop-shadow(-2px 0 0 var(--sticker)) drop-shadow(0 2px 0 var(--sticker)) drop-shadow(0 -2px 0 var(--sticker)) drop-shadow(2px 3px 0 color-mix(in srgb, var(--fg) 26%, transparent)); }
+.cc-cast img:nth-child(1) { transform: translateY(6px) rotate(-5deg); }
+.cc-cast img:nth-child(2) { z-index: 1; transform: translateY(-4px) rotate(3deg); }
+.cc-cast img:nth-child(3) { transform: translateY(2px) rotate(-3deg); }
+.cc-cast img:nth-child(4) { transform: translateY(8px) rotate(5deg); }
+.climber-card.friend .cc-cast { justify-content: flex-start; padding-left: var(--sp-20); }
+.climber-card.friend .cc-cast img { width: 124px; height: 124px; margin: 0; transform: none; }
+.climber-card.friend .cc-sun { right: auto; left: 38px; top: -40px; }
+.climber-card.friend .cc-shade { width: 44%; }
+.cc-x { position: absolute; z-index: 5; top: var(--sp-2); right: var(--sp-2); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; }
+.cc-x::before, .cc-x::after { content: ""; grid-area: 1 / 1; }
+.cc-x::before { width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--plate) 88%, transparent); }
+.cc-x::after { width: 14px; height: 14px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 5l14 14M19 5L5 19'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 5l14 14M19 5L5 19'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cc-body { padding: var(--sp-14) var(--sp-16) var(--sp-16); }
+.cc-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.03em; text-wrap: balance; }
+.cc-sub { margin: var(--sp-4) 0 var(--sp-12); font-size: var(--fs-sm); color: var(--muted); text-wrap: balance; }
+.cc-go { display: block; width: 100%; min-height: var(--tap); padding: 0 var(--sp-16); border: 0; border-radius: var(--r-pill); background: var(--sun-disc); color: #1b1f1e; font: inherit; font-size: var(--fs-base); font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .16); }
+:is(.cc-go, .cc-x):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cr-btns button { min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
+:is(.cc-go, .cc-x, .cr-btns button, .cq-hold) { transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out), border-color var(--dur-press) var(--ease-out); }
+:is(.cc-go, .cc-x, .cr-btns button, .cq-hold):active { transform: scale(.97); }
+.cr-btns .cr-list { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.cr-share .cr-kakao { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.cr-btns button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.climber-q { min-width: 0; margin: 0; padding: 0; border: 0; }
+.climber-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; } /* the question takes focus when it appears: keep it visible for keyboard users */
+/* the question sheet: ← and × at the ends, the logo and the title between, a row of bolts (done / here / to come) with the count at its end, then two holds */
+#climber-sheet:has(#climberQuiz:not([hidden])) :is(.sh-head, .sh-close) { display: none; }
+.cq-head { display: grid; grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap); align-items: center; margin: calc(var(--sp-4) * -1) calc(var(--sp-8) * -1) var(--sp-4); }
+.cq-ic { display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--fg); cursor: pointer; }
+.cq-ic.gone { visibility: hidden; }
+.cq-ic::before { content: ""; width: 22px; height: 22px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.cq-ic.back { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5l-7 7 7 7'/%3E%3C/svg%3E"); }
+.cq-ic.x { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
+.cq-ic:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cq-brand { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); font-weight: 700; letter-spacing: -.02em; }
+.cq-brand::before { content: ""; flex: none; width: 34px; height: 34px; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cq-brand::before { background-image: url("assets/haebyeok-mark-dark.svg"); } }
+:root[data-theme="dark"] .cq-brand::before { background-image: url("assets/haebyeok-mark-dark.svg"); }
+.cq-prog { display: flex; align-items: center; gap: var(--sp-10); margin: 0 0 var(--sp-16); }
+.cq-bolts { display: flex; flex: 1 1 auto; justify-content: space-between; min-width: 0; }
+.cq-bolts i, .cq-hold::before { position: relative; border-radius: 50%; }
+.cq-bolts i { width: 17px; height: 17px; box-shadow: inset 0 0 0 1.5px var(--muted); }
+.cq-bolts i::after { content: ""; position: absolute; inset: 27%; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.cq-bolts i.on { background: var(--accent); box-shadow: none; }
+.cq-bolts i.on::after { background: var(--on-accent); }
+.cq-bolts i.here { background: var(--sun-disc); box-shadow: none; transform: scale(1.25); }
+.cq-bolts i.here::after { background: #2a2d32; }
+.cq-count { flex: none; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cq-count b { color: var(--fg); }
+.cq-opts { display: grid; grid-auto-rows: 1fr; gap: var(--sp-14); margin: 0 0 var(--sp-8); }
+/* a hold: an uneven outline, a darker lip along the bottom, the bolt in it; the first statement is the sun's yellow, the second green */
+.cq-hold { position: relative; display: flex; align-items: center; gap: var(--sp-12); width: 100%; min-height: calc(var(--tap) * 2); padding: var(--sp-14) var(--sp-20) var(--sp-14) var(--sp-16); border: 0; background: color-mix(in srgb, var(--hold) 30%, var(--surface)); box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--hold) 45%, transparent), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: var(--fg); font: inherit; font-size: var(--fs-base); line-height: 1.45; text-align: left; cursor: pointer; }
+.cq-hold.a { --hold: var(--hold-a); border-radius: 62px 26px 54px 30px / 48px 30px 50px 36px; }
+.cq-hold.b { --hold: var(--hold-b); border-radius: 28px 60px 32px 56px / 32px 50px 36px 48px; }
+.cq-hold::before { content: ""; flex: none; width: 28px; height: 28px; background: #d8dbd4; box-shadow: inset 0 0 0 1.5px #43484a; }
+.cq-hold::after { content: ""; position: absolute; left: calc(var(--sp-16) + 7px); top: 50%; width: 14px; height: 14px; transform: translateY(-50%); clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background: #43484a; } /* the hexagon socket in the bolt's head */
+.cq-hold[aria-pressed="true"] { background: var(--hold); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: #1b1f1e; font-weight: 700; }
+.cq-hold:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.cq-title { margin: 0 0 var(--sp-16); font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; letter-spacing: -.02em; text-wrap: balance; }
+.climber-res { display: grid; gap: var(--sp-12); padding: var(--sp-8) 0; }
+/* the plate: a double frame, FIG. n / 08, the stage, the name, the bars. The shared picture (climber-image.js) is drawn the same way. */
+.cr-plate { position: relative; padding: var(--sp-14) var(--sp-14) var(--sp-10); border: 2px solid var(--fg); background: var(--plate); }
+.cr-plate::before { content: ""; position: absolute; inset: 5px; border: 1px solid var(--fg); pointer-events: none; }
+.cr-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 var(--sp-4) var(--sp-8); }
+.cr-fig { margin: 0; font-size: var(--fs-xs); letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+.cr-animal { font-size: var(--fs-sm); font-weight: 700; color: var(--accent); }
+/* the stage is one face of an outdoor wall: bolt holes, the logo's sun behind the character, the logo's leaning slab as the shade */
+.cr-wall { position: relative; isolation: isolate; border-radius: var(--radius); overflow: hidden; background-color: color-mix(in srgb, var(--tint) var(--tint-mix, 55%), var(--plate)); }
+.cr-wall::before { content: ""; position: absolute; inset: 0; z-index: 0; background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 14%, transparent) 2px, transparent 2.6px); background-size: 26px 26px; background-position: 13px 13px; }
+.cr-sun { position: absolute; z-index: 1; top: 0; left: var(--sun-x); width: 40%; aspect-ratio: 1; border-radius: 50%; background: var(--sun-disc); transform: translateY(calc(var(--lift) * -100%)); }
+.cr-shade { position: absolute; z-index: 2; top: 0; bottom: 0; width: 38%; background: var(--shade-ink); clip-path: polygon(0 0, 100% 0, 100% 100%, 42% 100%); }
+.cr-shade.r { right: 0; }
+.cr-shade.l { left: 0; transform: scaleX(-1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cr-wall { --tint-mix: 30%; } }
+:root[data-theme="dark"] .cr-wall { --tint-mix: 30%; }
+.cr-pic { position: relative; z-index: 3; display: block; width: 100%; max-width: 260px; height: auto; margin: 0 auto; padding: var(--sp-6) 0; filter: drop-shadow(2px 0 0 var(--sticker)) drop-shadow(-2px 0 0 var(--sticker)) drop-shadow(0 2px 0 var(--sticker)) drop-shadow(0 -2px 0 var(--sticker)) drop-shadow(2px 4px 0 color-mix(in srgb, var(--fg) 26%, transparent)); } /* a sticker edge */
+.cr-name { margin: var(--sp-14) 0 var(--sp-6); text-align: center; font-size: 28px; line-height: 1.15; letter-spacing: -.04em; text-wrap: balance; } /* 28px: the one name on the plate, larger than the three words (--fs-lg); no token yet */
+.cr-name:focus { outline: none; }
+.cr-nick { max-width: 18em; margin: 0 auto var(--sp-16); text-align: center; font-size: var(--fs-md); font-weight: 600; color: var(--accent); text-wrap: balance; }
+.cr-tri { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--sp-12); border-top: 1px solid var(--fg); border-bottom: 1px solid var(--hair); }
+.cr-tri > div { padding: var(--sp-12) var(--sp-4) var(--sp-10); text-align: center; }
+.cr-tri > div + div { border-left: 1px solid var(--hair); }
+.cr-tri b { display: block; font-size: var(--fs-lg); line-height: 1.2; letter-spacing: -.02em; }
+.cr-dots { display: flex; justify-content: center; gap: var(--sp-6); margin-top: var(--sp-8); } /* 3 filled: all three answers leaned this way, 2: two of three */
+.cr-dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
+.cr-dots i.off { background: none; box-shadow: inset 0 0 0 2px var(--muted); }
+.cr-route { display: table; max-width: 100%; margin: 0 auto var(--sp-10); padding: var(--sp-4) var(--sp-12); border: 1px solid var(--fg); border-radius: var(--r-pill); font-size: var(--fs-sm); line-height: 1.4; text-align: center; text-wrap: balance; }
+.cr-plate-foot { display: flex; align-items: center; justify-content: center; gap: var(--sp-6); margin: 0; padding-top: var(--sp-8); border-top: 1px solid var(--fg); font-size: var(--fs-xs); color: var(--muted); }
+.cr-plate-foot::before { content: ""; width: 18px; height: 18px; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cr-plate-foot::before { background-image: url("assets/haebyeok-mark-dark.svg"); } }
+:root[data-theme="dark"] .cr-plate-foot::before { background-image: url("assets/haebyeok-mark-dark.svg"); }
+.cr-safe { margin: 0; padding: var(--sp-10) var(--sp-14); border-left: 3px solid var(--soon); background: color-mix(in srgb, var(--soon) 8%, var(--surface)); font-size: var(--fs-sm); font-weight: 600; }
+.cr-read { display: grid; gap: var(--sp-8); font-size: var(--fs-md); }
+.cr-read p, .cr-read ul { margin: 0; }
+.cr-read ul { padding-left: var(--sp-20); }
+.cr-read b { margin-right: var(--sp-4); }
+.cr-btns { display: flex; flex-wrap: wrap; gap: var(--sp-8); }
+.cr-share { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cr-share-note { margin: calc(var(--sp-4) * -1) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.cr-status { margin: 0; min-height: 1.2em; font-size: var(--fs-xs); color: var(--soon); }
+.cr-more { border-top: 1px solid var(--hair); }
+.cr-more summary { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); font-weight: 600; list-style: none; cursor: pointer; }
+.cr-more summary::-webkit-details-marker { display: none; }
+.cr-more summary::after { content: ""; width: 9px; height: 9px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.cr-more[open] summary::after { transform: rotate(-135deg); }
+.cr-more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cr-more-body { display: grid; gap: var(--sp-10); padding-bottom: var(--sp-6); font-size: var(--fs-md); }
+.cr-more-body p { margin: 0; }
+.cr-tip { padding: var(--sp-8) var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--radius); font-size: var(--fs-sm); }
+.cr-note { margin: 0; font-size: var(--fs-xs); color: var(--muted); }

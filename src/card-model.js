@@ -56,7 +56,8 @@ function sunTag(row) {
 function sunNote(row) {
   if (row.wall.venue === 'indoor') return '실내 · 양달/응달 해당 없음';
   if (row.lit === null) return '벽 방향 미입력';
-  const label = row.lit ? '양달' : row.reason === 'terrain' ? '응달 · 산에 가려짐' : '응달'; // words only: ☀/☁ are drawn differently on every phone
+  const est = row.method === 'override' ? '' : '예상 '; // typed-in times keep their own 직접 입력 tag instead
+  const label = row.lit ? `${est}양달` : row.reason === 'terrain' ? `${est}응달 · 산에 가려짐` : `${est}응달`; // words only: ☀/☁ are drawn differently on every phone
   return `${label}${row.method === 'azimuth' ? ' · 방위각 기준' : row.method === 'override' ? ' · 직접 입력' : ''}`;
 }
 
@@ -71,7 +72,7 @@ function rowBar(wall, status, at) {
   if (!next || ymd(next) === ymd(at)) return { ...dayBar(wall, at), ahead: null };
   const day = new Date(next.getFullYear(), next.getMonth(), next.getDate());
   const { open, sun } = dayBar(wall, day);
-  const sunText = sun ? `양달 ${formatRanges(sun)}` : noSunText(wall);
+  const sunText = sun ? `예상 양달 ${formatRanges(sun)}` : noSunText(wall);
   return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}, ${sunText}` };
 }
 
@@ -204,6 +205,17 @@ export function feeTable(wall) {
   });
   // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
   return { items, split: items.some((it) => it.rows.some((r) => r.all === undefined)), discount: wall.discount || null };
+}
+
+// One word of price for a pick on a weekend day: 무료, 성인 1,500원 (the first priced 성인 item: weekend, then all, then
+// weekday; a 0 won item such as a free lesson is skipped), 유료 when only the tag says so, else null.
+export function feeWord(wall) {
+  if (wall.tags?.includes('무료')) return '무료';
+  for (const f of wall.fees ?? []) {
+    const p = [f.adult?.weekend, f.adult?.all, f.adult?.weekday].find((n) => n > 0);
+    if (p) return `성인 ${won(p)}`;
+  }
+  return wall.tags?.includes('유료') ? '유료' : null;
 }
 
 // The memo sorted into what the expanded row draws. address: the 주소 line; sizes: 폭 (from "폭 30m") and

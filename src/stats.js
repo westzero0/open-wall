@@ -1,6 +1,7 @@
 // 방문 통계(GoatCounter, 쿠키 없음): 외부 스크립트 없이 이미지 요청 하나(GET /count)만 보낸다.
 // config.statsCode(사이트 코드)가 비어 있거나 localhost·Do Not Track이면 아무것도 보내지 않는다. 경로만 보내고 쿼리(한마디·인원 등)는 보내지 않는다.
-// 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만).
+// 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만),
+// climber-done(클라이머 유형 테스트를 끝냄: 횟수만, 유형·점수는 보내지 않는다).
 import { config } from './config.js';
 
 export const countUrl = (code, { path, event = false, ref = '' }) =>
@@ -31,6 +32,7 @@ export function initStats(win = globalThis.window, code = config.statsCode) {
     if (last && Date.now() - last > 864e5) send('return', true);
     win.localStorage.setItem('open-wall:last-visit', String(Date.now()));
   } catch { /* 저장 불가면 재방문만 못 센다 */ }
+  win.document.addEventListener('climber:done', () => send('climber-done', true)); // climber-view.js dispatches it when a result is made
   win.document.addEventListener('click', (e) => {
     const a = e.target.closest?.('a[href]');
     const kind = a && linkKind(a.href);

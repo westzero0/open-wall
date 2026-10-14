@@ -38,6 +38,20 @@ export function kakaoPayload({ picture, url, imageUrl }) {
 }
 
 /**
+ * climberKakaoPayload({ name, url, imageUrl }) → the same feed for a 클라이머 유형 테스트 result: the 3:4 type card, "나는 {name}!" as the
+ * title, and a button that opens the app on that link (?type=<code>) so the friend can take the test too. name: the type's name
+ * (the caller reads it from climber-content.js: this file stays free of the test's modules, so the invite never depends on them).
+ */
+export function climberKakaoPayload({ name, url, imageUrl }) {
+  const link = { mobileWebUrl: url, webUrl: url };
+  return {
+    objectType: 'feed',
+    content: { title: clip(`나는 ${name}!`, MAX_TITLE), description: '너는 어떤 클라이머일까? 12문항 · 1분 반', imageUrl, imageWidth: CARD_W, imageHeight: CARD_H, link },
+    buttons: [{ title: '나도 해보기', link }],
+  };
+}
+
+/**
  * kakaoFail(e, stage) → 'cancelled' | 'key' | stage. 'key': Kakao refused the app key or this domain (KAPIError -401, KOE…,
  * "domain mismatched"), stage: 'upload' or 'send' for anything else. The SDK has no cancel signal of its own; an AbortError is
  * taken as one.

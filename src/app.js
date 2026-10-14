@@ -10,14 +10,14 @@ import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, feeTable, formatDistance } from './card-model.js';
-import { WINDOW, reasonOf, weekendPicks } from './pick.js';
+import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
+import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
@@ -124,6 +124,24 @@ createProfileView({
 });
 createSafetyView();
 // ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
+let liveOpenCount = null; // the header's count of open walls while the clock is live (null for a picked day): the 클라이머 테스트 tip reads it
+// 클라이머 유형 테스트: loaded only when config.climberTest is on, and a failed load only turns the test off. sw.js shows stored files
+// first, so a half-updated cache (a new module next to an older one it imports) must never be able to stop the app from starting.
+let climberView = { open() {}, banner() {} };
+let typeFromSearch = () => null;
+if (config.climberTest) {
+  try {
+    const [view, test] = await Promise.all([import('./climber-view.js'), import('./climber-test.js')]);
+    typeFromSearch = test.typeFromSearch;
+    const today = ymd(new Date());
+    if (!ui.climberFirstDay) { ui.climberFirstDay = today; saveUi(); } // the first visit only notes the day; the intro card waits for a later one
+    climberView = view.createClimberView({
+      getOpenCount: () => liveOpenCount,
+      isCardDone: () => { try { return !climberCardDue(ui, today, !!test.loadClimber(localStorage).latest); } catch { return true; } }, // a blocked store: no card
+      setCardDone: () => { ui.climberCardDone = true; saveUi(); },
+    });
+  } catch { /* an older cached module or no network: the test stays off */ }
+}
 // Every change goes through go(event): view-state.js decides the next state and the follow-ups, run here in order.
 let vs = initialView();
 const FX = {
@@ -422,7 +440,7 @@ function hoursGrid(wall, at) {
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
     ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.text))
-      : bar?.sun ? el('p', { class: 'g-lead' }, `${dayText(at)} 운영 중 양달 `, el('b', {}, sunOn.length ? formatRanges(sunOn) : '없음')) : null)
+      : bar?.sun ? el('p', { class: 'g-lead' }, `${dayText(at)} 운영 중 예상 양달 `, el('b', {}, sunOn.length ? formatRanges(sunOn) : '없음')) : null)
     : el('p', { class: 'g-lead preview' }, `${wk.season === 'winter' ? '동계' : '하계'} 미리 보기 · 지금 시각선 없이 그 계절 시간만 보여요`);
 
   const body = el('div', { class: 'g-body', role: 'list' });
@@ -493,13 +511,14 @@ function seasonSunBlock(wall, at, d) {
       const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
       return el('div', { class: `s-row${s.current ? ' cur' : ''}` },
-        el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · ${sunText}${hint}`),
+        el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · 예상 ${sunText}${hint}`),
         trk);
     }),
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
       el('li', {}, el('i', { class: 'k-sunall' }), '양달'),
-      el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')));
+      el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')),
+    sunLimit());
 }
 
 // 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
@@ -663,22 +682,11 @@ const PICK_WORD = { shade: '응달 우선', sun: '양달 우선', any: '오래 �
 // Jump the date and time controls to a moment (the same state a visitor gets by picking it), then re-render.
 const goToMoment = (date, min) => go({ type: 'moment', date, min });
 
-// A wall's picture for the pick: its photo (fixed box, lazy), else null (no tile: a grey mark read as a picture that failed
-// to load). Decorative: the name and the reason beside it say everything.
-function pickMedia(wall) {
-  if (!wall.photo) return null;
-  const box = el('span', { class: 'pick-media', 'aria-hidden': 'true' });
-  const img = el('img', { src: `data/${wall.photo}`, alt: '', loading: 'lazy', decoding: 'async' });
-  img.addEventListener('error', () => box.remove(), { once: true });
-  box.append(img);
-  return box;
-}
-
 const hhShort = (m) => `${m < 600 ? '0' : ''}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`; // 540 → 09, 1290 → 21:30
 let pickBasisOpen = false; // the day / basis choices, shown only when asked for
 let pickRefocus = null;
 
-// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (thumbnail, wall, reason). Opened: the day pills and the
+// 이번 주말, 여기: a curated pick, not a list. Folded it is one line (sun picture, wall, reason). Opened: the day pills and the
 // basis button (it opens the choices), then up to three compact rows: rank, small photo (or the grey logo mark), the wall, the
 // sun as a picture + one line of why, the hours. Shown only with a 내 지역 set (a nationwide top 3 is too far to be a pick) and not turned off in 내 정보,
 // and hidden when that area has nothing to say about the coming weekend.
@@ -708,18 +716,19 @@ const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
 function renderPick() {
   const box = $('pick');
-  const wanted = state.walls.length && ui.regions.length && !ui.hidePick;
+  const wanted = state.walls.length && (ui.regions.length || favs.length) && !ui.hidePick; // a 내 지역, or 내 암장 to lead with
   if (wanted) loadWeekendWeather();
-  const r = wanted ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue, weather: pickWeather }) : null;
-  box.hidden = !r || r.byDay.every((d) => !d.items.length);
+  const r = wanted ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue, weather: pickWeather, favs }) : null;
+  // a day with 내 암장 leads with them (+ the 대안 and the ones that are out); a day without any is the plain list
+  const dayView = (d) => (d.mine.length || d.skipped.length ? { list: d.mine, alt: d.alt, skipped: d.skipped, more: d.moreMine, mineDay: true } : { list: d.items, alt: null, skipped: [], more: 0, mineDay: false });
+  const views = r ? r.byDay.map(dayView) : [];
+  box.hidden = !r || views.every((v) => !v.list.length && !v.skipped.length);
   if (box.hidden) return;
-  const top = r.byDay.find((d) => d.items.length)?.items[0]; // the folded line: the first pick of the first day that has one
+  const top = views.find((v) => v.list.length)?.list[0]; // the folded line: the first pick of the first day that has one
   const goPick = (it) => {
-    const first = (r.pref === 'shade' ? it.shade : r.pref === 'sun' ? it.sun : it.open)?.[0]?.[0] ?? it.open[0][0];
-    goToMoment(it.day.date, first); // that day, from the start of the stretch that was counted
+    goToMoment(it.day.date, reasonOf(it, r.pref).at); // that day, at the minute the card's reason starts
     revealClearing(it.wall.name);
   };
-  $('pick-thumb').replaceChildren(...[top && pickMedia(top.wall)].filter(Boolean)); // (replaceChildren would print a null as the word "null")
   $('pick-hint').textContent = top ? `${shortName(top.wall)} · ${reasonOf(top, r.pref).short}${rainsOn(top) ? ' · 비 예보' : ''}` : '';
 
   const kids = [];
@@ -737,7 +746,7 @@ function renderPick() {
     if (pickPref === 'auto') kids.push(el('p', { class: 'pick-basis' }, `자동은 계절에 맞춰요 (지금은 ${PICK_WORD[r.pref]}).`));
   }
   // a pill that every pick would carry says nothing: wind that is strong on all of them goes to the note instead
-  const shown = r.byDay.flatMap((d) => d.items).filter((it) => it.wall.venue !== 'indoor');
+  const shown = views.flatMap((v) => [...v.list, ...(v.alt ? [v.alt] : [])]).filter((it) => it.wall.venue !== 'indoor');
   const allWindy = shown.length > 1 && shown.every((it) => it.wx?.windy);
   // one box per day, side by side: the first pick with its day bar (09–21: sun amber, shade blue; none for indoor or unknown sun),
   // The picks follow the filters (지역·구분·기준); a day with none says so.
@@ -749,33 +758,55 @@ function renderPick() {
   const hoursOf = (it) => `${hhShort(it.open[0][0])}–${hhShort(it.open[it.open.length - 1][1])}`;
   // rain / wind ride the reason line as text (a pill beside the name broke the narrow cells); the lead's rain goes to the day's head instead
   const wxOf = (it, noRain = false) => (it.wx && it.wall.venue !== 'indoor' ? [it.wx.rain && !noRain ? it.wx.rainText : null, it.wx.windy && !allWindy ? '바람 셈' : null] : []).filter(Boolean).map((t) => ` · ${t}`).join('');
-  const sigOf = (d) => d.items.map((it) => `${it.wall.name}|${reasonOf(it, r.pref).short}|${hoursOf(it)}|${wxOf(it)}`).join('/');
-  const same = r.byDay.length === 2 && r.byDay[0].items.length > 0 && sigOf(r.byDay[0]) === sigOf(r.byDay[1]); // 토 and 일 say the same: one box
-  const colOf = (d, title) => {
-    const [lead, ...rest] = d.items;
+  // the reason line: the reason, the number behind it ("응달 9시간"), the 1st pick's hours, then rain / wind; the price sits by the name
+  const whyOf = (it, lead = false) => [reasonOf(it, r.pref).short, evidenceOf(it, r.pref)?.replace(/ /g, ' '), lead ? hoursOf(it) : null].filter(Boolean).join(' · ') + wxOf(it, lead); // (the number stays on one line)
+  // the same chips as the timetable rows: the ticket for the price (무료 filled), the sun picture before the reason
+  const heart = () => el('span', { class: 'rfav', role: 'img', 'aria-label': '내 암장' }, '♥');
+  const nameOf = (it, mine = false) => { const fee = feeWord(it.wall); return el('span', { class: 'pick-name' }, ...(mine ? [heart()] : []), shortName(it.wall), ...(fee ? [el('span', { class: `fee ${fee === '무료' ? 'free' : 'paid'}` }, icon('ticket'), fee)] : [])); };
+  const toneOf = (it) => { const why = reasonOf(it, r.pref).short; return it.wall.venue === 'indoor' ? 'indoor' : it.sunMin === null ? 'unknown' : why.includes('응달') ? 'shade' : why.includes('양달') ? 'sun' : null; };
+  const SUN_WORD = { sun: '양달', shade: '응달', unknown: '방향 모름', indoor: '실내' };
+  // the chip is a picture here: the reason text beside it says the word, so a reader hears it once
+  const toneChip = (tone) => { const chip = sunChip({ tone, text: SUN_WORD[tone] }); chip.setAttribute('aria-hidden', 'true'); chip.removeAttribute('role'); chip.removeAttribute('aria-label'); return chip; };
+  const topTone = top && toneOf(top); // the folded line starts with the same sun picture
+  $('pick-chip').replaceChildren(...(topTone ? [toneChip(topTone)] : [])); // (replaceChildren would print a null as the word "null")
+  const whyLine = (it, lead = false) => { const tone = toneOf(it); return el('span', { class: 'pick-why' }, ...(tone ? [toneChip(tone)] : []), whyOf(it, lead)); };
+  const sigOf = (v) => [...v.list, ...(v.alt ? [v.alt] : [])].map((it) => `${it.wall.name}|${whyOf(it, true)}`).join('/') + v.skipped.map((x) => `|${x.wall.name}${x.why}`).join('');
+  const same = views.length === 2 && views[0].list.length > 0 && sigOf(views[0]) === sigOf(views[1]); // 토 and 일 say the same: one box
+  // the 대안: the best wall of the 내 지역 that is not a 내 암장, on a row of its own under them
+  const altBtn = (v) => {
+    if (!v.alt) return [];
+    const b = el('button', { type: 'button', class: 'pick-next pick-alt' }, el('span', { class: 'pick-altk' }, '대안'), nameOf(v.alt), whyLine(v.alt));
+    b.addEventListener('click', () => goPick(v.alt));
+    return [b];
+  };
+  const colOf = (d, v, title) => {
+    const [lead, ...rest] = v.list;
     const rain = lead && lead.wx?.rain && lead.wall.venue !== 'indoor' ? lead.wx.rainText : null; // a wet day shows it in the head: the first thing to weigh
     const head = el('div', { class: `pick-dh${rain ? ' wet' : ''}` }, el('span', {}, title), ...(rain ? [el('em', {}, rain)] : []));
-    if (!lead) return el('div', { class: 'pick-col' }, head, el('p', { class: 'pick-empty' }, '추천할 곳이 없어요'));
+    // the 내 암장 that are out (and why), and the ones past the top three: none goes missing without a word
+    const out = [...(v.skipped.length ? [`빠진 곳 · ${v.skipped.slice(0, 2).map((x) => `${shortName(x.wall)} ${x.why}`).join(' · ')}${v.skipped.length > 2 ? ` 외 ${v.skipped.length - 2}곳` : ''}`] : []), ...(v.more ? [`내 암장 ${v.more}곳 더`] : [])];
+    const skipped = out.length ? [el('p', { class: 'pick-skip' }, out.join(' · '))] : [];
+    if (!lead) return el('div', { class: 'pick-col' }, head, ...(out.length ? [] : [el('p', { class: 'pick-empty' }, '추천할 곳이 없어요')]), ...skipped, ...altBtn(v));
     const tl = bar(lead);
     const leadBtn = el('button', { type: 'button', class: 'pick-lead', 'data-focus': `lead-${d.day.label}` },
-      el('span', { class: 'pick-name' }, shortName(lead.wall)),
-      el('span', { class: 'pick-why' }, `${reasonOf(lead, r.pref).short} · ${hoursOf(lead)}${wxOf(lead, true)}`),
+      nameOf(lead, v.mineDay),
+      whyLine(lead, true),
       tl,
       ...(tl ? [el('span', { class: 'pick-ax', 'aria-hidden': 'true' }, el('span', {}, '09'), el('span', {}, '15'), el('span', {}, '21'))] : []));
     leadBtn.addEventListener('click', () => goPick(lead));
     const others = rest.map((it) => {
       const b = el('button', { type: 'button', class: 'pick-next' },
-        el('span', { class: 'pick-name' }, shortName(it.wall)),
-        el('span', { class: 'pick-why' }, `${reasonOf(it, r.pref).short}${wxOf(it)}`));
+        nameOf(it, v.mineDay),
+        whyLine(it));
       b.addEventListener('click', () => goPick(it));
       return b;
     });
-    return el('div', { class: 'pick-col' }, head, leadBtn, ...(others.length ? [el('div', { class: 'pick-rest' }, ...others)] : []));
+    return el('div', { class: 'pick-col' }, head, leadBtn, ...(others.length ? [el('div', { class: 'pick-rest' }, ...others)] : []), ...skipped, ...altBtn(v));
   };
-  kids.push(el('div', { class: `pick-cols${r.byDay.length === 1 || same ? ' one' : ''}` },
-    ...(same ? [colOf(r.byDay[0], `${dayText(r.byDay[0].day.date)} · ${dayText(r.byDay[1].day.date)}`)] : r.byDay.map((d) => colOf(d, dayText(d.day.date))))));
-  kids.push(el('p', { class: 'pick-key', 'aria-hidden': 'true' }, el('span', { class: 'k sun' }, '양달'), el('span', { class: 'k shade' }, '응달')));
-  const rainy = r.byDay.some((d) => d.items.some(rainsOn));
+  kids.push(el('div', { class: 'pick-cols' },
+    ...(same ? [colOf(r.byDay[0], views[0], `${dayText(r.byDay[0].day.date)} · ${dayText(r.byDay[1].day.date)}`)] : r.byDay.map((d, i) => colOf(d, views[i], dayText(d.day.date))))));
+  kids.push(el('p', { class: 'pick-key', 'aria-hidden': 'true' }, toneChip('sun'), '양달', toneChip('shade'), '응달'));
+  const rainy = views.some((v) => [...v.list, ...(v.alt ? [v.alt] : [])].some(rainsOn));
   kids.push(el('p', { class: 'pick-note' }, `${allWindy ? '바람이 센 예보예요. ' : ''}${rainy ? '비 예보인 외벽은 뒤에 둬요. ' : ''}운영시간·해 계산 기준이에요. 가기 전에 공지를 확인해 주세요.`));
   $('pick-body').replaceChildren(...kids);
   if (pickRefocus) $('pick-body').querySelector(`[data-focus="${pickRefocus}"]`)?.focus({ preventScroll: true });
@@ -853,13 +884,15 @@ function dialFig(name, d) {
 
 // The sun's now: compass + sentence + today's sunny hours. On a day the wall is closed the compass
 // would describe a visit that can't happen, so a short note stands in for it (sunny hours stay for reference).
+// The one-line limit under every estimated sun time (the same words in the sun box and the 계절별 양달 tab)
+const sunLimit = () => el('p', { class: 'sun-limit' }, '벽 방향과 지형으로 계산한 예상이에요. 건물·나무, 날씨·구름, 오버행·벽 경사는 반영하지 않아요.');
 const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
 function sunBox(d, name, closedDay) {
   const sentence = el('p', { class: 'dsent' }, ...d.sentence.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
       el('p', { class: 'dsent off' }, '이 날은 운영하지 않아서 해 나침반은 접어 두었어요.'),
-      noSunMath(d) ? null : el('p', { class: 'dwhen' }, d.windows.length ? `참고 · 양달 시간 ${formatRanges(d.windows)}` : '참고 · 하루 종일 응달')));
+      noSunMath(d) ? null : el('p', { class: 'dwhen' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunLimit()));
   }
   if (noSunMath(d)) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sentence));
@@ -868,7 +901,8 @@ function sunBox(d, name, closedDay) {
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
     el('div', { class: 'sb-txt' },
       sentence,
-      el('p', { class: 'dwhen' }, el('b', {}, d.windows.length ? `양달 시간 ${formatRanges(d.windows)}` : `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달이에요`))));
+      el('p', { class: 'dwhen' }, el('b', {}, d.windows.length ? `예상 양달 시간 ${formatRanges(d.windows)}` : `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`)),
+      sunLimit()));
 }
 
 
@@ -1286,6 +1320,7 @@ function render() {
   }
   $('sub').textContent = `${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date input shows the rest
 
+  liveOpenCount = isNow ? n : null;
   $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
@@ -1776,3 +1811,12 @@ if (sharedWall) {
   history.replaceState(null, '', u);
 }
 showTab(ui.tab); // loadUi keeps it to TABS
+{ // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)
+  const sharedType = config.climberTest ? typeFromSearch(location.search) : null;
+  if (sharedType) {
+    climberView.banner(sharedType);
+    const u = new URL(location.href);
+    u.searchParams.delete('type');
+    history.replaceState(null, '', u);
+  }
+}

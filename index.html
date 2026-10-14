@@ -99,10 +99,11 @@
       </section>
       <details id="pick" class="pick" hidden>
         <summary class="pick-sum">
-          <span id="pick-thumb" class="pick-thumb" aria-hidden="true"></span>
+          <span id="pick-chip" class="pick-chip" aria-hidden="true"></span>
           <span class="pick-sumtext"><span class="pick-eyebrow">이번 주말, 여기</span><span id="pick-hint" class="pick-hint"></span></span>
         </summary>
         <div id="pick-body" class="pick-body"></div>
+      <div id="climberCard" class="climber-card" hidden></div>
       </details>
       <section class="board" aria-labelledby="board-title">
         <h2 id="board-title" class="sr-only">운영 시간표</h2>
@@ -293,6 +294,9 @@
         <p class="sh-hint">바꾼 내용은 바로 저장돼요.</p>
         <button class="inv-save">확인</button>
       </form>
+        <div class="sh-row" id="pfClimberRow" hidden>
+          <button type="button" class="pf-link" id="pfClimber">클라이머 유형 테스트 <span>나는 어떤 클라이머?</span></button>
+        </div>
     </dialog>
     <dialog id="safety-sheet" class="sheet" aria-labelledby="safety-title">
       <form method="dialog">
@@ -344,6 +348,16 @@
           <h2 id="about-title">앱 정보</h2>
         </div>
         <section class="ab-sec">
+    <dialog id="climber-sheet" class="sheet" aria-labelledby="climber-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="climber-title">나는 어떤 클라이머일까?</h2>
+        </div>
+        <div id="climberQuiz"></div>
+        <div id="climberResult" hidden></div>
+        <button class="sh-close">닫기</button>
+      </form>
+    </dialog>
           <h3>운영시간</h3>
           <p>확인일이 오래된 곳은 운영시간이 바뀌었을 수 있어요. 확인일이 최근이어도 공휴일·공사 등으로 달라질 수 있으니, 가기 전에 시설에 전화나 공지로 한 번 더 확인해 주세요. 각 암장의 정보 확인일은 펼친 카드에 표시돼요.</p>
         </section>
@@ -354,8 +368,9 @@
         <section class="ab-sec">
           <h3>개인정보</h3>
           <p>개인정보를 모으지 않아요. ‘내 위치’는 이 기기에서 거리 계산에만 쓰고 저장·전송하지 않아요. 글꼴(Google Fonts)과 지도(OpenStreetMap)를 불러올 때 해당 서비스에 접속 정보가 전달될 수 있어요. 필터 설정은 이 브라우저에만 저장돼요.</p>
-          <p>초대 그림을 카카오톡으로 보낼 때만 그림이 카카오 서버에 올라가요.</p>
+          <p>초대 그림이나 클라이머 유형 카드를 카카오톡으로 보낼 때만 그림이 카카오 서버에 올라가요.</p>
           <p>쿠키 없는 익명 방문 통계(GoatCounter)를 세요. 페이지 경로와 어떤 종류의 링크를 눌렀는지만 보내고, 위치·기록·제보 내용은 보내지 않아요.</p>
+        <p id="ab-ai" hidden>클라이머 캐릭터 이미지는 AI로 제작했어요.</p>
           <p>날씨 예보를 위해 암장의 대략적인 위치(좌표)만 Open-Meteo로 보내요. 내 위치는 보내지 않아요.</p>
           <p>암장 카드에 남긴 한 줄(닉네임과 글)은 모두에게 공개되고 Cloudflare 서버에 저장돼요. 연락처 같은 개인정보는 적지 마세요. 접속 IP는 원문이 아니라 해시로만 도배 방지와 신고 처리에 쓰여요. 지우고 싶은 글은 ‘틀린 정보 제보’로 알려 주세요.</p>
         </section>

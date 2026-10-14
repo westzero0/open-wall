@@ -9,7 +9,10 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // nickRequired — true while the ranking event runs; set false after it (the field stays, a report no longer needs a nickname).
 // 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
 // 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
+// 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
+// assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
 export const config = {
+  climberTest: false,
   singlePitch: false,
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,

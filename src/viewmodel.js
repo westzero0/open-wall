@@ -177,7 +177,7 @@ export function dayBar(wall, at) {
   const sunKnown = isSunlit(wall, at).lit !== null;
   const sun = sunKnown ? sunIntervals(wall, at) : null;
   const nowMin = at.getHours() * 60 + at.getMinutes();
-  const sunText = sun ? `양달 ${formatRanges(sun)}` : wall.venue === 'indoor' ? '실내' : '양달 정보 없음';
+  const sunText = sun ? `예상 양달 ${formatRanges(sun)}` : wall.venue === 'indoor' ? '실내' : '양달 정보 없음';
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
