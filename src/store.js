@@ -85,6 +85,14 @@ function cleanOverride(v) {
 export const MAX_NAME = 40;
 export const MAX_REGION = 40;
 export const MAX_MEMO = 600;
+export const MAX_ADDRESS = 200;
+export const MAX_METERS = 500;
+// 폭: 15 / '15.5' → a number in (0, 500] rounded to 0.1; anything else → null (the key is dropped)
+export function cleanMeters(v) {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : NaN;
+  const r = Math.round(n * 10) / 10;
+  return r > 0 && r <= MAX_METERS ? r : null;
+}
 export const MAX_PARKING_NOTE = 200;
 export const MAX_PARKING_FEE = 80;
 export const MAX_PARKING_LOTS = 6;
@@ -308,7 +316,10 @@ export function normalizeWall(raw) {
   const sun = cleanSun(raw.sun);
   const region = typeof raw.region === 'string' ? raw.region.slice(0, MAX_REGION) : '';
   const memo = typeof raw.memo === 'string' ? raw.memo.slice(0, MAX_MEMO) : '';
+  // address: one line (the card's 주소 row and the geocoder read it before a memo "주소 …" line); anything that is not a non-empty string drops the key
+  const address = typeof raw.address === 'string' ? raw.address.normalize('NFC').replace(/[\x00-\x1f\x7f\s]+/g, ' ').trim().slice(0, MAX_ADDRESS).trim() : '';
   const height_m = typeof raw.height_m === 'number' && isFinite(raw.height_m) ? raw.height_m : null;
+  const width_m = cleanMeters(raw.width_m);
   const checked_at = typeof raw.checked_at === 'string' ? raw.checked_at : null;
 
   const shadow = cleanShadow(raw.shadow);
@@ -332,8 +343,10 @@ export function normalizeWall(raw) {
   return {
     region,
     height_m,
+    ...(width_m ? { width_m } : {}),
     tags,
     memo,
+    ...(address ? { address } : {}),
     checked_at,
     hours,
     winter,
@@ -388,7 +401,7 @@ export function keepGeo(old, next) {
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -414,7 +427,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays

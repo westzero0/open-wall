@@ -232,20 +232,22 @@ const restRank = (l) => (l.key || WARN_RE.test(l.value) ? 0 : TIME_RE.test(`${l.
 const PHONE_RE = /^\+?[\d][\d\- ]{6,}\d$/;
 const digits = (v) => String(v ?? '').replace(/\D/g, '');
 function memoFacts(wall, lines) {
-  let address = null;
+  let address = wall.address || null; // wall.address wins; the memo 주소 line is then only swallowed (no 안내 duplicate)
+  let seenAddr = false;
   let navAddress = null; // "내비 주소": what to type into a navigation app; it rides under the address, not as another 안내 row
   const phones = []; // "문의 010-…": a phone number in the memo goes to the phone cell, unless it is the contact's own number
   const sizes = [];
   const rest = [];
   for (const l of lines) {
-    if (l.label === '주소' && !address) address = l.value;
+    if (l.label === '주소' && !seenAddr) { seenAddr = true; if (!address) address = l.value; }
     else if (!l.label && /^내비 주소\s/.test(l.value) && !navAddress) navAddress = l.value.replace(/^내비 주소\s+/, '');
     else if (l.label === '문의' && PHONE_RE.test(l.value.trim())) {
       if (digits(l.value) !== digits(wall.contact?.phone)) phones.push(l.value.trim());
     }
-    else if (l.label === '폭' && SIZE_RE.test(l.value)) sizes.push(`폭 ${l.value.match(SIZE_RE)[1]}m`);
+    else if (l.label === '폭' && SIZE_RE.test(l.value)) { if (!wall.width_m) sizes.push(`폭 ${l.value.match(SIZE_RE)[1]}m`); } // wall.width_m wins; the memo line is then only swallowed
     else rest.push(l);
   }
+  if (wall.width_m) sizes.unshift(`폭 ${wall.width_m}m`);
   if (wall.height_m) sizes.push(`높이 ${wall.height_m}m`);
   return { address, navAddress, phones, sizes, rest: rest.sort((a, b) => restRank(a) - restRank(b)) };
 }

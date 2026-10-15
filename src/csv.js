@@ -1,5 +1,5 @@
 import { orderIntervals } from './hours.js';
-import { isDateStr } from './store.js';
+import { isDateStr, cleanMeters } from './store.js';
 
 const DAY_COLS = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
 const WINTER = { 없음: 'none', 휴장: 'closed', 변경: 'changed' };
@@ -18,6 +18,8 @@ export const CSV_HEADERS = [
   '공휴일', '격주휴무', // same: absent or empty keeps the stored rule (keepGeo)
   '오픈채팅', // same: an older CSV without it keeps the stored chat link (keepGeo)
   '세팅일', '다음세팅', // same: absent or empty keeps the stored date (keepGeo)
+  '주소', // same: absent or empty keeps the stored address (keepGeo)
+  '폭(m)', // same: absent or empty keeps the stored width (keepGeo)
   '예약이름', '예약주소', // same: absent or empty keeps the stored reserve (keepGeo)
   '요금', '외벽앞주차', '주변주차', // parking.fee / onsite / nearby; the two lists are ;-separated names. Unlike the columns above, empty means empty: the editor can clear them, and an older CSV without them clears them like it does 주차 itself
 ];
@@ -164,6 +166,9 @@ export function csvToWalls(rows, opts = {}) {
       const height = get('높이') ? Number(get('높이')) : null;
       if (height !== null && !(Number.isFinite(height) && height > 0)) throw new Error('높이는 0보다 큰 숫자여야 해요');
 
+      const width = get('폭(m)') ? cleanMeters(get('폭(m)')) : null;
+      if (get('폭(m)') && width === null) throw new Error('폭(m)은 0보다 크고 500 이하인 숫자여야 해요');
+
       const pk = get('주차');
       const pkNote = get('주차메모');
       if (pk && !Object.hasOwn(PARKING_KO, pk)) throw new Error('주차는 무료/유료/없음/모름 중 하나여야 해요');
@@ -187,6 +192,8 @@ export function csvToWalls(rows, opts = {}) {
         height_m: height,
         tags: list(get('태그')),
         memo: get('메모'),
+        ...(get('주소') ? { address: get('주소') } : {}),
+        ...(width ? { width_m: width } : {}),
         checked_at: get('확인일') || null,
         hours,
         winter,
@@ -229,7 +236,7 @@ export function wallToRow(w) {
     예약이름: w.contact?.reserve?.name ?? '', 예약주소: w.contact?.reserve?.url ?? '',
     방향: w.sun?.facing ?? '', 위도: w.sun?.lat ?? '', 경도: w.sun?.lng ?? '',
     주차: w.parking ? PARKING_LABEL[w.parking.status] : '',
-    주차메모: w.parking?.note ?? '',
+    주차메모: w.parking?.note ?? '', 주소: w.address ?? '', '폭(m)': w.width_m ?? '',
     요금: w.parking?.fee ?? '', 외벽앞주차: (w.parking?.onsite ?? []).join(';'), 주변주차: (w.parking?.nearby ?? []).join(';'),
     구분: VENUE_LABEL[w.venue] ?? '',
     공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
