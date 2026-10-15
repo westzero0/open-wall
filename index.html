@@ -24,7 +24,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@100;200;300;400;500;600;700&display=swap">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -271,7 +271,7 @@
         </fieldset>
         <div class="sh-row pf-backup">
           <span class="sh-label">기록 백업</span>
-          <p class="sh-hint">기록은 이 기기에만 있어요. 폰을 바꾸기 전에 내보내 두세요.</p>
+          <p class="sh-hint">기록은 이 기기에만 있어요. 폰을 바꾸기 전에 내보내 두세요. 만들어 둔 포스터는 백업에 들어가지 않으니 필요하면 이미지로 저장해 두세요.</p>
           <div class="pf-btns">
             <button type="button" class="sh-toggle" id="logExport">내보내기</button>
             <button type="button" class="sh-toggle" id="logImport">가져오기</button>
@@ -397,6 +397,39 @@
         <div class="ms-prev"><canvas id="ms-canvas" width="1080" height="1920" role="img" aria-label="이 달 기록 그림 미리보기"></canvas></div>
         <p class="sh-hint ms-hint">이름 넣기를 꺼 두면 숫자와 도장만 보내요. 그림은 이 기기에서만 만들어요.</p>
         <p class="sh-hint ms-say" id="ms-say" role="status"></p>
+        <button class="sh-close">닫기</button>
+      </form>
+    </dialog>
+    <dialog id="poster-share" class="sheet" aria-labelledby="poster-share-title">
+      <form method="dialog">
+        <div class="sh-head">
+          <h2 id="poster-share-title">오늘의 해벽</h2>
+        </div>
+        <div class="ps-tools" id="ps-tools">
+          <button type="button" class="sh-toggle ps-pick" id="ps-pick">사진 고르기</button>
+          <input type="file" id="ps-file" accept="image/*" hidden>
+          <button type="button" class="sh-toggle" id="ps-ratio-45" aria-pressed="true">4:5 피드</button>
+          <button type="button" class="sh-toggle" id="ps-ratio-916" aria-pressed="false">9:16 스토리</button>
+          <button type="button" class="sh-toggle" id="ps-dome" aria-pressed="true">해의 길</button>
+          <input type="text" class="ps-line" id="ps-line" enterkeyhint="done" placeholder="한 줄 (예: V6 완등, 손가락 털림)" aria-label="카드에 넣을 한 줄" autocomplete="off">
+        </div>
+        <div class="ms-prev ps-prev">
+          <canvas id="ps-canvas" width="1080" height="1350" role="img" tabindex="0" aria-label="오늘의 해벽 미리보기. 사진을 고르면 화살표로 옮기고 더하기·빼기로 확대해요"></canvas>
+          <img id="ps-img" alt="만들어 둔 오늘의 해벽 카드" hidden>
+        </div>
+        <div class="ps-zoom" id="ps-zoomrow">
+          <label for="ps-zoom">확대</label>
+          <input type="range" id="ps-zoom" min="1" max="3" step="0.05" value="1" disabled>
+          <button type="button" class="sh-toggle" id="ps-center" disabled>원래대로</button>
+        </div>
+        <div class="ps-actions">
+          <button type="button" class="sh-toggle ps-again" id="ps-again" hidden>새로 만들기</button>
+          <button type="button" class="sh-toggle ps-save" id="ps-save" disabled>저장</button>
+          <button type="button" class="icon-btn ms-share" id="ps-share" aria-label="공유하기" title="공유하기" disabled></button>
+        </div>
+        <p class="sh-hint ms-hint">공유하면 암장과 시각이 보여요. 사진은 이 기기에서만 만들고, 공유하거나 저장하면 이 기기에도 남아요. 고른 사진은 공유 카드에 쓰일 수 있어요.</p>
+        <p class="sh-hint ms-say" id="ps-say" role="status"></p>
+        <span class="sr-only" id="ps-live" aria-live="polite"></span>
         <button class="sh-close">닫기</button>
       </form>
     </dialog>

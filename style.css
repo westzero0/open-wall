@@ -1377,6 +1377,41 @@ p.setnew { margin-top: var(--sp-8); }
 .ms-prev canvas { width: min(56vw, 240px); height: auto; aspect-ratio: 9 / 16; border-radius: var(--r-8); background: #17191c; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
 .ms-say:empty { display: none; }
 .ms-say { margin-top: var(--sp-4); text-align: center; }
+.ps-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); margin-top: var(--sp-8); }
+.ps-tools[hidden], .ps-again[hidden], .ps-zoom[hidden], #ps-dome[hidden] { display: none; }
+.ps-tools .sh-toggle, .ps-save, .ps-again, .ps-zoom .sh-toggle { padding: 0 var(--sp-12); font-size: var(--fs-sm); white-space: nowrap; }
+.ps-save:disabled, .ps-zoom .sh-toggle:disabled { opacity: .45; cursor: default; }
+.ps-line { flex: 1 1 100%; min-height: var(--tap); padding: 0 var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-8); background: var(--surface); color: var(--fg); font: inherit; }
+.ps-line:focus-visible, #ps-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the card keeps its own shape (4:5 or 9:16): size it by what fits, never by a fixed ratio */
+#ps-canvas, #ps-img { width: auto; height: auto; max-width: min(72vw, 300px); max-height: 40vh; border-radius: var(--r-8); background: #17191c; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+#ps-canvas.can-drag { touch-action: none; cursor: grab; } /* only with a photo: without one the sheet may scroll over the card */
+#ps-canvas.dragging { cursor: grabbing; }
+.ps-zoom { display: flex; align-items: center; gap: var(--sp-8); margin-bottom: var(--sp-8); }
+.ps-zoom label { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
+.ps-zoom input[type="range"] { flex: 1 1 auto; min-width: 0; min-height: var(--tap); accent-color: var(--accent); }
+.ps-actions { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); margin-bottom: var(--sp-4); }
+/* 오늘의 해벽 in the 기록 rows: a thumbnail when the card is made, a quiet link like 삭제 when not, and for today's newest row without a card a
+   full-width line under it. No pill: every other button of a row is plain text. */
+.lg-card, .lg-card-link { flex: none; min-width: var(--tap); min-height: var(--tap); border: 0; background: none; font: inherit; }
+.lg-card { display: grid; place-items: center; padding: 0 var(--sp-4); }
+.lg-card-img { display: block; height: 53px; width: auto; border-radius: 4px; box-shadow: 0 0 0 1px var(--line); }
+.lg-card-link { padding: 0 var(--sp-8); color: var(--accent); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
+.lg-has-cta { flex-wrap: wrap; }
+.lg-cta { flex: 1 1 100%; white-space: nowrap; display: flex; align-items: center; gap: var(--sp-8); min-height: var(--tap); margin: 0 var(--sp-12) var(--sp-10); padding: 0 var(--sp-12); border: 1px dashed var(--accent); border-radius: var(--r-8); background: var(--accent-soft); color: var(--accent); font: inherit; font-size: var(--fs-base); font-weight: 600; text-align: left; }
+.lg-cta-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--sun-disc); }
+.lg-cta-go { margin-left: auto; font-weight: 400; }
+.lg-card:active, .lg-card-link:active, .lg-cta:active { background: var(--sunken); }
+.lg-card:focus-visible, .lg-card-link:focus-visible, .lg-cta:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* the strip: the cards made so far, newest first, one row you swipe */
+.pstrip { margin-top: var(--sp-16); }
+.pstrip h3 { margin: 0 0 var(--sp-8); font-size: var(--fs-base); }
+.pstrip h3 span { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.pstrip-list { list-style: none; display: flex; gap: var(--sp-8); margin: 0; padding: var(--sp-4); overflow-x: auto; overscroll-behavior-x: contain; }
+.pstrip-item { display: grid; gap: var(--sp-4); justify-items: start; width: min-content; min-width: var(--tap); padding: 0; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; }
+.pstrip-img { display: block; height: 96px; width: auto; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
+.pstrip-cap { width: 0; min-width: 100%; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pstrip-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cal-sum { margin: var(--sp-2) 0 var(--sp-6); text-align: center; font-size: var(--fs-sm); color: var(--muted); }
 .cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .cal-grid th { padding: var(--sp-4) 0; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
@@ -1415,7 +1450,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .lg-name { font-weight: 600; overflow-wrap: anywhere; }
 .lg-region { font-size: var(--fs-xs); color: var(--muted); }
 .lg-memo { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lg-del { flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-12); border: 0; background: none; color: var(--warn); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.lg-del { flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-12); border: 0; background: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; } /* quiet: not as loud as the wall's name beside it */
 .lg-open:active, .lg-del:active, .cal-nav:active, .cal-today:active, .cal-day:active { background: var(--sunken); }
 .lg-open:focus-visible, .lg-del:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .lg-day .sh-hint { margin-top: var(--sp-6); }

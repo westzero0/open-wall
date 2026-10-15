@@ -103,6 +103,7 @@ const logView = createLogView({
   showList: () => showTab('list', true),
   crowdAsk: (wall, date, time) => crowdAsk(wall, date, time),
   sendCrowd: (wall, level, date, time) => sendCrowd(wall, level, date, time),
+  getWeather: (name, at) => posterWeather(name, at),
   getOrigin: () => vs.origin,
   addFav: (name) => {
     if (favs.includes(name)) return;
@@ -1093,6 +1094,13 @@ const weatherCtx = (name, at) => {
   const hours = wx.byWall.get(name)?.hours;
   return hours ? pickHour(hours, at) : null;
 };
+// 오늘의 해벽 (poster-share.js): the forecast hour for a card made now. The cache first, else one request; waits at most 2 s, then null (no line).
+async function posterWeather(name, at) {
+  const wall = state.walls.find((w) => w.name === name);
+  if (!wall) return null;
+  await Promise.race([loadWeather(wall), new Promise((ok) => setTimeout(ok, 2000))]);
+  return weatherCtx(name, at);
+}
 // the line (+ 바람 셈 pill) under 혼잡도; no forecast for the picked moment → nothing, not even a gap
 function weatherBox(m) {
   if (!m.weather) return [];

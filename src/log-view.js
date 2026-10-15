@@ -10,6 +10,9 @@ import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import { createMonthShare } from './month-share.js';
+import { createPosterShare } from './poster-share.js';
+import { createPosterStore, idbBackend } from './poster-store.js';
+import { createThumbCache, pickCta, renderStrip } from './poster-strip.js';
 import { canSaveMonth } from './record-image.js';
 import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
@@ -80,10 +83,31 @@ box.addEventListener('focusout', armToast);
  */
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
-  getOrigin = () => null, addFav = () => {},
+  getOrigin = () => null, addFav = () => {}, getWeather = async () => null,
 }) {
   const panel = $('panel-log');
   const monthShare = createMonthShare({ getWalls, icon });
+  // the 오늘의 해벽 cards kept for records (this browser only): madeIds says which rows have one, thumbItems are the small thumbnails the rows and
+  // the strip show (read together, then kept in step; a read that finds nothing new redraws nothing)
+  const posters = createPosterStore(idbBackend());
+  const thumbCache = createThumbCache();
+  let madeIds = new Set();
+  let thumbItems = [];
+  const sameCards = (ids, items) => ids.size === madeIds.size && [...ids].every((id) => madeIds.has(id))
+    && items.length === thumbItems.length && items.every((it, i) => it.id === thumbItems[i].id && it.made === thumbItems[i].made);
+  const readMade = () => Promise.all([posters.ids(), posters.list()]).then(([ids, items]) => {
+    if (sameCards(ids, items)) return; // nothing changed: do not redraw (and lose focus) for nothing
+    madeIds = ids;
+    thumbItems = items;
+    thumbCache.keep(items.map((it) => it.id));
+    const on = document.activeElement; // the redraw replaces the panel: put focus back on the same control
+    const key = on?.id ? `#${on.id}` : on?.dataset?.focus ? `[data-focus="${on.dataset.focus}"]` : null;
+    const inside = panel.contains(on); // asked before the redraw: afterwards the old node is gone
+    render();
+    if (key && inside && (!document.activeElement || document.activeElement === document.body)) document.querySelector(key)?.focus();
+  });
+  const posterShare = createPosterShare({ getWalls, getLog: () => log, getWeather, icon, posters, onChange: readMade });
+  readMade();
   let log = loadLog(storage, today(), nowMin());
   // the calendar: the month in view, the picked day, the day that holds the grid's tab stop
   const now = new Date();
@@ -454,7 +478,7 @@ export function createLogView({
         addFav(wall);
         toast(`${wall} ♥ 즐겨찾기에 추가했어요`);
       }, '♥ 추가');
-    } else toast(saved);
+    } else toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽');
     if (level) {
       sendCrowd(wall, level, res.record.date, time).then((ok) => (ok ? panel.contains(document.activeElement) || render() : toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'))); // render: 혼잡도 제보 count
     }
@@ -491,9 +515,13 @@ export function createLogView({
     persist();
     changed();
     (document.getElementById('lg-day-title') ?? panel.querySelector('[data-focus="empty-add"]'))?.focus(); // the last one gone: the empty state
+    // the record's card goes with it; the undo puts it back (the card and its thumbnail are read first, so the undo has them)
+    const thumb = thumbItems.find((it) => it.id === r.id)?.thumb ?? null;
+    const kept = posters.get(r.id).then((p) => { posters.remove(r.id).then(readMade); return p; });
     toast('기록을 지웠어요', () => {
       log = normalizeLog([...log, r], today(), nowMin());
       persist();
+      kept.then((p) => (p ? posters.put(p, thumb) : null)).then(readMade);
       changed();
       document.getElementById('lg-day-title')?.focus();
     });
@@ -753,6 +781,7 @@ export function createLogView({
     const p = dayParts(picked);
     const recs = byDay.get(picked) ?? [];
     const future = picked > t;
+    const ctaId = pickCta(recs, madeIds, t); // the one record of today that gets the big "오늘의 해벽 만들기" line
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
       el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개` : ' · 기록 없음')),
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
@@ -763,9 +792,36 @@ export function createLogView({
         open.addEventListener('click', () => reveal(r.wall));
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
-        return el('li', {}, stamp('rec-stamp', [r]), open, del);
+        // the way into the card, by what the row is: a made card shows its thumbnail, today's newest without one gets the big line under the
+        // row, any other row gets a quiet link like 삭제 (no pill: it would be a new kind of button, and shrink the wall's name)
+        const day = `${p.month}월 ${p.day}일`;
+        const title = r.date === t ? '오늘의 해벽' : '그날의 해벽';
+        const thumb = thumbItems.find((it) => it.id === r.id)?.thumb;
+        const key = { 'data-focus': `poster-${r.id}` };
+        let card = null;
+        let cta = null;
+        if (madeIds.has(r.id)) {
+          const label = thumb ? `${r.wall} ${day} ${title} 보기` : `${r.wall} ${day} 카드 보기`; // the text-only button's label holds its visible word
+          card = thumb
+            ? el('button', { type: 'button', class: 'lg-card', ...key, 'aria-label': label }, el('img', { class: 'lg-card-img', src: thumbCache.url(r.id, thumb), alt: '' })) // the height is CSS; the width follows the card's own shape
+            : el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': label }, '카드'); // made, but no thumbnail (imported)
+        } else if (r.id === ctaId) {
+          cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 해벽 만들기` },
+            el('span', { class: 'lg-cta-dot', 'aria-hidden': 'true' }), '오늘의 해벽 만들기', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
+        } else {
+          card = el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': `${r.wall} ${day} 카드 만들기` }, '+ 카드'); // short on purpose: "카드 만들기" would leave a 320px phone too little room for the wall's name
+        }
+        for (const b of [card, cta]) b?.addEventListener('click', () => posterShare.open({ record: r, from: b }));
+        return el('li', { class: cta ? 'lg-has-cta' : null }, stamp('rec-stamp', [r]), open, card, del, cta);
       })) : null,
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
+  }
+
+  // a thumbnail of the strip opens its card; a card whose record is gone (a backup restored elsewhere) still opens, from what the thumbnail row knows
+  function openFromStrip(id) {
+    const it = thumbItems.find((x) => x.id === id);
+    const record = log.find((r) => r.id === id) ?? (it ? { id, wall: it.wall, date: it.date, time: null, memo: '' } : null);
+    if (record) posterShare.open({ record, from: document.querySelector(`[data-focus="strip-${id}"]`) });
   }
 
   function render() {
@@ -775,7 +831,7 @@ export function createLogView({
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
       activity(),
-      ...(log.length ? [calendar(byDay), dayList(byDay), yearMap(), backupNote()] : [empty()]),
+      ...(log.length ? [calendar(byDay), dayList(byDay), renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }), yearMap(), backupNote()] : [empty()]),
     ].filter(Boolean));
   }
 

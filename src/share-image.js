@@ -367,7 +367,7 @@ function saveAndCopy(blob, text, name) {
  * A failed copy does not fail the picture (copied: false).
  */
 export function shareInvite(blob, text, name = FILE_NAME) {
-  const file = new File([blob], name, { type: 'image/png' });
+  const file = new File([blob], name, { type: blob.type || 'image/png' });
   if (navigator.canShare?.({ files: [file], text }) && matchMedia('(pointer: coarse)').matches) {
     return {
       via: 'share',

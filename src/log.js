@@ -10,7 +10,7 @@ export const MAX_WALL = 100;
 export const MAX_IMPORT_BYTES = 1_000_000;
 export const TIP_AT = 5; // the save toast mentions the backup once, when this many records exist
 
-const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 // A real calendar day (no 2026-02-30), from 2000 on.
 export function validDate(s) {

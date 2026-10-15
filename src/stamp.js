@@ -35,3 +35,14 @@ export function sunMark(wall, date, time) {
   if (!Number.isFinite(p.azimuth) || p.reason === 'night') return null;
   return { ...rimPoint(p.azimuth), lit: p.lit };
 }
+
+/**
+ * sunAt(wall, date, time) → { kind: 'lit' | 'shade' | 'night', az } | null: the sun at a visit ('YYYY-MM-DD', 'HH:mm'), az its azimuth (°, 180 = south).
+ * null when nothing can be said: no wall or time, an indoor wall, no facing, or an override-only wall (no azimuth to draw).
+ */
+export function sunAt(wall, date, time) {
+  if (!wall || !time) return null;
+  const p = isSunlit(wall, new Date(`${date}T${time}:00`));
+  if (!Number.isFinite(p.azimuth)) return null;
+  return { kind: p.reason === 'night' ? 'night' : p.lit ? 'lit' : 'shade', az: p.azimuth };
+}
