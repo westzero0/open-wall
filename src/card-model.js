@@ -403,6 +403,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     info: splitInfo([...notes.filter((n) => n.key), ...facts.rest, ...notes.filter((n) => !n.key)]), // expanded row's 안내
     sizes: facts.sizes,
     indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
+    indoorHeight: wall.venue === 'both' && wall.indoor_height_m ? `실내 높이 ${wall.indoor_height_m}m` : '', // only for 실내+실외 walls (for 'indoor' the plain height is the indoor wall); app.js adds it to the tags line
     address: facts.address,
     navAddress: facts.navAddress,
     memo,

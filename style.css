@@ -26,7 +26,6 @@
   --accent-soft: var(--open-past);
   --scrim: rgb(0 0 0 / .45);
   --on-accent: #fff; /* text on an --accent fill (dark: the accent is light, so the text is dark) */
-  --on-photo: #fff; /* text and marks laid over a photo, in both themes */
   --plate: #f4f2ec; /* the 클라이머 유형 테스트 plate (도감 card): the logo's paper, apart from the page */
   --sun-disc: #f4b942; /* the logo's sun on the plate's wall */
   --hold-a: #f4b942; /* the question's two holds: the first statement is the sun's yellow, */
@@ -34,6 +33,7 @@
   --hold-edge: #1b1f1e; /* what a hold's outline is mixed with (white on the dark page) */
   --shade-ink: rgba(42, 45, 50, .22); /* the logo's slab as shade */
   --sticker: #fff; /* the sticker edge round the character */
+  --on-photo: #fff; /* text and marks laid over a photo, in both themes */
   --open-on-white: #1f5f55; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
   --shadow-seg: 0 1px 2px rgb(0 0 0 / .12); /* the raised segment of a segmented control */
   --shadow-float: 0 4px 16px rgb(0 0 0 / .25); /* floating card, toast */
@@ -105,13 +105,13 @@
     --open: #6cc4b0;
     --scrim: rgb(0 0 0 / .6);
     --on-accent: #101312;
-    --shade-bar: #86a3c9;
-    /* pins sit on light OSM tiles in both themes; the legend sits on the dark page */
     --plate: #1a1e1c;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
     --sticker: #e9ece9;
+    --shade-bar: #86a3c9;
+    /* pins sit on light OSM tiles in both themes; the legend sits on the dark page */
     --pin-open: #2f8f7c;
     --pin-soon: #d0587f;
     --pin-closed: #8d958f;
@@ -124,14 +124,14 @@
   --paper: #101312; --sheet: #141716; --panel: #1f2422; --open-past: #284039; --soon: #f08aa8; --sun: #f2b25c;
   --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #202523; --fg: #e9ece9; --muted: #a3aaa6;
   --line: #343a37; --line-strong: #4a514d; --open: #6cc4b0; --scrim: rgb(0 0 0 / .6); --on-accent: #101312;
-  --shade-bar: #86a3c9;
-  --pin-open: #2f8f7c; --pin-soon: #d0587f; --pin-closed: #8d958f; --pin-unknown: #a3aaa6; --pin-edge: #0d100f; --pin-me: #3b82f6;
-  color-scheme: dark;
     --plate: #1a1e1c;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
     --sticker: #e9ece9;
+    --shade-bar: #86a3c9;
+  --pin-open: #2f8f7c; --pin-soon: #d0587f; --pin-closed: #8d958f; --pin-unknown: #a3aaa6; --pin-edge: #0d100f; --pin-me: #3b82f6;
+  color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; } /* form controls and scrollbars follow the picked theme */
 
@@ -496,7 +496,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rhero-foot, .rhero-foot * { pointer-events: none; } .rhero-foot a { pointer-events: auto; } /* the swipe goes through the text to the photos */
 .rhero.has-tools .rhero-foot:not(:has(.rhero-wx)) .credit { margin-bottom: var(--sp-32); } /* the dots and the camera take the foot's last line */
 /* right-bottom: faint dots (the current one stretches out with a springy pop) and the camera that sends one more; the tap area is 44px, the chip stays small */
-.rhero-tools { position: absolute; z-index: 2; right: calc(var(--pad) - 6px); bottom: var(--sp-8); display: inline-flex; align-items: center; gap: var(--sp-2); height: 28px; color: #fff; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .65)); }
+.rhero-tools { position: absolute; z-index: 2; right: calc(var(--pad) - 6px); bottom: var(--sp-8); display: inline-flex; align-items: center; gap: var(--sp-2); height: 28px; color: var(--on-photo); filter: drop-shadow(0 1px 2px rgb(0 0 0 / .65)); }
 .rhero-dots { display: inline-flex; align-items: center; gap: var(--sp-4); margin-right: var(--sp-6); }
 .rhero-dots i { width: 4px; height: 4px; border-radius: 3px; background: rgb(255 255 255 / .4); transition: width 260ms cubic-bezier(.34, 1.56, .64, 1), height 260ms cubic-bezier(.34, 1.56, .64, 1), background-color 160ms, transform 160ms; }
 .rhero-dots i.on { width: 11px; height: 6px; background: rgb(255 255 255 / .95); }
@@ -683,13 +683,13 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .dsent { font-size: var(--fs-sm); line-height: 1.5; }
 .dsent b { font-weight: 700; }
 .dsent.off { color: var(--muted); }
+.sun-limit { margin: var(--sp-6) 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .dwhen { margin-top: var(--sp-10); font-size: var(--fs-md); }
 .acts { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin-top: var(--sp-12); }
 /* icon-only actions (공유 beside the name, 길찾기 beside the address): a 44px tap area, the glyph in the text colour */
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); text-decoration: none; cursor: pointer; }
 .icon-btn svg { width: 22px; height: 22px; transition: transform var(--dur-press) var(--ease-out), fill var(--dur-press) var(--ease-out), stroke var(--dur-press) var(--ease-out); }
 .icon-btn:active svg { transform: scale(.9); }
-.sun-limit { margin: var(--sp-6) 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .icon-btn.done { color: var(--accent); }
 @media (hover: hover) and (pointer: fine) { .icon-btn:hover { color: var(--accent); } }
 .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -1347,8 +1347,8 @@ p.setnew { margin-top: var(--sp-8); }
 .rk-seal.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .rk-seal.stamp-in { animation: none; } }
 .lg-add {
-  min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: var(--surface);
-  color: var(--accent); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap;
+  min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: var(--accent);
+  color: var(--on-accent); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; /* the tab's one main action is filled */
 }
 .lg-backup { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
 .lg-backup button { min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; }
@@ -1427,7 +1427,8 @@ p.setnew { margin-top: var(--sp-8); }
 .cal-day.future { color: var(--muted); }
 .cal-n { font-weight: 600; }
 .cal-badge { position: absolute; bottom: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
-.cal-day[aria-current="date"] { border: 2px solid var(--fg); }
+.cal-day[aria-current="date"] { border: 1.5px solid var(--muted); }
+.cal-day:has(.cal-stamp) .cal-n { visibility: hidden; } /* a stamped day shows the stamp only, whatever the artwork lets through */
 td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
 /* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the calendar's stamp is pressed over the day number and covers it (the button's aria-label carries the date) */
 .stamp { display: block; background: var(--open); -webkit-mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; }

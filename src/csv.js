@@ -1,5 +1,5 @@
 import { orderIntervals } from './hours.js';
-import { isDateStr, cleanMeters, INDOOR_KINDS } from './store.js';
+import { isDateStr, cleanMeters, MAX_INDOOR_HEIGHT, INDOOR_KINDS } from './store.js';
 
 const DAY_COLS = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
 const WINTER = { 없음: 'none', 휴장: 'closed', 변경: 'changed' };
@@ -22,7 +22,8 @@ export const CSV_HEADERS = [
   '폭(m)', // same: absent or empty keeps the stored width (keepGeo)
   '예약이름', '예약주소', // same: absent or empty keeps the stored reserve (keepGeo)
   '요금', '외벽앞주차', '주변주차', // parking.fee / onsite / nearby; the two lists are ;-separated names. Unlike the columns above, empty means empty: the editor can clear them, and an older CSV without them clears them like it does 주차 itself
-  '실내종류', // last of all; absent or empty keeps the stored kinds (keepGeo); '리드+지구력' joined with +
+  '실내종류', // absent or empty keeps the stored kinds (keepGeo); '리드+지구력' joined with +
+  '실내높이(m)', // last of all; absent or empty keeps the stored indoor_height_m (keepGeo)
 ];
 const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
 const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
@@ -170,6 +171,9 @@ export function csvToWalls(rows, opts = {}) {
       const width = get('폭(m)') ? cleanMeters(get('폭(m)')) : null;
       if (get('폭(m)') && width === null) throw new Error('폭(m)은 0보다 크고 500 이하인 숫자여야 해요');
 
+      const indoorHeight = get('실내높이(m)') ? cleanMeters(get('실내높이(m)'), MAX_INDOOR_HEIGHT) : null;
+      if (get('실내높이(m)') && indoorHeight === null) throw new Error(`실내높이(m)는 0보다 크고 ${MAX_INDOOR_HEIGHT} 이하인 숫자여야 해요`);
+
       const pk = get('주차');
       const pkNote = get('주차메모');
       if (pk && !Object.hasOwn(PARKING_KO, pk)) throw new Error('주차는 무료/유료/없음/모름 중 하나여야 해요');
@@ -198,6 +202,7 @@ export function csvToWalls(rows, opts = {}) {
         memo: get('메모'),
         ...(get('주소') ? { address: get('주소') } : {}),
         ...(width ? { width_m: width } : {}),
+        ...(indoorHeight ? { indoor_height_m: indoorHeight } : {}),
         checked_at: get('확인일') || null,
         hours,
         winter,
@@ -245,6 +250,7 @@ export function wallToRow(w) {
     요금: w.parking?.fee ?? '', 외벽앞주차: (w.parking?.onsite ?? []).join(';'), 주변주차: (w.parking?.nearby ?? []).join(';'),
     구분: VENUE_LABEL[w.venue] ?? '',
     실내종류: (w.indoor_kinds ?? []).join('+'),
+    '실내높이(m)': w.indoor_height_m ?? '',
     공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
     격주휴무: nthText(w.exceptions?.nth_closed),
     세팅일: w.setting?.last ?? '', 다음세팅: w.setting?.next ?? '',

@@ -88,10 +88,11 @@ export const MAX_MEMO = 600;
 export const MAX_ADDRESS = 200;
 export const MAX_METERS = 500;
 // 폭: 15 / '15.5' → a number in (0, 500] rounded to 0.1; anything else → null (the key is dropped)
-export function cleanMeters(v) {
+export const MAX_INDOOR_HEIGHT = 200;
+export function cleanMeters(v, max = MAX_METERS) {
   const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : NaN;
   const r = Math.round(n * 10) / 10;
-  return r > 0 && r <= MAX_METERS ? r : null;
+  return r > 0 && r <= max ? r : null;
 }
 export const MAX_PARKING_NOTE = 200;
 export const MAX_PARKING_FEE = 80;
@@ -333,6 +334,7 @@ export function normalizeWall(raw) {
   const address = typeof raw.address === 'string' ? raw.address.normalize('NFC').replace(/[\x00-\x1f\x7f\s]+/g, ' ').trim().slice(0, MAX_ADDRESS).trim() : '';
   const height_m = typeof raw.height_m === 'number' && isFinite(raw.height_m) ? raw.height_m : null;
   const width_m = cleanMeters(raw.width_m);
+  const indoor_height_m = cleanMeters(raw.indoor_height_m, MAX_INDOOR_HEIGHT); // only meaningful for venue 'both' (for 'indoor' height_m is the indoor wall), but kept as data whatever the venue
   const checked_at = typeof raw.checked_at === 'string' ? raw.checked_at : null;
 
   const shadow = cleanShadow(raw.shadow);
@@ -358,6 +360,7 @@ export function normalizeWall(raw) {
     region,
     height_m,
     ...(width_m ? { width_m } : {}),
+    ...(indoor_height_m ? { indoor_height_m } : {}),
     tags,
     memo,
     ...(address ? { address } : {}),
@@ -418,7 +421,7 @@ export function keepGeo(old, next) {
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -444,7 +447,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
