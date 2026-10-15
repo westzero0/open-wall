@@ -16,6 +16,7 @@ const whenText = (d, base) => (ymd(d) === ymd(base) ? hhmm(d) : `${dayText(d)} $
 // "2시간 30분 남음 · 21:00 마감" (card, expanded row)
 // dropClose: the expanded row's "오늘 운영 08:00–22:00" line already says when it ends
 function statusText(status, at, wall, { dropClose = false } = {}) {
+  if (status.suspended) return '임시 휴관 중';
   if (status.state === 'unknown') return unknownText(wall);
   if (status.state === 'closed') {
     if (status.onBreak && status.nextOpenAt) return `휴게 중 · ${whenText(status.nextOpenAt, at)} 재개`;
@@ -31,6 +32,7 @@ function statusText(status, at, wall, { dropClose = false } = {}) {
 // "2시간 30분 남음" / "곧 마감 · 20분 남음" / "10/8 10:00 오픈" (list row)
 const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 function rowLeft(status, at, wall) {
+  if (status.suspended) return wall.suspended?.note ?? ''; // the 임시 휴관 중 group already says it: only the reason, if any
   if (status.state === 'unknown') return unknownText(wall);
   if (status.state === 'closed') {
     const d = status.nextOpenAt;
@@ -333,7 +335,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const basis = BASIS[wall.timeBasis] ?? null;
   const distLine = dist ? `직선 ${dist}` : null;
   const text = statusText(status, at, wall);
-  const bar = status.state === 'unknown' ? null : barOf(wall, status, at);
+  const bar = status.state === 'unknown' || status.suspended ? null : barOf(wall, status, at); // no day bar for a wall that is shut
   const old = staleness(wall, at);
   const pos = wallPosition(wall);
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
@@ -408,6 +410,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     today: { lead: `${day.season ? `${day.season} · ` : ''}${dayLabel}${plain ? '' : `${wall.timeBasis === 'outdoor' ? ' 실외' : ''} 운영`}`, text: day.text },
     holiday: day.holiday,
     closedDay: day.closed,
+    suspended: wall.suspended ? { since: wall.suspended.since ? `${+wall.suspended.since.slice(5, 7)}/${+wall.suspended.since.slice(8)}부터` : null, note: wall.suspended.note ?? null } : null,
     dayLabel,
     route,
     hasChat, // the card offers 오픈채팅 추가 only while there is none

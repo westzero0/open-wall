@@ -570,6 +570,10 @@ dialog.gal[open] { display: flex; }
 .today span { color: var(--muted); font-size: var(--fs-sm); margin-right: var(--sp-6); }
 /* the decision line: today's hours one step larger */
 .brk-row { margin-top: var(--sp-6); }
+.susp-pill { display: inline-block; padding: 0 var(--sp-10); border-radius: var(--r-pill); background: var(--warn); color: var(--on-accent); font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
+.today-row .today b.susp-pill, .rhero-cap b.susp-pill { display: inline-block; width: fit-content; margin-top: var(--sp-4); font-size: var(--fs-sm); line-height: 1.8; letter-spacing: 0; text-shadow: none; } /* a small pill, not the 2rem hours of an open day */
+.susp-note { margin: var(--sp-6) 0 0; font-size: var(--fs-sm); color: var(--muted); }
+.g-lead.susp { color: var(--warn); font-weight: 600; }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
 .act-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-6) var(--sp-10); margin: var(--sp-12) 0; }

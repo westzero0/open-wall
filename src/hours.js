@@ -42,7 +42,7 @@ const nthClosed = (wall, date) => nthHit(wall, date) !== null;
 // key: the timetable row the day follows ('hol' when a holiday rule replaces the weekday).
 // A holiday on the wall's weekly closing day stays closed (whether it opens then is not known);
 // 'weekday' (or no rule) keeps the weekday's hours.
-// why: 'closed_date' | 'nth' | null. slot: as slotOf.
+// why: 'suspended' | 'closed_date' | 'nth' | null. slot: as slotOf.
 export function dayRule(wall, date) {
   const winter = inWinter(wall, date);
   const day = DAY_KEYS[date.getDay()];
@@ -50,6 +50,7 @@ export function dayRule(wall, date) {
   const holiday = holidayName(date);
   const key = holiday && own !== null && (wall.holiday === 'weekend' || wall.holiday === 'closed') ? 'hol' : day;
   const base = { key, winter, holiday };
+  if (wall.suspended) return { ...base, slot: null, why: 'suspended' }; // 임시 휴관 중: closed whatever the timetable says
   if (wall.exceptions?.closed_dates?.includes(ymd(date))) return { ...base, slot: null, why: 'closed_date' };
   if (nthClosed(wall, date)) return { ...base, slot: null, why: 'nth' };
   return { ...base, slot: key === 'hol' ? slotOf(wall, 'hol', winter, date) : own, why: null };
@@ -125,6 +126,7 @@ export function hasHours(wall) {
 }
 
 function baseStatus(wall, at) {
+  if (wall.suspended) return { state: 'closed', nextOpenAt: null, onBreak: false, suspended: true }; // even without a timetable
   if (!hasHours(wall)) return { state: 'unknown' };
 
   // Yesterday's last interval can still be open after midnight.

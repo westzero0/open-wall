@@ -75,8 +75,9 @@ export function filterRows(rows, sun) {
 export function groupRows(rows) {
   return {
     open: rows.filter((r) => r.status.state === 'open'),
-    closed: rows.filter((r) => r.status.state === 'closed'),
+    closed: rows.filter((r) => r.status.state === 'closed' && !r.status.suspended),
     unknown: rows.filter((r) => r.status.state === 'unknown'),
+    suspended: rows.filter((r) => r.status.suspended), // 임시 휴관 중: a group of its own, under the unknown ones
   };
 }
 
@@ -250,6 +251,7 @@ export function weeklyHours(wall, date, pick = null) {
 // `closed`: the wall has hours but none on this day. `holiday`: "한글날 · 주말 시간" etc. on a public holiday.
 const HOL_RULE_TEXT = { weekend: '공휴일은 주말 시간', closed: '공휴일 휴무', weekday: '공휴일도 평소 요일대로' };
 export function dayLine(wall, date) {
+  if (wall.suspended) return { season: '', closed: true, text: '임시 휴관 중', holiday: null };
   const rule = dayRule(wall, date);
   const season = rule.winter ? '동절기' : '';
   const intervals = openIntervals(wall, date);

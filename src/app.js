@@ -349,7 +349,7 @@ function rowPhoto(m, li) {
   const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
     ...imgs.map((img) => el('div', { class: 'rhero-slide' }, img)));
   let credit = null;
-  const line = el('div', { class: 'rhero-line' }, el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), el('b', {}, m.today.text)));
+  const line = el('div', { class: 'rhero-line' }, m.suspended ? null : el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), todayText(m))); // a suspended wall: the chip on the photo already says 임시 휴관 중
   const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
     const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
     if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
@@ -488,7 +488,8 @@ function hoursGrid(wall, at) {
     wall.holiday === 'weekend' ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
   ].filter(Boolean);
   const hatched = wk.rows.some((r) => r.closed || r.breaks.length);
-  sec.append(...[segRow, lead, gridAxis(live ? nowMin : null), body,
+  const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
+  sec.append(...[segRow, susp, susp ? null : lead, gridAxis(live ? nowMin : null), body,
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-bar' }), '운영'),
       hatched ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)') : null,
@@ -949,9 +950,10 @@ function rowDetails(m, wall, at, id) {
       el('div', { class: 'm-head' },
         m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row
           : el('div', { class: 'x-top' }, el('h3', { class: 'x-name' }, m.name, feeChip(m)), photoAsk), // ♥ and share are the end cells of the link strip
-        (m.state === 'open' ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' ? m.place : m.sub) : null, // a closed photo card: the pill on the photo already says when it opens
+        (m.state === 'open' || m.suspended ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
         m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
-          el('p', { class: 'today' }, el('span', {}, m.today.lead), el('b', {}, m.today.text))),
+          el('p', { class: 'today' }, m.suspended ? null : el('span', {}, m.today.lead), todayText(m))),
+        m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
         ...(m.photo ? [] : weatherBox(m)), // the forecast right under the hours (a photo card wears it on the photo)
         addrLine(m)), // the address right under 오늘 운영
@@ -1003,6 +1005,8 @@ function blogBox(blog, withList = true) {
     restList, more);
 }
 
+// the hours text of 오늘 운영; while the wall is 임시 휴관 중 it is a pill instead
+const todayText = (m) => el('b', { class: m.suspended ? 'susp-pill' : null }, m.today.text);
 // 다녀왔어요 (the open card only): the right end of the 오늘 운영 line; opens the 기록 추가 sheet with this wall fixed.
 // Just after a save the check gives way to the 해벽 stamp, pressed once (same .stamp-in as the 기록 calendar).
 function beenBtn(m) {
@@ -1352,6 +1356,12 @@ function render() {
   $('group-unknown').hidden = !groups.unknown.length;
   setBand($('group-unknown').querySelector('summary'), '운영시간을 아직 몰라요', groups.unknown.length);
   $('rows-unknown').replaceChildren(...groups.unknown.map((r) => safeRow(r, at)));
+
+  if ($('group-suspended')) { // (a cached older page may not have it yet)
+    $('group-suspended').hidden = !groups.suspended.length;
+    setBand($('group-suspended').querySelector('summary'), '임시 휴관 중', groups.suspended.length);
+    $('rows-suspended').replaceChildren(...groups.suspended.map((r) => safeRow(r, at)));
+  }
 
   const msg = vs.locateNote || (needOrigin ? '내 위치를 먼저 확인해 주세요.' : '');
   $('locateMsg').textContent = msg;

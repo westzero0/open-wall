@@ -196,6 +196,15 @@ function getWinter(v) {
   };
 }
 
+// suspended: 임시 휴관 중 with no end date, { since?: 'YYYY-MM-DD', note?: short reason }. An object (even empty) means
+// suspended; anything else means not. Removing it brings the wall back to its timetable.
+export const MAX_SUSPENDED_NOTE = 60;
+function cleanSuspended(v) {
+  if (!isPlainObject(v)) return null;
+  const note = typeof v.note === 'string' ? v.note.trim().slice(0, MAX_SUSPENDED_NOTE) : '';
+  return { ...(isDateStr(v.since) ? { since: v.since } : {}), ...(note ? { note } : {}) };
+}
+
 // seasons: [{from_month, to_month, hours}] — bad entries dropped (bad months, hours that are not an object)
 function cleanSeasons(v) {
   if (!Array.isArray(v)) return [];
@@ -309,6 +318,7 @@ export function normalizeWall(raw) {
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
   const seasons = cleanSeasons(raw.seasons);
+  const suspended = cleanSuspended(raw.suspended);
   const fees = cleanFees(raw.fees);
   const discount = fees.length ? cleanDiscount(raw.discount) : ''; // a discount line belongs to a fee table
   const exceptions = getExceptions(raw.exceptions);
@@ -355,6 +365,7 @@ export function normalizeWall(raw) {
     sun,
     name,
     ...(seasons.length ? { seasons } : {}),
+    ...(suspended ? { suspended } : {}),
     ...(fees.length ? { fees } : {}),
     ...(discount ? { discount } : {}),
     ...(shadow ? { shadow } : {}),
