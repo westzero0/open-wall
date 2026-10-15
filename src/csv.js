@@ -101,7 +101,8 @@ const compact = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v 
 const num = (s) => (s === '' ? undefined : Number(s));
 
 // The one winter time of a wall whose non-closed winter days all share it; undefined when they differ.
-function uniformWinterTime(hours) {
+function uniformWinterTime(hours, normal = {}) {
+  if (Object.entries(hours ?? {}).some(([k, v]) => v === null && normal[k] !== null)) return undefined; // a day closed only in winter cannot ride on one time (import would reopen it)
   const vals = Object.values(hours ?? {}).filter(Boolean);
   return vals.length && vals.every((v) => JSON.stringify(v) === JSON.stringify(vals[0])) ? vals[0] : undefined;
 }
@@ -213,7 +214,7 @@ export function wallToRow(w) {
   // One winter time is written only when every open winter day shares it; per-day times stay in the stored wall.
   const h = w.hours ?? {};
   const win = w.winter ?? { type: 'none' };
-  const winterTime = win.type === 'changed' ? uniformWinterTime(win.hours) : undefined;
+  const winterTime = win.type === 'changed' ? uniformWinterTime(win.hours, w.hours) : undefined;
   const o = {
     이름: w.name, 지역: w.region ?? '', 높이: w.height_m ?? '', 태그: (w.tags ?? []).join(';'),
     메모: w.memo ?? '', 확인일: w.checked_at ?? '',

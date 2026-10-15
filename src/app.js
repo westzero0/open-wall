@@ -30,7 +30,7 @@ import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, w
 import { boardBox } from './board-view.js';
 import { openBoardPage } from './board-page.js';
 import { openGallery } from './gallery-view.js';
-import { closeInApp, closeInstall, externalOpenUrl, fromKakao, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
+import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
 import { currentInstallMode, promptInstall } from './install.js';
 
 const $ = (id) => document.getElementById(id);
@@ -126,7 +126,6 @@ createProfileView({
   getWallNames: () => state.walls.map((w) => w.name),
 });
 createSafetyView();
-// ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
 let liveOpenCount = null; // the header's count of open walls while the clock is live (null for a picked day): the 클라이머 테스트 tip reads it
 // 클라이머 유형 테스트: loaded only when config.climberTest is on, and a failed load only turns the test off. sw.js shows stored files
 // first, so a half-updated cache (a new module next to an older one it imports) must never be able to stop the app from starting.
@@ -145,6 +144,7 @@ if (config.climberTest) {
     });
   } catch { /* an older cached module or no network: the test stays off */ }
 }
+// ---- view state (view-state.js): the picked moment / live clock, the open row and its folds, the position ----
 // Every change goes through go(event): view-state.js decides the next state and the follow-ups, run here in order.
 let vs = initialView();
 const FX = {
@@ -1321,6 +1321,7 @@ function render() {
   $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn} ▾` : '조건 ▾';
 
   const n = open.length;
+  liveOpenCount = isNow ? n : null;
   // filters apply as they are ticked: the sheet's 확인 button says what they left
   if ($('condDone')) $('condDone').textContent = `확인 · ${n}곳`;
   // another day names the day (the live region is read without the date input)
@@ -1332,7 +1333,6 @@ function render() {
   }
   $('sub').textContent = `${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date input shows the rest
 
-  liveOpenCount = isNow ? n : null;
   $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
@@ -1835,7 +1835,7 @@ if (sharedWall) {
   const b = $('inapp-banner');
   if (b && isKakaoInApp(navigator.userAgent) && !inAppClosed()) {
     b.hidden = false;
-    $('inapp-open').addEventListener('click', () => { location.href = externalOpenUrl(location.href); });
+    $('inapp-open').addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });
     $('inapp-close').addEventListener('click', () => { closeInApp(); b.hidden = true; });
   }
 }

@@ -129,8 +129,6 @@ export const VENUES = ['outdoor', 'indoor', 'both'];
 const cleanStamp = (v) => (typeof v === 'string' && STAMP_RE.test(v) && !v.includes('..') ? v : null);
 const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.includes('..') ? v : null);
 
-// 내 블로그 후기: at most 3 {title, url, date}; only https://blog.naver.com/caramelsnow/<digits> links survive
-export const BLOG_URL_RE = /^https:\/\/blog\.naver\.com\/caramelsnow\/\d+$/;
 // 사진 여러 장: at most MAX_PHOTOS of { src, credit?, date?, main? } in the order they were approved (oldest first), one at most `main`.
 // `photo` / `photo_credit` stay as the card's first picture (the main one, else the newest), so a reader of the single photo keeps working.
 export const MAX_PHOTOS = 10;
@@ -149,6 +147,8 @@ function cleanPhotos(v) {
 /** coverOf(photos) → the item the card shows first: the main one, else the newest; undefined for none. */
 export const coverOf = (photos) => photos.find((p) => p.main) ?? photos[photos.length - 1];
 
+// 내 블로그 후기: at most 3 {title, url, date}; only https://blog.naver.com/caramelsnow/<digits> links survive
+export const BLOG_URL_RE = /^https:\/\/blog\.naver\.com\/caramelsnow\/\d+$/;
 
 function cleanBlogPosts(v) {
   if (!Array.isArray(v)) return [];
@@ -349,9 +349,9 @@ export function normalizeWall(raw) {
     ...(location ? { location } : {}),
     ...(parking ? { parking } : {}),
     ...(photo ? { photo } : {}),
+    ...(photos.length ? { photos } : {}),
     ...(stamp ? { stamp } : {}),
     ...(photo_credit ? { photo_credit } : {}),
-    ...(photos.length ? { photos } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
     ...(venue ? { venue } : {}),
     ...(Object.keys(indoor_hours).length ? { indoor_hours } : {}),
@@ -378,9 +378,12 @@ export function keepGeo(old, next) {
   }
   if (!out.photo && old.photo) {
     out.photo = old.photo;
-    if (old.photo_credit) out.photo_credit = old.photo_credit;
-  } else if (!out.photo_credit && out.photo === old.photo && old.photo_credit) out.photo_credit = old.photo_credit;
     if (old.photos) out.photos = old.photos;
+    if (old.photo_credit) out.photo_credit = old.photo_credit;
+  } else if (out.photo === old.photo) { // the same cover coming back (an older export) keeps the stored gallery and credit
+    if (!out.photos && old.photos) out.photos = old.photos;
+    if (!out.photo_credit && old.photo_credit) out.photo_credit = old.photo_credit;
+  }
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
@@ -413,9 +416,9 @@ export function mergeWalls(existing, incoming, mode) {
       const fill = {};
       for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
+      if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
       // holiday / nth closures fill only walls that have none (an edited rule stays)
-      if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.holiday && !old.holiday) fill.holiday = w.holiday;
       if (w.exceptions.nth_closed && !old.exceptions?.nth_closed) fill.exceptions = { ...old.exceptions, nth_closed: w.exceptions.nth_closed };
       // 세팅일: only the dates this wall lacks (a date the user set stays)

@@ -302,7 +302,7 @@ export function parseImport(text, today, nowMin = null) {
   return { ok: true, records, dropped: list.length - records.length };
 }
 
-/** mergeLog(log, incoming) → {log, added}: same id or the same wall+date+time+memo is not added twice. */
+/** mergeLog(log, incoming) → {log, added}: same id, or the same wall+date+time+memo as a record already in the log, is not added twice (twins within the incoming file are both kept). */
 export function mergeLog(log, incoming) {
   const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}`;
   const ids = new Set(log.map((r) => r.id));
@@ -312,7 +312,6 @@ export function mergeLog(log, incoming) {
     const k = keyOf(r);
     if (ids.has(r.id) || keys.has(k)) continue;
     ids.add(r.id);
-    keys.add(k);
     fresh.push(r);
   }
   const merged = [...log, ...fresh].sort(newestFirst);

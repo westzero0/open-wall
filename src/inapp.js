@@ -8,6 +8,8 @@ export const externalOpenUrl = (href) => {
   u.searchParams.set('from', 'kakao');
   return `kakaotalk://web/openExternal?url=${encodeURIComponent(u.href)}`;
 };
+// The address the page was opened with: app.js strips ?wall/&type=… with replaceState at startup, so a later click must not read location.href.
+export const entryHref = typeof location === 'undefined' ? '' : location.href;
 export const fromKakao = (search = '') => new URLSearchParams(search).get('from') === 'kakao';
 
 const KEY = 'open-wall:inapp-closed';
