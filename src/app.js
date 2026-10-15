@@ -30,6 +30,8 @@ import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, w
 import { boardBox } from './board-view.js';
 import { openBoardPage } from './board-page.js';
 import { openGallery } from './gallery-view.js';
+import { closeInApp, closeInstall, externalOpenUrl, fromKakao, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
+import { currentInstallMode, promptInstall } from './install.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -1820,7 +1822,6 @@ if (sharedWall) {
   for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board']) u.searchParams.delete(k);
   history.replaceState(null, '', u);
 }
-showTab(ui.tab); // loadUi keeps it to TABS
 { // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)
   const sharedType = config.climberTest ? typeFromSearch(location.search) : null;
   if (sharedType) {
@@ -1830,3 +1831,31 @@ showTab(ui.tab); // loadUi keeps it to TABS
     history.replaceState(null, '', u);
   }
 }
+{ // 카카오톡 인앱브라우저: storage there is separate from Chrome/Safari, so say so once (closing it is remembered)
+  const b = $('inapp-banner');
+  if (b && isKakaoInApp(navigator.userAgent) && !inAppClosed()) {
+    b.hidden = false;
+    $('inapp-open').addEventListener('click', () => { location.href = externalOpenUrl(location.href); });
+    $('inapp-close').addEventListener('click', () => { closeInApp(); b.hidden = true; });
+  }
+}
+{ // handed over from KakaoTalk (?from=kakao): offer the install once, as soon as this browser can do it
+  const u = new URL(location.href);
+  const handed = fromKakao(location.search);
+  if (handed) { u.searchParams.delete('from'); history.replaceState(null, '', u); }
+  const b = $('install-banner');
+  const show = () => {
+    const how = currentInstallMode();
+    if (!b || installClosed() || (how !== 'prompt' && how !== 'ios')) return;
+    $('install-go').hidden = how !== 'prompt';
+    if (how === 'ios') $('install-text').textContent = '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요. 닉네임을 정하기 전에 해 두면 좋아요.';
+    b.hidden = false;
+  };
+  if (handed && b) {
+    show();
+    window.addEventListener('beforeinstallprompt', () => setTimeout(show)); // Chrome's event can come after load (install.js has already kept it)
+    $('install-go').addEventListener('click', async () => { if (await promptInstall()) { b.hidden = true; closeInstall(); } });
+    $('install-close').addEventListener('click', () => { closeInstall(); b.hidden = true; });
+  }
+}
+showTab(ui.tab); // loadUi keeps it to TABS

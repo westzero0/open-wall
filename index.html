@@ -86,6 +86,18 @@
       </div>
     </div>
     <div id="panel-list" role="tabpanel" aria-labelledby="tab-list">
+      <aside id="inapp-banner" class="invite-banner" role="note" hidden>
+        <p class="ib-title">카카오톡 안에서 열었어요</p>
+        <p class="ib-meta">닉네임과 설정은 이 화면에만 저장돼요. 크롬·사파리로 열면 따로 저장돼서 보이지 않을 수 있어요.</p>
+        <button type="button" class="ib-again" id="inapp-open">기본 브라우저로 열기</button>
+        <button type="button" class="ib-close" id="inapp-close">닫기</button>
+      </aside>
+      <aside id="install-banner" class="invite-banner" role="note" hidden>
+        <p class="ib-title">홈 화면에 추가해 두세요</p>
+        <p class="ib-meta" id="install-text">앱처럼 바로 열리고, 닉네임과 설정도 한곳에 모여요.</p>
+        <button type="button" class="ib-again" id="install-go" hidden>홈 화면에 추가</button>
+        <button type="button" class="ib-close" id="install-close">닫기</button>
+      </aside>
       <aside id="invite-banner" class="invite-banner" role="note" hidden>
         <p id="ib-title" class="ib-title"></p>
         <p id="ib-meta" class="ib-meta"></p>
@@ -286,6 +298,7 @@
         </div>
         <div class="sh-row" id="pfInstallRow" hidden>
           <button type="button" class="pf-link" id="pfInstall" hidden>홈 화면에 추가 <span>앱처럼 열기</span></button>
+          <button type="button" class="pf-link" id="pfInstallOpen" hidden>기본 브라우저에서 열기 <span>설치하려면 필요해요</span></button>
           <p class="pf-ios" id="pfInstallIos" hidden>홈 화면에 추가하려면 공유 버튼 ▸ ‘홈 화면에 추가’를 누르세요.</p>
         </div>
         <div class="sh-row" id="pfReportRow" hidden>
@@ -573,6 +586,7 @@
       <form novalidate>
         <div class="sh-head">
           <h2 id="report-title">정보 수정 요청</h2>
+          <button type="button" class="icon-btn" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <p class="rp-field">암장 이름<strong class="rp-name"></strong></p>
         <label class="rp-field rp-pick" hidden>암장 고르기<input name="wall" placeholder="암장 이름으로 찾기" autocomplete="off" spellcheck="false"></label>
@@ -612,7 +626,6 @@
           <div class="segs">
             <label><input type="radio" name="parking" value="무료">무료</label>
             <label><input type="radio" name="parking" value="유료">유료</label>
-          <button type="button" class="icon-btn" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             <label><input type="radio" name="parking" value="주차 불가">주차 불가</label>
             <label><input type="radio" name="parking" value="모름">모름</label>
           </div>

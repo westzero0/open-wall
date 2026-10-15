@@ -3,6 +3,7 @@
 import { config } from './config.js';
 import { backupLine, loadBackupAt } from './backup.js';
 import { currentInstallMode, promptInstall } from './install.js';
+import { externalOpenUrl } from './inapp.js';
 import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from './report.js';
 
 const $ = (id) => document.getElementById(id);
@@ -65,6 +66,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     $('pfInstallRow').hidden = how === 'none';
     $('pfInstall').hidden = how !== 'prompt';
     $('pfInstallIos').hidden = how !== 'ios';
+    $('pfInstallOpen').hidden = how !== 'inapp';
     dlg.showModal();
   });
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
@@ -73,6 +75,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     if (e.target.name === 'textSize') setTextSize(e.target.value);
   });
 
+  $('pfInstallOpen').addEventListener('click', () => { location.href = externalOpenUrl(location.href); });
   $('pfInstall').addEventListener('click', async () => { if (await promptInstall()) $('pfInstallRow').hidden = true; });
   $('logExport').addEventListener('click', () => { status.textContent = exportFile(); });
   $('logImport').addEventListener('click', () => $('logImportFile').click());
