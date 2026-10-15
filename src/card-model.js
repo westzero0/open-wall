@@ -402,6 +402,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info: splitInfo([...notes.filter((n) => n.key), ...facts.rest, ...notes.filter((n) => !n.key)]), // expanded row's 안내
     sizes: facts.sizes,
+    indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
     address: facts.address,
     navAddress: facts.navAddress,
     memo,

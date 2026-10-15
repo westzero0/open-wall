@@ -19,6 +19,19 @@ export const NICK_KEY = 'open-wall:nick'; // shared by the report sheet and 내 
 // While the ranking runs (mode 'required') a saved nickname can't be changed: the ranking counts by the name's letters, so a new
 // name would split the old reports off. Client-side only (no server): clearing the browser's data gets around it.
 export const nickLocked = (mode, saved) => mode === 'required' && !!saved;
+/**
+ * nickCommit(mode, saved, typed) → { nick, save, confirm }: the nickname a send goes out under, and whether sending also saves it.
+ * required (ranking running): a saved nickname always wins and is never rewritten; a first typed one is saved, but only after
+ * `confirm` (the sheet asks once: it cannot be changed afterwards). optional: what is typed, saved when not empty. off: none.
+ */
+export function nickCommit(mode, saved, typed) {
+  if (mode === 'off') return { nick: '', save: false, confirm: false };
+  const have = loadNick(saved);
+  if (mode === 'required' && have) return { nick: have, save: false, confirm: false };
+  const nick = cleanNick(typed);
+  return { nick, save: !!nick, confirm: mode === 'required' && !!nick };
+}
+export const nickConfirmText = (nick) => `‘${nick}’ 닉네임은 이벤트 중에는 바꿀 수 없어요. 괜찮으면 한 번 더 눌러 주세요.`;
 // 'off' without an entry id (no field, nothing sent); 'optional' once the event is over (nickRequired: false); else 'required'.
 export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRequired === false ? 'optional' : 'required');
 

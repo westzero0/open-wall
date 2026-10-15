@@ -133,6 +133,9 @@ function cleanParking(v) {
 
 // indoor/outdoor: absent means 'outdoor' (the app is about outdoor walls); anything else is dropped
 export const VENUES = ['outdoor', 'indoor', 'both'];
+// 실내 시설 종류: the allowed values in their fixed display order; cleanIndoorKinds drops duplicates and anything else and sorts by this order
+export const INDOOR_KINDS = ['리드', '지구력', '오토빌레이', '볼더링'];
+export const cleanIndoorKinds = (v) => (Array.isArray(v) ? INDOOR_KINDS.filter((k) => v.includes(k)) : []);
 
 const cleanStamp = (v) => (typeof v === 'string' && STAMP_RE.test(v) && !v.includes('..') ? v : null);
 const cleanPhoto = (v) => (typeof v === 'string' && PHOTO_RE.test(v) && !v.includes('..') ? v : null);
@@ -199,7 +202,7 @@ function getWinter(v) {
 // suspended: 임시 휴관 중 with no end date, { since?: 'YYYY-MM-DD', note?: short reason }. An object (even empty) means
 // suspended; anything else means not. Removing it brings the wall back to its timetable.
 export const MAX_SUSPENDED_NOTE = 60;
-function cleanSuspended(v) {
+export function cleanSuspended(v) {
   if (!isPlainObject(v)) return null;
   const note = typeof v.note === 'string' ? v.note.trim().slice(0, MAX_SUSPENDED_NOTE) : '';
   return { ...(isDateStr(v.since) ? { since: v.since } : {}), ...(note ? { note } : {}) };
@@ -343,6 +346,7 @@ export function normalizeWall(raw) {
   const photo_credit = cover ? cover.credit ?? null : photo ? cleanCredit(raw.photo_credit) : null;
   const short_name = typeof raw.short_name === 'string' ? raw.short_name.trim() : '';
   const venue = VENUES.includes(raw.venue) ? raw.venue : null;
+  const indoor_kinds = cleanIndoorKinds(raw.indoor_kinds);
   // optional indoor timetable of a wall with an indoor part ('both'); same shapes as hours / winter
   const indoor_hours = isPlainObject(raw.indoor_hours) ? cleanHours(raw.indoor_hours) : {};
   const indoor_winter = getWinter(raw.indoor_winter);
@@ -378,6 +382,7 @@ export function normalizeWall(raw) {
     ...(photo_credit ? { photo_credit } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
     ...(venue ? { venue } : {}),
+    ...(indoor_kinds.length ? { indoor_kinds } : {}),
     ...(Object.keys(indoor_hours).length ? { indoor_hours } : {}),
     ...(indoor_winter.type !== 'none' ? { indoor_winter } : {}),
     ...(holiday ? { holiday } : {}),
@@ -410,6 +415,7 @@ export function keepGeo(old, next) {
   }
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
+  if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
   for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
@@ -438,7 +444,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays

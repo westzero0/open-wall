@@ -166,10 +166,13 @@ function build(wallName, mode, onOpenAll) {
   /** the one-line form: a new post (parent null) or a reply under `parent`. Errors go to statusEl. */
   function makeForm(parent, statusEl) {
     const nick = el('input', { class: 'bd-nick', type: 'text', maxlength: String(MAX_NICK), placeholder: '닉네임', 'aria-label': '닉네임', autocomplete: 'off' });
-    nick.value = loadNick(store.get(NICK_KEY) || store.get(K_NICK_DRAFT) || ''); // a typed nickname that was never posted survives a reload (the saved one stays locked while the ranking runs)
-    const lockedNick = nickLocked(nickMode(config), nick.value); // same ranking-period lock as 내 정보: shown, not editable, never rewritten here
-    if (lockedNick) nick.readOnly = true;
-    nick.addEventListener('input', () => { if (!lockedNick) store.set(K_NICK_DRAFT, cleanBoardNick(nick.value)); });
+    // The ranking nickname is set in 내 정보 / the report sheet, never here: this field shows it (locked while the ranking runs) or,
+    // with none saved, a draft that only prefills the field. The lock reads the saved name alone, and again at send time.
+    const savedNick = () => loadNick(store.get(NICK_KEY));
+    const isLocked = () => nickLocked(nickMode(config), savedNick());
+    nick.value = savedNick() || loadNick(store.get(K_NICK_DRAFT) || '');
+    if (isLocked()) nick.readOnly = true;
+    nick.addEventListener('input', () => { if (!isLocked()) store.set(K_NICK_DRAFT, cleanBoardNick(nick.value)); });
     const label = parent ? '답글 남기기' : '한 줄 남기기';
     const body = el('input', { class: 'bd-body', type: 'text', maxlength: String(MAX_BODY), placeholder: label, 'aria-label': label, autocomplete: 'off' });
     // honeypot: unguessable name, hidden + inert + aria-hidden wrapper so no user or screen reader reaches it; bots that fill every input fill it
@@ -184,6 +187,7 @@ function build(wallName, mode, onOpenAll) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (send.disabled) return;
+      if (isLocked()) { nick.value = savedNick(); nick.readOnly = true; } // the name was saved elsewhere since this form was built
       const v = validatePost({ wall: wallName, nick: nick.value, body: body.value });
       if (!v.ok) { statusEl.textContent = v.error; return; }
       me.busy = true; tick();
@@ -191,8 +195,7 @@ function build(wallName, mode, onOpenAll) {
         const payload = { ...v.post, hp: hp.value };
         const made = parent ? await s.submitReply(parent, payload) : await s.submit(payload); // redraws every view of this wall
         rememberMine(made.post.id, made.token);
-        if (!lockedNick) store.set(NICK_KEY, v.post.nick);
-        store.set(K_NICK_DRAFT, '');
+        store.set(K_NICK_DRAFT, v.post.nick); // the next form starts with it; it never becomes the saved (ranking) nickname
         store.set(K_TS, String(Date.now()));
         body.value = ''; count.textContent = `0/${MAX_BODY}`;
         s.notify();

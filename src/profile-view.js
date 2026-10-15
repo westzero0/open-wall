@@ -34,30 +34,52 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   const mode = nickMode(config);
   const nickIn = $('pfNick');
   const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  let showNick = () => {}; // set below when the nickname row exists
   if (mode !== 'off') {
     $('pfNickRow').hidden = false;
     $('pfNickLabel').textContent = `닉네임 (${MAX_NICK}자까지)`;
     nickIn.maxLength = MAX_NICK;
     // Saved cleaned, shown as saved. Not only on `change` (it needs the field to lose focus): closing the sheet by the backdrop,
     // the back button or swiping the app away while the field is focused never fires it, so the last typed name was lost.
-    const saveNick = () => {
-      if (nickIn.readOnly) return; // locked: the saved name stays
+    const commitNick = () => {
       const v = cleanNick(nickIn.value);
       nickIn.value = v;
       try { v ? localStorage.setItem(NICK_KEY, v) : localStorage.removeItem(NICK_KEY); } catch { /* private mode: not remembered */ }
     };
+    // While the ranking runs the nickname is saved by the button alone (a second press confirms: it cannot be changed afterwards),
+    // never as a side effect of closing the sheet. Outside the ranking it is still saved on change / close.
+    const saveNick = () => {
+      if (nickIn.readOnly || mode === 'required') return; // locked: the saved name stays
+      commitNick();
+    };
     nickIn.addEventListener('change', saveNick);
     dlg.addEventListener('close', saveNick);
     document.addEventListener('visibilitychange', () => { if (dlg.open && document.visibilityState === 'hidden') saveNick(); });
-  }
-
-  $('meBtn').addEventListener('click', () => {
-    if (mode !== 'off') {
+    const saveRow = $('pfNickSaveRow'), saveBtn = $('pfNickSave'), hint = $('pfNickHint');
+    let armed = false;
+    const disarm = () => { armed = false; saveBtn.textContent = '닉네임 저장'; hint.textContent = ''; };
+    nickIn.addEventListener('input', disarm);
+    saveBtn.addEventListener('click', () => {
+      const v = cleanNick(nickIn.value);
+      if (!v) { hint.textContent = '닉네임을 적어 주세요.'; return; }
+      if (!armed) { armed = true; saveBtn.textContent = `‘${v}’로 저장할까요?`; hint.textContent = '이벤트 중에는 바꿀 수 없어요. 괜찮으면 한 번 더 눌러 주세요.'; return; }
+      commitNick();
+      disarm();
+      showNick();
+      hint.textContent = '저장했어요.';
+    });
+    showNick = () => { // also run when the sheet opens
       nickIn.value = readNick();
       const locked = nickLocked(mode, nickIn.value);
       nickIn.readOnly = locked;
       $('pfNickLabel').textContent = locked ? '닉네임 (이벤트 중에는 바꿀 수 없어요)' : `닉네임 (${MAX_NICK}자까지)`;
-    }
+      saveRow.hidden = mode !== 'required' || locked;
+      disarm();
+    };
+  }
+
+  $('meBtn').addEventListener('click', () => {
+    if (mode !== 'off') showNick();
     form.elements.theme.value = getTheme();
     form.elements.textSize.value = getTextSize();
     let store = null; try { store = localStorage; } catch { /* blocked: no backup date */ }

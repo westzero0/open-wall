@@ -1,5 +1,5 @@
 import { orderIntervals } from './hours.js';
-import { isDateStr, cleanMeters } from './store.js';
+import { isDateStr, cleanMeters, INDOOR_KINDS } from './store.js';
 
 const DAY_COLS = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
 const WINTER = { 없음: 'none', 휴장: 'closed', 변경: 'changed' };
@@ -22,6 +22,7 @@ export const CSV_HEADERS = [
   '폭(m)', // same: absent or empty keeps the stored width (keepGeo)
   '예약이름', '예약주소', // same: absent or empty keeps the stored reserve (keepGeo)
   '요금', '외벽앞주차', '주변주차', // parking.fee / onsite / nearby; the two lists are ;-separated names. Unlike the columns above, empty means empty: the editor can clear them, and an older CSV without them clears them like it does 주차 itself
+  '실내종류', // last of all; absent or empty keeps the stored kinds (keepGeo); '리드+지구력' joined with +
 ];
 const HOLIDAY_KO = { 주말: 'weekend', 휴무: 'closed', 평일: 'weekday' };
 const HOLIDAY_LABEL = Object.fromEntries(Object.entries(HOLIDAY_KO).map(([ko, en]) => [en, ko]));
@@ -180,6 +181,9 @@ export function csvToWalls(rows, opts = {}) {
         : null;
       const venue = get('구분');
       if (venue && !Object.hasOwn(VENUE_KO, venue)) throw new Error('구분은 실외/실내/실내외 중 하나여야 해요');
+      const kindWords = get('실내종류').split('+').map((x) => x.trim()).filter(Boolean);
+      const badKind = kindWords.find((k) => !INDOOR_KINDS.includes(k));
+      if (badKind) throw new Error(`실내종류는 ${INDOOR_KINDS.join('/')}을 +로 이어 써야 해요: ${badKind}`);
       const holiday = get('공휴일');
       if (holiday && !Object.hasOwn(HOLIDAY_KO, holiday)) throw new Error('공휴일은 주말/휴무/평일 중 하나여야 해요');
       const nth_closed = nthList(get('격주휴무'));
@@ -205,6 +209,7 @@ export function csvToWalls(rows, opts = {}) {
         sun: compact({ facing, lat, lng }),
         ...(parking ? { parking } : {}),
         ...(venue ? { venue: VENUE_KO[venue] } : {}),
+        ...(kindWords.length ? { indoor_kinds: kindWords } : {}),
         ...(holiday ? { holiday: HOLIDAY_KO[holiday] } : {}),
         ...(Object.keys(setting).length ? { setting } : {}),
       });
@@ -239,6 +244,7 @@ export function wallToRow(w) {
     주차메모: w.parking?.note ?? '', 주소: w.address ?? '', '폭(m)': w.width_m ?? '',
     요금: w.parking?.fee ?? '', 외벽앞주차: (w.parking?.onsite ?? []).join(';'), 주변주차: (w.parking?.nearby ?? []).join(';'),
     구분: VENUE_LABEL[w.venue] ?? '',
+    실내종류: (w.indoor_kinds ?? []).join('+'),
     공휴일: HOLIDAY_LABEL[w.holiday] ?? '',
     격주휴무: nthText(w.exceptions?.nth_closed),
     세팅일: w.setting?.last ?? '', 다음세팅: w.setting?.next ?? '',

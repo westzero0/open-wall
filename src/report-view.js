@@ -2,7 +2,7 @@
 import { config } from './config.js';
 import { el } from './dom.js';
 import { searchPicks } from './viewmodel.js';
-import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
@@ -17,6 +17,13 @@ if (dlg) {
   const mode = nickMode(config);
   const nickBox = dlg.querySelector('.rp-nick');
   const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  // A first nickname while the ranking runs cannot be changed afterwards: the first press says so, the second sends and saves it.
+  let confirmedNick = '';
+  const commitNick = (typed) => {
+    const c = nickCommit(mode, readNick(), typed);
+    if (c.confirm && confirmedNick !== c.nick) { confirmedNick = c.nick; say(nickConfirmText(c.nick)); return null; }
+    return c;
+  };
   const saveNick = (v) => { try { localStorage.setItem(NICK_KEY, v); } catch { /* private mode: not remembered */ } };
   if (mode !== 'off') {
     nickBox.hidden = false;
@@ -157,19 +164,21 @@ if (dlg) {
     const file = input.files?.[0];
     if (!wallName) return say('암장을 먼저 골라 주세요.');
     if (!file) return say('보낼 사진을 골라 주세요.');
-    const nick = mode === 'off' ? '' : cleanNick(f.elements.nick.value);
-    if (mode === 'required' && !nick) return say('닉네임을 적어 주세요.');
+    if (mode === 'required' && !nickCommit(mode, readNick(), f.elements.nick.value).nick) return say('닉네임을 적어 주세요.');
     const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
     if ([...memo].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
+    const c = commitNick(f.elements.nick.value);
+    if (!c) return;
+    const nick = c.nick;
     busy = true; refresh();
     const done = () => { busy = false; refresh(); };
     if (f.elements.website.value !== '') { set(); clearTab(kind); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
     say('사진을 줄여서 보내는 중…');
     const err = await postPhoto(file, kind === PHOTO_KIND ? memo : evidenceNote(kind, memo), nick);
     if (err) { done(); return say(err); }
-    if (nick) saveNick(nick);
+    if (c.save) saveNick(c.nick);
     set();
     clearTab(kind); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
     done();
@@ -179,8 +188,10 @@ if (dlg) {
   const evidenceNote = (kind, memo) => [...`[${kind}] ${memo}`.trim()].slice(0, MAX_NOTE).join('');
   for (const r of f.elements.kind) r.addEventListener('change', onKind);
 
+  f.elements.nick.addEventListener('input', () => { confirmedNick = ''; });
   document.addEventListener('wall:report', (e) => {
     f.reset();
+    confirmedNick = '';
     if (mode !== 'off') {
       f.elements.nick.value = readNick();
       const locked = nickLocked(mode, f.elements.nick.value);
@@ -216,13 +227,15 @@ if (dlg) {
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
       setLast: f.elements.setLast.value, setNext: f.elements.setNext.value,
-      note: f.elements.note.value, hp: f.elements.website.value, nick: f.elements.nick.value,
+      note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
     }, new Date(), { nick: mode });
     if (!v.ok) return say(v.error);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
+    const c = commitNick(f.elements.nick.value);
+    if (!c) return;
     busy = true; refresh();
-    if (v.report.nick) saveNick(v.report.nick);
+    if (c.save) saveNick(c.nick);
     if (!v.honeypot) {
       try {
         await fetch(config.reportEndpoint, {
