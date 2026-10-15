@@ -1,5 +1,7 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
+import { el } from './dom.js';
+import { searchPicks } from './viewmodel.js';
 import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
@@ -28,9 +30,26 @@ if (dlg) {
   const pickBox = dlg.querySelector('.rp-pick');
   const pickEl = f.elements.wall;
   const setWall = (n) => { wallName = n; nameEl.textContent = n; chatNameEl.textContent = n ? `[해벽] ${n} 모임` : '[해벽] 암장이름 모임'; };
-  const listEl = dlg.querySelector('#rp-walls');
-  // typed text counts only when it is exactly one of the listed names (never free text)
-  pickEl.addEventListener('input', () => setWall([...listEl.options].some((o) => o.value === pickEl.value) ? pickEl.value : ''));
+  const picks = dlg.querySelector('.rp-picks');
+  let wallNames = [];
+  // same search as the 방문 기록 sheet: type part of a name, tap a hit; typed text alone never counts as a wall
+  function drawHits() {
+    const q = pickEl.value.trim();
+    picks.hidden = !q;
+    if (!q) return picks.replaceChildren();
+    const hits = searchPicks(wallNames.map((name) => ({ name })), q);
+    picks.replaceChildren(...(hits.length ? hits.slice(0, 30).map(({ wall: w }) => {
+      const b = el('button', { type: 'button', class: 'la-hit' }, el('span', { class: 'pn' }, w.name));
+      b.addEventListener('click', () => { pickEl.value = w.name; setWall(w.name); picks.hidden = true; });
+      return el('li', {}, b);
+    }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
+  }
+  pickEl.addEventListener('input', () => { setWall(''); drawHits(); });
+  pickEl.addEventListener('keydown', (e) => { // Enter never submits; with exactly one match it picks it (not while a Korean IME is composing)
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!e.isComposing && picks.querySelectorAll('.la-hit').length === 1) picks.querySelector('.la-hit').click();
+  });
 
   f.elements.body.maxLength = MAX_BODY;
   alt.href = config.reportFormUrl; // fixed constant, not user input
@@ -172,7 +191,8 @@ if (dlg) {
     const picking = Array.isArray(names) && !name;
     pickBox.hidden = !picking;
     nameEl.parentElement.hidden = picking; // the whole "암장 이름" row, not just the empty value
-    listEl.replaceChildren(...(picking ? names.map((n) => new Option(n, n)) : []));
+    wallNames = picking ? names : [];
+    picks.hidden = true; picks.replaceChildren();
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPreview(); clearEvidencePreview();
