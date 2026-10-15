@@ -28,7 +28,9 @@ if (dlg) {
   const pickBox = dlg.querySelector('.rp-pick');
   const pickEl = f.elements.wall;
   const setWall = (n) => { wallName = n; nameEl.textContent = n; chatNameEl.textContent = n ? `[해벽] ${n} 모임` : '[해벽] 암장이름 모임'; };
-  pickEl.addEventListener('change', () => setWall(pickEl.value));
+  const listEl = dlg.querySelector('#rp-walls');
+  // typed text counts only when it is exactly one of the listed names (never free text)
+  pickEl.addEventListener('input', () => setWall([...listEl.options].some((o) => o.value === pickEl.value) ? pickEl.value : ''));
 
   f.elements.body.maxLength = MAX_BODY;
   alt.href = config.reportFormUrl; // fixed constant, not user input
@@ -169,8 +171,8 @@ if (dlg) {
     const { name, kind, names } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
     const picking = Array.isArray(names) && !name;
     pickBox.hidden = !picking;
-    nameEl.hidden = picking;
-    pickEl.replaceChildren(new Option('암장을 골라 주세요', ''), ...(picking ? names.map((n) => new Option(n, n)) : []));
+    nameEl.parentElement.hidden = picking; // the whole "암장 이름" row, not just the empty value
+    listEl.replaceChildren(...(picking ? names.map((n) => new Option(n, n)) : []));
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPreview(); clearEvidencePreview();
