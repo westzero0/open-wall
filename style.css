@@ -1551,6 +1551,14 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ib-list { padding: 0; list-style: none; }
 .ib-list li { margin: var(--sp-2) 0; }
+#intro-banner { position: relative; padding-bottom: var(--sp-12); } /* the close is an ✕ in the corner, not a line of its own */
+#intro-banner .ib-title { padding-right: var(--tap); }
+.ib-x { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.ib-x svg { width: 18px; height: 18px; }
+.ib-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ib-demo { margin: var(--sp-8) 0 var(--sp-4); } /* a real 가로 막대, drawn with the list rows' own classes */
+.ib-demo .bar { margin-top: var(--sp-4); }
+.ib-cap { display: flex; font-size: var(--fs-xs); color: var(--muted); } .ib-cap > span { flex: 1 1 50%; text-align: center; }
 .ib-ic { display: inline-flex; vertical-align: -4px; white-space: nowrap; }
 .ib-ic svg { width: 18px; height: 18px; }
 .ib-note { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
