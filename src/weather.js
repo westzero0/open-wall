@@ -84,4 +84,42 @@ export function dayWeather(d) {
   return { rain, windy: d.g >= GUST_STRONG, rainText };
 }
 
+/** listForecastUrl([{lat, lng}, ...]) → one request for every outdoor wall: the hourly temperature and sky for 4 days (the list row's weather). Only coordinates (2 decimals) vary. */
+export const listForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
+  + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + '&hourly=temperature_2m,weather_code&timezone=Asia/Seoul&forecast_days=4';
+
+/** parseListForecast(json, n) → n Maps ('YYYY-MM-DDTHH:00' → {t °C, c WMO weather code}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
+export function parseListForecast(json, n) {
+  const list = Array.isArray(json) ? json : [json];
+  if (list.length !== n || n < 1) return null;
+  const out = [];
+  for (const item of list) {
+    const h = item?.hourly;
+    if (!h || !Array.isArray(h.time) || !Array.isArray(h.temperature_2m) || !Array.isArray(h.weather_code)) return null;
+    const { time, temperature_2m: t, weather_code: c } = h;
+    const len = time.length;
+    if (!len || len > MAX_HOURS || t.length !== len || c.length !== len) return null;
+    const hours = new Map();
+    for (let i = 0; i < len; i++) {
+      if (typeof time[i] !== 'string' || !HOUR_RE.test(time[i])) return null;
+      if (!within(t[i], -80, 80) || !within(c[i], 0, 99)) return null;
+      hours.set(time[i], { t: t[i], c: c[i] });
+    }
+    out.push(hours);
+  }
+  return out;
+}
+
+/** skyKind(wmoCode) → { kind, text }: the picture and the word for a weather code (WMO: 0 clear, 1–2 partly, 3 cloud, 45/48 fog, 51–67 and 80–82 rain, 71–77 and 85–86 snow, 95–99 thunderstorm). */
+export function skyKind(c) {
+  if (c === 0) return { kind: 'clear', text: '맑음' };
+  if (c <= 2) return { kind: 'partly', text: '구름 조금' };
+  if (c === 3) return { kind: 'cloud', text: '흐림' };
+  if (c === 45 || c === 48) return { kind: 'fog', text: '안개' };
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return { kind: 'snow', text: '눈' };
+  if (c >= 95) return { kind: 'storm', text: '뇌우' };
+  return { kind: 'rain', text: '비' }; // 51–67 drizzle / rain / freezing rain, 80–82 showers
+}
+
 export const weatherLine = (h) => `예보 · 기온 ${Math.round(h.t)}° · 바람 ${Math.round(h.w)}m/s · 돌풍 ${Math.round(h.g)}m/s`;

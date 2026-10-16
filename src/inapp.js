@@ -19,3 +19,11 @@ export const closeInApp = () => { try { localStorage.setItem(KEY, '1'); } catch 
 const INSTALL_KEY = 'open-wall:install-closed';
 export const installClosed = () => { try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; } };
 export const closeInstall = () => { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* storage blocked: shows again next visit */ } };
+
+/** howtoDue({introDone, kakao, kakaoClosed, shareLink}) → {intro, kakao} | null: what the "화면 읽는 법" sheet shows when it opens by itself.
+ *  A share link skips the reading guide (the visitor came for one wall) but still gets the KakaoTalk notice: that one has a consequence. */
+export const howtoDue = ({ introDone, kakao, kakaoClosed, shareLink }) => {
+  const intro = !introDone && !shareLink;
+  const k = Boolean(kakao) && !kakaoClosed;
+  return intro || k ? { intro, kakao: k } : null;
+};

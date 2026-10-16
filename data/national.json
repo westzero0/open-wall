@@ -6556,28 +6556,14 @@
         {
           "src": "photos/geumgok-2.jpg",
           "credit": {
-            "text": "은아 제보"
-          },
-          "date": "2026-10-17"
-        },
-        {
-          "src": "photos/geumgok-3.jpg",
-          "credit": {
-            "text": "은아 제보"
-          },
-          "date": "2026-10-17"
-        },
-        {
-          "src": "photos/geumgok-4.jpg",
-          "credit": {
-            "text": "은아 제보"
+            "text": "은아"
           },
           "date": "2026-10-17"
         },
         {
           "src": "photos/geumgok-1.jpg",
           "credit": {
-            "text": "은아 제보"
+            "text": "은아"
           },
           "date": "2026-10-17",
           "main": true
@@ -6585,7 +6571,7 @@
       ],
       "photo": "photos/geumgok-1.jpg",
       "photo_credit": {
-        "text": "은아 제보"
+        "text": "은아"
       }
     },
     {

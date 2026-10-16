@@ -200,6 +200,8 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .scrub-row { display: flex; align-items: center; gap: var(--sp-8); min-height: calc(var(--tap) - 4px); } /* same height with or without the button */
 #time { flex: 1 1 0; min-width: 0; height: calc(var(--tap) - 4px); margin: 0; accent-color: var(--fg); }
 #nowBtn { flex: none; }
+.scrub-hd #nowBtn { position: relative; min-height: 32px; padding: 0 var(--sp-8); font-size: var(--fs-xs); } /* beside the arrival time, not at the slider's end: the slider keeps the full width, so its thumb stays above the same time on the axis */
+.scrub-hd #nowBtn::after { content: ""; position: absolute; inset: -6px -4px; } /* the tap area stays 44px */
 
 /* filter row: five buttons on one line at 390px; wraps under large text so "조건" stays reachable */
 .filters { display: flex; flex-wrap: nowrap; gap: var(--sp-6); } /* one row: a wrapped 조건 button breaks the layout (large system font) */
@@ -293,20 +295,6 @@ main { padding-bottom: var(--sp-48); }
   background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-md); font-weight: 600; white-space: nowrap;
 }
 .pin-more:active { background: var(--sunken); }
-/* 내 암장: one line per favorite, above the timetable */
-.favs { --pad: 16px; margin: var(--sp-10) -16px 0; background: var(--surface); border-block: 1px solid var(--line); }
-#countFav { color: var(--accent); }
-.fav-list { list-style: none; margin: 0; padding: 0; }
-.fav-list li + li { border-top: 1px solid var(--hair); }
-.fav-item {
-  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-12); width: 100%; min-height: var(--tap); padding: 6px var(--pad);
-  border: 0; background: none; color: var(--fg); font: inherit; text-align: left;
-}
-.fav-name { min-width: 0; font-weight: 600; overflow-wrap: break-word; } /* anywhere would break 어절 mid-syllable beside a wide status */
-.fav-status { flex: none; max-width: 60%; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); text-align: right; }
-.fav-item.open .fav-status { color: var(--open); }
-.fav-item:active { background: var(--sunken); }
-.fav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band, where the list is
    flat rows with bars). Folded: thumbnail, wall, reason. Opened: day pills + basis, then compact rows. Every control is at least --tap high. */
 .pick { --pad: 16px; margin: var(--sp-10) -16px 0; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-block: 1px solid var(--line); }
@@ -425,7 +413,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row-btn:focus-visible { outline-offset: -2px; }
 .expand-in :is(a, button, summary), .more2 { scroll-margin: calc(var(--stick-h, 0px) + 2.5rem) 0 16px; }
 /* name never truncates (wraps instead); region keeps at least 5em or moves down; time left wraps to its own line, right-aligned */
-.l1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
+.l1 { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
 .rname { min-width: 0; font-size: var(--fs-base); font-weight: 600; letter-spacing: -.01em; }
 .sunnow {
   flex: none; padding: 0 var(--sp-6); border-radius: var(--r-6); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
@@ -455,7 +443,19 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: var(--fg); }
 .sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
-.rmeta { flex: 1 1 0; min-width: 0; /* the region gives way (…) before the closing time wraps to a second line */ font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the row extras (다녀옴, region, 요금…) share the room between the name and the time. One line high: an extra that does not fit wraps below and is clipped whole, so there is never half a word or a wrapped closing time */
+.rsub { container-type: inline-size; flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: center; column-gap: var(--sp-8); height: 1.5rem; line-height: 1.5rem; overflow: hidden; }
+.rsub > * { flex: none; max-width: 100%; }
+/* a hard rule for a stray letter: when the extras are squeezed to almost nothing, none of them shows */
+@container (max-width: 4.5em) { .rsub > * { visibility: hidden; } }
+/* the arrival-hour weather: a fixed place left of the time (empty and the same width until the forecast lands) */
+.rwx { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; min-width: 3.8em; font-size: var(--fs-sm); font-weight: 600; color: var(--fg); white-space: nowrap; }
+.rwx svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.wx-credit { padding: var(--sp-8) var(--sp-16) 0; font-size: var(--fs-xs); color: var(--muted); }
+.wx-credit a { color: inherit; }
+.l1 .left { min-width: 5.6em; text-align: right; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
+.l1 .rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rmeta { font-size: var(--fs-xs); color: var(--muted); height: 1.5rem; overflow: hidden; } /* wraps at spaces inside its one-line box: "서울 광진구" shows "서울" before it would show half a word */
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; color: var(--open); }
 .row.soon .left { color: var(--soon); }
 .row.closed .rname, .row.unknown .rname { color: var(--muted); font-weight: 500; }
@@ -553,7 +553,7 @@ dialog.gal[open] { display: flex; }
 .rhero-cap b { display: block; font-size: 2rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
-.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been) { color: var(--on-photo); }
+.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg) { color: var(--on-photo); }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.has-photo.is-open.soon .row-btn .left { color: var(--soon-on-white); }
 .row.has-photo.is-open:is(.closed, .unknown) .row-btn .left { color: var(--muted-on-white); }
@@ -1543,24 +1543,18 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .k-past { background: var(--open-past); }
-.nw { white-space: nowrap; }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
 .to-top { position: fixed; right: max(var(--sp-16), env(safe-area-inset-right)); bottom: max(var(--sp-16), env(safe-area-inset-bottom)); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
 .to-top[hidden] { display: none; }
 .to-top svg { width: 22px; height: 22px; }
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ib-list { padding: 0; list-style: none; }
-.ib-list li { margin: var(--sp-2) 0; }
-#intro-banner { position: relative; padding-bottom: var(--sp-12); } /* the close is an ✕ in the corner, not a line of its own */
-#intro-banner .ib-title { padding-right: var(--tap); }
-.ib-x { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
-.ib-x svg { width: 18px; height: 18px; }
-.ib-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.howto-more > summary { display: flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; cursor: pointer; } /* the rest of the guide: folded for a first visit, open when asked with ? */
+.howto-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#howto .ab-sec ul.key { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-14); padding-left: 0; list-style: none; } /* the icon and bar keys run along a line, not down the sheet */
+.howto-more h3 { margin-top: var(--sp-8); }
 .ib-demo { margin: var(--sp-8) 0 var(--sp-4); } /* a real 가로 막대, drawn with the list rows' own classes */
 .ib-demo .bar { margin-top: var(--sp-4); }
 .ib-cap { display: flex; font-size: var(--fs-xs); color: var(--muted); } .ib-cap > span { flex: 1 1 50%; text-align: center; }
-.ib-ic { display: inline-flex; vertical-align: -4px; white-space: nowrap; }
-.ib-ic svg { width: 18px; height: 18px; }
 .ib-note { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .ib-from { color: var(--muted); font-size: var(--fs-xs); }
 .ib-again { min-height: var(--tap); margin: var(--sp-4) var(--sp-12) 0 0; padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }

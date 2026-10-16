@@ -26,11 +26,11 @@ import { applyTextSize, applyTheme, createProfileView } from './profile-view.js'
 import { createSafetyView } from './safety-view.js';
 import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { dayKey, dayWeather, forecastUrl, parseDaily, parseForecast, pickHour, weatherFresh, weekendForecastUrl } from './weather.js';
+import { dayKey, dayWeather, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openBoardPage } from './board-page.js';
 import { openGallery } from './gallery-view.js';
-import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
+import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, howtoDue, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
 import { currentInstallMode, promptInstall } from './install.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,6 +51,12 @@ const ICONS = {
   'camera-plus': ['M14.5 5h-5L7 8H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4', 'M11 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M19 1v6', 'M16 4h6'],
   pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
   sliders: ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
+  'sky-partly': ['M12 2v2', 'm4.93 4.93 1.41 1.41', 'M20 12h2', 'm19.07 4.93-1.41 1.41', 'M15.947 12.65a4 4 0 0 0-5.925-4.128', 'M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z'],
+  'sky-cloud': ['M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'],
+  'sky-fog': ['M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242', 'M16 17H7', 'M17 21H9'],
+  'sky-rain': ['M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242', 'M16 14v6', 'M8 14v6', 'M12 16v6'],
+  'sky-snow': ['M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242', 'M8 15h.01', 'M8 19h.01', 'M12 17h.01', 'M12 21h.01', 'M16 15h.01', 'M16 19h.01'],
+  'sky-storm': ['M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973', 'm13 12-3 5h4l-3 5'],
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
@@ -87,6 +93,7 @@ function sunChip(sun) {
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
+let showHowtoAuto = () => {}; // set by the 화면 읽는 법 block below; render() calls it, so it must exist before the first render
 let theme; // what applyTheme last got: 자동 turns 'dark' from 23:00 to 08:00 (src/boot-theme.js does the same for the first paint)
 function syncTheme() {
   const next = ui.theme === 'auto' && isNight(new Date()) ? 'dark' : ui.theme; // the real clock, not the picked moment
@@ -648,7 +655,6 @@ function paintStar(btn) {
 function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
-  renderFavStrip();
 }
 function favBtn(name, label = null) { // label: a word under the heart (the link strip's cell)
   const btn = el('button', { type: 'button', class: label ? 'lb-item fav-btn' : 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기', ...(label ? { 'data-label': label } : {}) });
@@ -661,23 +667,6 @@ function favBtn(name, label = null) { // label: a word under the heart (the link
   paintStar(btn);
   return btn;
 }
-// 내 암장: one line per favorite (name, status now); a tap opens its card in the list, filters cleared for the visit if
-// they hide it. Hidden with no favorites, so the first screen is unchanged until someone stars a wall.
-function renderFavStrip() {
-  const at = shown.at;
-  const mine = favs.map((n) => allRows.find((r) => r.wall.name === n)).filter(Boolean);
-  $('favs').hidden = !mine.length || !at;
-  if (!mine.length || !at) return;
-  $('countFav').textContent = String(mine.length);
-  $('fav-list').replaceChildren(...mine.map((row) => {
-    const m = cardModel(row, at);
-    const b = el('button', { type: 'button', class: `fav-item ${m.state}` },
-      el('span', { class: 'fav-name' }, m.shortName), el('span', { class: 'fav-status' }, m.statusText));
-    b.addEventListener('click', () => revealClearing(m.name));
-    return el('li', {}, b);
-  }));
-}
-
 // ---- 이번 주말 추천 (src/pick.js): a folded line above the timetable ----
 let pickPref = 'auto';
 const PICK_PREFS = [['auto', '자동'], ['shade', '응달'], ['sun', '양달'], ['any', '오래']];
@@ -699,7 +688,7 @@ let pickRefocus = null;
 const wxPick = { byName: new Map(), entry: null, busy: false };
 async function loadWeekendWeather() {
   if (wxPick.busy || weatherFresh(wxPick.entry, Date.now())) return;
-  const spots = state.walls.filter((w) => w.venue !== 'indoor').map((w) => [w, wallPosition(w)]).filter(([, p]) => p); // indoor walls: no forecast
+  const spots = listSpots(); // indoor walls: no forecast
   if (!spots.length) return;
   wxPick.busy = true;
   let days = null;
@@ -716,6 +705,70 @@ async function loadWeekendWeather() {
     renderPick();
   }
 }
+// 목록 줄의 날씨 (weather.js; docs/system/permissions.md): one request for every outdoor wall's hourly temperature and sky, the way
+// the weekend picks ask for theirs. Kept in memory and in this browser for 3 hours so a reload does not ask again; a failed
+// answer is not retried for 5 minutes. A row shows the temperature at the picked arrival hour; indoor walls have none.
+const WXL_KEY = 'open-wall:wx-list';
+const wxList = { byName: new Map(), entry: null, busy: false };
+const SKY_ICON = { clear: 'sun', partly: 'sky-partly', cloud: 'sky-cloud', fog: 'sky-fog', rain: 'sky-rain', snow: 'sky-snow', storm: 'sky-storm' };
+const listSpots = () => state.walls.filter((w) => w.venue !== 'indoor').map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
+// names and coordinates (2 decimals, what is sent): a wall added, removed or moved while the page is open asks again
+const listKey = (spots) => spots.map(([w, p]) => `${w.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join('|');
+function useWxList(spots, json, at) {
+  const days = parseListForecast(json, spots.length);
+  wxList.entry = { hours: days, at, key: listKey(spots) }; // the shape weatherFresh reads, plus the list it answers
+  wxList.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
+  return !!days;
+}
+async function loadListWeather() {
+  if (wxList.busy) return;
+  const spots = listSpots();
+  if (!spots.length) return;
+  const key = listKey(spots);
+  if (weatherFresh(wxList.entry, Date.now()) && wxList.entry.key === key) return;
+  if (!wxList.entry) { // the first ask of this visit: the copy kept in this browser may still be good
+    try {
+      const saved = JSON.parse(storage.getItem(WXL_KEY));
+      if (saved?.key === key && Date.now() - saved.at >= 0 && Date.now() - saved.at < 3 * 3600e3 && useWxList(spots, saved.json, saved.at)) { paintListWx(); return; }
+    } catch { /* no copy, or a broken one: ask */ }
+  }
+  wxList.busy = true;
+  let json = null;
+  try {
+    const res = await fetch(listForecastUrl(spots.map(([, p]) => p)), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
+    if (res.ok) json = await res.json();
+  } catch { /* quiet: rows stay without weather */ }
+  if (useWxList(spots, json, Date.now())) {
+    try { storage.setItem(WXL_KEY, JSON.stringify({ key, at: wxList.entry.at, json })); } catch { /* full or blocked: asked again next visit */ }
+  }
+  wxList.busy = false;
+  paintListWx();
+}
+const wxEntry = (wall, at) => { const h = wxList.byName.get(wall.name); return h ? pickHour(h, at) : null; };
+function wxChip(h, name) {
+  const sky = skyKind(h.c);
+  const t = Math.round(h.t) || 0; // never "-0"
+  return el('span', { class: 'rwx', 'data-wx': name, role: 'img', 'aria-label': `기온 ${t}도, ${sky.text}` }, icon(SKY_ICON[sky.kind]), `${t}°`);
+}
+// an outdoor wall with a position gets a slot: filled when the forecast covers the picked hour, empty (same width, so nothing
+// shifts when it lands) until the answer comes; once answered, no slot where there is nothing to show
+function wxSlot(wall, at) {
+  if (wall.venue === 'indoor' || !wallPosition(wall)) return null;
+  const h = wxEntry(wall, at);
+  if (h) return wxChip(h, wall.name);
+  return wxList.entry ? null : el('span', { class: 'rwx pending', 'data-wx': wall.name, 'aria-hidden': 'true' });
+}
+function paintListWx() {
+  const at = shown.at;
+  for (const slot of document.querySelectorAll('#panel-list .rwx[data-wx]')) {
+    const wall = at && state.walls.find((w) => w.name === slot.dataset.wx);
+    const h = wall ? wxEntry(wall, at) : null;
+    if (h) slot.replaceWith(wxChip(h, wall.name)); else slot.remove();
+  }
+  syncWxCredit();
+}
+// Open-Meteo asks for credit (CC BY 4.0): a line under the list whenever a row shows its weather
+const syncWxCredit = () => { if ($('wxCredit')) $('wxCredit').hidden = !document.querySelector('#panel-list .rwx:not(.pending)'); };
 const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get(dayKey(date)));
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
 function renderPick() {
@@ -1199,14 +1252,17 @@ function timeRow(row, at) {
     el('span', { class: 'l1' },
       sunChip(sun), // first: the same column on every open row
       el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
-      el('span', { class: 'rname' }, m.shortName),
-      feeChip(m),
-      m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
-      m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
-        el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
-      m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
-      m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
-      basisTag(m), // right of the region, own span: the region line may be cut short, this may not
+      el('span', { class: 'rname', title: m.shortName }, m.shortName),
+      // the extras share what room is left, in this order of worth; one that does not fit wraps out of sight whole (style.css .rsub),
+      // so the closing time never wraps and no region is cut to a stray letter (it is on the card)
+      el('span', { class: 'rsub' },
+        m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
+        m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
+          el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
+        m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
+        m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
+        feeChip(m)), // the least decisive: it is the first to give way
+      wxSlot(row.wall, at), // a fixed place left of the time: the temperature at the picked arrival hour (outdoor walls)
       el('span', { class: 'left' }, m.left)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
@@ -1265,7 +1321,7 @@ function toggleRow(li) {
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
 // Used by a share link and by the map card's 자세히 보기.
-function revealRow(name) {
+function revealRow(name, { focus = false } = {}) {
   const row = shown.rows.find((r) => r.wall.name === name);
   if (!row) return false;
   go({ type: 'reveal', name, state: row.status.state }); // renders: the open row is built filled, so no transition plays
@@ -1273,7 +1329,11 @@ function revealRow(name) {
   const li = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === name);
   const band = li?.closest('details');
   if (band) band.open = true;
-  li?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  // the title row, as toggleRow does: it carries the scroll-margin that clears the pinned time axis (the <li> does not, so a
+  // card opened from search / the map / a share link had its first line under the axis)
+  const btn = li?.querySelector('.row-btn');
+  btn?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  if (focus && !$('panel-list').hidden) btn?.focus({ preventScroll: true }); // a picked card (search, 기록): keyboard and screen-reader users land on it
   return true;
 }
 
@@ -1351,7 +1411,7 @@ function render() {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
   }
-  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.live ? '' : ' · 직접 고름'}${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
+  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
   $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}`;
@@ -1389,8 +1449,10 @@ function render() {
   $('map-note').textContent = `위치 정보 없음 ${unlocated.length}곳 · ${unlocated.join(', ')}`;
   $('map-note').hidden = !unlocated.length;
   mapApi?.setRows(all, at);
-  renderFavStrip();
   renderPick();
+  loadListWeather();
+  syncWxCredit();
+  showHowtoAuto(); // a first visit: the sheet opens once, over the drawn list
   if (vs.openName) weatherFor(vs.openName); // a cached forecast makes this a no-op on the minute tick
 }
 
@@ -1455,6 +1517,15 @@ function openMap() {
 
 const tabs = TABS; // 목록 | 지도 | 기록
 const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): no 지도 tab
+// the wall search: phones put it under the title, above the filters (the 10/16 sketch); wide screens keep it at the top of the list column
+const placeFind = () => {
+  const f = $('find');
+  const host = wide.matches ? document.querySelector('main.wrap') : document.querySelector('header.top .wrap');
+  if (!f || !host) return;
+  if (wide.matches) host.prepend(f); else host.append(f);
+};
+wide.addEventListener('change', placeFind);
+placeFind();
 function showTab(key, focus = false) {
   if (wide.matches && key === 'map') key = 'list';
   ui.tab = key;
@@ -1477,8 +1548,20 @@ function showTab(key, focus = false) {
   syncToTop();
 }
 // 맨 위로: after a screen of scrolling, not over the full-screen map (phones)
+let lastY = 0, topTimer = 0;
 function syncToTop() {
-  if ($('toTop')) $('toTop').hidden = scrollY < innerHeight || (ui.tab === 'map' && !wide.matches); // (a cached older index.html has no button)
+  const b = $('toTop');
+  if (!b) return; // (a cached older index.html has no button)
+  const dy = scrollY - lastY;
+  lastY = scrollY;
+  if (scrollY < innerHeight || (ui.tab === 'map' && !wide.matches) || dy > 2) { // near the top, on the map, or reading downwards: out of the way
+    clearTimeout(topTimer);
+    b.hidden = true;
+  } else if (dy < -2) { // scrolling up: the way back to the filters, for 3 seconds after the last upward move
+    clearTimeout(topTimer);
+    b.hidden = false;
+    topTimer = setTimeout(() => { b.hidden = true; }, 3000);
+  } // a tiny move (the tail of a fling) leaves both the button and its timer as they are
 }
 addEventListener('scroll', syncToTop, { passive: true });
 $('toTop')?.addEventListener('click', () => {
@@ -1500,9 +1583,9 @@ function revealFromLog(name) {
 // revealRow, and when the filters hide the wall: clear them for this visit only (nothing is saved until a filter is
 // changed) and reveal again. → true when filters were cleared. Used by 내 암장 and 기록.
 function revealClearing(name) {
-  if (revealRow(name)) return false;
+  if (revealRow(name, { focus: true })) return false;
   clearFilters();
-  revealRow(name);
+  revealRow(name, { focus: true });
   return true;
 }
 
@@ -1871,23 +1954,34 @@ if (sharedWall) {
     history.replaceState(null, '', u);
   }
 }
-if ($('howto') && $('helpBtn') && $('intro-banner')) { // 화면 읽는 법: the header ? opens the sheet; the first-visit card says the short version and, once closed, stays closed (an older cached page has neither)
+// 화면 읽는 법 sheet: the header ? opens it. On a first visit it opens by itself once the list is drawn (and carries the KakaoTalk
+// notice inside KakaoTalk), then stays closed; a share link skips the guide but keeps the notice (inapp.js howtoDue).
+if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page has none of it
   const howto = $('howto');
   let opener = null;
-  howto.addEventListener('close', () => opener?.focus());
+  let auto = null; // what an automatic opening showed: closing it, however it happens, marks that as seen
+  const show = (from, due) => {
+    opener = from;
+    auto = due;
+    $('howto-title').textContent = due?.intro ? '처음이세요? 이렇게 읽어요' : due ? '안내' : '화면 읽는 법';
+    $('howto-kakao').hidden = !due?.kakao;
+    $('howto-guide').hidden = !!due && !due.intro; // only the notice is due: just that
+    $('howto-close').textContent = due ? '확인' : '닫기';
+    $('howto-more').open = !due; // a first visit sees the short part; ? opens the whole guide
+    howto.showModal();
+    howto.scrollTop = 0; // the browser scrolls to the focused 확인 button at the foot: start from the title
+  };
+  howto.addEventListener('close', () => {
+    if (auto?.intro) { ui.introDone = true; saveUi(); }
+    if (auto?.kakao) closeInApp();
+    (opener ?? $('tab-list'))?.focus();
+    auto = null;
+  });
   howto.addEventListener('click', (e) => e.target === howto && howto.close()); // the backdrop
-  $('helpBtn').addEventListener('click', (e) => { opener = e.currentTarget; howto.showModal(); });
-  const b = $('intro-banner');
-  b.hidden = ui.introDone;
-  $('intro-close').addEventListener('click', () => { ui.introDone = true; saveUi(); b.hidden = true; $('tab-list').focus(); }); // the button is gone: focus moves on
-}
-{ // 카카오톡 인앱브라우저: storage there is separate from Chrome/Safari, so say so once (closing it is remembered)
-  const b = $('inapp-banner');
-  if (b && isKakaoInApp(navigator.userAgent) && !inAppClosed()) {
-    b.hidden = false;
-    $('inapp-open').addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });
-    $('inapp-close').addEventListener('click', () => { closeInApp(); b.hidden = true; });
-  }
+  $('helpBtn').addEventListener('click', (e) => show(e.currentTarget, null));
+  $('inapp-open')?.addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });
+  const due = howtoDue({ introDone: ui.introDone, kakao: isKakaoInApp(navigator.userAgent), kakaoClosed: inAppClosed(), shareLink: new URL(entryHref || location.href).searchParams.has('wall') });
+  if (due) showHowtoAuto = () => { showHowtoAuto = () => {}; show(null, due); };
 }
 { // handed over from KakaoTalk (?from=kakao): offer the install once, as soon as this browser can do it
   const u = new URL(location.href);
