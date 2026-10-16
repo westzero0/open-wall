@@ -1245,7 +1245,12 @@ function setRowOpen(li, open) {
 
 // One row open at a time.
 function toggleRow(li) {
+  // Another open card above shrinks while this one opens. Its collapse animates, so the smooth scroll below would aim at a row that is
+  // still moving and end up far past it (the bottom of the new card). The other card snaps shut instead: the row stays where it is.
+  const others = [...document.querySelectorAll('#panel-list .row.is-open')].filter((o) => o !== li);
+  for (const o of others) o.classList.add('snap');
   for (const o of document.querySelectorAll('#panel-list .row.is-open')) setRowOpen(o, false);
+  if (others.length) { void li.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => others.forEach((o) => o.classList.remove('snap')))); }
   go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
   if (vs.openName !== li.wallName) return;
   li.fill();

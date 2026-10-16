@@ -487,6 +487,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
   grid-template-rows: 1fr; opacity: 1; visibility: visible;
   transition: grid-template-rows var(--dur-ui) var(--ease-out), opacity var(--dur-ui) var(--ease-out), visibility 0s;
 }
+.row.snap > .expand { transition: none; } /* closes at once (toggleRow): the row that was tapped must not move while the page scrolls to it */
 .expand-in { min-height: 0; overflow: hidden; padding: 0 var(--pad); }
 .row.is-open .expand-in { padding-bottom: var(--sp-16); }
 .herowrap { position: relative; margin-top: var(--sp-2); }
