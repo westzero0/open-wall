@@ -422,7 +422,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row { border-bottom: 1px solid var(--hair); }
 .row-btn {
   display: block; width: 100%; min-height: 56px; padding: 13px var(--pad) 14px; text-align: left; line-height: 1.35;
-  border: 0; background: none; scroll-margin-top: calc(var(--stick-h, 0px) + 2.125rem); transition: background-color var(--dur-press) var(--ease-out);
+  border: 0; background: none; scroll-margin-top: 2.125rem; /* html's scroll-padding-top already clears the sticky bars; the margin only leaves room for the axis below them */ transition: background-color var(--dur-press) var(--ease-out);
 }
 .row-btn:active { background: color-mix(in srgb, var(--fg) 6%, transparent); }
 .row-btn:focus-visible { outline-offset: -2px; }
