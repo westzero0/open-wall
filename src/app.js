@@ -1614,7 +1614,10 @@ $('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== 
 $('nearFirst').addEventListener('click', () => {
   if (ui.sortMode === 'distance') return setUi('sortMode', 'time');
   setUi('sortMode', 'distance');
-  if (!vs.origin) locate();
+  if (!vs.origin) locate().then((why) => { // no position: don't keep 가까운 순 on (and saved) while the list stays as it was; the note stays
+    if (!why || ui.sortMode !== 'distance') return;
+    ui.sortMode = 'time'; sheetForm.elements.sortMode.value = 'time'; saveUi(); render();
+  });
 });
 
 $('regionChip').addEventListener('click', () => {

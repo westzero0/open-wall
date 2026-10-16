@@ -6286,7 +6286,7 @@
       "region": "경기 성남시",
       "height_m": 11.9,
       "tags": [],
-      "memo": "정기휴무 둘째·넷째 일요일·명절 연휴(설날·추석)\n야외 외벽, 면적 100㎡",
+      "memo": "정기휴무 둘째·넷째 일요일·명절 연휴(설날·추석)\n야외 외벽, 면적 100㎡\n모든 형태의 강습·교육 금지(초보자 대상 교육 불가)",
       "address": "경기 성남시 분당구 금곡로 302 금곡공원 국민체육센터",
       "hours": {
         "mon": [
@@ -6551,7 +6551,42 @@
           }
         ]
       },
-      "checked_at": "2026-10-16"
+      "checked_at": "2026-10-17",
+      "photos": [
+        {
+          "src": "photos/geumgok-2.jpg",
+          "credit": {
+            "text": "은아 제보"
+          },
+          "date": "2026-10-17"
+        },
+        {
+          "src": "photos/geumgok-3.jpg",
+          "credit": {
+            "text": "은아 제보"
+          },
+          "date": "2026-10-17"
+        },
+        {
+          "src": "photos/geumgok-4.jpg",
+          "credit": {
+            "text": "은아 제보"
+          },
+          "date": "2026-10-17"
+        },
+        {
+          "src": "photos/geumgok-1.jpg",
+          "credit": {
+            "text": "은아 제보"
+          },
+          "date": "2026-10-17",
+          "main": true
+        }
+      ],
+      "photo": "photos/geumgok-1.jpg",
+      "photo_credit": {
+        "text": "은아 제보"
+      }
     },
     {
       "name": "청주국제스포츠클라이밍센터",

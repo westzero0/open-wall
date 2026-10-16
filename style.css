@@ -302,7 +302,7 @@ main { padding-bottom: var(--sp-48); }
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-12); width: 100%; min-height: var(--tap); padding: 6px var(--pad);
   border: 0; background: none; color: var(--fg); font: inherit; text-align: left;
 }
-.fav-name { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.fav-name { min-width: 0; font-weight: 600; overflow-wrap: break-word; } /* anywhere would break 어절 mid-syllable beside a wide status */
 .fav-status { flex: none; max-width: 60%; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); text-align: right; }
 .fav-item.open .fav-status { color: var(--open); }
 .fav-item:active { background: var(--sunken); }
@@ -378,7 +378,7 @@ main { padding-bottom: var(--sp-48); }
   @keyframes pin-in { from { opacity: 0; transform: translateY(12px); } }
 }
 /* the map credit sits top right (map.js), clear of the card */
-#map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--r-base) 0 6px; }
+#map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--r-base) 0 6px; max-width: calc(100% - var(--tap) - var(--sp-24)); } /* wraps in the room right of the zoom buttons (big text made it two lines over +) */
 #pin-card .card.unknown { background: var(--surface); } /* floats over the map: a flat (transparent) 운영시간 미입력 card would show the pins through it */
 #pin-card .head { padding-right: var(--sp-40); } /* room for the close button */
 .pin-close {
