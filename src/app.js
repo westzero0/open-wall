@@ -1345,7 +1345,7 @@ function render() {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
   }
-  $('sub').textContent = `${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date input shows the rest
+  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.live ? '' : ' · 직접 고름'}${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
   $('countOpen').textContent = String(n);
@@ -1461,6 +1461,7 @@ function showTab(key, focus = false) {
   }
   $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
   $('find').hidden = key === 'log'; // 기록 has its own wall search
+  if ($('findBtn')) $('findBtn').hidden = key === 'log'; // an older cached index.html has no magnifier
   controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
@@ -1534,6 +1535,13 @@ function pickOnMap(w) {
   }
   mapApi?.select(w.name, true);
 }
+// phones: the wall search sits behind the header magnifier (wide screens always show it, style.css); closing it clears it
+const foldFind = (fold) => {
+  $('find').classList.toggle('folded', fold);
+  $('findBtn')?.setAttribute('aria-expanded', String(!fold));
+  if (fold) { $('findQ').value = ''; $('findQ').dispatchEvent(new Event('input')); } else $('findQ').focus();
+};
+$('findBtn')?.addEventListener('click', () => foldFind(!$('find').classList.contains('folded')));
 wireFind($('findQ'), $('findHits'), (w) => {
   if (ui.tab === 'map') return pickOnMap(w);
   if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요');

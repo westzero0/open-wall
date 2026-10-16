@@ -38,6 +38,7 @@
     <div class="wrap">
       <h1><picture><source media="(prefers-color-scheme: dark)" srcset="assets/haebyeok-mark-dark.svg"><img class="logo" src="assets/haebyeok-mark.svg" alt="" width="32" height="32"></picture><strong>해벽</strong></h1>
       <button type="button" class="icon-btn safety-btn" id="safetyBtn" aria-label="안전수칙" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></button>
+      <button type="button" class="icon-btn find-btn" id="findBtn" aria-label="암장 찾기" aria-controls="find" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
       <button type="button" class="icon-btn me-btn" id="meBtn" aria-label="내 정보" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></button>
       <p id="summary" role="status"></p>
       <button type="button" class="region-line" id="regionChip" hidden><span></span><span class="x" aria-hidden="true">· 전국 보기</span></button>
@@ -58,8 +59,10 @@
       <p id="locateMsg" hidden></p>
       <div class="scrub">
         <div class="scrub-hd">
-          <label class="field"><span class="sr-only">날짜</span><input type="date" id="date" required></label>
-          <span id="sub" class="sub"></span>
+          <details class="scrub-date"><!-- the day as text; opened: the date field. The slider below stays in view: it is the core control -->
+            <summary class="scrub-sum"><span id="sub" class="sub"></span></summary>
+            <label class="field"><span class="sr-only">날짜</span><input type="date" id="date" required></label>
+          </details>
           <label for="time" class="scrub-label">도착 <output id="timeOut" for="time"></output></label>
         </div>
         <div class="scrub-row">
@@ -74,7 +77,7 @@
       <p>외벽 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.</p>
       <button type="button" id="retry">다시 시도</button>
     </div>
-    <div class="find" id="find">
+    <div class="find folded" id="find"><!-- phones: folded behind the header magnifier (#findBtn); wide screens always show it -->
       <label class="la-field"><span class="sr-only">암장 찾기</span><input type="search" id="findQ" placeholder="암장 이름이나 지역으로 찾기" autocomplete="off"></label>
       <ul id="findHits" class="la-picks" hidden></ul>
     </div>

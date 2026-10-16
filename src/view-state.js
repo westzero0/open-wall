@@ -74,7 +74,7 @@ export function step(vs, ev, now) {
     }
     case 'sort': return { vs: { ...vs, locateNote: '' }, fx: [] };
     case 'located': return ev.sort
-      ? { vs: { ...vs, origin: ev.origin, locateNote: '내 위치를 기준으로 가까운 순으로 정렬했어요. 직선거리예요.' }, fx: ['sortDistance', 'render', 'setUser'] }
+      ? { vs: { ...vs, origin: ev.origin, locateNote: '' }, fx: ['sortDistance', 'render', 'setUser'] }
       : { vs: { ...vs, origin: ev.origin }, fx: ['render', 'setUser'] };
     case 'locateFailed': return ev.sort ? { vs: { ...vs, locateNote: ev.why }, fx: ['render'] } : { vs, fx: [] };
     default: throw new Error(`view-state: unknown event ${ev.type}`);

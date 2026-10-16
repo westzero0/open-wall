@@ -159,12 +159,13 @@ button, summary, .btn, .file-btn { -webkit-user-select: none; user-select: none;
 [hidden] { display: none !important; }
 
 /* ---- header ---- */
-.top { background: var(--bg); padding: var(--sp-10) 0 var(--sp-2); }
+.top { background: var(--bg); padding: var(--sp-6) 0 var(--sp-2); }
 h1 { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); letter-spacing: .02em; }
 h1 { display: flex; align-items: center; gap: var(--sp-6); }
 h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .logo { flex: none; display: block; }
-#summary { font-size: var(--fs-xl); font-weight: 700; line-height: 1.15; letter-spacing: -.025em; margin-top: var(--sp-4); }
+#summary { font-size: min(var(--fs-xl), calc((100vw - 32px) / 14.6)); /* the headline fits one row whatever the system font size; a long lead may still wrap */
+   font-weight: 700; line-height: 1.15; letter-spacing: -.025em; margin-top: 0; }
 #summary b { color: var(--open); }
 #summary b.zero { color: var(--muted); }
 /* 내 지역 on: a small line under the summary; pressing it goes back to 전국 (the 44px tap area is padding pulled back by the margin) */
@@ -175,10 +176,10 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .sub { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
 /* date + slider stay sticky while the list scrolls; app.js sets a negative top so the filter row scrolls away,
    and --stick-h (0 when .unstuck) to the part that stays */
-.controls { position: sticky; top: 0; z-index: 5; padding: var(--sp-8) 0 var(--sp-6); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+.controls { position: sticky; top: 0; z-index: 5; padding: var(--sp-6) 0 var(--sp-2); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
 .controls.unstuck { position: static; box-shadow: none; }
 .controls[hidden] { display: none; }
-.controls > .wrap { display: grid; gap: var(--sp-8); }
+.controls > .wrap { display: grid; gap: var(--sp-4); }
 .field { display: block; min-width: 0; }
 #date, #nowBtn {
   width: 100%; min-height: var(--tap); padding: 0 var(--sp-8); font-size: var(--fs-md);
@@ -189,15 +190,22 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 /* arrival time: the slider follows the thumb 1:1, nothing animates */
 /* date · weekday · arrival wrap as a unit under large text; "지금으로" sits at the slider's end, so it never widens the header */
 .scrub-hd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); }
+.scrub-date { flex: 1 1 auto; min-width: 0; }
+.scrub-sum { display: flex; align-items: center; gap: var(--sp-6); min-height: calc(var(--tap) - 8px); list-style: none; }
+.scrub-sum::-webkit-details-marker { display: none; }
+.scrub-sum::after { content: "▾"; content: "▾" / ""; color: var(--muted); font-size: var(--fs-xs); } /* the arrow is decoration: no alt text for screen readers */
+.scrub-date[open] > .scrub-sum::after { content: "▴"; content: "▴" / ""; }
+.scrub-sum .sub { min-width: 0; white-space: normal; } /* wraps at spaces (keep-all) instead of being cut off */
 .scrub-label { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 #timeOut { color: var(--fg); font-weight: 700; font-size: var(--fs-base); margin-left: var(--sp-4); }
-.scrub-row { display: flex; align-items: center; gap: var(--sp-8); min-height: var(--tap); margin-top: var(--sp-4); } /* same height with or without the button */
-#time { flex: 1 1 0; min-width: 0; height: var(--tap); margin: 0; accent-color: var(--fg); }
+.scrub-row { display: flex; align-items: center; gap: var(--sp-8); min-height: calc(var(--tap) - 4px); } /* same height with or without the button */
+#time { flex: 1 1 0; min-width: 0; height: calc(var(--tap) - 4px); margin: 0; accent-color: var(--fg); }
 #nowBtn { flex: none; }
 
 /* filter row: five buttons on one line at 390px; wraps under large text so "조건" stays reachable */
-.filters { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
-.filters .pill { padding: 0 var(--sp-10); font-size: var(--fs-xs); }
+.filters { display: flex; flex-wrap: nowrap; gap: var(--sp-6); } /* one row: a wrapped 조건 button breaks the layout (large system font) */
+.filters .pill { flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-8); font-size: var(--fs-xs); white-space: nowrap; }
+@media (max-width: 430px) { .sunfilter-btn svg { display: none; } } /* 양달/응달 have words: on phones the icons give way so the chips stay on one row */
 /* 양달/응달 · 3시간+ · 가까운 순 switch something on and off: outlined pills. 조건 opens a sheet: a text button at the right edge, bold with an underline while a condition is on */
 .filters .quiet { margin-left: auto; padding: 0 var(--sp-8); border-color: transparent; background: transparent; color: var(--muted); }
 .filters .quiet.on { color: var(--fg); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
@@ -226,7 +234,7 @@ button.pill:active, #nowBtn:active, .btn:active { transform: scale(.97); }
 main { padding-bottom: var(--sp-48); }
 /* 목록/지도 stay in view under the date + slider, so the map is never a place you can't leave (app.js sets --ctl-h, and
    --stick-h = controls + this bar; .unstuck when even that would take over a short screen) */
-.tabbar { position: sticky; top: var(--ctl-h, 0px); z-index: 4; margin: 0 -16px; padding: var(--sp-8) var(--sp-16) var(--sp-6); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+.tabbar { position: sticky; top: var(--ctl-h, 0px); z-index: 4; margin: 0 -16px; padding: var(--sp-4) var(--sp-16); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
 .tabbar.unstuck { position: static; box-shadow: none; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4); padding: var(--sp-4); background: var(--sunken); border-radius: var(--r-base); }
 .tabs [role="tab"] {
@@ -1179,8 +1187,12 @@ dialog::backdrop { background: var(--scrim); }
 .rp-name { color: var(--fg); font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
 
 /* ---- 내 정보 (header button + sheet) ---- */
-.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
-.top .wrap > :not(h1):not(.me-btn):not(.safety-btn) { grid-column: 1 / -1; }
+.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; }
+.top .wrap > :not(h1):not(.me-btn):not(.safety-btn):not(.find-btn) { grid-column: 1 / -1; }
+.find-btn { color: var(--fg); }
+.find-btn[hidden] { display: none; }
+@media (max-width: 1023.98px) { .find.folded { display: none; } }
+@media (min-width: 1024px) { .find-btn { display: none; } }
 .me-btn { margin-right: -10px; color: var(--fg); }
 .me-btn svg { width: 24px; height: 24px; }
 .safety-btn { color: var(--fg); }
