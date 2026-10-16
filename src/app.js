@@ -893,22 +893,32 @@ function dialFig(name, d) {
 // The one-line limit under every estimated sun time (the same words in the sun box and the 계절별 양달 tab)
 const sunLimit = () => el('p', { class: 'sun-limit' }, '벽 방향과 지형으로 계산한 예상이에요. 건물·나무, 날씨·구름, 오버행·벽 경사는 반영하지 않아요.');
 const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
+// 접힌 계산 기준 (양달 카드 안: 한 줄 접힘, 기본 닫힘)
+const sunWhy = () => el('details', { class: 'sun-why' }, el('summary', {}, '계산 기준'), sunLimit());
+// 맨 위 한 줄: 상태 칩 + 핵심 값 (구간이 여러 개면 구간마다 한 덩어리)
+function sunHead(d) {
+  const chip = d.state === 'unknown' ? '계산 불가' : d.lit ? '양달' : '응달';
+  const cls = d.state === 'unknown' ? 'na' : d.lit ? 'lit' : 'dark';
+  const key = d.state === 'unknown' ? null : d.windows.length
+    ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, '예상 양달 시간'), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+    : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
+  return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
+}
 function sunBox(d, name, closedDay) {
   const sentence = el('p', { class: 'dsent' }, ...d.sentence.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
       el('p', { class: 'dsent off' }, '이 날은 운영하지 않아서 해 나침반은 접어 두었어요.'),
-      noSunMath(d) ? null : el('p', { class: 'dwhen' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunLimit()));
+      noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
-    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sentence));
+    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d), sentence, d.state === 'override' ? sunWhy() : null));
   }
   return el('section', { class: 'sunbox', 'aria-label': '해' },
+    sunHead(d),
+    sentence,
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
-    el('div', { class: 'sb-txt' },
-      sentence,
-      el('p', { class: 'dwhen' }, el('b', {}, d.windows.length ? `예상 양달 시간 ${formatRanges(d.windows)}` : `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`)),
-      sunLimit()));
+    sunWhy());
 }
 
 
