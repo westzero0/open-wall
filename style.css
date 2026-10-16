@@ -462,12 +462,16 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.closed .left, .row.unknown .left { color: var(--muted); font-weight: 400; }
 .bar { position: relative; display: block; height: 15px; margin-top: var(--sp-8); }
 .bar .seg { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--open); }
-/* the part already past is the same tone: the tick says where now is. The two halves of a split interval meet square */
+.bar .seg.past { background: var(--open-past); } /* the part already gone is lighter: the dark part is the time you have if you arrive at the tick */
+/* the two halves of a split interval meet square (no rounded notch where the tone changes) */
 .bar .seg.j-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .bar .seg.j-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-/* light bars (closed) get an edge with 3:1 against the sheet, so their length stays readable */
+/* light bars (past, closed) get an edge with 3:1 against the sheet, so their length stays readable */
+.bar .seg.past, .k-past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
+.row.soon .bar .seg.past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soon) 70%, transparent); }
 .row.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .row.soon .bar .seg { background: var(--soon); }
+.row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
 .sunband { position: absolute; top: 11px; height: 4px; border-radius: var(--r-xs); background: var(--sun); }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
@@ -557,6 +561,7 @@ dialog.gal[open] { display: flex; }
 .row.has-photo.is-open .row-btn .sunnow.pic { background: rgb(255 255 255 / .95); color: var(--sun-on-white); }
 .row.has-photo.is-open .row-btn :is(.sunnow.shade, .sunnow.unknown, .sunnow.indoor).pic { color: var(--muted-on-white); }
 .row.has-photo.is-open .bar .seg, .row.has-photo.is-open.soon .bar .seg { background: var(--on-photo); box-shadow: none; }
+.row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .5); box-shadow: none; }
 .row.has-photo.is-open .tick { background: var(--on-photo); box-shadow: 0 0 0 1px rgb(0 0 0 / .4); }
 .row.has-photo.is-open .sunband { box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
 .row.has-photo .x-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1537,6 +1542,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+.k-past { background: var(--open-past); }
 .nw { white-space: nowrap; }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
 .to-top { position: fixed; right: max(var(--sp-16), env(safe-area-inset-right)); bottom: max(var(--sp-16), env(safe-area-inset-bottom)); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }

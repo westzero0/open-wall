@@ -29,7 +29,7 @@ function statusText(status, at, wall, { dropClose = false } = {}) {
   return `${left} · ${whenText(status.closeAt, at)} ${status.endKind === 'break' ? '휴게 시작' : '마감'}`;
 }
 
-// "2시간 30분 남음" / "곧 마감 · 20분 남음" / "10/8 10:00 오픈" (list row)
+// "2시간 가능" / "곧 마감 · 20분 남음" / "10/8 10:00 오픈" (list row)
 const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 function rowLeft(status, at, wall) {
   if (status.suspended) return wall.suspended?.note ?? ''; // the 임시 휴관 중 group already says it: only the reason, if any
@@ -43,7 +43,7 @@ function rowLeft(status, at, wall) {
   const brk = status.endKind === 'break';
   if (r <= 60) return brk ? `곧 휴게 · ${r}분 후` : `곧 마감 · ${r}분 남음`;
   // whole hours only ("3시간 45분" rounds down): the list says roughly how long, the card has the exact minutes
-  return `${Math.floor(r / 60)}시간 ${brk ? '뒤 휴게' : '남음'}`;
+  return `${Math.floor(r / 60)}시간 ${brk ? '뒤 휴게' : '가능'}`; // "가능": the slider is the arrival time, so it is how long you can stay from then
 }
 
 // ---- sun ----
