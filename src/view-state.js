@@ -23,7 +23,7 @@ export const skipTick = ({ live, hidden, detailsOpen, focusHeld }) => !live || h
 
 /**
  * clockView(vs, now) → {date, min, at}: what the date input and the slider show, and the moment the list is drawn for.
- * Live: today and the real minute (the slider rests at its end before 06:00 / after 23:30, `at` keeps the real time).
+ * Live: today and the real minute (the slider rests at its end before 06:00 / after 23:00 (it moves by the hour; the model keeps 10-minute picks for 기록 jumps), `at` keeps the real time).
  * Picked: the inputs as they were left; `at` is an Invalid Date when the date was cleared.
  */
 export function clockView(vs, now) {

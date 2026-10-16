@@ -42,7 +42,8 @@ function rowLeft(status, at, wall) {
   const r = status.remainingMin;
   const brk = status.endKind === 'break';
   if (r <= 60) return brk ? `곧 휴게 · ${r}분 후` : `곧 마감 · ${r}분 남음`;
-  return `${Math.floor(r / 60)}시간${r % 60 ? ` ${r % 60}분` : ''} ${brk ? '뒤 휴게' : '남음'}`;
+  // whole hours only ("3시간 45분" rounds down): the list says roughly how long, the card has the exact minutes
+  return `${Math.floor(r / 60)}시간 ${brk ? '뒤 휴게' : '남음'}`;
 }
 
 // ---- sun ----

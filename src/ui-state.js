@@ -5,7 +5,7 @@ import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '' };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
@@ -49,6 +49,7 @@ export function loadUi(storage) {
   ui.textSize = cleanTextSize(ui.textSize);
   ui.climberCardDone = ui.climberCardDone === true; // the 클라이머 유형 테스트 intro card was closed
   ui.climberFirstDay = /^\d{4}-\d{2}-\d{2}$/.test(ui.climberFirstDay) ? ui.climberFirstDay : ''; // the day the app was first opened with the test on
+  ui.introDone = ui.introDone === true; // the first-visit "how to read" card was closed
   return ui;
 }
 

@@ -1209,7 +1209,8 @@ function timeRow(row, at) {
       basisTag(m), // right of the region, own span: the region line may be cut short, this may not
       el('span', { class: 'left' }, m.left)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
-      ...bar.segments.map(([a, b, past]) => span(past ? 'seg past' : 'seg', a, b)),
+      // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
+      ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
       ...bar.sunBands.map(([a, b]) => span('sunband', a, b)),
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
@@ -1352,7 +1353,8 @@ function render() {
   }
   $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.live ? '' : ' · 직접 고름'}${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
-  $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
+  // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
+  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}`;
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
@@ -1465,15 +1467,24 @@ function showTab(key, focus = false) {
     $(`panel-${k}`).hidden = k !== key && !(split && k === 'map');
   }
   $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
-  $('find').hidden = key === 'log'; // 기록 has its own wall search
-  if ($('findBtn')) $('findBtn').hidden = key === 'log'; // an older cached index.html has no magnifier
+  $('find').hidden = key === 'log' || (key === 'map' && !split); // 기록 has its own wall search; the map has a floating one
   controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
   if (focus) $(`tab-${key}`).focus();
   if (key === 'map' || split) openMap();
   if (key === 'log') logView.render();
+  syncToTop();
 }
+// 맨 위로: after a screen of scrolling, not over the full-screen map (phones)
+function syncToTop() {
+  if ($('toTop')) $('toTop').hidden = scrollY < innerHeight || (ui.tab === 'map' && !wide.matches); // (a cached older index.html has no button)
+}
+addEventListener('scroll', syncToTop, { passive: true });
+$('toTop')?.addEventListener('click', () => {
+  scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
+  $(`tab-${ui.tab}`).focus({ preventScroll: true }); // the button hides itself: focus moves on
+});
 wide.addEventListener('change', () => showTab(ui.tab));
 
 // A 기록 line opens that wall's card in the list. Filters that hide it are cleared for this visit (not saved), and a
@@ -1540,13 +1551,6 @@ function pickOnMap(w) {
   }
   mapApi?.select(w.name, true);
 }
-// phones: the wall search sits behind the header magnifier (wide screens always show it, style.css); closing it clears it
-const foldFind = (fold) => {
-  $('find').classList.toggle('folded', fold);
-  $('findBtn')?.setAttribute('aria-expanded', String(!fold));
-  if (fold) { $('findQ').value = ''; $('findQ').dispatchEvent(new Event('input')); } else $('findQ').focus();
-};
-$('findBtn')?.addEventListener('click', () => foldFind(!$('find').classList.contains('folded')));
 wireFind($('findQ'), $('findHits'), (w) => {
   if (ui.tab === 'map') return pickOnMap(w);
   if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요');
@@ -1863,6 +1867,16 @@ if (sharedWall) {
     u.searchParams.delete('type');
     history.replaceState(null, '', u);
   }
+}
+if ($('howto') && $('helpBtn') && $('intro-banner')) { // 화면 읽는 법: the header ? opens the sheet; the first-visit card says the short version and, once closed, stays closed (an older cached page has neither)
+  const howto = $('howto');
+  let opener = null;
+  howto.addEventListener('close', () => opener?.focus());
+  howto.addEventListener('click', (e) => e.target === howto && howto.close()); // the backdrop
+  $('helpBtn').addEventListener('click', (e) => { opener = e.currentTarget; howto.showModal(); });
+  const b = $('intro-banner');
+  b.hidden = ui.introDone;
+  $('intro-close').addEventListener('click', () => { ui.introDone = true; saveUi(); b.hidden = true; $('tab-list').focus(); }); // the button is gone: focus moves on
 }
 { // 카카오톡 인앱브라우저: storage there is separate from Chrome/Safari, so say so once (closing it is remembered)
   const b = $('inapp-banner');

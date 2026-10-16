@@ -141,7 +141,6 @@ html[data-text="large"] { font-size: 125%; --tap: 52px; } /* 글자 크기 (내 
 html[data-text="xlarge"] { font-size: 150%; --tap: 60px; }
 /* 아주 크게: 늘 화면에 붙어 있는 상단(제목·필터·시간)만 '크게' 수준으로 두어 목록이 첫 화면에 보이게 한다(토큰 값 = 기본 × 1.25 ÷ 1.5) */
 html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
-html[data-text="xlarge"] .sunfilter-btn svg { display: none; } /* 글자(양달/응달)가 있으니 아이콘은 뺀다: 칩 4개가 한 줄에 들어가게 */
 html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
 html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--stick-h, 0px) + 8px); } /* focus/anchor scrolls land below the sticky controls */
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--font); font-variant-numeric: tabular-nums; overflow-x: hidden; word-break: keep-all; overflow-wrap: break-word; }
@@ -205,7 +204,6 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 /* filter row: five buttons on one line at 390px; wraps under large text so "조건" stays reachable */
 .filters { display: flex; flex-wrap: nowrap; gap: var(--sp-6); } /* one row: a wrapped 조건 button breaks the layout (large system font) */
 .filters .pill { flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-8); font-size: var(--fs-xs); white-space: nowrap; }
-@media (max-width: 430px) { .sunfilter-btn svg { display: none; } } /* 양달/응달 have words: on phones the icons give way so the chips stay on one row */
 /* 양달/응달 · 3시간+ · 가까운 순 switch something on and off: outlined pills. 조건 opens a sheet: a text button at the right edge, bold with an underline while a condition is on */
 .filters .quiet { margin-left: auto; padding: 0 var(--sp-8); border-color: transparent; background: transparent; color: var(--muted); }
 .filters .quiet.on { color: var(--fg); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
@@ -261,6 +259,7 @@ main { padding-bottom: var(--sp-48); }
   main.wrap > * { grid-column: 1 / -1; }
   main.wrap > .find, main.wrap > .tabbar, main.wrap > #panel-list { grid-column: 1; }
   main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
+  .controls > .wrap > * { max-width: 460px; } /* the filters and the slider are as wide as the list column under them, not the whole page */
   main.wrap > #panel-log { max-width: 680px; } /* 기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
   .tabbar { position: static; box-shadow: none; }
   .tabs { grid-template-columns: 1fr 1fr; }
@@ -399,8 +398,6 @@ main { padding-bottom: var(--sp-48); }
 .axis .t, .axis .nowtag { position: absolute; transform: translateX(-50%); font-size: var(--fs-xs); }
 .axis .t { top: 3px; color: var(--fg); font-weight: 600; left: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)); }
 .axis .t.under { visibility: hidden; } /* under the time tag (app.js) */
-/* an open row fills most of the screen and doesn't read against the axis: it scrolls away instead of sticking */
-.board:has(.row.is-open) .axis { position: relative; top: auto; }
 .axis .nowtag {
   top: 3px; z-index: 1; left: clamp(24px, calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 24px));
   font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--fg); color: var(--bg);
@@ -428,7 +425,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row-btn:focus-visible { outline-offset: -2px; }
 .expand-in :is(a, button, summary), .more2 { scroll-margin: calc(var(--stick-h, 0px) + 2.5rem) 0 16px; }
 /* name never truncates (wraps instead); region keeps at least 5em or moves down; time left wraps to its own line, right-aligned */
-.l1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); }
+.l1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
 .rname { min-width: 0; font-size: var(--fs-base); font-weight: 600; letter-spacing: -.01em; }
 .sunnow {
   flex: none; padding: 0 var(--sp-6); border-radius: var(--r-6); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
@@ -451,27 +448,26 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sunnow.shade.pic { color: var(--muted); }
 /* 양달 | 응달: one capsule with two segments (the filter wears the same pictures as the rows). The pressed segment is filled; pressing it again clears it. */
 .sunfilter { flex: none; display: inline-flex; border-radius: var(--r-pill); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); } /* a ring inside, not a border: the buttons keep the full 44px tap height */
-.sunfilter-btn { display: inline-flex; align-items: center; gap: 3px; min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
+.sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
 .sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
-.sunfilter-btn svg { width: 14px; height: 14px; flex: none; }
+.sunfilter-btn svg { width: 20px; height: 20px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
 .sunfilter-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: var(--fg); }
 .sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
-.rmeta { flex: 1 1 0; min-width: 5em; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rmeta { flex: 1 1 0; min-width: 0; /* the region gives way (…) before the closing time wraps to a second line */ font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; color: var(--open); }
 .row.soon .left { color: var(--soon); }
 .row.closed .rname, .row.unknown .rname { color: var(--muted); font-weight: 500; }
 .row.closed .left, .row.unknown .left { color: var(--muted); font-weight: 400; }
 .bar { position: relative; display: block; height: 15px; margin-top: var(--sp-8); }
 .bar .seg { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--open); }
-.bar .seg.past { background: var(--open-past); }
-/* light bars (past, closed) get an edge with 3:1 against the sheet, so their length stays readable */
-.bar .seg.past, .k-past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
-.row.soon .bar .seg.past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soon) 70%, transparent); }
+/* the part already past is the same tone: the tick says where now is. The two halves of a split interval meet square */
+.bar .seg.j-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.bar .seg.j-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+/* light bars (closed) get an edge with 3:1 against the sheet, so their length stays readable */
 .row.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .row.soon .bar .seg { background: var(--soon); }
-.row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
 .sunband { position: absolute; top: 11px; height: 4px; border-radius: var(--r-xs); background: var(--sun); }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
@@ -554,7 +550,6 @@ dialog.gal[open] { display: flex; }
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 .row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been) { color: var(--on-photo); }
-.row.has-photo.is-open .row-btn .fee.free { color: var(--on-accent); text-shadow: none; }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.has-photo.is-open.soon .row-btn .left { color: var(--soon-on-white); }
 .row.has-photo.is-open:is(.closed, .unknown) .row-btn .left { color: var(--muted-on-white); }
@@ -562,7 +557,6 @@ dialog.gal[open] { display: flex; }
 .row.has-photo.is-open .row-btn .sunnow.pic { background: rgb(255 255 255 / .95); color: var(--sun-on-white); }
 .row.has-photo.is-open .row-btn :is(.sunnow.shade, .sunnow.unknown, .sunnow.indoor).pic { color: var(--muted-on-white); }
 .row.has-photo.is-open .bar .seg, .row.has-photo.is-open.soon .bar .seg { background: var(--on-photo); box-shadow: none; }
-.row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .5); box-shadow: none; }
 .row.has-photo.is-open .tick { background: var(--on-photo); box-shadow: 0 0 0 1px rgb(0 0 0 / .4); }
 .row.has-photo.is-open .sunband { box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
 .row.has-photo .x-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -909,7 +903,6 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .key i { display: inline-block; width: 16px; height: 5px; border-radius: var(--r-xs); }
 .k-open { background: var(--open); }
 .k-sun { background: var(--sun); }
-.k-past { background: var(--open-past); }
 .k-soon { background: var(--soon); }
 
 /* conditions: bottom sheet. No padding on the dialog itself, so a click on it is a click on the backdrop. */
@@ -1137,6 +1130,8 @@ dialog::backdrop { background: var(--scrim); }
 .fee svg { width: 13px; height: 13px; flex: none; }
 .fee.free { padding: 0 var(--sp-6); border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-weight: 700; } /* 무료 a filled pill, 유료 plain grey: apart at a glance */
 .l1 .fee { margin-left: 0; }
+.l1 .fee svg { display: none; } /* a list row says 유료/무료 in grey words only: it is not what decides a visit (it stays on the card) */
+.l1 .fee.free { padding: 0; background: none; color: var(--muted); font-weight: 600; }
 
 /* 내 지역 (sheet checkboxes by 권역, ≤5, in 조건 and 내 정보) and 구분 */
 #regionClear { margin: 0 0 var(--sp-8); }
@@ -1189,11 +1184,8 @@ dialog::backdrop { background: var(--scrim); }
 
 /* ---- 내 정보 (header button + sheet) ---- */
 .top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; }
-.top .wrap > :not(h1):not(.me-btn):not(.safety-btn):not(.find-btn) { grid-column: 1 / -1; }
-.find-btn { color: var(--fg); }
-.find-btn[hidden] { display: none; }
-@media (max-width: 1023.98px) { .find.folded { display: none; } }
-@media (min-width: 1024px) { .find-btn { display: none; } }
+.top .wrap > :not(h1):not(.me-btn):not(.safety-btn):not(.help-btn) { grid-column: 1 / -1; }
+.help-btn { color: var(--fg); }
 .me-btn { margin-right: -10px; color: var(--fg); }
 .me-btn svg { width: 24px; height: 24px; }
 .safety-btn { color: var(--fg); }
@@ -1545,6 +1537,16 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+.nw { white-space: nowrap; }
+/* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
+.to-top { position: fixed; right: max(var(--sp-16), env(safe-area-inset-right)); bottom: max(var(--sp-16), env(safe-area-inset-bottom)); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
+.to-top[hidden] { display: none; }
+.to-top svg { width: 22px; height: 22px; }
+.to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ib-list { padding: 0; list-style: none; }
+.ib-list li { margin: var(--sp-2) 0; }
+.ib-ic { display: inline-flex; vertical-align: -4px; white-space: nowrap; }
+.ib-ic svg { width: 18px; height: 18px; }
 .ib-note { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .ib-from { color: var(--muted); font-size: var(--fs-xs); }
 .ib-again { min-height: var(--tap); margin: var(--sp-4) var(--sp-12) 0 0; padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
