@@ -1656,7 +1656,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 /* the panes sit in one row; a swipe snaps from pane to pane, and each pane scrolls up and down by itself */
 .ws-body { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain; }
 .ws-body::-webkit-scrollbar { display: none; }
-.ws-panel { flex: 0 0 100%; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-align: start; scroll-snap-stop: always; padding: 0 var(--sp-16) calc(var(--sp-16) + env(safe-area-inset-bottom)); }
+.ws-panel { flex: 0 0 100%; min-width: 0; overflow-y: auto; overscroll-behavior-y: contain; /* y only: "contain" on both axes stops a sideways swipe from passing to .ws-body, so no tab ever changed by swiping */ scroll-snap-align: start; scroll-snap-stop: always; padding: 0 var(--sp-16) calc(var(--sp-16) + env(safe-area-inset-bottom)); }
 html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet stands still (and the browser's own scroll buttons have nothing to offer over it) */
 .wall-sheet:has(.ws-tabs:not([hidden])) .ws-panel { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
 .ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
