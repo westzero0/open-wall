@@ -454,8 +454,7 @@ function hoursGrid(wall, at) {
 
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
-    ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.text))
-      : bar?.sun ? el('p', { class: 'g-lead' }, `${dayText(at)} 운영 중 예상 양달 `, el('b', {}, sunOn.length ? formatRanges(sunOn) : '없음')) : null)
+    ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.text)) : null) // the day's sun is under 계절별 양달
     : el('p', { class: 'g-lead preview' }, `${wk.season === 'winter' ? '동계' : '하계'} 미리 보기 · 지금 시각선 없이 그 계절 시간만 보여요`);
 
   const body = el('div', { class: 'g-body', role: 'list' });
@@ -530,7 +529,7 @@ function hoursGrid(wall, at) {
       if (byKey) next.querySelector('.g-range')?.focus();
     };
     let from = null; // the minute a drag started on: cancelling it (the page began to scroll) puts the line back
-    const zoneEl = el('div', { class: 'g-zone' }, axis, body, range);
+    const zoneEl = el('div', { class: 'g-zone' }, axis, range); // only the axis strip is dragged: the bars below stay free for the tab swipe
     zoneEl.addEventListener('pointerdown', (e) => {
       if (e.button) return;
       from = nowMin;
@@ -547,14 +546,10 @@ function hoursGrid(wall, at) {
   const row = allRows.find((r) => r.wall.name === wall.name);
   const m = live && !susp && row ? modelOf(row, at) : null; // the answer for the picked time, in words
   const verdict = m && m.state !== 'unknown' ? el('p', { class: `g-verdict ${m.state}` }, m.state === 'open' ? `${fmtMin(nowMin)} 운영 중 · ` : `${fmtMin(nowMin)} `, m.statusText) : null;
+  // one legend only: the hatch is explained here; the sun colours are explained once, under 계절별 양달 (same colours)
   sec.append(...[segRow, susp, verdict, susp ? null : lead, ...zone,
-    live ? el('p', { class: 'g-drag-hint' }, '막대 위를 좌우로 끌면 그 시각의 운영 여부를 볼 수 있어요.') : null,
-    el('ul', { class: 'g-key' },
-      el('li', {}, el('i', { class: 'k-bar' }), '운영'),
-      hatched ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)') : null,
-      bar?.sun ? el('li', {}, el('i', { class: 'k-sunall' }), '양달') : null,
-      bar?.sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달') : null,
-      live ? el('li', {}, el('i', { class: 'k-now' }), '선택한 시각') : null),
+    live ? el('p', { class: 'g-drag-hint' }, '눈금을 좌우로 끌어 시각을 바꿔요') : null, ...(live ? [body] : []),
+    hatched ? el('ul', { class: 'g-key' }, el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)')) : null,
     notes.length ? el('ul', { class: 'g-notes' }, ...notes.map((n) => el('li', {}, n))) : null].filter(Boolean));
   return sec;
 }
@@ -590,7 +585,7 @@ function seasonSunBlock(wall, at, d) {
       el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
       el('li', {}, el('i', { class: 'k-sunall' }), '양달'),
       el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')),
-    sunLimit());
+    sunWhy()); // the long caveat is folded under 계산 기준
 }
 
 // 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
