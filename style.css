@@ -666,12 +666,12 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sundial-slot { aspect-ratio: 216 / 146; }
 /* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
 .sunbox:not(.solo) {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 120px); column-gap: var(--sp-12);
-  grid-template-areas: "head fig" "verd fig" "sent sent" "why why"; /* the dial sits beside the numbers; the sentence gets the whole width under both, so nothing is left empty under the dial */
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "verd" "fig" "sent" "why"; /* one column: the dial is drawn big enough to read its own labels (it was 120px beside the numbers, with 10px words) */
 }
 .sunbox:not(.solo) > .sb-head { grid-area: head; }
 .sunbox:not(.solo) > .sun-verdict { grid-area: verd; }
-.sunbox:not(.solo) > .sb-fig { grid-area: fig; align-self: start; max-width: 120px; }
+.sunbox:not(.solo) > .sb-fig { grid-area: fig; max-width: 240px; margin: var(--sp-8) auto var(--sp-4); }
 .sunbox:not(.solo) > .dsent { grid-area: sent; }
 .sunbox:not(.solo) > .sun-why { grid-area: why; }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
