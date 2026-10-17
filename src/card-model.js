@@ -116,7 +116,7 @@ const ON_SITE = /^(?:(?:인공)?(?:외벽|암벽장)\s*앞|(?:건물|센터)\s*�
 // Lists kept in the data (parking.onsite / nearby) win; a wall without them (older storage, an import) falls back to the note's wording.
 // A fee counts too: a wall that has its price in the data has its note as advice, not as lot names.
 const hasLots = (parking) => Boolean(parking?.onsite?.length || parking?.nearby?.length || parking?.fee);
-const parkingWhere = (parking) => {
+const parkingWhereOf = (parking) => {
   if (hasLots(parking)) return { onsite: parking.onsite ?? [], nearby: parking.nearby ?? [] };
   const names = parkingNames(parking);
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
@@ -181,14 +181,18 @@ function memoLines(memo) {
     .flatMap((l) => l.split(/(?<=(?:[^.\s]{2}|[가-힣])\.)\s+/))
     .map((s) => s.trim().replace(/(?<!\.)\.$/, ''))
     .filter(Boolean);
-  const lines = parts.map((s) => {
-    const key = MEMO_KEY.test(s) && !MEMO_NONE.test(s);
+  const lines = parts.map((part) => {
+    // a leading "!" marks a line that can stop a visit: the card face shows it (the mark itself is dropped)
+    const marked = /^!/.test(part);
+    const s = part.replace(/^!+\s*/, '');
+    if (!s) return null;
+    const key = marked || (MEMO_KEY.test(s) && !MEMO_NONE.test(s));
     const m = s.match(MEMO_LABEL);
     const raw = (m?.[1] ?? m?.[2])?.trim();
     const label = raw && CLOSED_LABEL.test(raw) ? '정기휴무' : raw;
     const value = m?.[3].replace(/^\(([^()]*)\)$/, '$1').trim();
     return label && value ? { label, value, key } : { label: null, value: s, key };
-  });
+  }).filter(Boolean);
   return [...lines.filter((l) => l.key), ...lines.filter((l) => !l.key)];
 }
 
@@ -255,14 +259,11 @@ function memoFacts(wall, lines) {
   return { address, navAddress, phones, sizes, rest: rest.sort((a, b) => restRank(a) - restRank(b)) };
 }
 
-// 안내 lines in the first view: the first `limit` show, the rest fold. Warning/closure lines come first,
-// so a run of them longer than `limit` is shown whole.
-function splitInfo(lines, limit = 3) {
-  let warn = 0;
-  while (warn < lines.length && (lines[warn].key || WARN_RE.test(lines[warn].value))) warn++;
-  const n = Math.max(limit, warn);
-  const folded = lines.slice(n);
-  return { shown: lines.slice(0, n), folded, moreLabel: folded.length ? `안내 ${folded.length}줄 더 보기` : null };
+// 안내 lines: the card face shows the ones that can stop a visit (closures, warnings, "!" lines); every other line goes to the
+// wall sheet's 시설 section.
+function splitInfo(lines) {
+  const shown = lines.filter((l) => l.key || WARN_RE.test(l.value));
+  return { shown, folded: lines.filter((l) => !shown.includes(l)) };
 }
 
 // 희노애Rock 후기 (the maker's blog): posts newest first; the label shows year-month only. Titles/urls were checked in normalizeWall.
@@ -338,18 +339,23 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const text = statusText(status, at, wall);
   const bar = status.state === 'unknown' || status.suspended ? null : barOf(wall, status, at); // no day bar for a wall that is shut
   const old = staleness(wall, at);
+  const parkingWhere = parkingWhereOf(wall.parking);
+  const parkingTip = hasLots(wall.parking) ? wall.parking.note ?? '' : '';
   const pos = wallPosition(wall);
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
   const winterNote = status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null;
   const rainNote = wall.exceptions?.rain_rule ? '☔ 우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
   // a wall with a fee table keeps its prices in the 요금 tab only: no 이용료 line in the card's text
-  const memo = wall.fees?.length ? memoLines(wall.memo).filter((l) => l.label !== '이용료') : memoLines(wall.memo);
+  // a line that starts with a date ("2026-10-17(토)은 …") is a notice: the face keeps it until that day has passed
+  const today = ymd(at);
+  const noticed = (l) => { const d = /^\d{4}-\d{2}-\d{2}/.exec(l.value)?.[0]; return d && d >= today ? { ...l, key: true } : l; };
+  const memo = (wall.fees?.length ? memoLines(wall.memo).filter((l) => l.label !== '이용료') : memoLines(wall.memo)).map(noticed);
   const facts = memoFacts(wall, memo);
   // the 주소 row right below already starts with the region ("서울 광진구 자양동 …"): don't say it twice
   const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
   const where = [regionShown, distLine, basis].filter(Boolean).join(' · ');
   const place = [regionShown, distLine].filter(Boolean).join(' · '); // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
-  const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote }].filter(Boolean);
+  const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote, key: true }].filter(Boolean); // a guessed position can send you to the wrong place: the face shows it
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
@@ -392,8 +398,13 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     breaks: breakTags(wall, at), // the expanded row's: the picked day
     parking: parkingLabel(wall.parking),
     parkingNames: parkingNames(wall.parking),
-    parkingWhere: parkingWhere(wall.parking),
-    parkingTip: hasLots(wall.parking) ? wall.parking.note ?? '' : '', // with the lots in the data the note is not names to split but a line of advice
+    parkingWhere,
+    parkingTip, // with the lots in the data the note is not names to split but a line of advice
+    parkingMore: [ // what the 주차 section of the wall sheet adds to the face's one line (status + the wall's own lot)
+      { k: '요금', v: wall.parking?.fee ?? '' },
+      { k: '주변', v: parkingWhere.nearby.join(' · ') },
+      { k: '참고', v: parkingTip },
+    ].filter((r) => r.v),
     parkingMemo: wall.parking?.note ? `주차 메모 · ${wall.parking.note}` : null,
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
@@ -401,7 +412,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     setting: settingText(wall.setting, ymd(now)),
     settingBadge: settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
-    info: splitInfo([...notes.filter((n) => n.key), ...facts.rest, ...notes.filter((n) => !n.key)]), // expanded row's 안내
+    info: splitInfo([...notes, ...facts.rest]), // expanded row's 안내 (face) and 시설 (wall sheet)
     sizes: facts.sizes,
     indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
     indoorHeight: wall.venue === 'both' && wall.indoor_height_m ? `실내 높이 ${wall.indoor_height_m}m` : '', // only for 실내+실외 walls (for 'indoor' the plain height is the indoor wall); app.js adds it to the tags line

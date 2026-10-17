@@ -9,6 +9,8 @@ import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
+import { barRows, gradeLabel, gradeLine, totalOf } from './grades.js';
+import { createGradeWall } from './grade-wall.js';
 import { createMonthShare } from './month-share.js';
 import { createPosterShare } from './poster-share.js';
 import { createPosterStore, idbBackend } from './poster-store.js';
@@ -19,7 +21,7 @@ import { KIND_TEXT } from './year-seal.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -229,7 +231,7 @@ export function createLogView({
   const mark = dlg.querySelector('.vt-mark');
   const crowdRow = dlg.querySelector('.la-crowd');
   const crowdSentNote = dlg.querySelector('.la-crowd-sent');
-  const moreBox = dlg.querySelector('.la-more');
+  const moreBox = dlg.querySelector('.la-memo'); // the 메모 fold (the 그레이드 fold is gradesBox)
   const crowdPills = [...crowdRow.querySelectorAll('.crowd-pill')];
   let visitMin = null; // minutes of the day, or null (시간 모름)
   let timeTouched = false; // set or cleared by the visitor: picking another wall keeps it
@@ -400,9 +402,25 @@ export function createLogView({
     });
   }
 
+  // ---- 그레이드 기록: the shared wall of holds (src/grade-wall.js); a tap adds one to 완등 or 시도 (the radio above says which) ----
+  const gradesBox = dlg.querySelector('.la-grades');
+  const gnote = $('la-grades-note');
+  const gradeWall = createGradeWall({
+    kinds: [{ key: 'sends', word: '완등' }, { key: 'tries', word: '시도' }],
+    mode: () => form.elements.gmode.value,
+    onChange: (get) => {
+      const a = totalOf(get('sends'));
+      const t = totalOf(get('tries'));
+      gnote.textContent = a || t ? [a ? `완등 ${a}` : '', t ? `시도 ${t}` : ''].filter(Boolean).join(' · ') : '선택';
+    },
+  });
+  dlg.querySelector('.la-wall').append(gradeWall.el);
+
   /** openAdd({wall, date, from}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today. */
   function openAdd({ wall = null, date = null, from = null } = {}) {
     form.reset();
+    gradeWall.clear();
+    gradesBox.open = false;
     fixedWall = wall;
     choice = null;
     extraWall = null;
@@ -435,7 +453,7 @@ export function createLogView({
     const wall = sheetWall();
     if (!wall) return;
     const time = visitMin == null ? '' : timeOfMin(visitMin);
-    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value }, { today: today(), id: newId(), nowMin: nowMin() });
+    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries') }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
       timeErr.hidden = false;
@@ -684,6 +702,19 @@ export function createLogView({
     return fold;
   }
 
+  // 올해 완등: the year's 완등 per grade (the year the 올해 map shows), a bar per grade that was topped; 시도 is not mixed in.
+  function gradeYear() {
+    const { counts, total } = yearGrades(log, yearView);
+    if (!total) return null;
+    return el('section', { class: 'lg-gy', 'aria-label': `${yearView}년 그레이드별 완등` },
+      el('h3', {}, `${yearView}년 완등 ${total}`),
+      el('ul', { class: 'gy-list' }, ...barRows(counts).map((r) => {
+        const bar = el('span', { class: 'gy-bar' });
+        bar.style.width = `${r.frac * 100}%`;
+        return el('li', {}, el('span', { class: 'gy-g' }, gradeLabel(r.grade)), el('span', { class: 'gy-trk', 'aria-hidden': 'true' }, bar), el('span', { class: 'gy-n' }, String(r.n)));
+      })));
+  }
+
   // month grid: buttons in a role=grid table; arrows move the tab stop (crossing into the next/previous month),
   // Enter/Space picks the day. Switching months is instant; the month name is announced.
   function calendar(byDay) {
@@ -782,13 +813,18 @@ export function createLogView({
     const recs = byDay.get(picked) ?? [];
     const future = picked > t;
     const ctaId = pickCta(recs, madeIds, t); // the one record of today that gets the big "오늘의 해벽 만들기" line
+    // several records in a day: the day's 완등 / 시도 add up in the title (one record shows its own lines)
+    const dg = dayGrades(recs);
+    const dayTotals = recs.length > 1 && (dg.sends || dg.tries) ? ` · ${[dg.sends ? `완등 ${dg.sends}` : '', dg.tries ? `시도 ${dg.tries}` : ''].filter(Boolean).join(' · ')}` : '';
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
-      el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개` : ' · 기록 없음')),
+      el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개${dayTotals}` : ' · 기록 없음')),
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
         const open = el('button', { type: 'button', class: 'lg-open' },
           el('span', { class: 'lg-name' }, r.wall),
           regionOf(r.wall) ? el('span', { class: 'lg-region' }, regionOf(r.wall)) : null,
-          recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null); // "15:00 · 메모"
+          recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null, // "15:00 · 메모"
+          r.sends ? el('span', { class: 'lg-gr send' }, `완등 ${gradeLine(r.sends)}`) : null,
+          r.tries ? el('span', { class: 'lg-gr try' }, `시도 ${gradeLine(r.tries)}`) : null);
         open.addEventListener('click', () => reveal(r.wall));
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
@@ -831,7 +867,7 @@ export function createLogView({
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
       activity(),
-      ...(log.length ? [calendar(byDay), dayList(byDay), renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }), yearMap(), backupNote()] : [empty()]),
+      ...(log.length ? [calendar(byDay), dayList(byDay), renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }), yearMap(), gradeYear(), backupNote()] : [empty()]),
     ].filter(Boolean));
   }
 

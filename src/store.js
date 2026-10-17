@@ -1,5 +1,6 @@
 import { cleanShadow } from './shadow.js';
 import { hasHours, orderIntervals } from './hours.js';
+import { cleanCounts } from './grades.js';
 const KEY = 'open-wall:v1';
 
 function isPlainObject(v) {
@@ -297,6 +298,39 @@ export function cleanSetting(v) {
   return Object.keys(out).length ? out : null;
 }
 
+// 루트 분포: [{ checked: 'YYYY-MM-DD', counts: { '10a': 4 } }] or, by wall section, { checked, walls: [{ name, counts }] } (the total is
+// computed, never stored). Newest first, at most 12; a snapshot with no date or nothing counted is dropped; no valid snapshot = no field.
+export const MAX_ROUTE_SETS = 12;
+export const MAX_ROUTE_WALLS = 8;
+export const MAX_ROUTE_WALL_NAME = 10;
+function cleanRouteWalls(v) {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const w of v) {
+    if (!isPlainObject(w) || typeof w.name !== 'string') continue;
+    const name = [...w.name.normalize('NFC').replace(/\s+/g, ' ').trim()].slice(0, MAX_ROUTE_WALL_NAME).join('').trim(); // by characters, not UTF-16 halves
+    const counts = cleanCounts(w.counts);
+    if (!name || seen.has(name) || !Object.keys(counts).length) continue;
+    seen.add(name);
+    out.push({ name, counts });
+    if (out.length === MAX_ROUTE_WALLS) break;
+  }
+  return out;
+}
+export function cleanRouteSets(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const s of v) {
+    if (!isPlainObject(s) || !isDateStr(s.checked)) continue;
+    const walls = cleanRouteWalls(s.walls);
+    const counts = cleanCounts(s.counts);
+    if (walls.length) out.push({ checked: s.checked, walls });
+    else if (Object.keys(counts).length) out.push({ checked: s.checked, counts });
+  }
+  return out.sort((a, b) => (a.checked < b.checked ? 1 : a.checked > b.checked ? -1 : 0)).slice(0, MAX_ROUTE_SETS);
+}
+
 // Public holidays: 'weekend' (Saturday's hours), 'closed', 'weekday' (the weekday's own hours); absent = not known.
 export const HOLIDAY_RULES = ['weekend', 'closed', 'weekday'];
 
@@ -355,6 +389,7 @@ export function normalizeWall(raw) {
   const holiday = HOLIDAY_RULES.includes(raw.holiday) ? raw.holiday : null;
   const blog_posts = cleanBlogPosts(raw.blog_posts);
   const setting = cleanSetting(raw.setting);
+  const route_sets = cleanRouteSets(raw.route_sets);
 
   return {
     region,
@@ -391,6 +426,7 @@ export function normalizeWall(raw) {
     ...(holiday ? { holiday } : {}),
     ...(blog_posts.length ? { blog_posts } : {}),
     ...(setting ? { setting } : {}),
+    ...(route_sets.length ? { route_sets } : {}),
   };
 }
 
@@ -421,7 +457,7 @@ export function keepGeo(old, next) {
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'route_sets']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -447,7 +483,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'route_sets']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays

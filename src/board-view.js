@@ -290,7 +290,8 @@ function build(wallName, mode, onOpenAll) {
   let newest = 0; // created_at of the newest post drawn so far: only a post newer than that, arriving after the first load, animates in (not older ones from 더 보기)
   let wasLoaded = false;
   function draw() {
-    box.hidden = s.refused;
+    box.hidden = s.refused && mode !== 'full'; // a wall the Worker does not know: the card's preview hides; the sheet's tab says there is no board instead of going blank
+    box.classList.toggle('bd-off', s.refused);
     const a = document.activeElement; // a redraw (the replies arriving) must not drop focus from the 답글 button that was pressed
     const keep = refocus ?? (a && list.contains(a) ? a.dataset.toggle : null);
     const typing = a && list.contains(a) && !a.dataset.toggle && (a.tagName === 'INPUT') ? a : null; // a reply input: its thread box is kept, only detached by the redraw
@@ -307,6 +308,7 @@ function build(wallName, mode, onOpenAll) {
     if (s.failed) say('지금은 불러올 수 없어요');
     else if (s.loaded && !s.posts.length) say('아직 글이 없어요. 첫 줄을 남겨 보세요.');
     else say('');
+    if (s.refused) say('이 암장은 게시판이 없어요.');
     if (keep) list.querySelector(`[data-toggle="${keep}"]`)?.focus();
     else if (typing?.isConnected) typing.focus({ preventScroll: true });
     tick();

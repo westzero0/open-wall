@@ -411,7 +411,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 }
 .row-btn:active { background: color-mix(in srgb, var(--fg) 6%, transparent); }
 .row-btn:focus-visible { outline-offset: -2px; }
-.expand-in :is(a, button, summary), .more2 { scroll-margin: calc(var(--stick-h, 0px) + 2.5rem) 0 16px; }
+.expand-in :is(a, button, summary), .sheet-open { scroll-margin: calc(var(--stick-h, 0px) + 2.5rem) 0 16px; }
 /* name never truncates (wraps instead); region keeps at least 5em or moves down; time left wraps to its own line, right-aligned */
 .l1 { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
 .rname { min-width: 0; font-size: var(--fs-base); font-weight: 600; letter-spacing: -.01em; }
@@ -664,6 +664,12 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-chip.na { color: var(--muted); }
 .sb-fig { width: 100%; max-width: 230px; margin: 0 auto; }
 .sundial-slot { aspect-ratio: 216 / 146; }
+/* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
+.sunbox:not(.solo) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 140px); column-gap: var(--sp-12); }
+.sunbox:not(.solo) > :not(.sb-fig) { grid-column: 1; }
+.sunbox:not(.solo) > .sb-fig { grid-column: 2; grid-row: 1 / span 3; align-self: center; max-width: 140px; }
+.sunbox:not(.solo) > .sun-why { grid-column: 1 / -1; }
+.sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
 /* sun side view (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 230px slot renders it at 19px. */
 .dial { display: block; width: 100%; height: auto; overflow: visible; }
 .d-ground { stroke: var(--line-strong); stroke-width: 1; }
@@ -732,8 +738,10 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
   .m-cols > .m-head { grid-column: 1; grid-row: 1; }
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
   .m-cols .sunbox { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; padding: var(--sp-16); }
+  .m-cols .sunbox:not(.solo) { display: flex; }
+  .m-cols .sunbox:not(.solo) > .sb-fig { max-width: 230px; }
   .m-cols > .m-foot { grid-column: 1; grid-row: 3; }
-  .m-cols > .more2 { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
+  .m-cols > .sheet-open { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
 }
 .expand-in .acts .btn, .expand-in .actions .btn {
   flex: 1 1 auto; white-space: nowrap; justify-content: center; height: 46px; padding: 0 var(--sp-16); border-radius: var(--r-base);
@@ -752,36 +760,19 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .blog-list .bt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .blog-list .bd { flex: none; font-size: var(--fs-xs); color: var(--muted); }
 .blog-more { display: flex; align-items: center; min-height: var(--tap); width: 100%; padding: 0 var(--sp-2); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; }
-/* every "더 보기" fold ends in the same chevron as the 시간표 · 계절 row (.more2): down when folded, up when open */
-.info-more, .blog-more { justify-content: space-between; gap: var(--sp-8); }
-.info-more::after, .blog-more::after {
+/* every "더 보기" fold ends in the same chevron: down when folded, up when open */
+.blog-more { justify-content: space-between; gap: var(--sp-8); }
+.blog-more::after {
   content: ""; flex: none; width: 9px; height: 9px; margin: -4px var(--sp-8) 0 var(--sp-2); border: solid var(--accent); border-width: 0 2px 2px 0;
   transform: rotate(45deg); transition: transform var(--dur-ui) var(--ease-out);
 }
-.info-more[aria-expanded="true"]::after, .blog-more[aria-expanded="true"]::after { transform: translateY(5px) rotate(-135deg); }
-/* folded: everything that does not decide the visit */
-.more2 { margin-top: var(--sp-10); border-top: 1px solid var(--hair); padding-top: var(--sp-4); }
-.more2 > summary {
-  display: flex; align-items: center; gap: var(--sp-8); min-height: 48px; padding: var(--sp-4) 0;
-  font-size: var(--fs-md); font-weight: 600; list-style: none;
+.blog-more[aria-expanded="true"]::after { transform: translateY(5px) rotate(-135deg); }
+/* the way into the wall sheet: everything that does not decide the visit lives there (structure only; the look is settled with the mockup) */
+.sheet-open {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: var(--sp-10);
+  border: 1px solid var(--line-strong); border-radius: var(--r-base); background: none; color: var(--fg);
+  font: inherit; font-size: var(--fs-md); font-weight: 600; white-space: nowrap;
 }
-.more2 > summary::-webkit-details-marker { display: none; }
-.more2 .sum-t { flex: 1; min-width: 0; }
-.more2 .sum-s { font-size: var(--fs-sm); color: var(--accent); white-space: nowrap; }
-/* chevron: points down when folded, up when open; only transform moves */
-.more2 .chev {
-  flex: none; width: 9px; height: 9px; margin: -4px var(--sp-6) 0 var(--sp-2); border: solid var(--fg); border-width: 0 2px 2px 0;
-  transform: rotate(45deg); transition: transform var(--dur-ui) var(--ease-out);
-}
-.more2[open] > summary .chev { transform: translateY(5px) rotate(-135deg); }
-/* one picture at a time: [운영시간] [계절별 양달]; switching is instant (no motion) */
-/* underlined tabs, so they read apart from the 하계/동계 switch inside the panel */
-.m-tabs { display: flex; margin: var(--sp-2) 0 var(--sp-10); border-bottom: 1px solid var(--line); }
-.m-tabs [role="tab"] {
-  flex: 1; min-height: var(--tap); padding: 0 var(--sp-10); border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
-  background: none; color: var(--muted); font-size: var(--fs-md); font-weight: 500; white-space: nowrap;
-}
-.m-tabs [aria-selected="true"] { color: var(--fg); border-bottom-color: var(--fg); font-weight: 700; }
 
 /* ---- '더 보기' pictures: hours grid, seasonal sun ----
    Hatching only ever means "not usable" (휴게, 휴무, 동절기 휴장). */
@@ -867,11 +858,6 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 /* first view: 안내 lines, parking (label column shared with the memo list) */
 .memo-list.info { margin-top: var(--sp-8); border-top: 1px solid var(--hair); }
 .memo-list.info li { padding: 3px 0; } /* tight: the open panel stays near one screen */
-.info-fold { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 150ms var(--ease-out), opacity 150ms var(--ease-out), visibility 0s linear 150ms; }
-.info-fold.open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition-delay: 0s; }
-.info-fold-in { min-height: 0; overflow: hidden; }
-.info-fold .memo-list.info { margin-top: 0; border-top: 1px solid var(--hair); }
-.info-more { display: flex; align-items: center; min-height: var(--tap); width: 100%; padding: 0; border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .irow { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) auto; gap: var(--sp-8); align-items: center; padding: 3px 0; border-top: 1px solid var(--hair); font-size: var(--fs-sm); line-height: 1.45; }
 .irow .mk { color: var(--muted); align-self: start; padding-top: 1px; }
 .pv { grid-column: 2 / -1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
@@ -1078,8 +1064,7 @@ dialog::backdrop { background: var(--scrim); }
   .dial * { transition: none !important; } /* compass flips instantly */
   .sheet, .sheet[open] { transform: none; } /* sheets fade, no slide */
   .icon-btn:active svg { transform: none; } /* press scale off for icons too (svg is not a button) */
-  .info-fold { transition: none; }
-  .more2 .chev, .info-more::after, .blog-more::after { transition: none; } /* chevron flips instantly */
+  .blog-more::after { transition: none; } /* chevron flips instantly */
 }
 
 /* Korean labels never wrap mid-label */
@@ -1296,6 +1281,26 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 .la-more[open] > summary::after { content: "▴"; content: "▴" / ""; }
 .la-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .la-more-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+/* 그레이드 기록 (the 기록 추가 sheet): a wall of holds, easy grades on top; a tap adds one (완등: a filled hold, 시도: an amber ring) */
+.la-gmode { width: 100%; margin-bottom: var(--sp-10); }
+.gw, .la-wall, .gwall { width: 100%; }
+.gr { display: grid; grid-template-columns: 44px repeat(4, minmax(0, 1fr)); align-items: center; min-height: 52px; border-top: 1px solid var(--hair); }
+.gr:first-child { border-top: 0; }
+.gr-l { font-weight: 700; }
+.hold { position: relative; width: var(--tap); height: var(--tap); margin: 0 auto; padding: 0; border: 1.5px dashed var(--line-strong); border-radius: 50%; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.hold.s { border: 1.5px solid var(--accent); background: var(--accent); color: var(--on-accent); font-size: var(--fs-md); font-weight: 700; }
+.hold.t { border: 2.5px solid var(--sun); color: var(--fg); font-size: var(--fs-md); font-weight: 700; }
+.hold .tb { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; border: 2px solid var(--sun); border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font-size: .6875rem; font-weight: 700; line-height: 16px; }
+.hold:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.la-gsum { width: 100%; margin-top: var(--sp-10); }
+.gs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); margin: 0 0 var(--sp-6); font-size: var(--fs-sm); }
+.gs b { margin-right: var(--sp-4); }
+.gs.sends b { color: var(--accent); }
+.gs.tries b { color: var(--muted); }
+.gs.routes b { color: var(--accent); }
+.gc { display: inline-flex; align-items: center; min-height: 32px; padding-left: var(--sp-10); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); }
+.gm { min-width: var(--tap); min-height: var(--tap); margin-block: calc(var(--sp-6) * -1); border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-lg); }
+.gm:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-pill); }
 .la-more > summary + .sh-row { border-top: 0; }
 
 /* ---- 다녀왔어요 / 내 기록 (open card) and "✓ 다녀옴 N번" (list row) ---- */
@@ -1480,6 +1485,18 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .lg-name { font-weight: 600; overflow-wrap: anywhere; }
 .lg-region { font-size: var(--fs-xs); color: var(--muted); }
 .lg-memo { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a record's 완등 / 시도 lines under its wall, and the year's 완등 per grade */
+.lg-gr { font-size: var(--fs-sm); }
+.lg-gr.send { font-weight: 600; }
+.lg-gr.try { color: var(--muted); }
+.lg-gy { margin-top: var(--sp-16); }
+.lg-gy h3 { margin: 0 0 var(--sp-6); font-size: var(--fs-md); }
+.gy-list { list-style: none; margin: 0; padding: 0; }
+.gy-list li { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) 2.25rem; align-items: center; gap: var(--sp-8); min-height: 28px; font-size: var(--fs-sm); }
+.gy-g { color: var(--muted); }
+.gy-trk { display: block; height: 10px; }
+.gy-bar { display: block; height: 10px; border-radius: var(--r-xs); background: var(--line-strong); }
+.gy-n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .lg-del { flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-12); border: 0; background: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; } /* quiet: not as loud as the wall's name beside it */
 .lg-open:active, .lg-del:active, .cal-nav:active, .cal-today:active, .cal-day:active { background: var(--sunken); }
 .lg-open:focus-visible, .lg-del:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -1610,6 +1627,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .bd-send { min-height: var(--tap); padding: 0 var(--sp-10); border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
 .bd-send:disabled { opacity: .45; cursor: default; }
 .bd-box:focus { outline: none; }
+.bd-off > :not(.bd-status) { display: none; } /* the Worker refused this wall: only the one line saying so stays */
 .bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 /* the board page: a full-height sheet; the form comes first so a long list never hides it */
 .board-page { height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
@@ -1618,6 +1636,29 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .bp-title { flex: 1; min-width: 0; margin-left: var(--sp-4); overflow-wrap: anywhere; }
 .bp-title:focus { outline: none; }
 .sh-head:has(.bp-back) { justify-content: flex-start; }
+/* the wall sheet: the board page's full-height dialog with a tab bar at the foot (structure only; the look is settled with the mockup) */
+.wall-sheet[open] { display: flex; flex-direction: column; overflow: hidden; }
+.ws-inner { flex: 1; min-height: 0; overflow-y: auto; }
+.wall-sheet:has(.ws-tabs:not([hidden])) .ws-inner { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
+.ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
+.ws-tabs { display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
+.ws-tabs[hidden] { display: none; }
+.ws-tabs [role="tab"] { flex: 1; min-height: var(--tap); border: 0; border-top: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-weight: 600; white-space: nowrap; }
+.ws-tabs [aria-selected="true"] { color: var(--fg); border-top-color: var(--fg); font-weight: 700; }
+.ws-sec { padding: var(--sp-10) 0; border-top: 1px solid var(--hair); }
+.ws-sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-8); }
+.ws-sec-h h3 { margin: 0; font-size: var(--fs-md); }
+.ws-chk { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+.ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
+.ws-empty p { margin: 0; }
+.ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
+.ws-fix { min-height: var(--tap); display: inline-flex; align-items: center; }
+/* 루트 tab: the count as bars (the .gy-* rows of the 올해 완등 block), a chip per wall section when counted by section */
+.rt-chips { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0; }
+.rt-chip { min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; }
+.rt-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.rt-bars.stale { opacity: .55; }
+.rt-total { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 .bd-thread { margin: var(--sp-4) 0 var(--sp-6) var(--sp-10); padding-left: var(--sp-10); border-left: 2px solid var(--hair); }
 .bd-replies { list-style: none; margin: 0; padding: 0; }
 .bd-reply { padding: var(--sp-4) 0; border-bottom: 0; }

@@ -182,6 +182,22 @@ export function dayBar(wall, at) {
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
+// 운영 중 양달: how a day's sun windows meet its open intervals (minutes). A sun that never comes into the open hours says when it does
+// come, if all of it is before opening or after closing. null without open hours or sun math.
+export function verdictOf(open, sun, format) {
+  if (!open.length || !sun) return null;
+  const on = sun.flatMap(([a, b]) => open.map(([s, e]) => [Math.max(a, s), Math.min(b, e)])).filter(([s, e]) => e > s);
+  if (on.length) return { kind: 'on', text: `운영 중 양달 ${format(on)}` };
+  const first = open[0][0];
+  const last = open[open.length - 1][1];
+  const hint = !sun.length ? '' : sun.every(([, e]) => e <= first) ? ' · 운영 시작 전에만 들어요' : sun.every(([s]) => s >= last) ? ' · 운영 종료 후에만 들어요' : '';
+  return { kind: 'none', text: `운영 중 양달 없음${hint}` };
+}
+export function sunVerdict(wall, at) {
+  const { open, sun } = dayBar(wall, at);
+  return verdictOf(open, sun, formatRanges);
+}
+
 // The timetable axis runs 06:00–24:00.
 const AXIS = [360, 1440];
 export const axisFrac = (m) => (Math.min(Math.max(m, AXIS[0]), AXIS[1]) - AXIS[0]) / (AXIS[1] - AXIS[0]);
@@ -244,6 +260,31 @@ export function weeklyHours(wall, date, pick = null) {
     return { key, days, today, ...d, breaks: d.intervals.slice(1).map(([a], i) => [d.intervals[i][1], a]), closed: v === null, nth };
   });
   return { ...base, rows };
+}
+
+// The weekday rows with identical hours (same text, 휴무 and intervals) folded into one: 화–일, 월·화·목. The group sits where its first
+// day was and carries `members` (how many days) and `today` (any member is today). 공휴일, the winter closure line and a weekday with an
+// nth closure ("둘째·넷째 일요일 휴무" belongs to that one day) stay as they are.
+const runLabel = (days) => {
+  const at = days.map((d) => WEEK.findIndex(([, ko]) => ko === d));
+  const runs = [];
+  for (let i = 0; i < days.length; i++) {
+    if (i && at[i] === at[i - 1] + 1) runs[runs.length - 1].push(days[i]);
+    else runs.push([days[i]]);
+  }
+  return runs.map((r) => (r.length >= 3 ? `${r[0]}–${r[r.length - 1]}` : r.join('·'))).join('·');
+};
+export function groupWeekRows(rows) {
+  const out = [];
+  const seen = new Map();
+  for (const r of rows) {
+    if (r.key === 'hol' || r.key === 'winter' || r.nth) { out.push({ ...r, members: 1 }); continue; }
+    const sig = JSON.stringify([r.text, r.closed, r.intervals]);
+    const g = seen.get(sig);
+    if (g) { g.list.push(r.days); g.row.today ||= r.today; g.row.members = g.list.length; g.row.days = runLabel(g.list); }
+    else { const row = { ...r, members: 1 }; seen.set(sig, { row, list: [r.days] }); out.push(row); }
+  }
+  return out;
 }
 
 // The picked day's hours for the first view, from openIntervals (the same source as getStatus), so

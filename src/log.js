@@ -1,7 +1,10 @@
 // src/log.js — 기록: the walls a visitor says they went to, kept in this browser only (never sent anywhere).
-// A record is {id, wall (the wall's name), date 'YYYY-MM-DD', time? 'HH:mm' (30-minute steps), memo? ≤100 chars}.
+// A record is {id, wall (the wall's name), date 'YYYY-MM-DD', time? 'HH:mm' (30-minute steps), memo? ≤100 chars,
+// sends? / tries? { '10a': 2 } (완등 / 시도 per grade, src/grades.js; absent when empty)}.
 // No DOM; storage and "today" are passed in.
 // Everything read (localStorage, an imported file) is untrusted and goes through normalizeLog.
+
+import { GRADES, cleanCounts, totalOf } from './grades.js';
 
 export const LOG_KEY = 'open-wall:log';
 export const MAX_RECORDS = 2000;
@@ -39,7 +42,12 @@ function cleanRecord(r, today, nowMin = null) {
   const wall = cleanText(r.wall, MAX_WALL);
   if (typeof r.id !== 'string' || !ID_RE.test(r.id) ||!wall || !validDate(r.date) || r.date > today) return null;
   const memo = cleanText(r.memo, MAX_MEMO);
-  return { id: r.id, wall, date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}) };
+  const sends = cleanCounts(r.sends);
+  const tries = cleanCounts(r.tries);
+  return {
+    id: r.id, wall, date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}),
+    ...(Object.keys(sends).length ? { sends } : {}), ...(Object.keys(tries).length ? { tries } : {}),
+  };
 }
 
 // "15:00 · 메모": what a record's line shows under its wall (either part may be missing)
@@ -131,7 +139,7 @@ export function saveLog(storage, log) {
 }
 
 /**
- * addRecord(log, {wall, date, time, memo}, {today, id}) → {log, record} or {error} (Korean, shown as is).
+ * addRecord(log, {wall, date, time, memo, sends, tries}, {today, id}) → {log, record} or {error} (Korean, shown as is).
  * time: 'HH:mm' or empty (시간 모름); anything else is left off the record.
  * id comes from the caller (crypto.randomUUID in the browser). nowMin (minutes of the day now): today's date with a later
  * time is refused ({error, field: 'time'}).
@@ -143,7 +151,7 @@ export function addRecord(log, input, { today, id, nowMin = null }) {
   if (input.date > today) return { error: '오늘 이후 날짜는 기록할 수 없어요.' };
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
   if (log.length >= MAX_RECORDS) return { error: `기록은 ${MAX_RECORDS}개까지 저장돼요.` };
-  const record = cleanRecord({ id, wall, date: input.date, time: input.time, memo: input.memo }, today);
+  const record = cleanRecord({ id, wall, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: [...log, record].sort(newestFirst), record };
 }
@@ -230,6 +238,20 @@ export function yearSummary(log, year) {
   return { visits: mine.length, walls: perWall.size, days, top: wall === undefined ? null : { wall, count } };
 }
 
+/** dayGrades(records) → { sends, tries }: the totals of a day's records (a part with none is 0). */
+export const dayGrades = (recs) => ({ sends: recs.reduce((a, r) => a + totalOf(r.sends), 0), tries: recs.reduce((a, r) => a + totalOf(r.tries), 0) });
+
+/** yearGrades(log, year) → { counts, total }: that year's 완등 per grade over all walls (tries are not mixed in). */
+export function yearGrades(log, year) {
+  const counts = {};
+  for (const r of log) {
+    if (!r.date.startsWith(`${year}-`)) continue;
+    for (const [g, n] of Object.entries(r.sends ?? {})) counts[g] = (counts[g] ?? 0) + n;
+  }
+  const ordered = Object.fromEntries(GRADES.filter((g) => counts[g]).map((g) => [g, counts[g]])); // a year's sum may pass 99, so no cleanCounts here
+  return { counts: ordered, total: Object.values(ordered).reduce((x, y) => x + y, 0) };
+}
+
 /** heatLevel(n) → 0–3: the shade of a heatmap cell for n records that day. */
 export const heatLevel = (n) => Math.min(n, 3);
 
@@ -304,7 +326,7 @@ export function parseImport(text, today, nowMin = null) {
 
 /** mergeLog(log, incoming) → {log, added}: same id, or the same wall+date+time+memo as a record already in the log, is not added twice (twins within the incoming file are both kept). */
 export function mergeLog(log, incoming) {
-  const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}`;
+  const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}\n${JSON.stringify([r.sends ?? {}, r.tries ?? {}])}`;
   const ids = new Set(log.map((r) => r.id));
   const keys = new Set(log.map(keyOf));
   const fresh = [];

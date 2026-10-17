@@ -1,5 +1,5 @@
 // "정보 수정 요청" report: pure payload + validation. The sink is a published Google Form (see config.js).
-export const KINDS = ['운영시간', '임시휴무', '주차', '세팅일', '기타']; // 세팅일 must also be a choice of the form's 종류 question (docs/system/variables.md)
+export const KINDS = ['운영시간', '임시휴무', '주차', '세팅일', '루트 분포', '기타']; // 세팅일 and 루트 분포 must also be choices of the form's 종류 question (docs/system/variables.md)
 export const MAX_BODY = 2000;
 export const MAX_NOTE = 300;
 export const COOLDOWN_MS = 10_000;
@@ -8,6 +8,7 @@ const ENTRY = { name: 'entry.188461628', kind: 'entry.803930553', body: 'entry.2
 import { CHAT_URL_RE } from './store.js';
 import { cleanNote } from './invite.js';
 import { ymd } from './time.js';
+import { routeLine } from './grades.js';
 
 // 닉네임: the name a report is counted under (event ranking). cleanNote already drops markup, links, e-mails, phone-like
 // numbers and direction marks; the nickname is then cut at MAX_NICK code points. Typed text and a value read back from
@@ -51,6 +52,7 @@ const isDate = (v) => {
 
 // Everything the form sends travels in the one 내용 entry. 임시휴무 and 주차 put their pick on labelled lines above an
 // optional 메모; 운영시간 and 기타 are the plain memo, so the sheet reads the same whichever way it was filled in.
+// 루트 분포 sends one line of grade counts ("루트: 10a 4 · 10b 6", the wall's routes, not what a visitor climbed) and the memo after it.
 // 세팅일 sends one line ("마지막 세팅: … · 다음 예정: … · 메모: …"); the last setting within the 2 years up to today,
 // the next one from today to a year ahead (local dates; `now` is for tests).
 // -> { ok: true, report } | { ok: false, error }. honeypot: a filled hidden field means a bot; caller skips the send.
@@ -92,6 +94,10 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     if (!last && !next && !memo) return fail('세팅일이나 메모 중 하나는 적어 주세요.');
     const parts = [last && `마지막 세팅: ${last}`, next && `다음 예정: ${next}`, memo && `메모: ${oneLine(memo)}`].filter(Boolean);
     lines.push(parts.join(' · '));
+  } else if (kind === '루트 분포') {
+    const line = routeLine(input.routes);
+    if (!line && !memo) return fail('루트 개수를 누르거나 메모를 적어 주세요.');
+    if (line) lines.push(`루트: ${line}`);
   } else if (!memo) return fail('내용을 적어 주세요.');
   if (memo && kind !== '세팅일') lines.push(lines.length ? `메모: ${memo}` : memo);
   if (note.length > MAX_NOTE) return fail(`날짜·출처는 ${MAX_NOTE}자까지 적을 수 있어요.`);

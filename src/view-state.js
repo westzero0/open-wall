@@ -7,9 +7,9 @@ import { fmtMin, isLivePick, sliderValue } from './viewmodel.js';
 
 const minuteOf = (d) => d.getHours() * 60 + d.getMinutes();
 
-// The open row and everything that belongs to it: the 더 보기 fold, the 안내 overflow, the 운영시간/계절별 양달 tab,
-// and a season previewed in the hours grid (wall name → 'summer'/'winter'). Opening, closing or losing a row resets all.
-const CLOSED = Object.freeze({ openName: null, openState: null, moreOpen: false, infoOpen: false, moreTab: 0, season: Object.freeze({}) });
+// The open row and everything that belongs to it: a season previewed in the hours grid (wall name → 'summer'/'winter').
+// Opening, closing or losing a row resets it. (The folds and tabs live in the wall sheet.)
+const CLOSED = Object.freeze({ openName: null, openState: null, season: Object.freeze({}) });
 
 // date ('YYYY-MM-DD', '' when the input was cleared) and min (slider minutes) are the picked moment; read only while not live.
 export const initialView = () => ({ live: true, date: '', min: 0, ...CLOSED, origin: null, locateNote: '' });
@@ -49,7 +49,7 @@ const pick = (vs, date, min, now) => ({ vs: { ...vs, date, min, live: isLivePick
  *   reveal {name, state}    open a row from elsewhere (share link, map card, 내 암장, 기록)
  *   shown {rows}            the rows just built for drawing: the open row is forgotten once it is filtered out or
  *                           has moved to another group (open → closed at a later time)
- *   more {open}, info, tab {n}, season {name, pick, current}  the open row's folded parts
+ *   season {name, pick, current}  the open row's previewed season
  *   sort                    the sort changed by hand: the old location note goes
  *   located {origin, sort}  a position came in; sort: asked by 가까운 순 / 내 위치 (else the 기록 sheet asked)
  *   locateFailed {why, sort} no position; only the list's own request shows `why` under the list
@@ -63,9 +63,6 @@ export function step(vs, ev, now) {
     case 'toggle': return { vs: { ...vs, ...CLOSED, ...(vs.openName === ev.name ? {} : { openName: ev.name, openState: ev.state }) }, fx: [] };
     case 'reveal': return { vs: { ...vs, ...CLOSED, openName: ev.name, openState: ev.state }, fx: ['render'] };
     case 'shown': return { vs: !vs.openName || keepOpenRow(ev.rows, vs.openName, vs.openState) ? vs : { ...vs, ...CLOSED }, fx: [] };
-    case 'more': return { vs: { ...vs, moreOpen: ev.open }, fx: [] };
-    case 'info': return { vs: { ...vs, infoOpen: !vs.infoOpen }, fx: [] };
-    case 'tab': return { vs: { ...vs, moreTab: ev.n }, fx: [] };
     case 'season': { // tapping the picked day's own season ends the preview
       const season = { ...vs.season };
       if (ev.pick === ev.current) delete season[ev.name];

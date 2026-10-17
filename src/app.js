@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -17,7 +17,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
@@ -28,7 +28,9 @@ import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSe
 import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
-import { openBoardPage } from './board-page.js';
+import { openWallSheet, registerWallSheet } from './wall-sheet.js';
+import { sheetModel } from './wall-sheet-model.js';
+import { routeView } from './routes.js';
 import { openGallery } from './gallery-view.js';
 import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, howtoDue, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
 import { currentInstallMode, promptInstall } from './install.js';
@@ -467,7 +469,7 @@ function hoursGrid(wall, at) {
   }
   body.append(plot);
 
-  for (const r of wk.rows) {
+  for (const r of groupWeekRows(wk.rows)) { // days with the same hours share one row
     const trk = el('span', { class: 'g-trk' });
     const open = clipDay(r.intervals);
     if (r.closed) trk.append(el('span', { class: 'g-off' }), el('span', { class: 'g-closed' }, r.text));
@@ -482,9 +484,9 @@ function hoursGrid(wall, at) {
     const shut = r.today && day?.closed && open.length;
     if (shut) trk.append(el('span', { class: 'g-closed' }, day.text));
     if (r.today && bar?.sun) trk.append(...clipDay(bar.sun).map(([a, b]) => span('g-sun', a, b)), ...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b)));
-    const said = `${r.days}${r.today ? '(오늘)' : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
+    const said = `${r.days}${r.today ? (r.members > 1 ? '(오늘 포함)' : '(오늘)') : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
     body.append(el('div', { class: `g-row${r.today ? ' g-today' : ''}${shut ? ' shut' : ''}`, role: 'listitem', 'aria-label': said },
-      el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days, r.today ? el('small', {}, '오늘') : null),
+      el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
       el('span', { class: 'g-wrap', 'aria-hidden': 'true' }, trk)));
   }
 
@@ -561,38 +563,6 @@ function feesBlock(wall) {
       el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'), ...(t.split ? [cell('th', '평일'), cell('th', '휴일')] : [cell('th', '요금')]))),
       body),
     t.discount ? el('p', { class: 'f-disc' }, t.discount) : null);
-}
-
-// The folded part: one picture at a time, [운영시간] [계절별 양달] (and [요금] with a fee table) tabs (arrows/Home/End move). Starts on 운영시간
-// each time the row opens (vs.moreTab resets with the row); the switch is instant, no motion.
-function moreTabs(wall, at, d, id) {
-  const panes = [['운영시간', hoursGrid(wall, at)], ['계절별 양달', seasonSunBlock(wall, at, d)], ['요금', feesBlock(wall)]].filter(([, p]) => p);
-  const labels = panes.map(([label]) => label); // the fold's title names what is in it (an indoor wall has no 계절별 양달)
-  if (panes.length < 2) return Object.assign(panes.map(([, p]) => p), { labels });
-  const tabs = panes.map(([label], i) => el('button', {
-    type: 'button', role: 'tab', id: `${id}-t${i}`, 'aria-controls': `${id}-p${i}`,
-  }, label));
-  const panels = panes.map(([, p], i) => el('div', { role: 'tabpanel', id: `${id}-p${i}`, 'aria-labelledby': `${id}-t${i}`, class: 'm-panel' }, p));
-  const pick = (n, focus) => {
-    go({ type: 'tab', n });
-    tabs.forEach((t, i) => {
-      t.setAttribute('aria-selected', String(i === n));
-      t.tabIndex = i === n ? 0 : -1;
-      panels[i].hidden = i !== n;
-    });
-    if (focus) tabs[n].focus();
-  };
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => pick(i, false));
-    t.addEventListener('keydown', (e) => {
-      const n = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
-      if (n === undefined) return;
-      e.preventDefault();
-      pick((n + tabs.length) % tabs.length, true);
-    });
-  });
-  pick(Math.min(vs.moreTab, tabs.length - 1), false);
-  return Object.assign([el('div', { class: 'm-tabs', role: 'tablist', 'aria-label': '시간표 보기' }, ...tabs), ...panels], { labels });
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -895,38 +865,20 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
   return el('span', { class: 'share-wrap' }, btn, say);
 }
 
-// First view under the chips: 안내 (status notes, then the memo lines: closures/warnings, hours, the rest),
-// parking (names). Weekly closures are a 안내 line and the hatched grid rows.
+// First view under the chips: 안내 (status notes, then the memo lines that can stop a visit), parking (one line).
+// Weekly closures are a 안내 line and the hatched grid rows.
 const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
   l.label ? el('span', { class: 'mk' }, l.label) : null,
   el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
 
 function infoBlock(m) {
   const parts = [];
-  const { shown, folded, moreLabel } = m.info;
-  if (shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...shown.map(memoItem)));
-  if (folded.length) { // lines 4+: folded under the same list; the warning lines never land here
-    const fid = `info-more-${++rowSeq}`;
-    const inner = el('ul', { class: 'memo-list info' }, ...folded.map(memoItem));
-    const fold = el('div', { class: 'info-fold', id: fid }, el('div', { class: 'info-fold-in' }, inner));
-    const btn = el('button', { type: 'button', class: 'info-more', 'aria-controls': fid }, '');
-    const sync = () => {
-      btn.setAttribute('aria-expanded', String(vs.infoOpen));
-      btn.textContent = vs.infoOpen ? '접기' : moreLabel;
-      fold.classList.toggle('open', vs.infoOpen);
-      fold.inert = !vs.infoOpen;
-    };
-    btn.addEventListener('click', () => { go({ type: 'info' }); sync(); });
-    sync();
-    parts.push(fold, btn);
-  }
-  // status, then the wall's own lot, then "주변" lots on a line of their own (the status is no longer a chip as well)
-  const { onsite, nearby } = m.parkingWhere;
+  // only what can stop a visit (closures, warnings, "!" lines); the other memo lines are the wall sheet's 시설 section
+  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map(memoItem)));
+  // one line: the status, then the wall's own lot (요금 · 주변 · 참고 are in the wall sheet's 주차 section)
+  const { onsite } = m.parkingWhere;
   parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
-    el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '',
-      m.parking.fee ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '요금'), m.parking.fee) : null,
-      nearby.length ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '주변'), nearby.join(' · ')) : null,
-      m.parkingTip ? el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, '참고'), m.parkingTip) : null)));
+    el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '')));
   return parts;
 }
 
@@ -950,14 +902,14 @@ const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
 const sunWhy = () => el('details', { class: 'sun-why' }, el('summary', {}, '계산 기준'), sunLimit());
 // 맨 위 한 줄: 상태 칩 + 핵심 값 (구간이 여러 개면 구간마다 한 덩어리)
 function sunHead(d) {
-  const chip = d.state === 'unknown' ? '계산 불가' : d.lit ? '양달' : '응달';
+  const chip = d.state === 'unknown' ? '계산 불가' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}`; // the chip is the moment's state; the line under it is the day's window
   const cls = d.state === 'unknown' ? 'na' : d.lit ? 'lit' : 'dark';
   const key = d.state === 'unknown' ? null : d.windows.length
-    ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, '예상 양달 시간'), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+    ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
     : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
-function sunBox(d, name, closedDay) {
+function sunBox(d, name, closedDay, verdict) {
   const sentence = el('p', { class: 'dsent' }, ...d.sentence.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
@@ -969,6 +921,7 @@ function sunBox(d, name, closedDay) {
   }
   return el('section', { class: 'sunbox', 'aria-label': '해' },
     sunHead(d),
+    verdict ? el('p', { class: `sun-verdict ${verdict.kind}` }, verdict.text) : null, // the answer to "is it sunny while it's open"
     sentence,
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
     sunWhy());
@@ -977,25 +930,12 @@ function sunBox(d, name, closedDay) {
 
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// Expanded row (v6): what decides the visit first, the rest folded in "더 보기".
-function rowDetails(m, wall, at, id) {
+// Expanded row (v6): what decides the visit first; the rest is in the wall sheet (자세히 ›).
+function rowDetails(m, wall, at) {
   const dial = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
-  // the 안내 overflow folds again and the "더 보기" fold survives re-renders (slider) through vs.infoOpen / vs.moreOpen
-  const sumState = el('span', { class: 'sum-s' }, vs.moreOpen ? '접기' : '더 보기');
-  // folded: the pictures only, one at a time (hours grid | seasonal sun)
-  const panes = moreTabs(wall, at, dial, id);
-  // folded: the title says what is inside; opened: the tabs say it, so the title gives way (no same names twice in a row)
-  const sumTitle = el('span', { class: 'sum-t' }, vs.moreOpen && panes.labels.length > 1 ? '상세 정보' : panes.labels.join(' · '));
-  const more = el('details', { class: 'more2' },
-    el('summary', {}, sumTitle, sumState, el('span', { class: 'chev', 'aria-hidden': 'true' })),
-    ...panes);
-  more.open = vs.moreOpen;
-  // one control opens the folded part: its summary row (the old "자세히" button did the same)
-  more.addEventListener('toggle', () => {
-    if (more.closest('.row.is-open')) go({ type: 'more', open: more.open }); // a row being closed doesn't speak for the open one
-    sumState.textContent = more.open ? '접기' : '더 보기';
-    sumTitle.textContent = more.open && panes.labels.length > 1 ? '상세 정보' : panes.labels.join(' · ');
-  });
+  // the way into the wall sheet (hours table, seasonal sun, fees, parking details): one button at the end of the facts
+  const sheetBtn = el('button', { type: 'button', class: 'sheet-open', 'data-sheet-open': '', 'data-name': m.name }, '자세히 ›');
+  sheetBtn.addEventListener('click', () => openWallSheet(m.name, sheetBtn));
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
   const photoAsk = photoLink(m); // (this one is on the name row: a photo is what the card lacks most)
   const helps = config.reportEndpoint
@@ -1029,16 +969,85 @@ function rowDetails(m, wall, at, id) {
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
         m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
-      sunBox(dial, m.name, m.closedDay), // above 정보 확인일, after the facts (the right column when wide)
+      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at)), // above 정보 확인일, after the facts (the right column when wide)
       el('div', { class: 'm-foot' }, el('p', { class: 'checked' }, m.checked)),
-      more.childElementCount > 1 ? more : null),
+      sheetBtn),
     visitLog(m),
-    boardBox(m.name, { onOpenAll: (btn) => openBoardPage(m.name, btn) }), // lowest priority on the card: under the facts, the fold and 기록, just above 후기
-    blogBox(m.blog),
     helps,
     rowButtons(m.name),
   ];
 }
+
+// The wall sheet (src/wall-sheet.js) is drawn from here: the hours grid, seasonal sun and fee table read the view state.
+// 이용 tab = 운영시간 · 요금 · 주차, each with its date and a 수정 요청 that opens the report sheet with the matching 종류;
+// a section with nothing to show asks for a report instead. 양달 tab = the seasonal sun (no tab for a wall without sun math).
+function sheetSection(m, s, content) {
+  // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
+  const ask = config.reportEndpoint
+    ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
+  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
+  return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title },
+    el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : el('span', { class: 'ws-chk' }, m.checked)),
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
+    s.empty ? null : ask);
+}
+// 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
+// once the wall was set after it; nothing recorded: a dotted box asking for a report.
+function routePane(m, wall) {
+  const v = routeView(wall);
+  const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
+  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포' } })));
+  const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? el('span', { class: 'ws-chk' }, v.head) : null);
+  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
+  const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
+  const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
+  const chips = v.views.length > 1 ? el('div', { class: 'rt-chips', role: 'group', 'aria-label': '벽 고르기' }) : null;
+  const show = (key) => {
+    const x = v.views.find((a) => a.key === key);
+    bars.replaceChildren(el('ul', { class: 'gy-list' }, ...x.rows.map((r) => {
+      const bar = el('span', { class: 'gy-bar' });
+      bar.style.width = `${r.frac * 100}%`;
+      return el('li', {}, el('span', { class: 'gy-g' }, r.label), el('span', { class: 'gy-trk', 'aria-hidden': 'true' }, bar), el('span', { class: 'gy-n' }, String(r.n)));
+    })));
+    total.textContent = `총 ${x.total}개`;
+    for (const b of chips?.children ?? []) b.setAttribute('aria-pressed', String(b.dataset.key === key));
+  };
+  chips?.append(...v.views.map((x) => {
+    const b = el('button', { type: 'button', class: 'rt-chip', 'data-key': x.key }, x.label);
+    b.addEventListener('click', () => show(x.key));
+    return b;
+  }));
+  show('all');
+  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, chips, bars, total, ask);
+}
+function sheetParking(m) {
+  const { onsite } = m.parkingWhere;
+  return el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '',
+    ...m.parkingMore.map(({ k, v }) => el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v)));
+}
+// 게시판 tab: the wall's one-line board (every post, 더 보기, the form) and the 희노애Rock reviews; made when the tab is first shown
+function boardPane(m) {
+  return [boardBox(m.name, { mode: 'full' }), blogBox(m.blog)].filter(Boolean);
+}
+function buildWallSheet(wallName) {
+  const row = allRows.find((r) => r.wall.name === wallName);
+  const at = shown.at ?? new Date();
+  if (!row) return null; // an unknown wall: nothing opens
+  const wall = row.wall;
+  const m = modelOf(row, at);
+  const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
+  const blocks = { hours: hoursGrid(wall, at), fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d) };
+  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
+  const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...m.info.folded.map(memoItem)) };
+  return {
+    onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
+    tabs: sheet.tabs.map((t) => ({
+      ...t,
+      pane: t.key === 'sun' ? blocks.sun : t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet.use.map((s) => sheetSection(m, s, content[s.key]))),
+    })),
+  };
+}
+registerWallSheet(buildWallSheet);
 
 // 희노애Rock 후기: a small list (newest first, 3 shown, "외 N개" unfolds the rest in place); the map card keeps one link.
 // Titles and dates only via textContent; the urls were checked in normalizeWall (BLOG_URL_RE).
@@ -1270,11 +1279,11 @@ function timeRow(row, at) {
       ...bar.sunBands.map(([a, b]) => span('sunband', a, b)),
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
-  const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at, id) : []));
+  const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
   const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
-  li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at, id).filter(Boolean));
+  li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
   li.wallName = m.name;
   li.state = m.state;
   return li;
@@ -1295,8 +1304,6 @@ function safeRow(row, at) {
 function setRowOpen(li, open) {
   li.classList.toggle('is-open', open);
   li.querySelector('.row-btn').setAttribute('aria-expanded', String(open));
-  const more = li.querySelector('.more2');
-  if (!open && more) more.open = false; // a closed row comes back folded, like after a re-render
   if (!open) li.querySelector('.expand-in .setnew')?.remove(); // 세팅일 badge: seen once it was opened
 }
 
@@ -1940,9 +1947,10 @@ if (sharedWall) {
   if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list
   revealRow(sharedWall.name); // its group is only known after the first render
   if (invite) inviteView.banner(invite, sharedWall);
-  if (boardRequested(location.search)) openBoardPage(sharedWall.name, null, { push: false }); // ?wall=<name>&board: the link opens the board page; no board url = nothing opens
   const u = new URL(location.href);
-  for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board']) u.searchParams.delete(k);
+  // ?wall=<name>&info opens the info sheet; &board opens it on the 게시판 tab (no board url and no reviews: the sheet just starts on its first tab)
+  if (infoRequested(location.search) || boardRequested(location.search)) openWallSheet(sharedWall.name, null, { push: false, tab: boardRequested(location.search) ? 'board' : null });
+  for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board', 'info']) u.searchParams.delete(k);
   history.replaceState(null, '', u);
 }
 { // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)

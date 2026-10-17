@@ -2,6 +2,8 @@
 import { config } from './config.js';
 import { el } from './dom.js';
 import { searchPicks } from './viewmodel.js';
+import { createGradeWall } from './grade-wall.js';
+import { totalOf } from './grades.js';
 import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
@@ -67,6 +69,7 @@ if (dlg) {
     임시휴무: ['메모 (선택)', '예) 시설 공사, 대회 개최'],
     주차: ['메모 (선택)', '예) 건물 뒤 공영주차장 2시간 무료'],
     세팅일: ['메모 (선택)', '예) 왼쪽 벽 새 루트 12개, 공지에서 확인'],
+    '루트 분포': ['메모 (선택)', '예) 왼쪽 벽 6개 · 오른쪽 벽 4개 · 오버행 2개'],
     기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
     '암장 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
@@ -75,6 +78,7 @@ if (dlg) {
   // and a sent report empties just its own tab.
   const EVIDENCE_OK = (kind) => !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방'; // kinds that can carry a supporting picture
   let cur = '';
+  let routeWall = null; // 루트 분포's wall of holds (made below; hasText may run before it exists)
   let drafts = {};
   let busy = false;
   const hasEvidence = (kind) => EVIDENCE_OK(kind) && !!f.elements.evidence.files?.length;
@@ -87,17 +91,22 @@ if (dlg) {
       case '주차': return !!f.elements.parking.value;
       case '오픈채팅방': return !!v('chat');
       case '세팅일': return !!(v('setLast') || v('setNext') || v('body'));
+      case '루트 분포': return (routeWall ? totalOf(routeWall.get('routes')) : 0) > 0 || !!v('body');
       case PHOTO_KIND: return !!f.elements.photo.files?.length;
       default: return !!v('body'); // 운영시간, 기타
     }
   };
   const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); };
+  // 루트 분포: the shared wall of holds counts the wall's own routes (one kind: 루트); refresh runs on every tap
+  routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh() });
+  dlg.querySelector('.rp-wall').append(routeWall.el);
   const clearTab = (kind) => {
     for (const x of f.querySelectorAll(`.rp-extra[data-kind="${kind}"]`)) {
       for (const i of x.querySelectorAll('input, textarea')) { if (i.type === 'radio' || i.type === 'checkbox') i.checked = false; else i.value = ''; }
     }
     f.elements.body.value = ''; f.elements.note.value = '';
     delete drafts[kind];
+    if (kind === '루트 분포') routeWall.clear();
     if (kind === PHOTO_KIND) clearPreview();
     else { f.elements.evidence.value = ''; clearEvidencePreview(); }
   };
@@ -208,6 +217,7 @@ if (dlg) {
     if (pick) pick.checked = true;
     clearPreview(); clearEvidencePreview();
     drafts = {}; cur = f.elements.kind.value;
+    routeWall.clear();
     syncKind();
     setWall(name || ''); // read-only text or a pick from the list, never typed
     if (picking) pickEl.value = '';
@@ -226,7 +236,7 @@ if (dlg) {
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
-      setLast: f.elements.setLast.value, setNext: f.elements.setNext.value,
+      setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.get('routes'),
       note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
     }, new Date(), { nick: mode });
     if (!v.ok) return say(v.error);
