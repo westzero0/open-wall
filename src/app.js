@@ -984,13 +984,14 @@ function rowDetails(m, wall, at) {
 // a section with nothing to show asks for a report instead. 양달 tab = the seasonal sun (no tab for a wall without sun math).
 function sheetSection(m, s, content) {
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
-  const ask = config.reportEndpoint
+  const ask = config.reportEndpoint && s.kind // (a computed section such as 계절별 양달 has no report kind)
     ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
+  // the title row carries 수정 요청 (a filled section) and the check date sits under the title, so a section reads as: what it is, when it was checked, the facts
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title },
-    el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : el('span', { class: 'ws-chk' }, m.checked)),
-    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
-    s.empty ? null : ask);
+    el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
+    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk' }, m.checked),
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content);
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -999,7 +1000,7 @@ function routePane(m, wall) {
   const v = routeView(wall, new Date(), mine);
   const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포' } })));
-  const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? el('span', { class: 'ws-chk' }, v.head) : null);
+  const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? ask : null);
   if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
   const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
@@ -1020,8 +1021,8 @@ function routePane(m, wall) {
     return b;
   }));
   show('all');
-  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, chips, bars, total,
-    v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'), ask);
+  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, el('p', { class: 'ws-chk' }, v.head), chips, bars, total,
+    v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'));
 }
 function sheetParking(m) {
   const { onsite } = m.parkingWhere;
@@ -1046,7 +1047,7 @@ function buildWallSheet(wallName) {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
     tabs: sheet.tabs.map((t) => ({
       ...t,
-      pane: t.key === 'sun' ? blocks.sun : t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet.use.map((s) => sheetSection(m, s, content[s.key]))),
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
     })),
   };
 }

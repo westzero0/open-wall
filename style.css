@@ -1652,10 +1652,13 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-tabs[hidden] { display: none; }
 .ws-tabs [role="tab"] { flex: 1; min-height: var(--tap); border: 0; border-top: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-tabs [aria-selected="true"] { color: var(--fg); border-top-color: var(--fg); font-weight: 700; }
-.ws-sec { padding: var(--sp-10) 0; border-top: 1px solid var(--hair); }
-.ws-sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-8); }
-.ws-sec-h h3 { margin: 0; font-size: var(--fs-md); }
-.ws-chk { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+/* a section is a lighter panel on the sheet's backdrop: title (with 수정 요청 at its right), the check date under it, then the facts */
+.wall-sheet { background: var(--bg); }
+.ws-sec { margin: 0 0 var(--sp-10); padding: var(--sp-14) var(--sp-16) var(--sp-16); border-radius: var(--r-base); background: var(--surface); }
+.ws-sec-h { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: var(--tap); }
+.ws-sec-h h3 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+.ws-sec-h .ws-fix { min-height: var(--tap); padding: 0 var(--sp-4); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+.ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-10); color: var(--muted); font-size: var(--fs-xs); }
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
