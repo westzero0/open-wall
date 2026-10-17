@@ -665,10 +665,15 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-fig { width: 100%; max-width: 230px; margin: 0 auto; }
 .sundial-slot { aspect-ratio: 216 / 146; }
 /* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
-.sunbox:not(.solo) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 140px); column-gap: var(--sp-12); }
-.sunbox:not(.solo) > :not(.sb-fig) { grid-column: 1; }
-.sunbox:not(.solo) > .sb-fig { grid-column: 2; grid-row: 1 / span 3; align-self: center; max-width: 140px; }
-.sunbox:not(.solo) > .sun-why { grid-column: 1 / -1; }
+.sunbox:not(.solo) {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 120px); column-gap: var(--sp-12);
+  grid-template-areas: "head fig" "verd fig" "sent sent" "why why"; /* the dial sits beside the numbers; the sentence gets the whole width under both, so nothing is left empty under the dial */
+}
+.sunbox:not(.solo) > .sb-head { grid-area: head; }
+.sunbox:not(.solo) > .sun-verdict { grid-area: verd; }
+.sunbox:not(.solo) > .sb-fig { grid-area: fig; align-self: start; max-width: 120px; }
+.sunbox:not(.solo) > .dsent { grid-area: sent; }
+.sunbox:not(.solo) > .sun-why { grid-area: why; }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
 /* sun side view (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 230px slot renders it at 19px. */
 .dial { display: block; width: 100%; height: auto; overflow: visible; }
@@ -1639,6 +1644,8 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 /* the wall sheet: the board page's full-height dialog with a tab bar at the foot (structure only; the look is settled with the mockup) */
 .wall-sheet[open] { display: flex; flex-direction: column; overflow: hidden; }
 .ws-inner { flex: 1; min-height: 0; overflow-y: auto; }
+.ws-inner { overscroll-behavior: contain; } /* the sheet's scroll does not pass to the page behind it */
+html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet stands still (and the browser's own scroll buttons have nothing to offer over it) */
 .wall-sheet:has(.ws-tabs:not([hidden])) .ws-inner { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
 .ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-tabs { display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
@@ -1659,6 +1666,11 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .rt-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 700; }
 .rt-bars.stale { opacity: .55; }
 .rt-total { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-sm); }
+.gy-list li.mine .gy-g { color: var(--fg); font-weight: 700; } /* the rows inside 내 그레이드 */
+.gy-list li.mine .gy-bar { background: var(--accent); }
+.pf-grade { clear: both; display: flex; align-items: center; gap: var(--sp-8); }
+.pf-grade select { min-height: var(--tap); padding: 0 var(--sp-10); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
+.pf-grade select:disabled { color: var(--muted); }
 .bd-thread { margin: var(--sp-4) 0 var(--sp-6) var(--sp-10); padding-left: var(--sp-10); border-left: 2px solid var(--hair); }
 .bd-replies { list-style: none; margin: 0; padding: 0; }
 .bd-reply { padding: var(--sp-4) 0; border-bottom: 0; }

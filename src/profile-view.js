@@ -5,6 +5,8 @@ import { backupLine, loadBackupAt } from './backup.js';
 import { currentInstallMode, promptInstall } from './install.js';
 import { entryHref, externalOpenUrl } from './inapp.js';
 import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from './report.js';
+import { GRADES, gradeLabel } from './grades.js';
+import { loadMyGrade, saveMyGrade } from './my-grade.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -78,8 +80,34 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     };
   }
 
+  // 내 그레이드: the range the 루트 tab draws stronger (src/my-grade.js, this browser only). The first box says where it starts (or 정하지 않음),
+  // the second where it ends; every change is saved cleaned, and the boxes show what was saved (a reversed pair comes back in order).
+  const gFrom = $('pfGradeFrom');
+  const gTo = $('pfGradeTo');
+  const options = (sel, first) => sel.replaceChildren(...[...(first ? [['', first]] : []), ...GRADES.map((g) => [g, gradeLabel(g)])].map(([v, t]) => {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = t;
+    return o;
+  }));
+  options(gFrom, '정하지 않음');
+  options(gTo, '');
+  const showGrade = () => {
+    let st = null; try { st = localStorage; } catch { /* blocked: nothing saved */ }
+    const r = st ? loadMyGrade(st) : null;
+    gFrom.value = r?.from ?? '';
+    gTo.value = r?.to ?? gTo.options[0].value;
+    gTo.disabled = !r;
+  };
+  const commitGrade = () => {
+    const from = gFrom.value;
+    try { saveMyGrade(localStorage, from ? { from, to: gTo.disabled ? from : gTo.value } : null); } catch { /* blocked: not remembered */ }
+    showGrade();
+  };
+
   $('meBtn').addEventListener('click', () => {
     if (mode !== 'off') showNick();
+    showGrade();
     form.elements.theme.value = getTheme();
     form.elements.textSize.value = getTextSize();
     let store = null; try { store = localStorage; } catch { /* blocked: no backup date */ }
@@ -95,6 +123,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   form.addEventListener('change', (e) => {
     if (e.target.name === 'theme') setTheme(e.target.value);
     if (e.target.name === 'textSize') setTextSize(e.target.value);
+    if (e.target === gFrom || e.target === gTo) commitGrade();
   });
 
   $('pfInstallOpen').addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });

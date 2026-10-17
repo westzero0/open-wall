@@ -31,6 +31,7 @@ import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel } from './wall-sheet-model.js';
 import { routeView } from './routes.js';
+import { loadMyGrade } from './my-grade.js';
 import { openGallery } from './gallery-view.js';
 import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, howtoDue, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
 import { currentInstallMode, promptInstall } from './install.js';
@@ -994,7 +995,8 @@ function sheetSection(m, s, content) {
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
 function routePane(m, wall) {
-  const v = routeView(wall);
+  const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
+  const v = routeView(wall, new Date(), mine);
   const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포' } })));
   const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? el('span', { class: 'ws-chk' }, v.head) : null);
@@ -1007,9 +1009,9 @@ function routePane(m, wall) {
     bars.replaceChildren(el('ul', { class: 'gy-list' }, ...x.rows.map((r) => {
       const bar = el('span', { class: 'gy-bar' });
       bar.style.width = `${r.frac * 100}%`;
-      return el('li', {}, el('span', { class: 'gy-g' }, r.label), el('span', { class: 'gy-trk', 'aria-hidden': 'true' }, bar), el('span', { class: 'gy-n' }, String(r.n)));
+      return el('li', { class: r.mine ? 'mine' : null }, el('span', { class: 'gy-g' }, r.label), el('span', { class: 'gy-trk', 'aria-hidden': 'true' }, bar), el('span', { class: 'gy-n' }, String(r.n)));
     })));
-    total.textContent = `총 ${x.total}개`;
+    total.textContent = `총 ${x.total}개${v.mine ? ` · 내 구간 ${v.mine.label} ${x.mineTotal}개` : ''}`;
     for (const b of chips?.children ?? []) b.setAttribute('aria-pressed', String(b.dataset.key === key));
   };
   chips?.append(...v.views.map((x) => {
@@ -1018,7 +1020,8 @@ function routePane(m, wall) {
     return b;
   }));
   show('all');
-  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, chips, bars, total, ask);
+  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, chips, bars, total,
+    v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'), ask);
 }
 function sheetParking(m) {
   const { onsite } = m.parkingWhere;
