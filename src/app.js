@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sliderValue, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -64,6 +64,8 @@ const ICONS = {
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
   ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
+  clock: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 7v5l3 2'], // the wall sheet's tabs: 시간 (this), 이용 (ticket), 루트 (route), 게시판 (chat)
+  route: ['M3 19l6-10 4 6 3-4 5 8z'],
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
   // 양달 / 응달: a sun with rays; the same sun struck through. Same pair as the invitation picture (src/share-image.js drawIcon).
   sun: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M2 12h2', 'M20 12h2', 'M4.9 19.1l1.4-1.4', 'M17.7 6.3l1.4-1.4'],
@@ -469,6 +471,7 @@ function hoursGrid(wall, at) {
     plot.append(nl);
   }
   body.append(plot);
+  const nl = plot.querySelector('.nowl');
 
   for (const r of groupWeekRows(wk.rows)) { // days with the same hours share one row
     const trk = el('span', { class: 'g-trk' });
@@ -499,7 +502,53 @@ function hoursGrid(wall, at) {
   ].filter(Boolean);
   const hatched = wk.rows.some((r) => r.closed || r.breaks.length);
   const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
-  sec.append(...[segRow, susp, susp ? null : lead, gridAxis(live ? nowMin : null), body,
+
+  // The time line is the picked moment: dragging the axis or the bars moves it (touch-action: pan-y keeps the sheet's
+  // sideways tab swipe out of this zone). The line follows the finger; the moment is picked on release (go 'pick'), and the
+  // grid is drawn again for it. A range input in the zone is the keyboard and screen-reader way to the same thing.
+  let axis = gridAxis(live ? nowMin : null);
+  let zone = [axis, body];
+  if (live) {
+    const range = el('input', { type: 'range', class: 'sr-only g-range', min: '360', max: '1410', step: '10', value: String(sliderValue(nowMin)), 'aria-label': '보는 시각' });
+    const showAt = (m) => {
+      nl.style.left = axisX(m);
+      const next = gridAxis(m);
+      axis.replaceWith(next);
+      axis = next;
+      range.value = String(m);
+      range.setAttribute('aria-valuetext', fmtMin(m));
+    };
+    const minAt = (x) => { // the axis is 06:00–24:00 across the plot
+      const r = plot.getBoundingClientRect();
+      return sliderValue(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
+    };
+    const commit = (m, byKey) => {
+      if (m === sliderValue(nowMin)) return;
+      go({ type: 'pick', date: ymd(at), min: m });
+      const next = hoursGrid(wall, shown.at ?? at);
+      sec.replaceWith(next);
+      if (byKey) next.querySelector('.g-range')?.focus();
+    };
+    let from = null; // the minute a drag started on: cancelling it (the page began to scroll) puts the line back
+    const zoneEl = el('div', { class: 'g-zone' }, axis, body, range);
+    zoneEl.addEventListener('pointerdown', (e) => {
+      if (e.button) return;
+      from = nowMin;
+      zoneEl.setPointerCapture(e.pointerId);
+      showAt(minAt(e.clientX));
+    });
+    zoneEl.addEventListener('pointermove', (e) => { if (from !== null) showAt(minAt(e.clientX)); });
+    zoneEl.addEventListener('pointerup', (e) => { if (from === null) return; from = null; commit(minAt(e.clientX), false); });
+    zoneEl.addEventListener('pointercancel', () => { if (from !== null) { showAt(from); from = null; } });
+    range.addEventListener('input', () => showAt(Number(range.value)));
+    range.addEventListener('change', () => commit(Number(range.value), true));
+    zone = [zoneEl];
+  }
+  const row = allRows.find((r) => r.wall.name === wall.name);
+  const m = live && !susp && row ? modelOf(row, at) : null; // the answer for the picked time, in words
+  const verdict = m && m.state !== 'unknown' ? el('p', { class: `g-verdict ${m.state}` }, m.state === 'open' ? `${fmtMin(nowMin)} 운영 중 · ` : `${fmtMin(nowMin)} `, m.statusText) : null;
+  sec.append(...[segRow, susp, verdict, susp ? null : lead, ...zone,
+    live ? el('p', { class: 'g-drag-hint' }, '막대 위를 좌우로 끌면 그 시각의 운영 여부를 볼 수 있어요.') : null,
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-bar' }), '운영'),
       hatched ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)') : null,
@@ -515,6 +564,14 @@ function hoursGrid(wall, at) {
 function seasonSunBlock(wall, at, d) {
   if (noSunMath(d)) return null;
   const rows = seasonSun(wall, at);
+  const fold = rows.length > 1 && rows.some((s) => s.current); // closed: only this season's row; 다른 계절 보기 unfolds the rest
+  const more = el('button', { type: 'button', class: 'ssun-more', 'aria-expanded': 'false' }, '다른 계절 보기 ▾');
+  more.addEventListener('click', () => {
+    const on = more.getAttribute('aria-expanded') !== 'true';
+    more.setAttribute('aria-expanded', String(on));
+    more.textContent = on ? '접기 ▴' : '다른 계절 보기 ▾';
+    more.closest('.ssun').querySelectorAll('.s-row:not(.cur)').forEach((r) => { r.hidden = !on; });
+  });
   return el('section', { class: 'ssun', 'aria-label': `계절마다 양달인 시간, ${DAY_KO[at.getDay()]}요일 운영시간 기준` },
     gridAxis(null),
     ...rows.map((s) => {
@@ -524,10 +581,11 @@ function seasonSunBlock(wall, at, d) {
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
       const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
-      return el('div', { class: `s-row${s.current ? ' cur' : ''}` },
+      return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null },
         el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · 예상 ${sunText}${hint}`),
         trk);
     }),
+    fold ? more : null,
     el('ul', { class: 'g-key' },
       el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
       el('li', {}, el('i', { class: 'k-sunall' }), '양달'),
@@ -1047,6 +1105,7 @@ function buildWallSheet(wallName) {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
     tabs: sheet.tabs.map((t) => ({
       ...t,
+      icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
       pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
     })),
   };

@@ -860,6 +860,15 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
 .s-open { position: absolute; top: 5px; height: 20px; border: 1px solid var(--open); border-radius: 3px; background: color-mix(in srgb, var(--open-past) 50%, transparent); }
 .s-row .g-sun, .s-row .g-sunon { top: 10px; height: 10px; }
+.s-row[hidden] { display: none; }
+.ssun-more { display: block; width: 100%; min-height: var(--tap); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
+/* the hours time line is dragged along the axis and the bars; pan-y leaves the page's up-and-down scroll and keeps the sheet's sideways tab swipe out */
+.g-zone { position: relative; touch-action: pan-y; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+.g-zone:has(.g-range:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.g-verdict { margin: 0 0 var(--sp-8); font-size: var(--fs-base); font-weight: 700; }
+.g-verdict.open { color: var(--open); }
+.g-verdict.closed { color: var(--warn); }
+.g-drag-hint { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-xs); }
 /* first view: 안내 lines, parking (label column shared with the memo list) */
 .memo-list.info { margin-top: var(--sp-8); border-top: 1px solid var(--hair); }
 .memo-list.info li { padding: 3px 0; } /* tight: the open panel stays near one screen */
@@ -1636,22 +1645,30 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 .bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 /* the board page: a full-height sheet; the form comes first so a long list never hides it */
 .board-page { height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
-.bp-inner { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
 .bp-back { margin-left: -8px; margin-right: 0; }
 .bp-title { flex: 1; min-width: 0; margin-left: var(--sp-4); overflow-wrap: anywhere; }
 .bp-title:focus { outline: none; }
 .sh-head:has(.bp-back) { justify-content: flex-start; }
 /* the wall sheet: the board page's full-height dialog with a tab bar at the foot (structure only; the look is settled with the mockup) */
 .wall-sheet[open] { display: flex; flex-direction: column; overflow: hidden; }
-.ws-inner { flex: 1; min-height: 0; overflow-y: auto; }
-.ws-inner { overscroll-behavior: contain; } /* the sheet's scroll does not pass to the page behind it */
+.ws-top { flex: none; padding: var(--sp-8) var(--sp-16) 0; }
+/* the panes sit in one row; a swipe snaps from pane to pane, and each pane scrolls up and down by itself */
+.ws-body { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain; }
+.ws-body::-webkit-scrollbar { display: none; }
+.ws-panel { flex: 0 0 100%; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-align: start; scroll-snap-stop: always; padding: 0 var(--sp-16) calc(var(--sp-16) + env(safe-area-inset-bottom)); }
 html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet stands still (and the browser's own scroll buttons have nothing to offer over it) */
-.wall-sheet:has(.ws-tabs:not([hidden])) .ws-inner { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
+.wall-sheet:has(.ws-tabs:not([hidden])) .ws-panel { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
 .ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-tabs { display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
 .ws-tabs[hidden] { display: none; }
-.ws-tabs [role="tab"] { flex: 1; min-height: var(--tap); border: 0; border-top: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-weight: 600; white-space: nowrap; }
-.ws-tabs [aria-selected="true"] { color: var(--fg); border-top-color: var(--fg); font-weight: 700; }
+/* icon over label; the tab in view gets a pill behind its icon, and the pill follows a swipe (--on: 0 to 1, set from the scroll) */
+@property --on { syntax: "<number>"; inherits: true; initial-value: 0; }
+.ws-tabs [role="tab"] { flex: 1; min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4) 0 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.ws-tabs [aria-selected="true"] { color: var(--fg); font-weight: 700; }
+.ws-ic { display: grid; place-items: center; width: 58px; height: 30px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent-soft) calc(var(--on) * 100%), transparent); }
+.ws-ic svg { width: 22px; height: 22px; }
+.ws-tabs [aria-selected="true"] .ws-ic { color: var(--accent); }
+.ws-tabs [role="tab"]:active { opacity: .7; }
 /* a section is a lighter panel on the sheet's backdrop: title (with 수정 요청 at its right), the check date under it, then the facts */
 .wall-sheet { background: var(--bg); }
 .ws-sec { margin: 0 0 var(--sp-10); padding: var(--sp-14) var(--sp-16) var(--sp-16); border-radius: var(--r-base); background: var(--surface); }
