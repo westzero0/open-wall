@@ -663,7 +663,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-chip.lit::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .sb-chip.na { color: var(--muted); }
 .sb-fig { width: 100%; max-width: 230px; margin: 0 auto; }
-.sundial-slot { aspect-ratio: 216 / 146; }
+.sundial-slot { aspect-ratio: 216 / 172; }
 /* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
 .sunbox:not(.solo) {
   display: grid; grid-template-columns: minmax(0, 1fr);

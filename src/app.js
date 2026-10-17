@@ -964,7 +964,7 @@ function sunHead(d) {
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
 function sunBox(d, name, closedDay, verdict) {
-  // the dial says why ("벽 뒤쪽이에요", 해·벽 색), so a facing/sun reason keeps only the first sentence (where the sun is); a terrain/night reason is not in the picture and stays
+  // the dial says why ("해가 벽 뒤에 있어요" under it, 해·벽 색), so a facing/sun reason keeps only the first sentence (where the sun is); a terrain/night reason is not in the picture and stays
   const words = d.sentence.length > 3 && /^ 해가 (벽|등) 뒤쪽/.test(d.sentence[3].text) ? d.sentence.slice(0, 3) : d.sentence;
   const sentence = el('p', { class: 'dsent' }, ...words.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   if (closedDay) {

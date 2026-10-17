@@ -1,7 +1,7 @@
 // Sun side view. dialLayout: pure geometry from dialModel (tested); renderDial: SVG via DOM APIs.
 // A cross-section across the wall: you stand left, the wall's front face looks at you, the back is on the right.
 // The sun is the direction projected onto that plane: across = cos(height)·cos(rel), up = sin(height).
-const VBW = 216, VBH = 146;
+const VBW = 216, VBH = 172; // 146 for the picture, 26 more for the reason line under it
 const GY = 118, SH = 100;               // ground line, height of the zenith above it
 const WCX = 145, WW = 10, WH = 56;       // wall: centre x, thickness, height
 const WX = WCX - WW / 2, WT = GY - WH;   // front face x, top y
@@ -86,16 +86,10 @@ export function dialLayout(m) {
     const at = place([{ x: cx, y: py - 8 }].flatMap(nudged).map(inside('산')), '산', taken);
     if (!taken.some((o) => overlap(tbox(at, '산'), o)) && Math.hypot(at.x - S[0], at.y - S[1]) > 14) L.hillLabel = xy([at.x, at.y]);
   }
-  // reason: next to the cross, on whichever side is free
-  const why = { terrain: '산에 막혀요', facing: '벽 뒤쪽이에요' }[m.state];
-  if (B && why) {
-    const [above, below] = [xy([B[0], B[1] - 11]), xy([B[0], B[1] + 22])];
-    const side = { x: WX - 6, y: WT + 16, anchor: 'end' }; // in the sky beside the wall's front face
-    const pref = m.state === 'facing' ? [side, ...[below, above].flatMap(nudged).map(inside(why))] : [above, below].flatMap(nudged).map(inside(why));
-    const at = place(pref, why, taken);
-    L.reason = { ...at, text: why };
-    taken.push(tbox(at, why));
-  }
+  // reason: one line under the ground labels, centred, in the cross's colour. It used to float next to the cross, which is
+  // squeezed against the wall: a long Korean phrase there ended up over the wrong part of the sun's path.
+  const why = { terrain: '해가 산에 가려졌어요', facing: '해가 벽 뒤에 있어요' }[m.state];
+  if (B && why) L.reason = { x: VBW / 2, y: GY + 48, anchor: 'middle', text: why };
   if (S) {
     // "지금 해": beside the dot (outward), else above or below it; kept inside the picture
     const right = S[0] >= WCX;
