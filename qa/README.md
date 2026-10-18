@@ -15,6 +15,7 @@ node qa/visual.mjs snap before … node qa/visual.mjs compare before   # 시각 
 | `a11y.mjs` | 22개 화면을 axe-core(WCAG 2.1 AA)로 | Playwright, axe-core |
 | `visual.mjs` | 수정 전·후 화면 비교 | Playwright |
 | `provenance.mjs` | 의심 사이트가 우리 데이터를 베꼈는지 증거 정리 | Node 18+ |
+| `watch.mjs` | 커뮤니티 글에서 운영시간·휴관 변동 후보 찾기 | Node 18+ |
 
 설치: `npm i -g playwright axe-core && npx playwright install chromium`
 (`lib.mjs`는 네 도구가 같이 쓰는 서버·브라우저 설정이에요.)
@@ -103,3 +104,24 @@ node qa/provenance.mjs ./받아둔/national.json --photos   # 사진 파일도 �
 - 증거를 정리할 뿐 법적 판단은 아니에요. 신고 전에는 한국저작권위원회나 변호사와 상의하세요.
 - 자기 자신과 돌려 보면(`node qa/provenance.mjs data/national.json --photos`) 56곳·사진 전부 같다고 나와야 정상이에요.
 - **계산값이 바뀌면**(DEM 을 다시 계산했을 때) 옛 값은 기록으로 남겨 두세요. 복제본이 옛 값을 갖고 있을 수 있어요.
+
+## 6. 변동 감시 — `watch.mjs`
+
+디시인사이드 갤러리 글이나 오픈채팅 대화에서 "암장 이름 + 휴관·시간 변경·공사·폐업·재개" 가 같이 나온 문장을 후보로 뽑아요.
+네트워크를 쓰지 않고, **사람이 저장한 파일만** 읽어요.
+
+```
+node qa/watch.mjs dc1.html dc2.html     # 갤러리 "글 목록" 페이지를 저장한 것 (예: .../mgallery/board/lists/?id=rock_climbing&page=1)
+node qa/watch.mjs 오픈채팅.txt            # 카카오톡 "대화 내보내기" 텍스트 (본인이 가입한 방, 본인이 내보낸 것만)
+node qa/watch.mjs --all 파일…             # 이미 본 글도 다시
+node qa/watch.mjs --selftest              # 가짜 글로 도구 점검(네트워크 없음)
+```
+
+- **후보일 뿐이에요.** 글이 사실인지는 판단하지 않아요. 공지·전화로 확인한 뒤 `data/national.json` 과 `checked_at` 을 고치세요.
+- 암장 이름과 별칭(`뚝섬한강공원 인공암벽` → `뚝섬`)으로 찾고, 지역명뿐인 짧은 별칭(`강남`)은 "암장·클라이밍" 같은 말이 같은 문장에 있을 때만 믿어요.
+  못 찾는 속칭은 `qa/watch-aliases.json` 에 `{"뚝섬한강공원 인공암벽": ["뚝섬벽"]}` 처럼 적으세요.
+- 결과는 마지막 확인일이 오래된 암장부터 정렬해요. 본 글은 `qa/.out/watch-seen.json` 에 기억해서 다음 실행에는 새 글만 보여 줘요.
+- **개인정보:** 말한 사람(닉네임)은 읽지도 출력하지도 않고, 전화번호·메일·`@아이디` 는 가려요. 글 전문은 저장하지 않고 발췌와 링크만 남겨요.
+- **수집은 이 도구가 하지 않아요.** 페이지는 브라우저로 직접 저장하거나, 사이트의 `robots.txt`·약관을 확인하고 천천히(분당 한 번 정도) 받으세요.
+  국내 사이트는 해외·데이터센터 IP 를 막는 일이 많아서 한국의 본인 컴퓨터에서 하는 게 안전해요.
+- 오픈채팅은 읽는 API 가 없고, 알림 읽기 앱·비공식 프로토콜은 카카오 약관 위반이라 쓰지 않아요. 내보내기 파일만 쓰세요.

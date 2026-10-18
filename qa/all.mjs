@@ -15,6 +15,7 @@ const STEPS = [
   { name: '무결성', file: 'check-integrity.mjs', needs: [] },
   { name: '스모크(오프라인·성능 예산·망가진 저장소)', file: 'smoke.mjs', needs: ['playwright'] },
   { name: '접근성(axe-core)', file: 'a11y.mjs', needs: ['playwright', 'axe-core'] },
+  { name: '변동 감시 도구 자가 테스트', file: 'watch.mjs', args: ['--selftest'], needs: [] },
 ];
 const results = [];
 for (const s of STEPS) {
@@ -22,7 +23,7 @@ for (const s of STEPS) {
   if (quick && s.needs.length) { results.push([s.name, 'skip', '--quick']); continue; }
   if (missing.length) { results.push([s.name, 'skip', `${missing.join(', ')} 없음`]); continue; }
   console.log(`\n━━ ${s.name} ━━`);
-  const r = spawnSync(process.execPath, [join(dir, s.file)], { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [join(dir, s.file), ...(s.args ?? [])], { stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8' });
   process.stdout.write(r.stdout.split('\n').filter((l) => !/agent-proxy|connect_rejected|^For details|^- /.test(l)).join('\n'));
   results.push([s.name, r.status === 0 ? 'ok' : 'fail', '']);
 }
