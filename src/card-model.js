@@ -79,7 +79,8 @@ function rowBar(wall, status, at) {
   return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}, ${sunText}` };
 }
 
-// segments: the list row's bar on the 06–24 axis ([a, b, past]); sunBands: its sun, empty pieces dropped;
+// segments: the list row's bar on the 06–24 axis ([a, b, past]); sunBands: its sun, only where the wall is open (sun before opening or
+// after closing says nothing about a visit, and drew as an orange line detached from the green bar), empty pieces dropped;
 // note: the card's line under its full-day bar ("10/8(목) 운영 · 양달 정보 없음"), null when nothing to say.
 function barOf(wall, status, at) {
   const bar = rowBar(wall, status, at);
@@ -87,7 +88,7 @@ function barOf(wall, status, at) {
   return {
     ...bar,
     segments: barSegments(bar.open, bar.nowMin ?? -1),
-    sunBands: (bar.sun ?? []).filter(([a, b]) => axisFrac(b) > axisFrac(a)),
+    sunBands: (bar.sun ?? []).flatMap(([s, e]) => bar.open.map(([a, b]) => [Math.max(s, a), Math.min(e, b)])).filter(([a, b]) => axisFrac(b) > axisFrac(a)),
     note: bar.ahead || !bar.sun ? words.join(' · ') : null,
   };
 }
