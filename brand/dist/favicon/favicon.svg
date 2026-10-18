@@ -13,8 +13,9 @@
     .hb-circle { fill: var(--primary-yellow, #F3B63F); }
     .hb-wall   { fill: var(--primary-black, #2B2B2B); }
     .hb-text   { fill: var(--logo-text, #2B2B2B); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 12; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-sub-light { stroke-width: 6.5; }
   </style>
-  <circle class="hb-circle" cx="236" cy="200" r="184"/>
-    <polygon class="hb-wall" points="193,16 386,16 386,496 358,496"/>
+  <circle class="hb-circle" cx="256" cy="213" r="181"/>
+    <polygon class="hb-wall" points="208,16 397,16 397,496 326,496"/>
 </svg>

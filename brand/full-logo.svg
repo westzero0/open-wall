@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 953.5 677.33" role="img" aria-labelledby="hb-title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1402.7 1031" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK</title>
   <style>
     :root {
@@ -13,45 +13,24 @@
     .hb-circle { fill: var(--primary-yellow, #F3B63F); }
     .hb-wall   { fill: var(--primary-black, #2B2B2B); }
     .hb-text   { fill: var(--logo-text, #2B2B2B); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 12; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-sub-light { stroke-width: 6.5; }
   </style>
   <defs>
     <clipPath id="hb-cap"><rect x="-10" y="-1" width="90" height="52"/></clipPath>
   </defs>
-  <g transform="translate(311.75 24) scale(0.64)">
-    <circle class="hb-circle" cx="236" cy="200" r="184"/>
-    <polygon class="hb-wall" points="193,16 386,16 386,496 358,496"/>
+  <g transform="translate(445.35 24) scale(1)">
+    <circle class="hb-circle" cx="256" cy="213" r="181"/>
+    <polygon class="hb-wall" points="208,16 397,16 397,496 326,496"/>
   </g>
-  <g class="hb-text" transform="translate(275.79 387.69) scale(0.64)">
-    <path d="M100 4L100 41.13L60 54.88L60 4ZM10 64L150 64L150 104L10 104ZM20 180a60 60 0 1 0 120 0a60 60 0 1 0 -120 0ZM52 180a28 28 0 1 1 56 0a28 28 0 1 1 -56 0ZM226 6L226 269.13L186 282.88L186 6ZM206 108L254 108L254 148L206 148ZM310 6L310 269.13L270 282.88L270 6Z"/>
-    <path d="M54 6L54 172L14 172L14 6ZM154 6L154 172L114 172L114 6ZM34 64L134 64L134 104L34 104ZM34 132L134 132L134 172L34 172ZM284 6L284 163.13L244 176.88L244 6ZM193.13 38L264 38L264 78L206.88 78ZM193.13 98L264 98L264 138L206.88 138ZM76 204L250 204L250 244L76 244ZM250 204L250 269.13L210 282.88L210 204Z" transform="translate(334 0)"/>
+  <g class="hb-text" transform="translate(412.93 590) scale(0.92)">
+    <path d="M99 -5.27L99 50L61 50L61 13.27ZM10 69L150 69L150 107L10 107ZM16 196a64 64 0 1 0 128 0a64 64 0 1 0 -128 0ZM48.3 196a31.700000000000003 31.700000000000003 0 1 1 63.400000000000006 0a31.700000000000003 31.700000000000003 0 1 1 -63.400000000000006 0ZM225 4L225 290.73L187 309.27L187 4ZM206 123L256 123L256 161L206 161ZM311 4L311 290.73L273 309.27L273 4Z"/>
+    <path d="M53 4L53 176L15 176L15 4ZM153 4L153 176L115 176L115 4ZM34 71L134 71L134 109L34 109ZM34 138L134 138L134 176L34 176ZM283 4L283 290.73L245 309.27L245 4ZM191.33 39L264 39L264 77L200.67 77ZM191.33 103L264 103L264 141L200.67 141ZM70 233L264 233L264 271L70 271Z" transform="translate(334 0)"/>
   </g>
-  <g class="hb-sub" transform="translate(40 612.33)">
-    <g transform="translate(0 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g>
-    <g transform="translate(36 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g>
-    <g transform="translate(73 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
-    <g transform="translate(104 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
-    <g transform="translate(136.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
-    <g transform="translate(172.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
-    <g transform="translate(203.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
-    <g transform="translate(239.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g>
-    <rect class="hb-circle" x="303.5" y="-3" width="4.5" height="31" style="stroke:none"/>
-    <g transform="translate(325 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g>
-    <g transform="translate(359 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 45H44"/></g>
-    <g transform="translate(389 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
-    <g transform="translate(402 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
-    <g transform="translate(443 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
-    <g transform="translate(475.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
-    <g transform="translate(488.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g>
-    <g transform="translate(524.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30"/></g>
-    <g transform="translate(572.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g>
-    <g transform="translate(606.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
-    <g transform="translate(642.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
-    <g transform="translate(683.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
-    <g transform="translate(724.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0"/></g>
-    <g transform="translate(760.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g>
-    <g transform="translate(796.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
-    <g transform="translate(809.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M0 5H56M28 5V50"/></g>
-    <g transform="translate(845.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
+  <g class="hb-sub" transform="translate(50 936)">
+    <g><g transform="translate(0 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g><g transform="translate(54.25 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g><g transform="translate(110.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(156.42 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(205.13 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g><g transform="translate(259.38 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(305.71 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(359.96 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g></g>
+    <rect class="hb-circle" x="433.33" y="-7.2" width="3.6" height="59.4" style="stroke:none"/>
+    <g class="hb-sub-light"><g transform="translate(467.53 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(518.62 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 45H44"/></g><g transform="translate(563.36 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(581.18 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(643.36 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(692.06 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(709.88 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(764.14 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30"/></g></g>
+    <g class="hb-sub-light"><g transform="translate(848.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(899.17 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(953.42 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(1015.6 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(1077.77 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0"/></g><g transform="translate(1132.02 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(1186.27 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(1204.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M0 5H56M28 5V50"/></g><g transform="translate(1258.34 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g></g>
   </g>
 </svg>

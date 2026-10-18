@@ -217,7 +217,7 @@ function makeTokens() {
     font: { family: { sans: cfg.fonts.sans, display: cfg.fonts.display } },
     radius: { sm: '6px', md: '12px', lg: '20px', pill: '9999px' },
     spacing: { 1: '4px', 2: '8px', 3: '12px', 4: '16px', 6: '24px', 8: '32px', 12: '48px' },
-    logo: { overhangAngleDeg: 19, minSizePx: { symbol: 16, full: 96 }, clearSpace: '0.25 × symbol diameter' },
+    logo: { overhangAngleDeg: 14, minSizePx: { symbol: 16, full: 96 }, clearSpace: '0.25 × symbol diameter' },
   };
   write('tokens/brand-tokens.json', JSON.stringify(tokens, null, 2) + '\n');
 
