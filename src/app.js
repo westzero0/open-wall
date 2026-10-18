@@ -533,7 +533,7 @@ function hoursGrid(wall, at) {
     let from = null; // the minute a drag started on: cancelling it (the page began to scroll) puts the line back
     const zoneEl = el('div', { class: 'g-zone' }, axis, range); // only the axis strip is dragged: the bars below stay free for the tab swipe
     zoneEl.addEventListener('pointerdown', (e) => {
-      if (e.button) return;
+      if (e.button || e.clientX < plot.getBoundingClientRect().left) return; // the label column left of the axis is not part of the time scale
       from = nowMin;
       zoneEl.setPointerCapture(e.pointerId);
       showAt(minAt(e.clientX));
@@ -1347,7 +1347,9 @@ function timeRow(row, at) {
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
       ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
-      ...bar.sunBands.map(([a, b]) => span('sunband', a, b)),
+      // the part before the tick is already gone: its orange is paler, like the green under it
+      ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
+        .map(([a, b, past]) => span(past ? 'sunband past' : 'sunband', a, b)),
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));

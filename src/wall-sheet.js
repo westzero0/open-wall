@@ -40,8 +40,8 @@ function show(n) {
 const paint = (p) => tabEls.forEach((t, j) => t.style.setProperty('--on', String(Math.max(0, 1 - Math.abs(p - j)))));
 
 function goTo(n, { focus = false, instant = false } = {}) {
+  if (n !== cur) panels[n].scrollTop = 0; // each tab starts at its top (tapping the tab already in view leaves its scroll alone)
   show(n);
-  panels[n].scrollTop = 0; // each tab starts at its top
   body.scrollTo({ left: n * body.clientWidth, behavior: instant || reduced() ? 'instant' : 'smooth' });
   if (focus) tabEls[n].focus();
 }
@@ -63,7 +63,7 @@ function make() {
   window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
   dlg = el('dialog', { class: 'sheet board-page wall-sheet', 'aria-labelledby': 'ws-title' },
-    el('div', { class: 'ws-top' }, el('div', { class: 'sh-head' }, back, title, report)), body, bar);
+    el('div', { class: 'ws-top' }, el('div', { class: 'sh-head' }, back, title, report)), bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
   dlg.addEventListener('close', () => { // 뒤로, Esc or popstate
     if (pushed) { pushed = false; history.back(); }
     onClose?.();

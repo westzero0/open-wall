@@ -473,7 +473,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.soon .bar .seg { background: var(--soon); }
 .row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
-.sunband { position: absolute; top: 11px; height: 4px; border-radius: var(--r-xs); background: var(--sun); }
+.sunband { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--sun); box-shadow: 0 0 0 1px var(--bg); } /* the page-colour rim keeps orange apart from the green where their lightness is close (dark mode) */ /* the open bar itself turns orange where the wall is sunny (the bands are only inside the open hours) */
+.sunband.past { opacity: .45; }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
 .tick { position: absolute; top: -4px; height: 19px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
 .row.broken { padding: 10px var(--pad); }
@@ -1661,7 +1662,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet stands still (and the browser's own scroll buttons have nothing to offer over it) */
 .wall-sheet:has(.ws-tabs:not([hidden])) .ws-panel { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
 .ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
-.ws-tabs { display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
+.ws-tabs { order: 1; display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
 .ws-tabs[hidden] { display: none; }
 /* icon over label; the tab in view gets a pill behind its icon, and the pill follows a swipe (--on: 0 to 1, set from the scroll) */
 @property --on { syntax: "<number>"; inherits: true; initial-value: 0; }
