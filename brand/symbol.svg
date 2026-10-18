@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="hb-title">
+  <title id="hb-title">해벽 HAEBYEOK 심볼</title>
+  <style>
+    :root {
+      --primary-yellow: #FFD60A;
+      --primary-black: #111111;
+      --logo-text: #111111;
+      --logo-sub: #111111;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+    }
+    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
+    .hb-wall   { fill: var(--primary-black, #111111); }
+    .hb-text   { fill: var(--logo-text, #111111); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+  </style>
+  <clipPath id="hb-clip"><circle cx="256" cy="256" r="240"/></clipPath>
+    <circle class="hb-circle" cx="256" cy="256" r="240"/>
+    <polygon class="hb-wall" clip-path="url(#hb-clip)" points="300,100 420,100 262,392 262,504 142,504 142,392"/>
+</svg>

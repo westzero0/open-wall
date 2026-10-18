@@ -1,0 +1,129 @@
+<!doctype html>
+<!--
+  Open Graph 이미지 템플릿 (1200×630)
+  generate-assets.js 가 이중 중괄호 자리표시자를 채워 PNG로 렌더링한다.
+  브라우저에서 직접 열어 디자인을 확인할 수도 있다(자리표시자 그대로 보임).
+  자리표시자: CSS_VARS, LOGO_FULL, SYMBOL, TITLE, SUBTITLE, TAG, FONT_SANS
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>해벽 OG</title>
+<style>
+  :root { --primary-yellow: #FFD60A; --primary-black: #111111; --logo-text: #111111; --logo-sub: #111111; --brand-paper: #F4F2EC; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    position: relative; overflow: hidden;
+    background: var(--brand-paper, #F4F2EC);
+    color: var(--primary-black, #111);
+    font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 오른쪽: 심볼을 크게 잘라 배치 (원 = 하나의 노란 덩어리) */
+  .symbol {
+    position: absolute; right: -150px; top: -60px;
+    width: 780px; height: 780px;
+  }
+  .symbol svg { width: 100%; height: 100%; display: block; }
+  /* 하단 블랙 라인 */
+  .stripe {
+    position: absolute; left: 0; bottom: 0; width: 1200px; height: 18px;
+    background: var(--primary-black, #111);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  .logo { position: absolute; left: 72px; top: 64px; }
+  .logo svg { height: 96px; width: auto; display: block; }
+  .copy { position: absolute; left: 72px; bottom: 96px; max-width: 640px; }
+  .title {
+    font-size: 84px; line-height: 1.08; font-weight: 800; letter-spacing: -0.03em;
+    word-break: keep-all;
+  }
+  .subtitle {
+    margin-top: 22px; font-size: 32px; line-height: 1.4; font-weight: 500;
+    letter-spacing: -0.01em; opacity: .78; word-break: keep-all;
+  }
+  .tag {
+    position: absolute; left: 72px; bottom: 40px;
+    font-size: 22px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="symbol"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="og-b-title">
+  <title id="og-b-title">해벽 HAEBYEOK 심볼</title>
+  <style>
+    :root {
+      --primary-yellow: #FFD60A;
+      --primary-black: #111111;
+      --logo-text: #111111;
+      --logo-sub: #111111;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+    }
+    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
+    .hb-wall   { fill: var(--primary-black, #111111); }
+    .hb-text   { fill: var(--logo-text, #111111); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+  </style>
+  <clipPath id="og-b-clip"><circle cx="256" cy="256" r="240"/></clipPath>
+    <circle class="hb-circle" cx="256" cy="256" r="240"/>
+    <polygon class="hb-wall" clip-path="url(#og-b-clip)" points="300,100 420,100 262,392 262,504 142,504 142,392"/>
+</svg>
+</div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 410" role="img" aria-labelledby="og-a-title">
+  <title id="og-a-title">해벽 HAEBYEOK</title>
+  <style>
+    :root {
+      --primary-yellow: #FFD60A;
+      --primary-black: #111111;
+      --logo-text: #111111;
+      --logo-sub: #111111;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+    }
+    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
+    .hb-wall   { fill: var(--primary-black, #111111); }
+    .hb-text   { fill: var(--logo-text, #111111); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+  </style>
+  <defs>
+    <clipPath id="og-a-cap"><rect x="-10" y="0" width="80" height="50"/></clipPath>
+    <clipPath id="og-a-clip"><circle cx="256" cy="256" r="240"/></clipPath>
+  </defs>
+
+  <!-- 심볼 -->
+  <g transform="translate(14 30) scale(0.68)">
+    <circle class="hb-circle" cx="256" cy="256" r="240"/>
+    <polygon class="hb-wall" clip-path="url(#og-a-clip)" points="300,100 420,100 262,392 262,504 142,504 142,392"/>
+  </g>
+
+  <!-- 한글 '해벽' — 외벽 오버행 각도(≈28°)로 컷팅한 커스텀 벡터 타입 -->
+  <g class="hb-text" transform="translate(400 30)">
+    <path d="M99 -4.28L99 35.72L61 56.28L61 16.28ZM1.72 65L137.72 65L158.28 103L22.28 103ZM20 180a60 60 0 1 0 120 0a60 60 0 1 0 -120 0ZM51.16 180a28.840000000000003 28.840000000000003 0 1 1 57.68000000000001 0a28.840000000000003 28.840000000000003 0 1 1 -57.68000000000001 0ZM225 -4.28L225 265.72L187 286.28L187 16.28ZM206 109L241.72 109L262.28 147L206 147ZM309 -4.28L309 265.72L271 286.28L271 16.28Z"/>
+    <path d="M53 -4.28L53 170L15 170L15 16.28ZM153 -4.28L153 170L115 170L115 16.28ZM34 65L134 65L134 103L34 103ZM34 133L134 133L134 171L34 171ZM283 -4.28L283 159.72L245 180.28L245 16.28ZM189.72 39L264 39L264 77L210.28 77ZM189.72 99L264 99L264 137L210.28 137ZM65.72 205L249 205L249 243L86.28 243ZM249 205L249 265.72L211 286.28L211 205Z" transform="translate(334 0)"/>
+  </g>
+
+  <!-- 영문 HAEBYEOK — 모노라인 산세리프 아웃라인 -->
+  <g class="hb-sub">
+    <g transform="translate(412 344)" clip-path="url(#og-a-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g>
+    <g transform="translate(494.29 344)" clip-path="url(#og-a-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g>
+    <g transform="translate(578.57 344)" clip-path="url(#og-a-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
+    <g transform="translate(650.86 344)" clip-path="url(#og-a-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
+    <g transform="translate(726.14 344)" clip-path="url(#og-a-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
+    <g transform="translate(808.43 344)" clip-path="url(#og-a-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
+    <g transform="translate(880.71 344)" clip-path="url(#og-a-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
+    <g transform="translate(963 344)" clip-path="url(#og-a-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g>
+  </g>
+</svg>
+</div>
+  <div class="copy">
+    <div class="title">지금 열린 외벽</div>
+    <div class="subtitle">실외암벽의 운영시간과 양달·응달을 한눈에</div>
+  </div>
+  <div class="tag">haebyeok.app</div>
+  <div class="stripe"></div>
+</body>
+</html>

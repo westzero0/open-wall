@@ -1,0 +1,12 @@
+{
+  "name": "haebyeok-brand",
+  "private": true,
+  "version": "1.0.0",
+  "description": "해벽(HAEBYEOK) 브랜드 로고 및 디자인 시스템 자산 생성기",
+  "scripts": {
+    "build:logo": "node scripts/build-logo.js",
+    "assets": "node generate-assets.js",
+    "assets:tokens": "node generate-assets.js --only tokens"
+  },
+  "devDependencies": { "playwright": "^1.56.0" }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "해벽",
+  "nameEn": "HAEBYEOK",
+  "description": "지금 열려 있는 실외암벽과 양달·응달을 한눈에.",
+  "lang": "ko",
+  "colors": {
+    "yellow": "#FFD60A",
+    "black": "#111111",
+    "paper": "#F4F2EC",
+    "ink": "#111111",
+    "inkOnDark": "#F5F5F2",
+    "dark": "#0E0E0C"
+  },
+  "fonts": {
+    "sans": ["Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "system-ui", "sans-serif"],
+    "display": ["Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "sans-serif"]
+  },
+  "og": {
+    "title": "지금 열린 외벽",
+    "subtitle": "실외암벽의 운영시간과 양달·응달을 한눈에",
+    "tag": "haebyeok.app"
+  }
+}
