@@ -15,7 +15,11 @@ node qa/visual.mjs snap before … node qa/visual.mjs compare before   # 시각 
 | `a11y.mjs` | 22개 화면을 axe-core(WCAG 2.1 AA)로 | Playwright, axe-core |
 | `visual.mjs` | 수정 전·후 화면 비교 | Playwright |
 | `provenance.mjs` | 의심 사이트가 우리 데이터를 베꼈는지 증거 정리 | Node 18+ |
-| `watch.mjs` | 커뮤니티 글에서 운영시간·휴관 변동 후보 찾기 | Node 18+ |
+| `watch-run.mjs` | **켜졌을 때 한 번에**: 공지 확인 + 검색 API + 받은 글 읽기 | Node 18+ (+ 검색 API 키) |
+| `reach.mjs` | 감시할 곳이 이 컴퓨터에서 열리는지 시험(죽은 공지 주소도 찾음) | Node 18+ |
+| `notices.mjs` | 암장 공지 페이지가 지난번과 달라졌는지 | Node 18+ |
+| `search-api.mjs` | 네이버·다음 공식 검색 API 로 "암장 이름 + 휴관" 찾기 | Node 18+ + 키 |
+| `watch.mjs` | 저장한 글·오픈채팅 내보내기에서 변동 후보 찾기 | Node 18+ |
 
 설치: `npm i -g playwright axe-core && npx playwright install chromium`
 (`lib.mjs`는 네 도구가 같이 쓰는 서버·브라우저 설정이에요.)
@@ -127,3 +131,29 @@ node qa/watch.mjs --selftest              # 가짜 글로 도구 점검(네트�
 - **수집은 이 도구가 하지 않아요.** 페이지는 브라우저로 직접 저장하거나, 사이트의 `robots.txt`·약관을 확인하고 천천히(분당 한 번 정도) 받으세요.
   국내 사이트는 해외·데이터센터 IP 를 막는 일이 많아서 한국의 본인 컴퓨터에서 하는 게 안전해요.
 - 오픈채팅은 읽는 API 가 없고, 알림 읽기 앱·비공식 프로토콜은 카카오 약관 위반이라 쓰지 않아요. 내보내기 파일만 쓰세요.
+
+## 7. 켜졌을 때 한 번에 — `watch-run.mjs` (필요할 때만 켜는 컴퓨터용)
+
+```
+node qa/reach.mjs        # 맨 처음 한 번: 이 컴퓨터(한국 IP)에서 감시할 곳이 열리는지 시험
+node qa/watch-run.mjs    # 이후에는 이것만: 마지막으로 돈 지 12시간이 안 됐으면 건너뛰어요
+node qa/watch-run.mjs --force     # 시간과 상관없이 전부
+```
+
+시간에 맞춰 도는 게 아니라 **지난번에 본 것과 비교**해서 새것만 알려요. 그래서 며칠 꺼 둬도 놓치지 않아요.
+인터넷이 아직 안 붙은 상태에서 돌았으면(접속된 곳이 하나도 없으면) "했다"고 기록하지 않고 다음에 다시 시도해요.
+
+| 단계 | 하는 일 | 필요한 것 |
+| --- | --- | --- |
+| 1. 공지 확인 | 암장 공지 페이지 25곳(`notice_url`)을 읽어 지난번과 비교, 달라진 줄에 휴관·시간·공사 단어가 있으면 ⚠ | 없음. `robots.txt` 존중, 같은 서버 3초 간격, 막히면 포기. 카페·블로그·인스타는 건드리지 않고 "직접 확인" 목록으로 |
+| 2. 검색 API | 암장 이름 + 휴관/운영시간을 네이버·다음 블로그·카페에서 검색, 새 글만 | 환경 변수 `NAVER_CLIENT_ID` `NAVER_CLIENT_SECRET` `KAKAO_REST_API_KEY` (없으면 건너뜀) |
+| 3. 받은 글 | `qa/inbox/` 에 넣어 둔 디시인사이드 저장 페이지·오픈채팅 내보내기를 읽고 `inbox/done/` 으로 옮김 | 직접 저장한 파일 |
+
+결과는 `qa/.out/watch-summary.md` 한 장에 합쳐져요. **전부 후보일 뿐**이에요. 공지 원문·전화로 확인한 뒤 `data/national.json` 과 `checked_at` 을 고치세요.
+처음 한 번은 공지를 "저장만" 해요(비교할 지난번이 없어서). 두 번째 실행부터 달라진 곳이 나와요.
+
+**컴퓨터를 켤 때 자동으로 돌리려면** (선택, 설치는 직접):
+- Windows: 작업 스케줄러 → 작업 만들기 → 트리거 "로그온할 때"(지연 2분) → 동작 `node` / 인수 `qa\watch-run.mjs` / 시작 위치 = 이 폴더. (인터넷이 늦게 붙어도 실패로 처리돼서 다음에 다시 시도해요.)
+- macOS: 로그인 항목에 `node qa/watch-run.mjs` 를 실행하는 셸 스크립트를 추가하거나 `launchd` 의 `RunAtLoad`.
+- Linux: `~/.config/autostart/*.desktop` 또는 `systemctl --user` 서비스.
+수동으로 가끔 돌려도 같은 결과예요.

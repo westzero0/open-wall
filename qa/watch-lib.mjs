@@ -115,3 +115,21 @@ export function loadAliases(root, walls) {
   const extraFile = join(root, 'qa', 'watch-aliases.json');
   return buildAliases(walls, existsSync(extraFile) ? JSON.parse(readFileSync(extraFile, 'utf8')) : {});
 }
+
+export function renderCandidates(cands, walls) {
+  const wallBy = new Map(walls.map((w) => [w.name, w]));
+  const rows = cands.map((c) => {
+    const names = c.walls;
+    const w = wallBy.get(names[0]);
+    return { ...c, name: names.length === 1 ? names[0] : `${names[0]} 외 ${names.length - 1}곳(별칭 '${c.alias}' 이 여러 곳)`, region: w?.region ?? '', days: daysSince(w?.checked_at), checked: w?.checked_at ?? '없음', ambiguous: names.length > 1 };
+  }).sort((a, b) => CONF_RANK[a.conf] - CONF_RANK[b.conf] || (b.days ?? 9999) - (a.days ?? 9999));
+  const L = ['# 운영시간·휴관 변동 후보', '', `후보 ${rows.length}건 (확인 전에는 사실로 취급하지 마세요)`, ''];
+  for (const conf of ['high', 'medium', 'low']) {
+    const part = rows.filter((r) => r.conf === conf);
+    if (!part.length) continue;
+    L.push(`## ${{ high: '신뢰 높음(암장 이름이 그대로)', medium: '신뢰 보통(줄임말 + 암장 문맥)', low: '신뢰 낮음(지역명뿐 — 다른 곳일 수 있어요)' }[conf]} (${part.length})`, '');
+    for (const r of part) L.push(`- **${r.name}** ${r.region ? `· ${r.region} ` : ''}· 마지막 확인 ${r.checked}${r.days != null ? `(${r.days}일 전)` : ''}`, `  - ${r.kinds.join(' · ')}: “${r.snippet}”`, `  - 출처: ${r.source}${r.date ? ` · ${r.date}` : ''}`);
+    L.push('');
+  }
+  return { rows, text: L.join('\n') };
+}
