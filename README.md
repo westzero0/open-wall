@@ -7,6 +7,7 @@
 ## 데이터와 면책
 - 운영시간은 바뀔 수 있어요. 방문 전에 시설에 전화하거나 공지를 확인해 주세요. 각 외벽의 정보 확인일은 펼친 카드에 표시돼요.
 - `data/`의 운영시간·시설 정보·사진은 각 출처(외벽 공지, 운영자 안내, 직접 방문 기록, 공개 자료)의 조건을 따라요. 코드의 라이선스와는 별개예요.
+- 직접 확인·정리한 정보와 직접 찍은 사진은 출처(해벽, haebyeok.app)를 밝히면 비영리로 쓸 수 있고, 상업적 이용이나 같은 이름·로고로 서비스를 여는 건 허락이 필요해요. 조건 전문은 [`data/LICENSE`](data/LICENSE).
 - 지형: Copernicus DEM. 지도: © OpenStreetMap contributors.
 
 ## 틀린 정보 제보
@@ -23,4 +24,4 @@ npm test
 배포 절차는 `docs/system/deploy.md`(작업 저장소) 참고.
 
 ## 라이선스
-코드: MIT (`LICENSE`). 데이터: 위 안내 참고. Leaflet은 `vendor/leaflet/LICENSE`.
+코드: MIT (`LICENSE`). 데이터·사진: [`data/LICENSE`](data/LICENSE)(출처 표시 + 비영리, 외부 자료 제외). Leaflet은 `vendor/leaflet/LICENSE`.
