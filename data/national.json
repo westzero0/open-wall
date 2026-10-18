@@ -4795,12 +4795,13 @@
           "영등포다목적배드민턴체육관"
         ]
       },
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-18",
       "photo": "photos/yeongdeungpo.jpg",
       "contact": {
         "notice_url": "https://bmcm.y-sisul.or.kr/young/center/climbing.php",
         "phone": "02-2630-2991",
-        "naver_map": "https://naver.me/I5wTVs8k"
+        "naver_map": "https://naver.me/I5wTVs8k",
+        "instagram": "https://www.instagram.com/ydp_climb/"
       },
       "photo_credit": {
         "text": "직접 촬영"
@@ -4839,7 +4840,11 @@
             "weekend": "1부 10~14시 · 2부 15~19시"
           }
         }
-      ]
+      ],
+      "suspended": {
+        "since": "2026-10-18",
+        "note": "침수로 이용 불가 · 재개는 운영처 인스타 공지 확인"
+      }
     },
     {
       "name": "보라매공원 인공암벽등반장",
