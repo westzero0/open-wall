@@ -1,46 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 410" role="img" aria-labelledby="hb-title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 953.5 677.33" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK</title>
   <style>
     :root {
-      --primary-yellow: #FFD60A;
-      --primary-black: #111111;
-      --logo-text: #111111;
-      --logo-sub: #111111;
+      --primary-yellow: #F3B63F;
+      --primary-black: #2B2B2B;
+      --logo-text: #2B2B2B;
+      --logo-sub: #2B2B2B;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+      :root { --primary-black: #F2F2EE; --logo-text: #F2F2EE; --logo-sub: #F2F2EE; }
     }
-    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
-    .hb-wall   { fill: var(--primary-black, #111111); }
-    .hb-text   { fill: var(--logo-text, #111111); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-circle { fill: var(--primary-yellow, #F3B63F); }
+    .hb-wall   { fill: var(--primary-black, #2B2B2B); }
+    .hb-text   { fill: var(--logo-text, #2B2B2B); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
   </style>
   <defs>
-    <clipPath id="hb-cap"><rect x="-10" y="0" width="80" height="50"/></clipPath>
-    <clipPath id="hb-clip"><circle cx="256" cy="256" r="240"/></clipPath>
+    <clipPath id="hb-cap"><rect x="-10" y="-1" width="90" height="52"/></clipPath>
   </defs>
-
-  <!-- 심볼 -->
-  <g transform="translate(14 30) scale(0.68)">
-    <circle class="hb-circle" cx="256" cy="256" r="240"/>
-    <polygon class="hb-wall" clip-path="url(#hb-clip)" points="300,100 420,100 262,392 262,504 142,504 142,392"/>
+  <g transform="translate(311.75 24) scale(0.64)">
+    <circle class="hb-circle" cx="236" cy="200" r="184"/>
+    <polygon class="hb-wall" points="193,16 386,16 386,496 358,496"/>
   </g>
-
-  <!-- 한글 '해벽' — 외벽 오버행 각도(≈28°)로 컷팅한 커스텀 벡터 타입 -->
-  <g class="hb-text" transform="translate(400 30)">
-    <path d="M99 -4.28L99 35.72L61 56.28L61 16.28ZM1.72 65L137.72 65L158.28 103L22.28 103ZM20 180a60 60 0 1 0 120 0a60 60 0 1 0 -120 0ZM51.16 180a28.840000000000003 28.840000000000003 0 1 1 57.68000000000001 0a28.840000000000003 28.840000000000003 0 1 1 -57.68000000000001 0ZM225 -4.28L225 265.72L187 286.28L187 16.28ZM206 109L241.72 109L262.28 147L206 147ZM309 -4.28L309 265.72L271 286.28L271 16.28Z"/>
-    <path d="M53 -4.28L53 170L15 170L15 16.28ZM153 -4.28L153 170L115 170L115 16.28ZM34 65L134 65L134 103L34 103ZM34 133L134 133L134 171L34 171ZM283 -4.28L283 159.72L245 180.28L245 16.28ZM189.72 39L264 39L264 77L210.28 77ZM189.72 99L264 99L264 137L210.28 137ZM65.72 205L249 205L249 243L86.28 243ZM249 205L249 265.72L211 286.28L211 205Z" transform="translate(334 0)"/>
+  <g class="hb-text" transform="translate(275.79 387.69) scale(0.64)">
+    <path d="M100 4L100 41.13L60 54.88L60 4ZM10 64L150 64L150 104L10 104ZM20 180a60 60 0 1 0 120 0a60 60 0 1 0 -120 0ZM52 180a28 28 0 1 1 56 0a28 28 0 1 1 -56 0ZM226 6L226 269.13L186 282.88L186 6ZM206 108L254 108L254 148L206 148ZM310 6L310 269.13L270 282.88L270 6Z"/>
+    <path d="M54 6L54 172L14 172L14 6ZM154 6L154 172L114 172L114 6ZM34 64L134 64L134 104L34 104ZM34 132L134 132L134 172L34 172ZM284 6L284 163.13L244 176.88L244 6ZM193.13 38L264 38L264 78L206.88 78ZM193.13 98L264 98L264 138L206.88 138ZM76 204L250 204L250 244L76 244ZM250 204L250 269.13L210 282.88L210 204Z" transform="translate(334 0)"/>
   </g>
-
-  <!-- 영문 HAEBYEOK — 모노라인 산세리프 아웃라인 -->
-  <g class="hb-sub">
-    <g transform="translate(412 344)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g>
-    <g transform="translate(494.29 344)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g>
-    <g transform="translate(578.57 344)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
-    <g transform="translate(650.86 344)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
-    <g transform="translate(726.14 344)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
-    <g transform="translate(808.43 344)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
-    <g transform="translate(880.71 344)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
-    <g transform="translate(963 344)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g>
+  <g class="hb-sub" transform="translate(40 612.33)">
+    <g transform="translate(0 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g>
+    <g transform="translate(36 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g>
+    <g transform="translate(73 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
+    <g transform="translate(104 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
+    <g transform="translate(136.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
+    <g transform="translate(172.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g>
+    <g transform="translate(203.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
+    <g transform="translate(239.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g>
+    <rect class="hb-circle" x="303.5" y="-3" width="4.5" height="31" style="stroke:none"/>
+    <g transform="translate(325 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g>
+    <g transform="translate(359 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 45H44"/></g>
+    <g transform="translate(389 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
+    <g transform="translate(402 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
+    <g transform="translate(443 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g>
+    <g transform="translate(475.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
+    <g transform="translate(488.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g>
+    <g transform="translate(524.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30"/></g>
+    <g transform="translate(572.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g>
+    <g transform="translate(606.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g>
+    <g transform="translate(642.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
+    <g transform="translate(683.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g>
+    <g transform="translate(724.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0"/></g>
+    <g transform="translate(760.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g>
+    <g transform="translate(796.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g>
+    <g transform="translate(809.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M0 5H56M28 5V50"/></g>
+    <g transform="translate(845.5 0) scale(0.5)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g>
   </g>
 </svg>

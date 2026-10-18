@@ -1,172 +1,214 @@
 #!/usr/bin/env node
 /**
- * build-logo.js — symbol.svg / full-logo.svg 소스 생성기 (선택 사항)
+ * build-logo.js — symbol.svg / full-logo.svg / full-logo-horizontal.svg 소스 생성기 (선택 사항)
  *
- * 글자 획을 "외벽 오버행 각도"로 컷팅한 다각형(outline)으로 만들어
- * 폰트 의존성이 없는 벡터 로고를 출력한다.
+ * 기존 정체성(해 + 인공외벽 사이드뷰)을 유지한 채 정리한 버전:
+ *   - 심볼: 노란 원(해) 앞에 수직 우측면 + 비스듬한 좌측면의 검은 쐐기(오버행 벽 단면)
+ *   - 한글 '해벽': 굵은 고딕 + 세로획 끝을 벽 좌측면 각도로 컷팅한 다각형 outline
+ *   - 영문 HAEBYEOK | CLIMBING COMMUNITY: 모노라인 산세리프 path (폰트 불필요)
  *   node brand/scripts/build-logo.js
- * 일반 사용자는 이미 생성된 symbol.svg / full-logo.svg 를 그대로 쓰면 된다.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-
 const OUT = path.join(__dirname, '..');
 const f = (n) => +n.toFixed(2);
 
-/* ───────── 심볼: 512×512, 노란 원 + 검은 오버행 단면 ───────── */
-// 벽 단면(패널 두께 일정): 아래는 수직 슬랩, 중간에서 꺾여 위로 갈수록 앞으로 튀어나오는 오버행
-const WALL = [
-  [300, 100],  // 패널 뒷면 상단 (벽면과 평행)
-  [420, 100],  // 오버행 최상단 (벽면이 가장 앞으로 나온 점)
-  [262, 392],  // 꺾임점 (슬랩 → 오버행)
-  [262, 504],  // 바닥
-  [142, 504],
-  [142, 392],  // 뒷면 꺾임점
-];
-// 오버행 각도(수직 기준) — 글자 컷팅에 동일 각도를 사용한다
-const ANGLE = Math.atan2(WALL[1][0] - WALL[2][0], WALL[2][1] - WALL[1][1]); // ≈ 28°
+/* ───────── 심볼 (512×512) ─────────
+ * 쐐기 높이 480, 윗변 193. 우측면은 수직, 좌측면은 아래로 갈수록 오른쪽으로 기운다(오버행).
+ * 원의 중심은 쐐기 좌측면 위에 놓여 오른쪽 절반이 벽 뒤로 숨는다. */
+const WEDGE = [[193, 16], [386, 16], [386, 496], [358, 496]];
+const CIRCLE = { cx: 236, cy: 200, r: 184 };
+const ANGLE = Math.atan2(WEDGE[3][0] - WEDGE[0][0], WEDGE[3][1] - WEDGE[0][1]); // 좌측면 기울기(수직 기준) ≈ 19°
 
 const STYLE = `
     :root {
-      --primary-yellow: #FFD60A;
-      --primary-black: #111111;
-      --logo-text: #111111;
-      --logo-sub: #111111;
+      --primary-yellow: #F3B63F;
+      --primary-black: #2B2B2B;
+      --logo-text: #2B2B2B;
+      --logo-sub: #2B2B2B;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+      :root { --primary-black: #F2F2EE; --logo-text: #F2F2EE; --logo-sub: #F2F2EE; }
     }
-    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
-    .hb-wall   { fill: var(--primary-black, #111111); }
-    .hb-text   { fill: var(--logo-text, #111111); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }`;
+    .hb-circle { fill: var(--primary-yellow, #F3B63F); }
+    .hb-wall   { fill: var(--primary-black, #2B2B2B); }
+    .hb-text   { fill: var(--logo-text, #2B2B2B); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }`;
 
-const symbolInner = (id) => `<clipPath id="${id}"><circle cx="256" cy="256" r="240"/></clipPath>
-    <circle class="hb-circle" cx="256" cy="256" r="240"/>
-    <polygon class="hb-wall" clip-path="url(#${id})" points="${WALL.map((p) => p.join(',')).join(' ')}"/>`;
+const symbolShapes = `<circle class="hb-circle" cx="${CIRCLE.cx}" cy="${CIRCLE.cy}" r="${CIRCLE.r}"/>
+    <polygon class="hb-wall" points="${WEDGE.map((p) => p.join(',')).join(' ')}"/>`;
 
 const symbolSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK 심볼</title>
   <style>${STYLE}
   </style>
-  ${symbolInner('hb-clip')}
+  ${symbolShapes}
 </svg>
 `;
 
-/* ───────── 한글 획: 끝단을 오버행 각도로 컷팅한 다각형 ───────── */
+/* ───────── 한글 획 ───────── */
 const SIN = Math.sin(ANGLE), COS = Math.cos(ANGLE);
-// 컷 방향(단위벡터): 'v' = 벽면 기울기와 평행(가로획 끝에 사용), 'h' = 그에 수직(세로획 끝에 사용)
-const CUT = { v: [SIN, -COS], h: [COS, SIN] };
+// 컷선 방향: 'v' = 벽 좌측면과 평행("\"), 'h' = 그에 수직("/", 수평 기준 ≈19°)
+const CUT = { v: [SIN, COS], h: [COS, -SIN] };
 
-/** 두께 w의 선분 획. cutA/cutB: null(직각) | 'v' | 'h' */
+/** 두께 w 선분 획. cutA/cutB: null(직각) | 'v' | 'h' */
 function stroke(x1, y1, x2, y2, w, cutA, cutB) {
   const L = Math.hypot(x2 - x1, y2 - y1);
   const t = [(x2 - x1) / L, (y2 - y1) / L];
   const n = [-t[1], t[0]];
   const hw = w / 2;
-  const shift = (cut, dir) => {            // 가장자리 k(±1)에서 컷선까지 획 방향 이동량
+  const shifts = (cut) => {                  // [k=-1 가장자리, k=+1 가장자리]의 획 방향 이동량
     if (!cut) return [0, 0];
     const c = CUT[cut];
-    const ct = c[0] * t[0] + c[1] * t[1] * 1;
+    const ct = c[0] * t[0] + c[1] * t[1];
     const cn = c[0] * n[0] + c[1] * n[1];
-    return [-1, 1].map((k) => dir * k * hw * (ct / cn) * -1);
+    return [-1, 1].map((k) => (k * hw * ct) / cn);
   };
-  const sA = shift(cutA, 1), sB = shift(cutB, 1);
-  // 시작점 양쪽 가장자리 (k=-1, +1)
-  const pts = [
-    [x1 - n[0] * hw + t[0] * sA[0], y1 - n[1] * hw + t[1] * sA[0]],
-    [x2 - n[0] * hw + t[0] * sB[0], y2 - n[1] * hw + t[1] * sB[0]],
-    [x2 + n[0] * hw + t[0] * sB[1], y2 + n[1] * hw + t[1] * sB[1]],
-    [x1 + n[0] * hw + t[0] * sA[1], y1 + n[1] * hw + t[1] * sA[1]],
-  ];
+  const a = shifts(cutA), b = shifts(cutB);
+  const P = (x, y, k, s) => [x + k * n[0] * hw + t[0] * s, y + k * n[1] * hw + t[1] * s];
+  const pts = [P(x1, y1, -1, a[0]), P(x2, y2, -1, b[0]), P(x2, y2, 1, b[1]), P(x1, y1, 1, a[1])];
   return `M${pts.map((p) => f(p[0]) + ' ' + f(p[1])).join('L')}Z`;
 }
-
-const W = 38; // 획 두께
+const W = 40;
 const ring = (cx, cy, R, r) =>
   `M${cx - R} ${cy}a${R} ${R} 0 1 0 ${2 * R} 0a${R} ${R} 0 1 0 ${-2 * R} 0ZM${cx - r} ${cy}a${r} ${r} 0 1 1 ${2 * r} 0a${r} ${r} 0 1 1 ${-2 * r} 0Z`;
 
-// 해 = ㅎ + ㅐ
+// 해 = ㅎ + ㅐ  (글자 박스 ≈ 310×276)
 const hae = [
-  stroke(80, 6, 80, 46, W, 'h', 'h'),               // ㅎ 꼭지
-  stroke(12, 84, 148, 84, W, 'v', 'v'),             // ㅎ 가로획
-  ring(80, 180, 60, 60 - W * 0.82),                  // ㅎ 원 (심볼의 원 모티브)
-  stroke(206, 6, 206, 276, W, 'h', 'h'),            // ㅐ 왼쪽 세로
-  stroke(206, 128, 252, 128, W, null, 'v'),         // ㅐ 가지
-  stroke(290, 6, 290, 276, W, 'h', 'h'),            // ㅐ 오른쪽 세로
+  stroke(80, 4, 80, 48, W, null, 'h'),
+  stroke(10, 84, 150, 84, W, null, null),
+  ring(80, 180, 60, 60 - W * 0.8),
+  stroke(206, 6, 206, 276, W, null, 'h'),
+  stroke(206, 128, 254, 128, W, null, null),
+  stroke(290, 6, 290, 276, W, null, 'h'),
 ];
 // 벽 = ㅂ + ㅕ + ㄱ
 const byeok = [
-  stroke(34, 6, 34, 170, W, 'h', null),             // ㅂ 왼쪽 세로
-  stroke(134, 6, 134, 170, W, 'h', null),           // ㅂ 오른쪽 세로
-  stroke(34, 84, 134, 84, W, null, null),           // ㅂ 가운데 가로
-  stroke(34, 152, 134, 152, W, null, null),         // ㅂ 아래 가로
-  stroke(264, 6, 264, 170, W, 'h', 'h'),            // ㅕ 세로
-  stroke(200, 58, 264, 58, W, 'v', null),           // ㅕ 윗가지
-  stroke(200, 118, 264, 118, W, 'v', null),         // ㅕ 아랫가지
-  stroke(76, 224, 249, 224, W, 'v', null),          // ㄱ 가로
-  stroke(230, 224 - W / 2, 230, 276, W, null, 'h'), // ㄱ 세로
+  stroke(34, 6, 34, 172, W, null, null),
+  stroke(134, 6, 134, 172, W, null, null),
+  stroke(34, 84, 134, 84, W, null, null),
+  stroke(34, 152, 134, 152, W, null, null),
+  stroke(264, 6, 264, 170, W, null, 'h'),
+  stroke(200, 58, 264, 58, W, 'v', null),
+  stroke(200, 118, 264, 118, W, 'v', null),
+  stroke(76, 224, 250, 224, W, null, null),
+  stroke(230, 224 - W / 2, 230, 276, W, null, 'h'),
 ];
-const GLYPH_W = 310;
+const GLYPH_GAP = 334;            // 두 번째 글자 x 오프셋
+const INK_L = 10, INK_W = 608;    // 한글 잉크 영역(원점 기준)
+const HANGUL_H = 276;
+const hangulGroup = (tx, ty, s) => `<g class="hb-text" transform="translate(${f(tx)} ${f(ty)}) scale(${s})">
+    <path d="${hae.join('')}"/>
+    <path d="${byeok.join('')}" transform="translate(${GLYPH_GAP} 0)"/>
+  </g>`;
 
-/* ───────── 영문 HAEBYEOK: 모노라인 기하 산세리프 (50 높이, 획 10) ───────── */
+/* ───────── 영문 모노라인 글자 (높이 50, 획 10) ───────── */
 const CAP_H = 50;
-const LETTERS = [
-  ['H', 56, 'M5 0V50M51 0V50M5 25H51'],
-  ['A', 58, 'M3 54L29 4L55 54M14 36H44'],
-  ['E', 46, 'M5 0V50M5 5H46M5 25H40M5 45H46'],
-  ['B', 49, 'M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5'],
-  ['Y', 56, 'M2 -4L28 26L54 -4M28 26V50'],
-  ['E', 46, 'M5 0V50M5 5H46M5 25H40M5 45H46'],
-  ['O', 56, 'M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z'],
-  ['K', 54, 'M5 0V50M50 -2L11 28M24 20L52 52'],
-];
-
-/* ───────── 풀 로고 조립 ───────── */
-const VB_W = 1060, VB_H = 410;
-const SYM = 350, SYM_X = 14, SYM_Y = 30;
-const TX = 400, TY = 30;               // 한글 시작
-const INK_L = 12, textW = 605;         // 한글 잉크 좌측 / 총 폭
-const EN_Y = TY + 276 + 38;            // 영문 윗선
-
-const sumW = LETTERS.reduce((s, l) => s + l[1], 0);
-const gap = (textW - sumW) / (LETTERS.length - 1);
-const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${VB_H}" role="img" aria-labelledby="hb-title">
+const GLYPHS = {
+  H: [56, 'M5 0V50M51 0V50M5 25H51'],
+  A: [58, 'M3 54L29 4L55 54M14 36H44'],
+  E: [46, 'M5 0V50M5 5H46M5 25H40M5 45H46'],
+  B: [49, 'M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5'],
+  Y: [56, 'M2 -4L28 26L54 -4M28 26V50'],
+  O: [56, 'M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z'],
+  K: [54, 'M5 0V50M50 -2L11 28M24 20L52 52'],
+  C: [52, 'M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35'],
+  L: [44, 'M5 0V50M5 45H44'],
+  I: [10, 'M5 0V50'],
+  M: [66, 'M5 50V0M61 50V0M5 5L33 36L61 5'],
+  N: [56, 'M5 50V0M51 50V0M5 5L51 45'],
+  G: [56, 'M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30'],
+  U: [56, 'M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0'],
+  T: [56, 'M0 5H56M28 5V50'],
+};
+/** 단어 목록을 한 줄로 배치. 반환: {markup, width} (원점 좌상단, 스케일 k, 글자간격 g(기본 단위)) */
+function line(items, k, g, wordGap, divGap) {
+  let x = 0, out = [];
+  const clip = 'url(#hb-cap)';
+  for (const it of items) {
+    if (it === '|') {
+      x += divGap * k;
+      out.push(`<rect class="hb-circle" x="${f(x)}" y="${f(-6 * k)}" width="${f(9 * k)}" height="${f((CAP_H + 12) * k)}" style="stroke:none"/>`);
+      x += 9 * k + divGap * k;
+      continue;
+    }
+    [...it].forEach((ch, i) => {
+      const [w, d] = GLYPHS[ch];
+      out.push(`<g transform="translate(${f(x)} 0) scale(${k})" clip-path="${clip}"><path d="${d}"/></g>`);
+      x += w * k + (i < it.length - 1 ? g * k : 0);
+    });
+    x += wordGap * k;
+  }
+  return { markup: out.join('\n    '), width: x - wordGap * k };
+}
+const defs = `<defs>
+    <clipPath id="hb-cap"><rect x="-10" y="-1" width="90" height="${CAP_H + 2}"/></clipPath>
+  </defs>`;
+const svgOpen = (w, h) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(w)} ${f(h)}" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK</title>
   <style>${STYLE}
-  </style>
-  <defs>
-    <clipPath id="hb-cap"><rect x="-10" y="0" width="80" height="${CAP_H}"/></clipPath>
-    <clipPath id="hb-clip"><circle cx="256" cy="256" r="240"/></clipPath>
-  </defs>
+  </style>`;
+const symbolAt = (x, y, size) => `<g transform="translate(${f(x)} ${f(y)}) scale(${f(size / 512)})">
+    ${symbolShapes}
+  </g>`;
 
-  <!-- 심볼 -->
-  <g transform="translate(${SYM_X} ${SYM_Y}) scale(${f(SYM / 512)})">
-    <circle class="hb-circle" cx="256" cy="256" r="240"/>
-    <polygon class="hb-wall" clip-path="url(#hb-clip)" points="${WALL.map((p) => p.join(',')).join(' ')}"/>
-  </g>
-
-  <!-- 한글 '해벽' — 외벽 오버행 각도(≈${Math.round((ANGLE * 180) / Math.PI)}°)로 컷팅한 커스텀 벡터 타입 -->
-  <g class="hb-text" transform="translate(${TX} ${TY})">
-    <path d="${hae.join('')}"/>
-    <path d="${byeok.join('')}" transform="translate(${GLYPH_W + 24} 0)"/>
-  </g>
-
-  <!-- 영문 HAEBYEOK — 모노라인 산세리프 아웃라인 -->
-  <g class="hb-sub" clip-path="none">
-    ${LETTERS.map((_, i) => '').join('')}
+/* ───────── 세로 풀 로고: 심볼 / 해벽 / HAEBYEOK | CLIMBING COMMUNITY ───────── */
+{
+  const K = 0.5, G = 16;
+  const sub = line(['HAEBYEOK', '|', 'CLIMBING', 'COMMUNITY'], K, G, 40, 34);
+  const subH = CAP_H * K;
+  const PAD = 40;
+  const W_ = Math.max(sub.width, 420) + PAD * 2;
+  const SYM = 330;                       // 심볼 박스 (내용 높이 ≈ 0.94×)
+  const symTop = 24;
+  const hs = 0.64;                       // 한글 스케일
+  const hangulY = symTop + SYM * (496 / 512) + 44;
+  const hangulW = INK_W * hs;
+  const subY = hangulY + HANGUL_H * hs + 48;
+  const H_ = subY + subH + PAD;
+  const svg = `${svgOpen(W_, H_)}
+  ${defs}
+  ${symbolAt((W_ - SYM) / 2, symTop, SYM)}
+  ${hangulGroup((W_ - hangulW) / 2 - INK_L * hs, hangulY, hs)}
+  <g class="hb-sub" transform="translate(${f((W_ - sub.width) / 2)} ${f(subY)})">
+    ${sub.markup}
   </g>
 </svg>
 `;
+  fs.writeFileSync(path.join(OUT, 'full-logo.svg'), svg);
+}
 
-// 영문 글자는 각각 clip 이 필요하므로 그룹으로 감싼다
-const enGroup = LETTERS.map(([, , d], i) => {
-  const off = LETTERS.slice(0, i).reduce((s, l) => s + l[1] + gap, 0);
-  return `<g transform="translate(${f(TX + INK_L + off)} ${EN_Y})" clip-path="url(#hb-cap)"><path d="${d}"/></g>`;
-}).join('\n    ');
-const finalFull = fullSvg.replace(/<g class="hb-sub"[\s\S]*?<\/g>\n/, `<g class="hb-sub">\n    ${enGroup}\n  </g>\n`);
+/* ───────── 가로 락업: 심볼 | 해벽 + HAEBYEOK ───────── */
+{
+  const SYM = 300, hs = 0.8;
+  const tx = SYM + 10, ty = 22;
+  const hw = INK_W * hs;
+  const k = 0.5;
+  // HAEBYEOK 를 한글 폭에 맞춰 양끝 정렬
+  const word = [...'HAEBYEOK'];
+  const sumW = word.reduce((s, c) => s + GLYPHS[c][0] * k, 0);
+  const gap = (hw - sumW) / (word.length - 1);
+  let x = 0;
+  const marks = word.map((c) => {
+    const [w, d] = GLYPHS[c];
+    const g = `<g transform="translate(${f(x)} 0) scale(${k})" clip-path="url(#hb-cap)"><path d="${d}"/></g>`;
+    x += w * k + gap;
+    return g;
+  }).join('\n    ');
+  const subY = ty + HANGUL_H * hs + 28;
+  const W_ = tx + hw + 20, H_ = Math.max(SYM, subY + CAP_H * k) + 10;
+  const svg = `${svgOpen(W_, H_)}
+  ${defs}
+  ${symbolAt(0, 0, SYM)}
+  ${hangulGroup(tx - INK_L * hs, ty, hs)}
+  <g class="hb-sub" transform="translate(${f(tx)} ${f(subY)})">
+    ${marks}
+  </g>
+</svg>
+`;
+  fs.writeFileSync(path.join(OUT, 'full-logo-horizontal.svg'), svg);
+}
 
 fs.writeFileSync(path.join(OUT, 'symbol.svg'), symbolSvg);
-fs.writeFileSync(path.join(OUT, 'full-logo.svg'), finalFull);
-console.log('✔ symbol.svg, full-logo.svg 생성 (오버행 각도 %s°)', (ANGLE * 180 / Math.PI).toFixed(1));
+console.log('✔ symbol.svg, full-logo.svg, full-logo-horizontal.svg 생성 (벽 좌측면 각도 %s°)', (ANGLE * 180 / Math.PI).toFixed(1));

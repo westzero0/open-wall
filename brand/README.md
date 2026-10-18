@@ -1,7 +1,7 @@
 # 해벽(HAEBYEOK) 브랜드 자산 & 자동 생성 에이전트
 
-노란 원 위에 놓인 검은 **인공외벽 오버행 단면**이 심볼이고, 글자 획의 끝단은 같은 **오버행 각도(≈28°)** 로 컷팅했어요.
-`symbol.svg` / `full-logo.svg` 두 파일이 단일 원본이며, 나머지 자산(파비콘·OG·토큰)은 모두 이 원본에서 자동 생성돼요.
+기존 정체성(**해 + 인공외벽 사이드뷰**)을 그대로 두고 정리한 버전이에요. 노란 원(해) 앞에 검은 쐐기(오버행 벽 단면)가 겹쳐 있고, 글자 획 끝은 같은 벽 각도로 컷팅했어요.
+`symbol.svg` / `full-logo.svg` / `full-logo-horizontal.svg` 가 원본이며, 나머지 자산(파비콘·OG·토큰)은 모두 이 원본에서 자동 생성돼요.
 
 > 기존 사이트의 `assets/` 는 건드리지 않아요. 모든 산출물은 `brand/dist/` 에 만들어지고, 적용은 아래 가이드대로 직접 복사해서 하면 돼요.
 
@@ -10,7 +10,8 @@
 | 파일 | 설명 |
 |---|---|
 | `symbol.svg` | 심볼 단독 (512×512). 노란 원 + 검은 오버행 벽 |
-| `full-logo.svg` | 심볼 + 커스텀 '해벽' + 영문 `HAEBYEOK` 락업 |
+| `full-logo.svg` | 세로 락업: 심볼 / 해벽 / `HAEBYEOK │ CLIMBING COMMUNITY` |
+| `full-logo-horizontal.svg` | 가로 락업: 심볼 + 해벽 + `HAEBYEOK` (헤더·OG용) |
 | `generate-assets.js` | 자산 생성 에이전트 (Node.js) |
 | `brand.config.json` | 색·폰트·OG 기본 문구 (여기만 고치면 전체가 바뀜) |
 | `og-template.html` | OG 이미지 HTML/CSS 템플릿 (1200×630) |
@@ -18,9 +19,9 @@
 | `dist/` | 생성 결과물 |
 
 ### 로고 설계
-- **심볼**: 완벽한 단일 노란 원(`#FFD60A`) 위에, 질감 없이 단색 검정 다각형 하나로 벽 단면을 표현. 아래는 수직 슬랩, 위로 갈수록 앞으로 튀어나오는 오버행.
-- **한글 '해벽'**: 기본 고딕 대신 직선 획을 다각형(outline)으로 직접 설계. 가로획 끝은 벽면 기울기와 평행하게, 세로획 끝은 그에 수직으로 비스듬히 잘라 심볼과 같은 각도 언어를 써요. 'ㅎ'의 ㅇ은 심볼의 원을 반복.
-- **영문 HAEBYEOK**: 모노라인 기하 산세리프를 path로 그려 폰트 없이도 동일하게 보이고, 넓은 자간으로 한글 폭에 맞춰 정렬.
+- **심볼**: 노란 원(`#F3B63F`) + 차콜(`#2B2B2B`) 쐐기 하나. 쐐기는 우측면이 수직, 좌측면이 아래로 갈수록 기울어(≈19°) 오버행 벽을 단순화했고, 원의 중심이 좌측면 위에 놓여 해의 오른쪽이 벽 뒤로 숨어요.
+- **한글 '해벽'**: 굵은 고딕 골격을 다각형(outline)으로 직접 설계. 세로획 끝(ㅐ·ㅕ·ㄱ)은 벽 좌측면과 같은 각도로 비스듬히 컷팅하고, 'ㅕ' 가지 끝은 평행하게 깎았어요. 'ㅎ'의 ㅇ은 해(원)를 반복.
+- **영문**: 모노라인 기하 산세리프 path. 세로 락업은 노란 구분선(`│`)으로 이름과 `CLIMBING COMMUNITY`를 나눠요.
 - 글자가 모두 벡터 outline이라 **폰트 설치가 필요 없어요**.
 
 ### CSS 변수 (다크모드/테마)
@@ -28,10 +29,10 @@
 
 | 변수 | 기본(라이트) | 다크 | 용도 |
 |---|---|---|---|
-| `--primary-yellow` | `#FFD60A` | 동일 | 원 |
-| `--primary-black` | `#111111` | 동일 | 벽 |
-| `--logo-text` | `#111111` | `#F5F5F2` | 한글 '해벽' |
-| `--logo-sub` | `#111111` | `#F5F5F2` | 영문 HAEBYEOK |
+| `--primary-yellow` | `#F3B63F` | 동일 | 해(원) |
+| `--primary-black` | `#2B2B2B` | `#F2F2EE` | 벽(쐐기) |
+| `--logo-text` | `#2B2B2B` | `#F2F2EE` | 한글 '해벽' |
+| `--logo-sub` | `#2B2B2B` | `#F2F2EE` | 영문 |
 
 - `<img src>` 로 쓰면 OS 다크모드(`prefers-color-scheme`)를 따라가요.
 - HTML에 **인라인**으로 넣으면 페이지의 CSS 변수로 덮어쓸 수 있어요. 예) `[data-theme="dark"] { --logo-text: #fff; }`
@@ -93,7 +94,7 @@ Tailwind v4 는 CSS에서 `@config "./brand/dist/tokens/tailwind.config.js";` �
 `brand-tokens.json` 은 Style Dictionary·Figma Tokens 등 다른 도구용 원본이에요.
 
 ### 로고 사용 규칙
-- 최소 크기: 심볼 16px, 풀 로고 높이 96px 이상(가로 약 250px).
-- 여백: 심볼 지름의 1/4 이상 비우기.
+- 최소 크기: 심볼 16px, 가로 락업 높이 96px 이상.
+- 여백: 해(원) 지름의 1/4 이상 비우기.
 - 노란색/검정을 바꾸려면 `brand.config.json` 의 `colors` 만 수정 후 재생성 (SVG 원본의 fallback 색은 `scripts/build-logo.js` 의 `STYLE`).
-- 심볼의 각도나 글자 획을 바꾸려면 `scripts/build-logo.js` 를 수정하고 `npm run build:logo` → `npm run assets`.
+- 벽 각도(`WEDGE`)·획 굵기(`W`)·컷 방향(`stroke()` 의 `'v'/'h'`)을 바꾸려면 `scripts/build-logo.js` 를 수정하고 `npm run build:logo` → `npm run assets`.

@@ -2,20 +2,19 @@
   <title id="hb-title">해벽 HAEBYEOK 심볼</title>
   <style>
     :root {
-      --primary-yellow: #FFD60A;
-      --primary-black: #111111;
-      --logo-text: #111111;
-      --logo-sub: #111111;
+      --primary-yellow: #F3B63F;
+      --primary-black: #2B2B2B;
+      --logo-text: #2B2B2B;
+      --logo-sub: #2B2B2B;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --logo-text: #F5F5F2; --logo-sub: #F5F5F2; }
+      :root { --primary-black: #F2F2EE; --logo-text: #F2F2EE; --logo-sub: #F2F2EE; }
     }
-    .hb-circle { fill: var(--primary-yellow, #FFD60A); }
-    .hb-wall   { fill: var(--primary-black, #111111); }
-    .hb-text   { fill: var(--logo-text, #111111); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #111111); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-circle { fill: var(--primary-yellow, #F3B63F); }
+    .hb-wall   { fill: var(--primary-black, #2B2B2B); }
+    .hb-text   { fill: var(--logo-text, #2B2B2B); }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
   </style>
-  <clipPath id="hb-clip"><circle cx="256" cy="256" r="240"/></clipPath>
-    <circle class="hb-circle" cx="256" cy="256" r="240"/>
-    <polygon class="hb-wall" clip-path="url(#hb-clip)" points="300,100 420,100 262,392 262,504 142,504 142,392"/>
+  <circle class="hb-circle" cx="236" cy="200" r="184"/>
+    <polygon class="hb-wall" points="193,16 386,16 386,496 358,496"/>
 </svg>

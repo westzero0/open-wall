@@ -5,8 +5,8 @@
   "lang": "ko",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#F4F2EC",
-  "theme_color": "#FFD60A",
+  "background_color": "#F4F4F0",
+  "theme_color": "#F3B63F",
   "icons": [
     {
       "src": "android-chrome-192x192.png",
