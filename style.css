@@ -781,8 +781,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 
 /* ---- '더 보기' pictures: hours grid, seasonal sun ----
    Hatching only ever means "not usable" (휴게, 휴무, 동절기 휴장). */
-.hgrid { --lab: 3.6rem; }
-.ssun { --lab: 0px; } /* rows carry their own text line, so the bars take the full width */
+.hgrid, .ssun { --lab: 3.6rem; } /* one label column for both, so the two time axes are the same width */
 .fees table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .fees th, .fees td { padding: var(--sp-6) var(--sp-6); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
@@ -853,8 +852,10 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-key i.k-now { width: 2px; height: 14px; background: var(--now); }
 .k-open { border: 1px solid var(--open); background: color-mix(in srgb, var(--open-past) 50%, transparent); }
 .g-notes { list-style: none; margin: var(--sp-6) 0 0; padding: 0; font-size: var(--fs-xs); color: var(--muted); }
-/* seasonal sun: "여름 6/21 · 12:40–19:40" line over a full-width track, so the track keeps its width at large text sizes */
-.s-row { padding: var(--sp-4) 0 var(--sp-2); border-top: 1px solid var(--hair); }
+/* seasonal sun: the season on the left (like a weekday in the hours grid), "6/21 · 예상 12:40–19:40" over the track on the right */
+.s-row { display: flex; align-items: center; padding: var(--sp-4) 0 var(--sp-2); border-top: 1px solid var(--hair); }
+.s-main { flex: 1; min-width: 0; }
+.ws-legend { margin: var(--sp-6) 0 var(--sp-10); }
 .s-head { font-size: var(--fs-sm); line-height: 1.35; }
 .s-row .g-trk { height: 30px; }
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
@@ -1677,6 +1678,7 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-sec-h h3 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
 .ws-sec-h .ws-fix { min-height: var(--tap); padding: 0 var(--sp-4); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 .ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-10); color: var(--muted); font-size: var(--fs-xs); }
+.ws-chk.end { margin: var(--sp-10) 0 0; text-align: right; } /* a section's check date: bottom right of its card */
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }

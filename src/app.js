@@ -499,7 +499,6 @@ function hoursGrid(wall, at) {
     ...wk.rows.filter((r) => r.nth).map((r) => `${r.nth.map((n) => NTH_KO[n]).join('·')} ${r.days}요일 휴무`),
     wall.holiday === 'weekend' ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
   ].filter(Boolean);
-  const hatched = wk.rows.some((r) => r.closed || r.breaks.length);
   const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
 
   // The time line is the picked moment: dragging the axis or the bars moves it (touch-action: pan-y keeps the sheet's
@@ -549,7 +548,6 @@ function hoursGrid(wall, at) {
   // one legend only: the hatch is explained here; the sun colours are explained once, under 계절별 양달 (same colours)
   sec.append(...[segRow, susp, verdict, susp ? null : lead, ...zone,
     live ? el('p', { class: 'g-drag-hint' }, '눈금을 좌우로 끌어 시각을 바꿔요') : null, ...(live ? [body] : []),
-    hatched ? el('ul', { class: 'g-key' }, el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)')) : null,
     notes.length ? el('ul', { class: 'g-notes' }, ...notes.map((n) => el('li', {}, n))) : null].filter(Boolean));
   return sec;
 }
@@ -576,16 +574,25 @@ function seasonSunBlock(wall, at, d) {
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
       const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
+      // the same two columns as the hours grid (name on the left, bar on the right), so both axes are as wide
       return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null },
-        el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · 예상 ${sunText}${hint}`),
-        trk);
+        el('span', { class: 'g-lab' }, el('b', {}, s.name), s.current ? el('small', {}, '지금') : null),
+        el('div', { class: 's-main' }, el('p', { class: 's-head' }, `${s.date} · 예상 ${sunText}${hint}`), trk));
     }),
     fold ? more : null,
-    el('ul', { class: 'g-key' },
-      el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
-      el('li', {}, el('i', { class: 'k-sunall' }), '양달'),
-      el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')),
     sunWhy()); // the long caveat is folded under 계산 기준
+}
+
+// The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
+// The hatch is named only when this wall has a break or a closed day to show.
+function timeLegend(blocks) {
+  const sun = Boolean(blocks.sun || blocks.hours?.querySelector('.g-sun'));
+  const hatch = Boolean(blocks.hours?.querySelector('.g-brk, .g-off'));
+  return el('ul', { class: 'g-key ws-legend' },
+    el('li', {}, el('i', { class: 'k-bar' }), '운영'),
+    sun ? el('li', {}, el('i', { class: 'k-sunall' }), '양달') : null,
+    sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달') : null,
+    hatch ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무') : null);
 }
 
 // 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
@@ -1042,11 +1049,11 @@ function sheetSection(m, s, content) {
   const ask = config.reportEndpoint && s.kind // (a computed section such as 계절별 양달 has no report kind)
     ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
-  // the title row carries 수정 요청 (a filled section) and the check date sits under the title, so a section reads as: what it is, when it was checked, the facts
+  // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title },
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
-    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk' }, m.checked),
-    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content);
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
+    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk end' }, m.checked));
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -1103,7 +1110,7 @@ function buildWallSheet(wallName) {
     tabs: sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
     })),
   };
 }
