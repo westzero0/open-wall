@@ -9,7 +9,7 @@ import { renderDial } from './dial-view.js';
 import { getStatus } from './hours.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sliderValue, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -509,7 +509,8 @@ function hoursGrid(wall, at) {
   let axis = gridAxis(live ? nowMin : null);
   let zone = [axis, body];
   if (live) {
-    const range = el('input', { type: 'range', class: 'sr-only g-range', min: '360', max: '1410', step: '10', value: String(sliderValue(nowMin)), 'aria-label': '보는 시각' });
+    const hourOf = (m) => Math.min(1380, Math.max(360, Math.round(m / 60) * 60)); // by the hour, 06:00–23:00: the list's own time slider moves the same way
+    const range = el('input', { type: 'range', class: 'sr-only g-range', min: '360', max: '1380', step: '60', value: String(hourOf(nowMin)), 'aria-label': '보는 시각' });
     const showAt = (m) => {
       nl.style.left = axisX(m);
       const next = gridAxis(m);
@@ -520,10 +521,10 @@ function hoursGrid(wall, at) {
     };
     const minAt = (x) => { // the axis is 06:00–24:00 across the plot
       const r = plot.getBoundingClientRect();
-      return sliderValue(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
+      return hourOf(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
     };
     const commit = (m, byKey) => { // the sheet only: the grid is drawn again for that time of the same day; the list behind keeps its own moment
-      if (m === sliderValue(nowMin)) return;
+      if (m === hourOf(nowMin)) return;
       const there = new Date(at);
       there.setHours(Math.floor(m / 60), m % 60, 0, 0);
       const next = hoursGrid(wall, there);
