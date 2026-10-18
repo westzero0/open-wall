@@ -362,7 +362,7 @@ function rowPhoto(m, li) {
   const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
     ...imgs.map((img) => el('div', { class: 'rhero-slide' }, img)));
   let credit = null;
-  const line = el('div', { class: 'rhero-line' }, m.suspended ? null : el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), todayText(m))); // a suspended wall: the chip on the photo already says 임시 휴관 중
+  const line = el('div', { class: 'rhero-line' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m))); // a suspended wall: just the small 임시 휴관 중 pill on the photo
   const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
     const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
     if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
@@ -1351,7 +1351,7 @@ function timeRow(row, at) {
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
