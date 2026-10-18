@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 802.8 334" role="img" aria-labelledby="hb-title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792.4 312" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK</title>
   <style>
     :root {
@@ -13,25 +13,25 @@
     .hb-circle { fill: var(--primary-yellow, #FBB041); }
     .hb-wall   { fill: var(--primary-black, #2B2B2B); }
     .hb-text   { fill: var(--logo-text, #2B2B2B); }
-    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 12; stroke-linejoin: miter; stroke-miterlimit: 4; }
+    .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 10; stroke-linejoin: miter; stroke-miterlimit: 4; }
     .hb-sub-light { stroke-width: 5.5; }
   </style>
   <defs>
     <clipPath id="hb-cap"><rect x="-10" y="-1" width="90" height="52"/></clipPath>
   </defs>
   <g transform="translate(0 0) scale(0.59)">
-    <mask id="hb-mask"><rect x="0" y="0" width="512" height="512" fill="#fff"/><polygon points="203,16 392,16 392,496 338,496" fill="#000" stroke="#000" stroke-width="18" stroke-linejoin="miter"/></mask>
+    <mask id="hb-mask"><rect x="0" y="0" width="512" height="512" fill="#fff"/><polygon points="203,16 392,16 392,496 338,496" fill="#000" stroke="#000" stroke-width="10" stroke-linejoin="miter"/></mask>
     <circle class="hb-circle" cx="262" cy="208" r="170" mask="url(#hb-mask)"/>
     <polygon class="hb-wall" points="203,16 392,16 392,496 338,496"/>
   </g>
-  <g transform="translate(302.8 18) scale(0.8)">
+  <g transform="translate(304.4 18) scale(0.8)">
     <g class="hb-text">
-      <path d="M36 0L124 0L124 34L36 34ZM4 56L156 56L156 90L4 90ZM12 167a68 64 0 1 0 136 0a68 64 0 1 0 -136 0ZM53 167a27 33 0 1 1 54 0a27 33 0 1 1 -54 0ZM220 0L220 290.25L180 309.75L180 0ZM200 133L250 133L250 167L200 167ZM304 0L304 290.25L264 309.75L264 0Z"/>
-      <path d="M50 0L50 170L10 170L10 0ZM148 0L148 170L108 170L108 0ZM30 61L128 61L128 95L30 95ZM30 136L128 136L128 170L30 170ZM286 0L286 290.25L246 309.75L246 0ZM196 35L266 35L266 69L196 69ZM196 95L266 95L266 129L196 129ZM66 197L266 197L266 231L66 231Z" transform="translate(334 0)"/>
+      <path d="M32 0L120 0L120 28L32 28ZM2 46L150 46L150 74L2 74ZM12 150a64 62 0 1 0 128 0a64 62 0 1 0 -128 0ZM52 150a24 30 0 1 1 48 0a24 30 0 1 1 -48 0ZM213 0L213 271.71L179 288.29L179 0ZM196 126L240 126L240 154L196 154ZM287 0L287 271.71L253 288.29L253 0Z"/>
+      <path d="M45 0L45 157L11 157L11 0ZM141 0L141 157L107 157L107 0ZM28 58L124 58L124 86L28 86ZM28 129L124 129L124 157L28 157ZM269 0L269 271.71L235 288.29L235 0ZM186 34L252 34L252 62L186 62ZM186 90L252 90L252 118L186 118ZM62 184L252 184L252 212L62 212Z" transform="translate(316 0)"/>
     </g>
-    <ellipse class="hb-circle" cx="80" cy="167" rx="28" ry="34"/>
+    <ellipse class="hb-circle" cx="76" cy="150" rx="25" ry="31"/>
   </g>
-  <g transform="translate(306 282)">
-    <g class="hb-sub"><g transform="translate(0 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g><g transform="translate(63.92 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g><g transform="translate(129.87 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(183.67 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(240.51 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g><g transform="translate(304.43 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(358.23 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(422.15 0) scale(1.01 0.92)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g></g>
+  <g transform="translate(306 266)">
+    <g class="hb-sub"><g transform="translate(0 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g><g transform="translate(62.92 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g><g transform="translate(127.63 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(181.58 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(238.23 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g><g transform="translate(301.14 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(355.1 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(418.02 0) scale(0.9 0.8)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g></g>
   </g>
 </svg>
