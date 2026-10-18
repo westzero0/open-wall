@@ -487,7 +487,7 @@ function hoursGrid(wall, at) {
     // today closed by a closed_date / nth closure: the weekday's usual bar fades under the day's own word
     const shut = r.today && day?.closed && open.length;
     if (shut) trk.append(el('span', { class: 'g-closed' }, day.text));
-    if (r.today && bar?.sun) trk.append(...clipDay(bar.sun).map(([a, b]) => span('g-sun', a, b)), ...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b)));
+    if (r.today && bar?.sun) trk.append(...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b))); // the same as the list: the open bar turns orange where it is sunny
     const said = `${r.days}${r.today ? (r.members > 1 ? '(오늘 포함)' : '(오늘)') : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
     body.append(el('div', { class: `g-row${r.today ? ' g-today' : ''}${shut ? ' shut' : ''}`, role: 'listitem', 'aria-label': said },
       el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
@@ -573,8 +573,7 @@ function seasonSunBlock(wall, at, d) {
     gridAxis(null),
     ...rows.map((s) => {
       const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
-        ...clipDay(s.open).map(([a, b]) => span('s-open', a, b)),
-        ...clipDay(s.windows).map(([a, b]) => span('g-sun', a, b)),
+        ...clipDay(s.open).map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
       const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
@@ -590,11 +589,10 @@ function seasonSunBlock(wall, at, d) {
 // The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
 // The hatch is named only when this wall has a break or a closed day to show.
 function timeLegend(blocks) {
-  const sun = Boolean(blocks.sun || blocks.hours?.querySelector('.g-sun'));
+  const sun = Boolean(blocks.sun || blocks.hours?.querySelector('.g-sunon'));
   const hatch = Boolean(blocks.hours?.querySelector('.g-brk, .g-off'));
   return el('ul', { class: 'g-key ws-legend' },
     el('li', {}, el('i', { class: 'k-bar' }), '운영'),
-    sun ? el('li', {}, el('i', { class: 'k-sunall' }), '양달') : null,
     sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달') : null,
     hatch ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무') : null);
 }

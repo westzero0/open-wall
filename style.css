@@ -827,7 +827,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
 .g-wrap { display: contents; }
 .g-trk { position: relative; display: block; flex: 1; min-width: 0; }
-.g-row.g-today { min-height: calc(var(--tx) + 42px); background: color-mix(in srgb, var(--open-past) 45%, transparent); }
+.g-row.g-today { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
 .g-row.g-today .g-lab { font-weight: 700; }
 .g-bar { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 3px; background: var(--open-bar); z-index: 2; }
 .g-brk, .g-off, .k-hatch {
@@ -840,15 +840,13 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-txt { position: absolute; top: 3px; padding: 0 3px; border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); line-height: calc(var(--tx) - 2px); white-space: nowrap; z-index: 4; }
 .g-row.g-today .g-txt, .g-row.g-today .g-closed { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
 .g-row.shut .g-bar, .g-row.shut .g-txt { opacity: .35; }
-.g-sun, .g-sunon { position: absolute; top: calc(var(--tx) + 23px); height: 8px; border-radius: var(--r-xs); z-index: 2; }
-.g-sun { border: 1px solid var(--sun-bar); background: color-mix(in srgb, var(--sun-bar) 22%, transparent); }
-.g-sunon { background: var(--sun-bar); }
+/* 운영 중 양달: the open bar itself is orange there (the same as the list row: same place and height as .g-bar, square ends) */
+.g-sunon { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 0; background: var(--sun-bar); z-index: 3; }
 .g-key { list-style: none; margin: var(--sp-8) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-12); font-size: var(--fs-xs); color: var(--muted); }
 .g-key li { display: inline-flex; align-items: center; gap: var(--sp-6); }
 .g-key i { flex: none; display: inline-block; width: 20px; height: 10px; border-radius: var(--r-xs); }
 .k-bar { background: var(--open-bar); }
 .k-hatch { border: 1px solid var(--line-strong); }
-.k-sunall { border: 1px solid var(--sun-bar); background: color-mix(in srgb, var(--sun-bar) 22%, transparent); }
 .k-sunon { background: var(--sun-bar); }
 .g-key i.k-now { width: 2px; height: 14px; background: var(--now); }
 .k-open { border: 1px solid var(--open); background: color-mix(in srgb, var(--open-past) 50%, transparent); }
@@ -860,8 +858,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .s-head { font-size: var(--fs-sm); line-height: 1.35; }
 .s-row .g-trk { height: 30px; }
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
-.s-open { position: absolute; top: 5px; height: 20px; border: 1px solid var(--open); border-radius: 3px; background: color-mix(in srgb, var(--open-past) 50%, transparent); }
-.s-row .g-sun, .s-row .g-sunon { top: 10px; height: 10px; }
+.s-row .g-bar, .s-row .g-sunon { top: 9px; } /* the 30px track: the 12px bar sits in its middle */
 .s-row[hidden] { display: none; }
 .ssun-more { display: block; width: 100%; min-height: var(--tap); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
 /* the hours time line is dragged along the axis and the bars; pan-y leaves the page's up-and-down scroll and keeps the sheet's sideways tab swipe out */
