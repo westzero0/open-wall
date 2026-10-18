@@ -2,7 +2,7 @@
   <title id="hb-title">해벽 HAEBYEOK 심볼</title>
   <style>
     :root {
-      --primary-yellow: #F3B63F;
+      --primary-yellow: #FBB041;
       --primary-black: #2B2B2B;
       --logo-text: #2B2B2B;
       --logo-sub: #2B2B2B;
@@ -10,12 +10,13 @@
     @media (prefers-color-scheme: dark) {
       :root { --primary-black: #F2F2EE; --logo-text: #F2F2EE; --logo-sub: #F2F2EE; }
     }
-    .hb-circle { fill: var(--primary-yellow, #F3B63F); }
+    .hb-circle { fill: var(--primary-yellow, #FBB041); }
     .hb-wall   { fill: var(--primary-black, #2B2B2B); }
     .hb-text   { fill: var(--logo-text, #2B2B2B); }
     .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 12; stroke-linejoin: miter; stroke-miterlimit: 4; }
-    .hb-sub-light { stroke-width: 6.5; }
+    .hb-sub-light { stroke-width: 5.5; }
   </style>
-  <circle class="hb-circle" cx="256" cy="213" r="181"/>
-    <polygon class="hb-wall" points="208,16 397,16 397,496 326,496"/>
+  <mask id="hb-mask"><rect x="0" y="0" width="512" height="512" fill="#fff"/><polygon points="203,16 392,16 392,496 338,496" fill="#000" stroke="#000" stroke-width="18" stroke-linejoin="miter"/></mask>
+    <circle class="hb-circle" cx="262" cy="208" r="170" mask="url(#hb-mask)"/>
+    <polygon class="hb-wall" points="203,16 392,16 392,496 338,496"/>
 </svg>

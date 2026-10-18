@@ -10,8 +10,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: {"yellow":"#F3B63F","black":"#2B2B2B","paper":"#F4F4F0","dark":"#0E0E0C"},
-        yellow: {"50":"#FEF9F0","100":"#FDF2DC","200":"#FBE5BA","300":"#F8D693","400":"#F6C669","500":"#F3B63F","600":"#D19D36","700":"#A57C2B","800":"#7A5B20","900":"#4E3A14"},
+        brand: {"yellow":"#FBB041","black":"#2B2B2B","paper":"#F4F4F0","dark":"#0E0E0C"},
+        yellow: {"50":"#FFF9F0","100":"#FEF1DD","200":"#FEE3BB","300":"#FDD395","400":"#FCC16B","500":"#FBB041","600":"#D89738","700":"#AB782C","800":"#7E5821","900":"#503815"},
         neutral: {"50":"#EEEEEE","100":"#D9D9D9","200":"#B3B3B3","300":"#888888","400":"#5A5A5A","500":"#2B2B2B","600":"#252525","700":"#1D1D1D","800":"#161616","900":"#0E0E0E"},
         // 테마 반응형 시맨틱 컬러 (brand-tokens.css 의 변수를 참조)
         background: 'var(--color-background)',

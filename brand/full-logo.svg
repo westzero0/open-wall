@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1402.7 1031" role="img" aria-labelledby="hb-title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 684.08 1092.5" role="img" aria-labelledby="hb-title">
   <title id="hb-title">해벽 HAEBYEOK</title>
   <style>
     :root {
-      --primary-yellow: #F3B63F;
+      --primary-yellow: #FBB041;
       --primary-black: #2B2B2B;
       --logo-text: #2B2B2B;
       --logo-sub: #2B2B2B;
@@ -10,27 +10,31 @@
     @media (prefers-color-scheme: dark) {
       :root { --primary-black: #F2F2EE; --logo-text: #F2F2EE; --logo-sub: #F2F2EE; }
     }
-    .hb-circle { fill: var(--primary-yellow, #F3B63F); }
+    .hb-circle { fill: var(--primary-yellow, #FBB041); }
     .hb-wall   { fill: var(--primary-black, #2B2B2B); }
     .hb-text   { fill: var(--logo-text, #2B2B2B); }
     .hb-sub    { fill: none; stroke: var(--logo-sub, #2B2B2B); stroke-width: 12; stroke-linejoin: miter; stroke-miterlimit: 4; }
-    .hb-sub-light { stroke-width: 6.5; }
+    .hb-sub-light { stroke-width: 5.5; }
   </style>
   <defs>
     <clipPath id="hb-cap"><rect x="-10" y="-1" width="90" height="52"/></clipPath>
   </defs>
-  <g transform="translate(445.35 24) scale(1)">
-    <circle class="hb-circle" cx="256" cy="213" r="181"/>
-    <polygon class="hb-wall" points="208,16 397,16 397,496 326,496"/>
+  <g transform="translate(86.04 24) scale(1)">
+    <mask id="hb-mask"><rect x="0" y="0" width="512" height="512" fill="#fff"/><polygon points="203,16 392,16 392,496 338,496" fill="#000" stroke="#000" stroke-width="18" stroke-linejoin="miter"/></mask>
+    <circle class="hb-circle" cx="262" cy="208" r="170" mask="url(#hb-mask)"/>
+    <polygon class="hb-wall" points="203,16 392,16 392,496 338,496"/>
   </g>
-  <g class="hb-text" transform="translate(412.93 590) scale(0.92)">
-    <path d="M99 -5.27L99 50L61 50L61 13.27ZM10 69L150 69L150 107L10 107ZM16 196a64 64 0 1 0 128 0a64 64 0 1 0 -128 0ZM48.3 196a31.700000000000003 31.700000000000003 0 1 1 63.400000000000006 0a31.700000000000003 31.700000000000003 0 1 1 -63.400000000000006 0ZM225 4L225 290.73L187 309.27L187 4ZM206 123L256 123L256 161L206 161ZM311 4L311 290.73L273 309.27L273 4Z"/>
-    <path d="M53 4L53 176L15 176L15 4ZM153 4L153 176L115 176L115 4ZM34 71L134 71L134 109L34 109ZM34 138L134 138L134 176L34 176ZM283 4L283 290.73L245 309.27L245 4ZM191.33 39L264 39L264 77L200.67 77ZM191.33 103L264 103L264 141L200.67 141ZM70 233L264 233L264 271L70 271Z" transform="translate(334 0)"/>
+  <g transform="translate(46.08 584) scale(0.98)">
+    <g class="hb-text">
+      <path d="M36 0L124 0L124 34L36 34ZM4 56L156 56L156 90L4 90ZM12 167a68 64 0 1 0 136 0a68 64 0 1 0 -136 0ZM53 167a27 33 0 1 1 54 0a27 33 0 1 1 -54 0ZM220 0L220 290.25L180 309.75L180 0ZM200 133L250 133L250 167L200 167ZM304 0L304 290.25L264 309.75L264 0Z"/>
+      <path d="M50 0L50 170L10 170L10 0ZM148 0L148 170L108 170L108 0ZM30 61L128 61L128 95L30 95ZM30 136L128 136L128 170L30 170ZM286 0L286 290.25L246 309.75L246 0ZM196 35L266 35L266 69L196 69ZM196 95L266 95L266 129L196 129ZM66 197L266 197L266 231L66 231Z" transform="translate(334 0)"/>
+    </g>
+    <ellipse class="hb-circle" cx="80" cy="167" rx="28" ry="34"/>
   </g>
-  <g class="hb-sub" transform="translate(50 936)">
-    <g><g transform="translate(0 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g><g transform="translate(54.25 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g><g transform="translate(110.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(156.42 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(205.13 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g><g transform="translate(259.38 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(305.71 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(359.96 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g></g>
-    <rect class="hb-circle" x="433.33" y="-7.2" width="3.6" height="59.4" style="stroke:none"/>
-    <g class="hb-sub-light"><g transform="translate(467.53 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(518.62 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 45H44"/></g><g transform="translate(563.36 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(581.18 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(643.36 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(692.06 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(709.88 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(764.14 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30"/></g></g>
-    <g class="hb-sub-light"><g transform="translate(848.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(899.17 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(953.42 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(1015.6 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(1077.77 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0"/></g><g transform="translate(1132.02 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(1186.27 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(1204.09 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M0 5H56M28 5V50"/></g><g transform="translate(1258.34 0) scale(0.79 0.9)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g></g>
+  <g transform="translate(50 930)">
+    <g class="hb-sub"><g transform="translate(0 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M5 0V50M51 0V50M5 25H51"/></g><g transform="translate(78.2 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M3 54L29 4L55 54M14 36H44"/></g><g transform="translate(158.93 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(224.48 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(293.82 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g><g transform="translate(372.02 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H46M5 25H40M5 45H46"/></g><g transform="translate(437.57 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(515.77 0) scale(1.26 1.15)" clip-path="url(#hb-cap)"><path d="M5 0V50M50 -2L11 28M24 20L52 52"/></g></g>
+  </g>
+  <g transform="translate(50 1021.5)">
+    <g class="hb-sub hb-sub-light"><g transform="translate(0 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(35.12 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 45H44"/></g><g transform="translate(66.89 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(84.37 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(125.37 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V50M5 5H33a10 10 0 0 1 0 20H5M5 25H35a10 10 0 0 1 0 20H5"/></g><g transform="translate(159.24 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(176.72 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(213.52 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M51 15C47 9 39 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C40 45 49 38 51 28H30"/></g><g transform="translate(278.73 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M50 15C46 9 38 5 28 5C14 5 5 13 5 25C5 37 14 45 28 45C38 45 46 41 50 35"/></g><g transform="translate(313.86 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M28 5C14 5 5 13 5 25S14 45 28 45S51 37 51 25S42 5 28 5Z"/></g><g transform="translate(350.66 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(391.66 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 50V0M61 50V0M5 5L33 36L61 5"/></g><g transform="translate(432.67 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V28C5 40 14 45 28 45C42 45 51 40 51 28V0"/></g><g transform="translate(469.47 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 50V0M51 50V0M5 5L51 45"/></g><g transform="translate(506.27 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M5 0V50"/></g><g transform="translate(523.76 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M0 5H56M28 5V50"/></g><g transform="translate(560.56 0) scale(0.42 0.42)" clip-path="url(#hb-cap)"><path d="M2 -4L28 26L54 -4M28 26V50"/></g></g>
   </g>
 </svg>

@@ -61,7 +61,7 @@ function themed(svg, vars) {
 }
 /** 한 페이지에 SVG를 여러 번 넣어도 id 충돌이 없도록 접두어를 붙인다 */
 function uniquify(svg, prefix) {
-  return svg.replace(/\bhb-(clip|cap|title)\b/g, `${prefix}-$1`);
+  return svg.replace(/\bhb-(clip|cap|title|mask)\b/g, `${prefix}-$1`);
 }
 const lightVars = {
   '--primary-yellow': C.yellow, '--primary-black': C.black,
@@ -130,9 +130,9 @@ async function makeFavicons(browser) {
   // Android / PWA
   write('favicon/android-chrome-192x192.png', await png(192, { bg: null, pad: 0.04 }));
   write('favicon/android-chrome-512x512.png', await png(512, { bg: null, pad: 0.04 }));
-  // maskable: 전체를 노란색으로 채우고 안전영역(중앙 80% 원) 안에 심볼 배치
+  // maskable: 전체를 paper 색으로 채우고 안전영역(중앙 80% 원) 안에 심볼 배치
   const maskSvg = themed(symbolSvg, lightVars);
-  write('favicon/maskable-512x512.png', await renderSvgToPng(browser, maskSvg, 512, { bg: C.yellow, pad: 0.2 }));
+  write('favicon/maskable-512x512.png', await renderSvgToPng(browser, maskSvg, 512, { bg: C.paper, pad: 0.2 }));
 
   write('favicon/site.webmanifest', JSON.stringify({
     name: cfg.name, short_name: cfg.name, description: cfg.description, lang: cfg.lang,
@@ -217,7 +217,7 @@ function makeTokens() {
     font: { family: { sans: cfg.fonts.sans, display: cfg.fonts.display } },
     radius: { sm: '6px', md: '12px', lg: '20px', pill: '9999px' },
     spacing: { 1: '4px', 2: '8px', 3: '12px', 4: '16px', 6: '24px', 8: '32px', 12: '48px' },
-    logo: { overhangAngleDeg: 14, minSizePx: { symbol: 16, full: 96 }, clearSpace: '0.25 × symbol diameter' },
+    logo: { overhangAngleDeg: 15, minSizePx: { symbol: 16, full: 96 }, clearSpace: '0.25 × symbol diameter' },
   };
   write('tokens/brand-tokens.json', JSON.stringify(tokens, null, 2) + '\n');
 
