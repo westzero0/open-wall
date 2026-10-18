@@ -24,4 +24,4 @@ npm test
 배포 절차는 `docs/system/deploy.md`(작업 저장소) 참고.
 
 ## 라이선스
-코드: MIT (`LICENSE`). 데이터·사진: [`data/LICENSE`](data/LICENSE)(출처 표시 + 비영리, 외부 자료 제외). Leaflet은 `vendor/leaflet/LICENSE`.
+코드: MIT (`LICENSE`). 데이터·사진: [`data/LICENSE`](data/LICENSE)(출처 표시 + 비영리, 외부 자료 제외). 이름·로고·캐릭터 이미지: [`assets/LICENSE`](assets/LICENSE). Leaflet은 `vendor/leaflet/LICENSE`.

@@ -257,6 +257,10 @@ const srcTotal = srcFiles.reduce((a, f) => a + sizeOf(f), 0);
 if (srcTotal > BUDGET.srcTotal) warn(`src/ 합계 ${(srcTotal / KB).toFixed(0)}KB — 예산 ${(BUDGET.srcTotal / KB).toFixed(0)}KB 초과`);
 for (const f of walk('data/photos')) if (/\.(jpe?g|png|webp)$/i.test(f) && sizeOf(f) > BUDGET.photo) warn(`${f}: ${(sizeOf(f) / KB).toFixed(0)}KB — 사진 예산 ${(BUDGET.photo / KB).toFixed(0)}KB 초과(줄여서 올려 주세요)`);
 
+// ── 12. 라이선스 안내가 빠지지 않았는지 ──────────────────────────────────────
+for (const f of ['LICENSE', 'data/LICENSE', 'assets/LICENSE']) if (!exists(f)) err(`${f}: 라이선스 파일이 없어요(코드 MIT · 데이터 · 이름·로고 조건을 따로 안내해요)`);
+if (!/data\/LICENSE/.test(indexHtml)) err('index.html: 앱 정보의 "데이터 이용" 안내가 data/LICENSE 를 가리키지 않아요');
+
 // ── 결과 ─────────────────────────────────────────────────────────────────────
 const out = (label, list) => { if (list.length) { console.log(`\n${label} (${list.length})`); for (const m of list) console.log(`  - ${m}`); } };
 out('ERROR', errors);

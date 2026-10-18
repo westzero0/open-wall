@@ -14,6 +14,7 @@ node qa/visual.mjs snap before … node qa/visual.mjs compare before   # 시각 
 | `smoke.mjs` | 켜지는지, 오프라인, 성능 예산, 공유 링크, 망가진 저장소 | Playwright |
 | `a11y.mjs` | 22개 화면을 axe-core(WCAG 2.1 AA)로 | Playwright, axe-core |
 | `visual.mjs` | 수정 전·후 화면 비교 | Playwright |
+| `provenance.mjs` | 의심 사이트가 우리 데이터를 베꼈는지 증거 정리 | Node 18+ |
 
 설치: `npm i -g playwright axe-core && npx playwright install chromium`
 (`lib.mjs`는 네 도구가 같이 쓰는 서버·브라우저 설정이에요.)
@@ -84,3 +85,21 @@ node qa/visual.mjs compare before   # 다시 찍어서 before 와 비교 → 달
 
 `qa/`는 사이트 동작과 무관해요. GitHub Pages 가 저장소 루트를 그대로 올리면 `qa/` 도 공개 주소(`/qa/…`)로 노출되지만
 `qa/.out/`(스크린샷)은 git 에 없으니 올라가지 않아요. 배포 도구가 올릴 파일을 고르는 방식이면 영향이 없어요.
+
+## 5. 복제 증거 비교 — `provenance.mjs`
+
+다른 사이트가 이 데이터를 베낀 것 같을 때, 그 사이트의 `national.json`(주소 또는 받아 둔 파일)을 우리 것과 비교해 증거를 정리해요.
+
+```
+node qa/provenance.mjs https://의심사이트/data/national.json
+node qa/provenance.mjs ./받아둔/national.json --photos   # 사진 파일도 바이트까지 비교
+```
+
+- 가장 강한 증거는 암장별 양달·응달 계산값(`shadow.angles`, 72개 실수)이에요. 직접 계산한 값이라 56곳이 전부 서로 다르고,
+  소수점까지 같다면 복사한 거예요. 이름·주소를 바꿔도 값으로 찾아내고, 일부를 반올림한 변조도 "거의 같음"으로 알려 줘요.
+- 이름·주소·운영시간·메모는 공개된 사실이라 겹쳐도 증거로는 약하다고 보고서에 따로 적어요.
+- 보고서는 `qa/.out/provenance-<호스트>.md` 에 써요. 우리 데이터 파일이 저장소에 처음 올라온 시각(git 이력)도 함께 적어요.
+- 계산값이 같은 암장이 있으면 종료 코드 1 이에요.
+- 증거를 정리할 뿐 법적 판단은 아니에요. 신고 전에는 한국저작권위원회나 변호사와 상의하세요.
+- 자기 자신과 돌려 보면(`node qa/provenance.mjs data/national.json --photos`) 56곳·사진 전부 같다고 나와야 정상이에요.
+- **계산값이 바뀌면**(DEM 을 다시 계산했을 때) 옛 값은 기록으로 남겨 두세요. 복제본이 옛 값을 갖고 있을 수 있어요.
