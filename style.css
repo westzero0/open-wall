@@ -221,6 +221,7 @@ button.pill.quiet:hover { border-color: transparent; }
 .pill:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 button.pill { padding: 0 var(--sp-12); font-weight: 600; }
 .toggle[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.filters .toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } /* the filter row: on = filled (green; 양달·응달 take their own colour) */
 /* on = a check mark too, not only the fill (aria-pressed already tells screen readers, so the mark is silent) */
 .toggle[aria-pressed="true"]::before, .sh-toggle[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: var(--sp-2); }
 button.pill, #nowBtn, .btn {
@@ -430,18 +431,22 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .key li svg { width: 16px; height: 16px; margin-right: var(--sp-4); vertical-align: -3px; }
 .sunnow.pic svg { width: 24px; height: 24px; } /* beta feedback: 18px read as too small */
 /* the sun icon: ink on the amber chip in light (the amber itself is 2.4:1 there), the amber in dark (6:1) */
-.sunnow.sun.pic { color: var(--fg); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { color: var(--sun); } }
-:root[data-theme="dark"] .sunnow.sun.pic { color: var(--sun); }
-.sunnow.shade.pic { color: var(--muted); }
-/* 양달 | 응달: one capsule with two segments (the filter wears the same pictures as the rows). The pressed segment is filled; pressing it again clears it. */
+.sunnow.sun.pic { background: #b0630a; color: #fff; } /* a solid chip in the pressed filter's colours: white on a darker amber (4.5:1), white on steel blue */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); } }
+:root[data-theme="dark"] .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); }
+.sunnow.shade.pic { background: var(--shade-bar); color: var(--on-accent); }
+/* 양달 | 응달: one capsule with two segments, the icons in the row bars' colours; the pressed segment is filled with its colour (no ✓: the colour says it). Pressing it again clears it. */
 .sunfilter { flex: none; display: inline-flex; border-radius: var(--r-pill); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); } /* a ring inside, not a border: the buttons keep the full 44px tap height */
-.sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
-.sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
+.sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
 .sunfilter-btn svg { width: 24px; height: 24px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
-#sunOnly { color: var(--sun-bar); } #shadeOnly { color: var(--shade-bar); } /* the icons carry the row bars' colours; pressed, the whole button takes it */
-#sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: #1b1f1e; } /* dark ink on amber in both themes: white on it is only 3.3:1 */
+#sunOnly { color: var(--sun-on-white); } #shadeOnly { color: var(--shade-bar); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly { color: var(--sun); } }
+:root[data-theme="dark"] #sunOnly { color: var(--sun); }
+#sunOnly[aria-pressed="true"] { background: #b0630a; color: #fff; } /* a darker amber for the white icon: 4.5:1 (the bar amber is 3.3:1) */
 #shadeOnly[aria-pressed="true"] { background: var(--shade-bar); color: var(--on-accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); } }
+:root[data-theme="dark"] #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); }
+.sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
 .sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: transparent; }
 .sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
