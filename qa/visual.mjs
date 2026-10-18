@@ -15,16 +15,11 @@
 // 찍으면서 가로 넘침과 스크립트 오류도 확인한다(오류가 있으면 종료 코드 1).
 // 필요: Playwright (npm i -g playwright 또는 프로젝트에 설치) 와 Chromium.
 
-import http from 'node:http';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { execSync } from 'node:child_process';
-import { dirname, join, extname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT, VIEWPORTS, loadPlaywright, launch, serve, newScene, closeDialogs, tap, sampleLog, wallNames } from './lib.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'qa', '.out');
-const NOW = new Date('2026-10-17T14:00:00+09:00');
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => { const i = args.indexOf(`--${name}`); return i < 0 ? dflt : args[i + 1]; };
@@ -33,51 +28,10 @@ const [cmd, labelA, labelB] = positional;
 const TOLERANCE = Number(flag('tolerance', 0.002));
 const ONLY = flag('only', '')?.split(',').filter(Boolean) ?? [];
 
-// ── Playwright 찾기 ──────────────────────────────────────────────────────────
-function loadPlaywright() {
-  const tries = [() => createRequire(import.meta.url)('playwright'), () => createRequire(`${execSync('npm root -g').toString().trim()}/`)('playwright')];
-  for (const t of tries) { try { return t(); } catch { /* 다음 */ } }
-  console.error('Playwright 를 찾지 못했어요. `npm i -g playwright && npx playwright install chromium` 후 다시 실행하세요.');
-  process.exit(2);
-}
-async function launch(pw) {
-  try { return await pw.chromium.launch(); } catch (e) {
-    for (const p of [process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium'].filter(Boolean)) {
-      if (existsSync(p)) return pw.chromium.launch({ executablePath: p });
-    }
-    throw e;
-  }
-}
-
-// ── 정적 서버(의존성 없음) ───────────────────────────────────────────────────
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
-function serve() {
-  const server = http.createServer((req, res) => {
-    let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    let f = join(ROOT, p);
-    if (!f.startsWith(ROOT)) { res.writeHead(403).end(); return; }
-    if (existsSync(f) && statSync(f).isDirectory()) f = join(f, 'index.html');
-    if (!existsSync(f)) { res.writeHead(404).end('not found'); return; }
-    res.writeHead(200, { 'content-type': TYPES[extname(f)] ?? 'application/octet-stream' }).end(readFileSync(f));
-  });
-  return new Promise((ok) => server.listen(0, '127.0.0.1', () => ok({ server, base: `http://127.0.0.1:${server.address().port}` })));
-}
-
 // ── 장면 ─────────────────────────────────────────────────────────────────────
-const VIEWPORTS = {
-  m390: { width: 390, height: 844, mobile: true },
-  m360: { width: 360, height: 740, mobile: true },
-  tab: { width: 768, height: 1024, mobile: true },
-  desk: { width: 1280, height: 800, mobile: false },
-};
-const walls = JSON.parse(readFileSync(join(ROOT, 'data/national.json'), 'utf8')).walls.map((w) => w.name);
-const LOG = Array.from({ length: 14 }, (_, i) => ({
-  id: `r${i}`, wall: walls[i % 5], date: `2026-10-${String(16 - Math.floor(i / 2)).padStart(2, '0')}`, time: '14:00',
-  memo: i % 3 ? '' : '오늘 컨디션 좋음', sends: { '10a': 2, '10b': 1 }, tries: { '11a': 1 },
-}));
+const walls = wallNames();
+const LOG = sampleLog();
 
-const tap = (p, sel) => p.locator(sel).first().tap().catch(() => p.locator(sel).first().click()); // 데스크톱은 터치가 없어 클릭으로
-const closeDialogs = (p) => p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
 const sheet = (opener) => async (p) => { await closeDialogs(p); await tap(p, opener); };
 const SCENES = [
   { id: 'first-visit', seed: false, run: async () => {} }, // 처음이세요? 안내가 저절로 열린다
@@ -108,19 +62,9 @@ async function snap(label) {
   const problems = [];
   for (const { s, vp, scheme } of PLAN) {
     const name = `${s.id}.${vp}.${scheme}`;
-    const v = VIEWPORTS[vp];
-    const ctx = await browser.newContext({ viewport: { width: v.width, height: v.height }, hasTouch: v.mobile, isMobile: v.mobile, colorScheme: scheme, reducedMotion: 'reduce', timezoneId: 'Asia/Seoul', locale: 'ko-KR' });
-    await ctx.clock.install({ time: NOW });
-    if (s.seed !== false) await ctx.addInitScript((log) => { try { localStorage.setItem('open-wall:log', JSON.stringify(log)); localStorage.setItem('open-wall:ui', JSON.stringify({ introDone: true })); } catch { /* 저장소 막힘 */ } }, LOG);
-    const page = await ctx.newPage();
-    const errs = [];
-    page.on('pageerror', (e) => errs.push(e.message));
-    await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort()); // 외부 요청은 전부 막는다(결과가 흔들리지 않게)
+    const { ctx, page, errors: errs, goto } = await newScene(browser, base, { vp, scheme, seed: s.seed === false ? null : LOG });
     try {
-      await page.goto(base + (s.url ?? '/'));
-      await page.waitForSelector('.row-btn', { timeout: 8000 });
-      await page.evaluate(() => document.fonts.ready);
-      await page.waitForTimeout(700);
+      await goto(s.url ?? '/');
       if (s.seed !== false) await closeDialogs(page);
       await s.run(page);
       await page.waitForTimeout(700);
