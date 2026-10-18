@@ -576,12 +576,14 @@ function seasonSunBlock(wall, at, d) {
       const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
         ...clipDay(s.open).map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
-      const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
+      const open = s.open.length > 0; // with open hours only the sun inside them is told; a closed / unknown day keeps the day's whole window for reference
+      const shown = open ? s.on : s.windows;
+      const sunText = shown.length ? formatRanges(shown) : open ? '운영 중 양달 없음' : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
       // the same two columns as the hours grid (name on the left, bar on the right), so both axes are as wide
       return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null },
         el('span', { class: 'g-lab' }, el('b', {}, s.name), s.current ? el('small', {}, '지금') : null),
-        el('div', { class: 's-main' }, el('p', { class: 's-head' }, `${s.date} · 예상 ${sunText}${hint}`), trk));
+        el('div', { class: 's-main' }, el('p', { class: 's-head' }, `${s.date} · ${open && shown.length ? '운영 중 ' : ''}예상 ${sunText}${hint}`), trk));
     }),
     fold ? more : null,
     sunWhy()); // the long caveat is folded under 계산 기준
@@ -965,12 +967,17 @@ const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
 // 접힌 계산 기준 (양달 카드 안: 한 줄 접힘, 기본 닫힘)
 const sunWhy = () => el('details', { class: 'sun-why' }, el('summary', {}, '계산 기준'), sunLimit());
 // 맨 위 한 줄: 상태 칩 + 핵심 값 (구간이 여러 개면 구간마다 한 덩어리)
-function sunHead(d) {
+function sunHead(d, verdict) {
   const chip = d.state === 'unknown' ? '계산 불가' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}`; // the chip is the moment's state; the line under it is the day's window
   const cls = d.state === 'unknown' ? 'na' : d.lit ? 'lit' : 'dark';
-  const key = d.state === 'unknown' ? null : d.windows.length
-    ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
-    : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
+  // an open day with hours: only the sun inside them ("운영 중 예상 양달 10:10–17:30", or 없음); no hours: the day's whole window
+  const key = d.state === 'unknown' ? null : verdict
+    ? (verdict.on.length
+      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 운영 중 예상 양달`), ...verdict.on.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+      : el('p', { class: 'dwhen' }, el('b', {}, verdict.text)))
+    : d.windows.length
+      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+      : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
 function sunBox(d, name, closedDay, verdict) {
@@ -983,11 +990,10 @@ function sunBox(d, name, closedDay, verdict) {
       noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
-    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d), sentence, d.state === 'override' ? sunWhy() : null));
+    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, d.state === 'override' ? sunWhy() : null));
   }
   return el('section', { class: 'sunbox', 'aria-label': '해' },
-    sunHead(d),
-    verdict ? el('p', { class: `sun-verdict ${verdict.kind}` }, verdict.text) : null, // the answer to "is it sunny while it's open"
+    sunHead(d, verdict), // the head already tells the sun inside the open hours
     sentence,
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
     sunWhy());
