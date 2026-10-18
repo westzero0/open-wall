@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
+import { getStatus } from './hours.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sliderValue, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
@@ -501,9 +502,10 @@ function hoursGrid(wall, at) {
   ].filter(Boolean);
   const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
 
-  // The time line is the picked moment: dragging the axis or the bars moves it (touch-action: pan-y keeps the sheet's
-  // sideways tab swipe out of this zone). The line follows the finger; the moment is picked on release (go 'pick'), and the
-  // grid is drawn again for it. A range input in the zone is the keyboard and screen-reader way to the same thing.
+  // The time line starts at the picked moment; dragging the axis moves it (touch-action: pan-y keeps the sheet's sideways tab
+  // swipe out of this zone). The line follows the finger; on release the grid and the one-line answer are drawn again for that
+  // time. Only this sheet changes: the picked moment of the list (view state) is not touched, and closing the sheet drops it.
+  // A range input in the zone is the keyboard and screen-reader way to the same thing.
   let axis = gridAxis(live ? nowMin : null);
   let zone = [axis, body];
   if (live) {
@@ -520,10 +522,11 @@ function hoursGrid(wall, at) {
       const r = plot.getBoundingClientRect();
       return sliderValue(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
     };
-    const commit = (m, byKey) => {
+    const commit = (m, byKey) => { // the sheet only: the grid is drawn again for that time of the same day; the list behind keeps its own moment
       if (m === sliderValue(nowMin)) return;
-      go({ type: 'pick', date: ymd(at), min: m });
-      const next = hoursGrid(wall, shown.at ?? at);
+      const there = new Date(at);
+      there.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      const next = hoursGrid(wall, there);
       sec.replaceWith(next);
       if (byKey) next.querySelector('.g-range')?.focus();
     };
@@ -543,7 +546,8 @@ function hoursGrid(wall, at) {
     zone = [zoneEl];
   }
   const row = allRows.find((r) => r.wall.name === wall.name);
-  const m = live && !susp && row ? modelOf(row, at) : null; // the answer for the picked time, in words
+  // the answer for this time, in words; the row's status was made for the list's moment, so it is read again for `at` (the sheet's own time)
+  const m = live && !susp && row ? modelOf({ ...row, status: getStatus(row.wall, at) }, at) : null;
   const verdict = m && m.state !== 'unknown' ? el('p', { class: `g-verdict ${m.state}` }, m.state === 'open' ? `${fmtMin(nowMin)} 운영 중 · ` : `${fmtMin(nowMin)} `, m.statusText) : null;
   // one legend only: the hatch is explained here; the sun colours are explained once, under 계절별 양달 (same colours)
   sec.append(...[segRow, susp, verdict, susp ? null : lead, ...zone,
