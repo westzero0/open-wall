@@ -1683,12 +1683,12 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
-.ws-fix { min-height: var(--tap); display: inline-flex; align-items: center; }
+.ws-fix { min-height: var(--tap); display: inline-flex; align-items: center; white-space: nowrap; }
 /* 루트 tab: the count as bars (the .gy-* rows of the 올해 완등 block), a chip per wall section when counted by section */
 .rt-chips { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0; }
 .rt-chip { min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; }
 .rt-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 700; }
-.rt-bars.stale { opacity: .55; }
+.rt-bars.stale .gy-bar { opacity: .55; } /* only the bars fade: the labels and numbers keep their contrast */
 .rt-total { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 .gy-list li.mine .gy-g { color: var(--fg); font-weight: 700; } /* the rows inside 내 그레이드 */
 .gy-list li.mine .gy-bar { background: var(--accent); }

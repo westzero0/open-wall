@@ -48,9 +48,9 @@ function goTo(n, { focus = false, instant = false } = {}) {
 
 function make() {
   title = el('h2', { id: 'ws-title', class: 'bp-title ws-title', tabindex: '-1' });
-  const back = el('button', { type: 'button', class: 'sh-done bp-back' }, '← 뒤로');
+  const back = el('button', { type: 'button', class: 'sh-done bp-back' }, '← 닫기');
   back.addEventListener('click', () => dlg.close());
-  const report = config.reportEndpoint ? el('button', { type: 'button', class: 'ws-report' }, '제보') : null;
+  const report = config.reportEndpoint ? el('button', { type: 'button', class: 'ws-report' }, '정보 제보') : null;
   report?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall } })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
