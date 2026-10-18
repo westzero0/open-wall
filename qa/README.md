@@ -111,12 +111,14 @@ node qa/provenance.mjs ./받아둔/national.json --photos   # 사진 파일도 �
 네트워크를 쓰지 않고, **사람이 저장한 파일만** 읽어요.
 
 ```
-node qa/watch.mjs dc1.html dc2.html     # 갤러리 "글 목록" 페이지를 저장한 것 (예: .../mgallery/board/lists/?id=rock_climbing&page=1)
+node qa/watch.mjs dc1.html dc2.html     # 갤러리 "글 목록" 페이지를 저장한 것
 node qa/watch.mjs 오픈채팅.txt            # 카카오톡 "대화 내보내기" 텍스트 (본인이 가입한 방, 본인이 내보낸 것만)
 node qa/watch.mjs --all 파일…             # 이미 본 글도 다시
 node qa/watch.mjs --selftest              # 가짜 글로 도구 점검(네트워크 없음)
 ```
 
+- 지켜볼 갤러리: `https://gall.dcinside.com/mgallery/board/lists/?id=rock_climbing` (암벽),
+  `https://gall.dcinside.com/mgallery/board/lists/?id=sports_climbing` (스포츠클라이밍). 목록 2~3쪽(`&page=2`)까지 저장해 한꺼번에 넣으면 돼요.
 - **후보일 뿐이에요.** 글이 사실인지는 판단하지 않아요. 공지·전화로 확인한 뒤 `data/national.json` 과 `checked_at` 을 고치세요.
 - 암장 이름과 별칭(`뚝섬한강공원 인공암벽` → `뚝섬`)으로 찾고, 지역명뿐인 짧은 별칭(`강남`)은 "암장·클라이밍" 같은 말이 같은 문장에 있을 때만 믿어요.
   못 찾는 속칭은 `qa/watch-aliases.json` 에 `{"뚝섬한강공원 인공암벽": ["뚝섬벽"]}` 처럼 적으세요.
