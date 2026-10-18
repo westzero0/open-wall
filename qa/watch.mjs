@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, basename } from 'node:path';
 import { ROOT } from './lib.mjs';
-import { buildAliases, findCandidates, readHtml, readText, daysSince, CONF_RANK, loadWalls, loadAliases, renderCandidates } from './watch-lib.mjs';
+import { buildAliases, findCandidates, readHtml, readText, daysSince, CONF_RANK, loadWalls, loadAliases, renderCandidates, candidateId } from './watch-lib.mjs';
 
 const OUT = join(ROOT, 'qa', '.out');
 const SEEN_FILE = join(OUT, 'watch-seen.json');
@@ -52,6 +52,8 @@ function selftest() {
     ['내보내기에서 이름이 있는 줄만 후보', has(C, 'high') && has('고양인공암벽장', 'high')],
     ['말한 사람 닉네임이 출력에 없음', !cands.some((c) => /철수|영희|민수/.test(JSON.stringify(c)))],
     ['전화번호를 가림', !cands.some((c) => /\d{3}-\d{4}-\d{4}/.test(c.snippet)) && cands.some((c) => c.snippet.includes('[전화]'))],
+    ['같은 대화를 다시 내보내도(파일 이름·줄 번호가 달라도) 이미 본 글로 취급', candidateId({ source: 'export-1018.txt:2', snippet: '같은 문장' }) === candidateId({ source: 'export-1025.txt:3', snippet: '같은 문장' })],
+    ['웹 글은 링크가 다르면 다른 글', candidateId({ source: 'https://x/1', snippet: '같은 문장' }) !== candidateId({ source: 'https://x/2', snippet: '같은 문장' })],
     ['댓글 수 링크([3])는 제목이 아니라 무시', !cands.some((c) => c.snippet === '[3]')],
   ];
   let bad = 0;
@@ -75,7 +77,7 @@ for (const f of files) if (!items.some((i) => i.file === basename(f))) console.l
 let cands = findCandidates(items, walls, aliases);
 mkdirSync(OUT, { recursive: true });
 const seen = new Set(existsSync(SEEN_FILE) ? JSON.parse(readFileSync(SEEN_FILE, 'utf8')) : []);
-const id = (c) => createHash('sha1').update(`${c.source}|${c.snippet}`).digest('hex').slice(0, 16);
+const id = candidateId;
 const fresh = argv.includes('--all') ? cands : cands.filter((c) => !seen.has(id(c)));
 const { text } = renderCandidates(fresh, walls);
 console.log(`읽은 글/줄 ${items.length}개 → 변동 후보 ${cands.length}건 (새로운 것 ${fresh.length}건)\n`);

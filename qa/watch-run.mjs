@@ -9,11 +9,11 @@
 // 하는 일 (각 단계는 저장해 둔 "지난번에 본 것"과 비교해서 새것만 알린다)
 //   1. 공지 변경 확인   → qa/notices.mjs   (암장 공지 페이지)
 //   2. 검색 API         → qa/search-api.mjs (네이버·다음 블로그·카페. 키가 없으면 건너뜀)
-//   3. 받은 글 읽기     → qa/watch.mjs      (qa/inbox/ 에 넣어 둔 디시인사이드 저장 페이지·오픈채팅 내보내기. 처리하면 qa/inbox/done/ 으로 옮김)
+//   3. 받은 글 읽기     → qa/watch.mjs      (qa/inbox/ 에 넣어 둔 디시인사이드 저장 페이지·오픈채팅 내보내기. 처리하면 .html 은 qa/inbox/done/ 으로 옮기고, 오픈채팅 내보내기 .txt 는 남의 대화 원문이라 지움)
 // 결과는 한 장으로 합쳐서 qa/.out/watch-summary.md 에 쓴다. 후보일 뿐이니 공지·전화로 확인한 뒤 data/national.json 을 고치세요.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ROOT } from './lib.mjs';
@@ -65,7 +65,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`\n━━ 3. 받은 글 읽기(${inbox.length}개) ━━`);
     const r = run('watch.mjs', inbox.map((f) => join(INBOX, f)));
     sections.push(`# 3. 받은 글(디시인사이드 저장 페이지·오픈채팅)\n\n${r.out}\n`); console.log(r.out);
-    if (r.ok) { const done = join(INBOX, 'done', new Date().toISOString().slice(0, 10)); mkdirSync(done, { recursive: true }); for (const f of inbox) renameSync(join(INBOX, f), join(done, f)); }
+    if (r.ok) { // 처리한 .txt(오픈채팅 내보내기·메모)는 남의 대화 원문이 들어 있을 수 있어서 지운다. 저장한 웹 페이지(.html)만 done/ 으로 옮긴다.
+      const done = join(INBOX, 'done', new Date().toISOString().slice(0, 10));
+      for (const f of inbox) { if (/\.txt$/i.test(f)) rmSync(join(INBOX, f)); else { mkdirSync(done, { recursive: true }); renameSync(join(INBOX, f), join(done, f)); } }
+    }
   } else notes.push('- 3. 받은 글: qa/inbox/ 가 비어 있어요(저장한 디시인사이드 페이지나 오픈채팅 내보내기를 넣어 두면 읽어요)');
   writeFileSync(STATE, JSON.stringify(state, null, 2));
   const summary = [`# 변동 확인 요약 (${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })})`, '', ...notes, '', ...sections].join('\n');

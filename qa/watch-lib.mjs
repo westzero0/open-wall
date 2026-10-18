@@ -2,6 +2,7 @@
 // 네트워크를 쓰지 않고, 파일을 바꾸지 않는다.
 
 import { readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 // ── 암장 별칭 ────────────────────────────────────────────────────────────────
@@ -132,4 +133,11 @@ export function renderCandidates(cands, walls) {
     L.push('');
   }
   return { rows, text: L.join('\n') };
+}
+
+// "이미 본 글" 표시용 식별자. 텍스트 내보내기(출처가 '파일:줄')는 같은 대화를 다시 내보내면 파일 이름·줄 번호가 달라지므로 내용만 본다.
+// 웹 글(링크)은 링크 + 내용. (같은 문장이 반복돼도 새 사실이 아니라서 한 번만 알린다)
+export function candidateId(c) {
+  const key = /:\d+$/.test(String(c.source)) && !/^https?:/.test(String(c.source)) ? c.snippet : `${c.source}|${c.snippet}`;
+  return createHash('sha1').update(key).digest('hex').slice(0, 16);
 }
