@@ -428,7 +428,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sunnow.unknown.pic svg path:first-child { stroke-dasharray: 2.4 3; }
 .sunnow.indoor.pic { padding: 1px 5px; color: var(--muted); }
 .key li svg { width: 16px; height: 16px; margin-right: var(--sp-4); vertical-align: -3px; }
-.sunnow.pic svg { width: 18px; height: 18px; }
+.sunnow.pic svg { width: 24px; height: 24px; } /* beta feedback: 18px read as too small */
 /* the sun icon: ink on the amber chip in light (the amber itself is 2.4:1 there), the amber in dark (6:1) */
 .sunnow.sun.pic { color: var(--fg); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { color: var(--sun); } }
@@ -438,9 +438,11 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sunfilter { flex: none; display: inline-flex; border-radius: var(--r-pill); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); } /* a ring inside, not a border: the buttons keep the full 44px tap height */
 .sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
 .sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
-.sunfilter-btn svg { width: 20px; height: 20px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
-.sunfilter-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
-.sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: var(--fg); }
+.sunfilter-btn svg { width: 24px; height: 24px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
+#sunOnly { color: var(--sun-bar); } #shadeOnly { color: var(--shade-bar); } /* the icons carry the row bars' colours; pressed, the whole button takes it */
+#sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: #1b1f1e; } /* dark ink on amber in both themes: white on it is only 3.3:1 */
+#shadeOnly[aria-pressed="true"] { background: var(--shade-bar); color: var(--on-accent); }
+.sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: transparent; }
 .sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
 /* the row extras (다녀옴, region, 요금…) share the room between the name and the time. One line high: an extra that does not fit wraps below and is clipped whole, so there is never half a word or a wrapped closing time */
