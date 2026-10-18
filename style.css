@@ -461,9 +461,11 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.closed .rname, .row.unknown .rname { color: var(--muted); font-weight: 500; }
 .row.closed .left, .row.unknown .left { color: var(--muted); font-weight: 400; }
 .bar { position: relative; display: block; height: 15px; margin-top: var(--sp-8); }
-.bar .seg { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--open); } /* square ends: the list bar has no rounded corners */
+.bar .seg { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--open); }
 .bar .seg.past { background: var(--open-past); } /* the part already gone is lighter: the dark part is the time you have if you arrive at the tick */
 /* the two halves of a split interval meet square (no rounded notch where the tone changes) */
+.bar .seg.j-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.bar .seg.j-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 /* light bars (past, closed) get an edge with 3:1 against the sheet, so their length stays readable */
 .bar .seg.past, .k-past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
 .row.soon .bar .seg.past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soon) 70%, transparent); }
@@ -471,7 +473,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.soon .bar .seg { background: var(--soon); }
 .row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
-.sunband { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--sun); } /* no rim: the bar takes no border */ /* the open bar itself turns orange where the wall is sunny (the bands are only inside the open hours) */
+.sunband { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--sun); } /* the open bar itself turns orange where the wall is sunny (only inside the open hours); square ends, so no rounded orange shows inside the green */
 .sunband.past { opacity: .45; }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
 .tick { position: absolute; top: -4px; height: 19px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
