@@ -14,7 +14,7 @@ import {
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
-import { loadSeen as loadChangesSeen, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
+import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
@@ -744,6 +744,7 @@ function favBtn(name, label = null) { // label: a word under the heart (the link
     saveFavs(storage, favs);
     syncFavs();
     renderChanges();
+    if (favs.includes(name) && hintDue(storage)) { markHint(storage); toast('이 암장에 변경이 생기면 홈에 알려 드려요'); } // the first ♥ only
     if (ui.favOnly) render(); // the list itself follows the hearts
   });
   paintStar(btn);

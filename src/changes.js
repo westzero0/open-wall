@@ -77,3 +77,12 @@ export function loadSeen(storage) {
 export function saveSeen(storage, seen) {
   try { storage.setItem(SEEN_KEY, JSON.stringify(cleanSeen(seen))); } catch { /* storage full or blocked: dismissed for this visit only */ }
 }
+
+// The one-time note after a visitor's first ♥ ("changes to this wall come to the home"): shown once, whatever they do next.
+export const HINT_KEY = 'open-wall:changes-hint';
+export function hintDue(storage) {
+  try { return storage.getItem(HINT_KEY) !== '1'; } catch { return false; } // blocked storage: never nag
+}
+export function markHint(storage) {
+  try { storage.setItem(HINT_KEY, '1'); } catch { /* blocked: the note may show again next visit */ }
+}
