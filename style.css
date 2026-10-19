@@ -694,13 +694,16 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 /* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
 .sunbox:not(.solo) {
   display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "head" "verd" "fig" "sent" "why"; /* one column: the dial is drawn big enough to read its own labels (it was 120px beside the numbers, with 10px words) */
+  grid-template-areas: "head" "verd" "fig" "sent" "note" "why"; /* one column: the dial is drawn big enough to read its own labels (it was 120px beside the numbers, with 10px words) */
 }
 .sunbox:not(.solo) > .sb-head { grid-area: head; }
 .sunbox:not(.solo) > .sun-verdict { grid-area: verd; }
 .sunbox:not(.solo) > .sb-fig { grid-area: fig; max-width: 240px; margin: var(--sp-8) auto var(--sp-4); }
 .sunbox:not(.solo) > .dsent { grid-area: sent; }
 .sunbox:not(.solo) > .sun-why { grid-area: why; }
+.sunbox:not(.solo) > .sun-note { grid-area: note; }
+/* a wall that faces different ways: the verdict is for the main wall. A quiet callout, not a warning: small, full-contrast text on a thin rule */
+.sun-note { margin: 0; padding-left: var(--sp-10); border-left: 3px solid var(--line-strong); font-size: var(--fs-sm); line-height: 1.5; color: var(--fg); }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
 /* sun side view (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 230px slot renders it at 19px. */
 .dial { display: block; width: 100%; height: auto; overflow: visible; }
