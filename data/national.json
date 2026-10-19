@@ -3175,7 +3175,7 @@
       "name": "북한산 국제클라이밍센터",
       "short_name": "북한산",
       "region": "서울 강북구",
-      "height_m": null,
+      "height_m": 15,
       "tags": [
         "유료",
         "스피드월",
@@ -3376,7 +3376,9 @@
           "item": "샤워실",
           "note": "1회 500"
         }
-      ]
+      ],
+      "width_m": 21,
+      "indoor_height_m": 12
     },
     {
       "name": "당고개인공암벽장",
