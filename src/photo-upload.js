@@ -61,3 +61,49 @@ export async function uploadPhoto({ url, wall, blob, note = '', nick = '', fetch
     clearTimeout(timer);
   }
 }
+
+// ---- 여러 장 보내기 (사진 보내기 탭만; 정보 수정 요청의 증빙 사진은 한 장 그대로) ----
+export const MAX_PHOTOS = 5; // pictures in one send
+export const PHOTO_GAP_MS = 3500; // between two uploads; longer than the Worker's PHOTO_MIN_GAP_MS (3 s)
+export const PHOTO_DAY = 10; // what the Worker accepts per day (worker/index.js PHOTO_DAY_LIMIT); only used in the message
+export const PICK_MAX_SAY = `최대 ${MAX_PHOTOS}장까지 보낼 수 있어요.`;
+
+/** addPicks(have, added) → { files, cut }: appends, keeps the first MAX_PHOTOS; cut = some were left out. */
+export function addPicks(have, added) {
+  const all = [...have, ...added];
+  return { files: all.slice(0, MAX_PHOTOS), cut: all.length > MAX_PHOTOS };
+}
+
+// a failure that makes the rest pointless: stop there. Anything else (a bad or oversized picture) skips only that one.
+const STOPS = new Set(['rate_limited', 'network', 'full']);
+
+/**
+ * sendPhotos({ files, send, gapMs, sleep, onProgress }) → { total, sent: number[], failed: [{ i, why }], stopped: why|null }
+ * Sends one at a time, in order. send(file, i) → '' on success or a reason ('rate_limited' | 'too_big' | 'bad_image' | 'full' | 'network').
+ * Waits gapMs between pictures (sleep is injectable so tests do not wait). onProgress(n, total) runs before each upload.
+ */
+export async function sendPhotos({ files, send, gapMs = PHOTO_GAP_MS, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), onProgress = () => {} }) {
+  const out = { total: files.length, sent: [], failed: [], stopped: null };
+  for (let i = 0; i < files.length; i++) {
+    if (i > 0 && gapMs > 0) await sleep(gapMs);
+    onProgress(i + 1, files.length);
+    const why = await send(files[i], i);
+    if (!why) { out.sent.push(i); continue; }
+    out.failed.push({ i, why });
+    if (STOPS.has(why)) { out.stopped = why; break; }
+  }
+  return out;
+}
+
+/** photosMessage(result) → the line the sheet shows. One picture keeps the single-photo wording. */
+export function photosMessage({ total, sent, failed, stopped }) {
+  const n = sent.length;
+  if (total === 1) return n ? PHOTO_SAY.ok : PHOTO_SAY[failed[0].why];
+  if (n === total) return `사진 ${n}장을 보냈어요. 확인 후 반영해요.`;
+  const head = `${total}장 중 ${n}장 보냈어요.`;
+  if (stopped === 'rate_limited') return `${head} 나머지는 잠시 뒤에 다시 보내 주세요(하루 ${PHOTO_DAY}장까지 받아요).`;
+  if (stopped === 'network') return `${head} 연결을 확인하고 나머지를 다시 보내 주세요.`;
+  if (stopped === 'full') return `${head} ${PHOTO_SAY.full}`;
+  const skipped = failed.map((f) => `${f.i + 1}번`).join(', ');
+  return `${n ? head : '보내지 못했어요.'} ${skipped} 사진은 너무 크거나 사진이 아니라서 건너뛰었어요.`;
+}

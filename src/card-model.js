@@ -165,6 +165,10 @@ export function staleness(wall, now) {
 const BASIS = { outdoor: '실외 시간 기준', indoor: '실내 시간 기준' };
 // 무료/유료 tags mean the entrance fee: shown beside the name, not among the chips (parking has its own).
 const isFee = (t) => t === '무료' || t === '유료';
+/** The label under the height on a photo-less card: the first of these tags the wall has ('' when none). The admin preview calls this too. */
+export const placeholderSecondary = (tags) => ['스피드월', '리드', '볼더', '실내벽'].find((t) => (tags ?? []).includes(t)) ?? '';
+/** The tags that go on the expanded card's tags line (the 무료/유료 fee tags have their own place beside the name). */
+export const cardTags = (tags) => (tags ?? []).filter((t) => !isFee(t));
 const safeUrl = (u) => (/^https?:\/\//i.test(u ?? '') ? u : null);
 // 예약 pill: a link to the reservation site
 // 공지: one cell however many places the wall posts its notices (its site, its Naver place page, Instagram); with several the card asks which.
@@ -234,11 +238,14 @@ export function feeTable(wall) {
       const noteOnly = !rows.length && !f.times;
       // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
       if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
-      return { item: f.item, rows, note: f.note ?? null, noteOnly };
+      return { item: f.item, rows, note: withWon(f.note ?? null), noteOnly };
   });
   // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
   return { items, split: items.some((it) => it.rows.some((r) => r.all === undefined)), discount: wall.discount || null };
 }
+// A note is free text, so its prices may come without the unit ("1일 500 · 월 5,000"): add 원 to a comma-grouped number or one of 3+ digits,
+// unless a unit already follows (원 명 % 년 시 분 cm 개월 세 타임) or it is part of a time or range (15:00, 09~13).
+export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 
 // One word of price for a pick on a weekend day: 무료, 성인 1,500원 (the first priced 성인 item: weekend, then all, then
 // weekday; a 0 won item such as a free lesson is skipped), 유료 when only the tag says so, else null.
@@ -397,7 +404,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     name: wall.name,
     shortName: shortName(wall),
     fee: fee ? `입장 ${fee}` : null,
-    tags: tags.filter((t) => !isFee(t)),
+    tags: cardTags(tags),
     region: wall.region || null,
     dist, // "850m" (list row)
     distLine, // "직선 850m" (card)
@@ -451,7 +458,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     photo,
     placeholder: {
       primary: wall.height_m ? `${wall.height_m}m` : '외벽',
-      secondary: ['스피드월', '리드', '볼더', '실내벽'].find((t) => tags.includes(t)) ?? '',
+      secondary: placeholderSecondary(tags),
     },
     credit,
     photos,

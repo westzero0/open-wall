@@ -14,6 +14,7 @@ import {
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
+import { loadSeen as loadChangesSeen, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
@@ -666,6 +667,7 @@ function addrLine(m) {
 
 // ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
 let favs = loadFavs(storage);
+let changesSeen = loadChangesSeen(storage); // 이번 주 변경: the ones a visitor already dismissed
 // 세팅일이 바뀌었어요 (setting.js): the setting.last seen per ♥ wall; a first look only records it
 let seen = loadSeen(storage);
 function syncSeen() {
@@ -688,6 +690,35 @@ function paintStar(btn) {
   btn.replaceChildren(icon('heart', on), ...(btn.dataset.label ? [btn.dataset.label] : []));
 }
 // Every heart and name mark of a wall is repainted in place, so the tapped button keeps focus.
+// ---- 이번 주 변경: the followed walls (♥, 내 지역) that are suspended or have a closed date this week, one line on the home and a sheet ----
+const mdOf = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`;
+function changeText(c) {
+  const when = c.kind === 'closed' ? (c.from === c.to ? mdOf(c.from) : `${mdOf(c.from)}~${mdOf(c.to)}`) : c.from ? `${mdOf(c.from)}부터` : '';
+  return [c.kind === 'closed' ? '임시 휴무' : '지금은 일반 이용이 어려워요', when, c.note].filter(Boolean).join(' · ');
+}
+function fillChanges(list) {
+  $('changes-list').replaceChildren(...list.map((c) => {
+    const w = state.walls.find((x) => x.name === c.name);
+    const ok = el('button', { type: 'button', class: 'ch-ok', 'aria-label': `${w ? shortName(w) : c.name} 변경 확인했어요` }, '확인');
+    ok.addEventListener('click', () => { changesSeen = [...changesSeen, c.key]; saveChangesSeen(storage, changesSeen); renderChanges(); });
+    return el('li', {}, el('span', {}, el('b', {}, w ? shortName(w) : c.name), el('small', {}, changeText(c))), ok);
+  }));
+}
+function renderChanges() {
+  const line = $('changesLine');
+  if (!line || !$('changes')) return; // an older cached page has neither
+  const list = unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen);
+  line.hidden = !list.length;
+  if (list.length) line.textContent = `내 암장 이번 주 변경 ${list.length}건 ›`;
+  if ($('changes').open) { if (list.length) fillChanges(list); else $('changes').close(); }
+}
+if ($('changesLine') && $('changes')) {
+  $('changesLine').addEventListener('click', () => {
+    fillChanges(unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen));
+    $('changes').showModal();
+  });
+  $('changes').addEventListener('click', (e) => e.target === $('changes') && $('changes').close()); // the backdrop
+}
 function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
@@ -698,6 +729,7 @@ function favBtn(name, label = null) { // label: a word under the heart (the link
     favs = toggleFav(favs, name);
     saveFavs(storage, favs);
     syncFavs();
+    renderChanges();
     if (ui.favOnly) render(); // the list itself follows the hearts
   });
   paintStar(btn);
@@ -1521,7 +1553,7 @@ function render() {
 
   if ($('group-suspended')) { // (a cached older page may not have it yet)
     $('group-suspended').hidden = !groups.suspended.length;
-    setBand($('group-suspended').querySelector('summary'), '임시 휴관 중', groups.suspended.length);
+    setBand($('group-suspended').querySelector('summary'), '지금은 일반 이용이 어려운 곳', groups.suspended.length);
     $('rows-suspended').replaceChildren(...groups.suspended.map((r) => safeRow(r, at)));
   }
 
@@ -1547,6 +1579,7 @@ function showPin(row, fromClick) {
   box.classList.remove('enter'); // only a tap plays the slide-in, not the minute re-render
   if (!row) return box.replaceChildren();
   if (fromClick) {
+  renderChanges();
     $('pin-live').textContent = `${row.wall.name} 선택됨`;
     box.classList.add('enter');
   }

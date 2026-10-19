@@ -5,7 +5,7 @@ import { searchPicks } from './viewmodel.js';
 import { createGradeWall } from './grade-wall.js';
 import { totalOf } from './grades.js';
 import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
-import { MAX_NOTE, PHOTO_SAY, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
+import { MAX_NOTE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -81,6 +81,13 @@ if (dlg) {
   let routeWall = null; // 루트 분포's wall of holds (made below; hasText may run before it exists)
   let drafts = {};
   let busy = false;
+  // 암장 사진 tab's picked pictures (declared up here: the grade wall below calls refresh while it is being built)
+  const thumbs = dlg.querySelector('.rp-thumbs');
+  const pickSum = dlg.querySelector('.rp-pick-sum');
+  let picked = [];
+  let thumbUrls = [];
+  let sending = false; // a photo send is running (the sheet may be closed and reopened meanwhile)
+  let gen = 0; // bumps each time the sheet opens, so a late send never touches a newer sheet
   const hasEvidence = (kind) => EVIDENCE_OK(kind) && !!f.elements.evidence.files?.length;
   const hasContent = (kind) => hasText(kind) || hasEvidence(kind);
   const hasText = (kind) => {
@@ -92,11 +99,11 @@ if (dlg) {
       case '오픈채팅방': return !!v('chat');
       case '세팅일': return !!(v('setLast') || v('setNext') || v('body'));
       case '루트 분포': return (routeWall ? totalOf(routeWall.get('routes')) : 0) > 0 || !!v('body');
-      case PHOTO_KIND: return !!f.elements.photo.files?.length;
+      case PHOTO_KIND: return picked.length > 0;
       default: return !!v('body'); // 운영시간, 기타
     }
   };
-  const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); };
+  const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); f.elements.photo.disabled = busy; for (const b of thumbs.querySelectorAll('button')) b.disabled = busy; };
   // 루트 분포: the shared wall of holds counts the wall's own routes (one kind: 루트); refresh runs on every tap
   routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh(), label: '루트 고르기' });
   dlg.querySelector('.rp-wall').append(routeWall.el);
@@ -107,7 +114,7 @@ if (dlg) {
     f.elements.body.value = ''; f.elements.note.value = '';
     delete drafts[kind];
     if (kind === '루트 분포') routeWall.clear();
-    if (kind === PHOTO_KIND) clearPreview();
+    if (kind === PHOTO_KIND) clearPicked();
     else { f.elements.evidence.value = ''; clearEvidencePreview(); }
   };
   const onKind = () => {
@@ -144,54 +151,72 @@ if (dlg) {
     evidencePreview.src = evidenceUrl;
     evidencePreview.hidden = false;
   });
-  const preview = dlg.querySelector('.rp-photo-preview');
-  let previewUrl = '';
-  const clearPreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; preview.hidden = true; preview.removeAttribute('src'); };
+  // 암장 사진 tab: up to 5 pictures, shown as a thumbnail grid (each with a × to take it out). Picking again adds to the ones already there.
+  const drawPicked = () => {
+    for (const u of thumbUrls) URL.revokeObjectURL(u);
+    thumbUrls = picked.map((x) => URL.createObjectURL(x));
+    thumbs.hidden = pickSum.hidden = !picked.length;
+    pickSum.textContent = `${picked.length}장 선택됨`;
+    thumbs.replaceChildren(...picked.map((_, i) => {
+      const x = el('button', { type: 'button', class: 'rp-thumb-x', 'aria-label': `사진 ${i + 1} 빼기` }, '×');
+      x.addEventListener('click', () => { picked.splice(i, 1); drawPicked(); refresh(); say(''); });
+      return el('li', {}, el('img', { src: thumbUrls[i], alt: `고른 사진 ${i + 1}` }), x);
+    }));
+  };
+  const clearPicked = () => { picked = []; drawPicked(); };
   f.elements.photo.addEventListener('change', () => {
-    clearPreview();
-    const file = f.elements.photo.files?.[0];
-    if (!file) return;
-    previewUrl = URL.createObjectURL(file);
-    preview.src = previewUrl;
-    preview.hidden = false;
+    const r = addPicks(picked, [...(f.elements.photo.files ?? [])]);
+    f.elements.photo.value = ''; // the list lives in `picked`; the input only collects
+    picked = r.files;
+    drawPicked(); refresh();
+    if (r.cut) say(PICK_MAX_SAY);
   });
-  dlg.addEventListener('close', () => { clearPreview(); clearEvidencePreview(); });
+  dlg.addEventListener('close', () => { clearPicked(); clearEvidencePreview(); });
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close()); // no inline onclick: the CSP blocks it
 
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
   // Shrink + upload one picked file. Returns '' on success, else the message to show.
-  async function postPhoto(file, note, nick) {
-    if (!config.boardUrl) return PHOTO_SAY.network;
+  // Returns '' on success, else the reason key of PHOTO_SAY.
+  async function postPhotoWhy(file, note, nick) {
+    if (!config.boardUrl) return 'network';
     let blob;
-    try { blob = await shrinkToJpeg(file); } catch (e) { return e.message === 'too_big' ? PHOTO_SAY.too_big : PHOTO_SAY.bad_image; }
+    try { blob = await shrinkToJpeg(file); } catch (e) { return e.message === 'too_big' ? 'too_big' : 'bad_image'; }
     const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick });
-    return r.ok ? '' : PHOTO_SAY[r.why];
+    return r.ok ? '' : r.why;
   }
-  // Photo-only send: the 암장 사진 tab, or any other kind that has a picture but no text.
+  const postPhoto = async (file, note, nick) => { const why = await postPhotoWhy(file, note, nick); return why ? PHOTO_SAY[why] : ''; }; // the message to show, or ''
+  // Photo-only send: the 암장 사진 tab (up to 5 pictures, one by one), or any other kind that has one picture but no text.
   async function sendPhoto(kind) {
-    const input = kind === PHOTO_KIND ? f.elements.photo : f.elements.evidence;
-    const file = input.files?.[0];
+    const files = kind === PHOTO_KIND ? picked.slice() : [f.elements.evidence.files?.[0]].filter(Boolean);
     if (!wallName) return say('암장을 먼저 골라 주세요.');
-    if (!file) return say('보낼 사진을 골라 주세요.');
+    if (!files.length) return say('보낼 사진을 골라 주세요.');
     if (mode === 'required' && !nickCommit(mode, readNick(), f.elements.nick.value).nick) return say('닉네임을 적어 주세요.');
-    const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
+    const memo = f.elements.body.value.replace(/s+/g, ' ').trim();
     if ([...memo].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
     const c = commitNick(f.elements.nick.value);
     if (!c) return;
     const nick = c.nick;
-    busy = true; refresh();
-    const done = () => { busy = false; refresh(); };
+    const mine = gen;
+    busy = true; sending = true; refresh();
+    const done = () => { sending = false; if (mine === gen) { busy = false; refresh(); } };
     if (f.elements.website.value !== '') { set(); clearTab(kind); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
-    say('사진을 줄여서 보내는 중…');
-    const err = await postPhoto(file, kind === PHOTO_KIND ? memo : evidenceNote(kind, memo), nick);
-    if (err) { done(); return say(err); }
-    if (c.save) saveNick(c.nick);
-    set();
-    clearTab(kind); // sent: empty this tab, so the same photo is not sent twice (the button goes off with it)
+    const note = kind === PHOTO_KIND ? memo : evidenceNote(kind, memo);
+    const say2 = (m) => { if (mine === gen) say(m); };
+    say(files.length > 1 ? `1/${files.length} 보내는 중…` : '사진을 줄여서 보내는 중…');
+    const res = await sendPhotos({
+      files,
+      send: (file) => postPhotoWhy(file, note, nick),
+      onProgress: (n, total) => { if (total > 1) say2(`${n}/${total} 보내는 중…`); },
+    });
+    if (res.sent.length) { if (c.save) saveNick(c.nick); set(); }
+    if (mine === gen) {
+      if (res.sent.length === res.total) clearTab(kind); // all sent: empty this tab, so the same photos are not sent twice
+      else if (kind === PHOTO_KIND && res.sent.length) { picked = picked.filter((_, i) => !res.sent.includes(i)); drawPicked(); } // keep only what is left to send
+    }
     done();
-    say(PHOTO_SAY.ok);
+    say2(photosMessage(res));
   }
   // The Worker keeps only a wall + short memo per photo, so the kind rides in the memo: "[운영시간] 입구 안내문".
   const evidenceNote = (kind, memo) => [...`[${kind}] ${memo}`.trim()].slice(0, MAX_NOTE).join('');
@@ -215,13 +240,14 @@ if (dlg) {
     picks.hidden = true; picks.replaceChildren();
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
-    clearPreview(); clearEvidencePreview();
+    clearPicked(); clearEvidencePreview();
+    gen++;
     drafts = {}; cur = f.elements.kind.value;
     routeWall.clear();
     syncKind();
     setWall(name || ''); // read-only text or a pick from the list, never typed
     if (picking) pickEl.value = '';
-    busy = false; refresh();
+    busy = sending; refresh();
     alt.hidden = true;
     say('');
     dlg.showModal();

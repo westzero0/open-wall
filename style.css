@@ -298,6 +298,16 @@ main { padding-bottom: var(--sp-48); }
 .pin-more:active { background: var(--sunken); }
 /* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band, where the list is
    flat rows with bars). Folded: thumbnail, wall, reason. Opened: day pills + basis, then compact rows. Every control is at least --tap high. */
+/* 이번 주 변경: one line on the home for the followed walls, a sheet behind it */
+.changes-line { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: var(--tap); margin-top: var(--sp-10); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; cursor: pointer; }
+.changes-line::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.changes-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.changes-list { list-style: none; margin: 0; padding: 0; }
+.changes-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); padding: var(--sp-10) 0; border-top: 1px solid var(--line); }
+.changes-list li > span { min-width: 0; }
+.changes-list small { display: block; color: var(--muted); font-size: var(--fs-sm); }
+.ch-ok { flex: none; min-height: var(--tap); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.ch-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pick { --pad: 16px; margin: var(--sp-10) -16px 0; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-block: 1px solid var(--line); }
 .pick-sum { display: flex; align-items: center; gap: var(--sp-12); min-height: 56px; padding: 8px var(--pad); list-style: none; cursor: pointer; }
 .pick-sum::-webkit-details-marker { display: none; }
@@ -1182,6 +1192,14 @@ dialog::backdrop { background: var(--scrim); }
 #report .segs label { flex: 1 0 auto; padding: 0 var(--sp-12); scroll-snap-align: start; }
 .rp-extra[hidden], .rp-nick[hidden], .rp-note[hidden] { display: none; }
 .rp-photo-preview { display: block; width: 100%; max-height: 40dvh; margin: var(--sp-4) 0; border-radius: var(--r-md); object-fit: contain; background: var(--sunken); }
+/* 암장 사진 tab: picked pictures as a grid; each has a 44px tap area in its corner to take it out */
+.rp-pick-sum { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); color: var(--muted); }
+.rp-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: var(--sp-8); margin: var(--sp-8) 0; padding: 0; list-style: none; }
+.rp-thumbs li { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: var(--r-md); background: var(--sunken); }
+.rp-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.rp-thumb-x { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; color: #fff; font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; background: radial-gradient(circle 13px at 50% 50%, rgb(0 0 0 / .65) 96%, transparent 100%); }
+.rp-thumb-x:disabled { opacity: .5; cursor: default; }
+.rp-thumbs[hidden], .rp-pick-sum[hidden] { display: none; }
 .pf-rank[hidden] { display: none; }
 .pf-rank-list { margin: var(--sp-6) 0 0; padding: 0; list-style: none; display: grid; gap: var(--sp-4); font-size: var(--fs-sm); }
 .pf-rank-list b { display: inline-block; min-width: 2.2em; color: var(--accent); }
