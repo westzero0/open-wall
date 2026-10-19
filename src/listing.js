@@ -28,8 +28,11 @@ export function buildList(walls, at, { minHours = 0, sun = 'any', withBreaks = f
 
   // 0 = preferred, 1 = no info / no preference, 2 = opposite
   const sunRank = (r) => (sun === 'any' || r.lit === null ? 1 : r.lit === (sun === 'sun') ? 0 : 2);
+  // open rows by the time the row SAYS: whole hours ("3시간 가능"; the minutes are dropped), or the minutes when it says "곧 마감 · N분 남음" (60 or less).
+  // Rows that read the same are then in name order, so the list looks sorted by what it shows.
+  const shown = (min) => (min <= 60 ? min : Math.floor(min / 60) * 60 + 0.5);
   const order = (r) =>
-    r.status.state === 'open' ? -r.status.remainingMin : (r.status.nextOpenAt?.valueOf() ?? Infinity);
+    r.status.state === 'open' ? -shown(r.status.remainingMin) : (r.status.nextOpenAt?.valueOf() ?? Infinity);
 
   return rows.sort(
     (a, b) =>
