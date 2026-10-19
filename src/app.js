@@ -1085,7 +1085,7 @@ function rowDetails(m, wall, at) {
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
         ...(m.photo ? [] : [links]), ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
-        m.rope ? el('p', { class: `rope-line ${m.rope.tone}` }, ...ropeParts(m.rope), el('span', { class: 'rl-basis' }, m.rope.basis)) : null,
+        m.rope ? el('p', { class: 'rope-line', title: m.rope.basis }, el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)) : null,
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].join(' · ')) : null, // facts, not controls: one muted line
@@ -1369,8 +1369,6 @@ function crowdQuick(name) {
   });
   return box;
 }
-// the rope line: the ask as plain text, the verdict (if any) bold
-const ropeParts = (r) => { const i = r.text.indexOf(' · '); return i < 0 ? [r.text] : [r.text.slice(0, i + 3), el('b', {}, r.text.slice(i + 3))]; };
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
   weather: weatherCtx(row.wall.name, at), ropeM: Number(ui.ropeM) || 0,

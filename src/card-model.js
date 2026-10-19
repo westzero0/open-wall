@@ -360,6 +360,8 @@ export function settingText(setting, today) {
  */
 // ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
 export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
+// The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
+// Conservative on purpose; change it here and every card follows.
 export const ROPE_MARGIN_M = 5;
 export function ropeNeeded(heightM) {
   if (!(heightM > 0)) return null; // no height known: say nothing
@@ -367,15 +369,15 @@ export function ropeNeeded(heightM) {
   const m = ROPE_LENGTHS.find((l) => l >= need);
   return { m: m ?? null, over: m === undefined, need };
 }
-// The card's rope line: what the wall asks, and with a rope picked (ownM) whether it is enough. A hint, never a verdict.
+// The card's rope pills: what the wall asks (ask) and, with a rope picked (ownM), whether mine is enough (own). A hint, never a verdict:
+// the basis (height × 2 + the margin) is under the pills for screen readers and as a tooltip.
 export function ropeLine(heightM, ownM = 0) {
   const r = ropeNeeded(heightM);
   if (!r) return null;
-  const own = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
-  const tone = !own ? 'info' : own >= r.need ? 'ok' : 'short';
-  const ask = r.over ? `${ROPE_LENGTHS.at(-1)}m보다 긴 로프 필요` : `로프 ${r.m}m 이상 권장`;
-  const verdict = !own ? '' : tone === 'ok' ? ` · 내 로프 ${own}m는 충분해요` : ` · 내 로프 ${own}m는 부족할 수 있어요`;
-  return { text: `${ask}${verdict}`, basis: `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m`, tone };
+  const mine = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
+  const ask = r.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${r.m}m 이상`;
+  const own = !mine ? null : mine >= r.need ? { text: `내 ${mine}m 충분`, tone: 'ok' } : { text: `내 ${mine}m 부족`, tone: 'short' };
+  return { ask, own, basis: `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, ropeM = 0 } = {}) {

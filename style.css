@@ -660,11 +660,11 @@ dialog.gal[open] { display: flex; }
 .stale-note { margin-top: var(--sp-4); font-size: var(--fs-xs); color: var(--warn); }
 .tags { margin-top: var(--sp-8); display: flex; flex-wrap: wrap; gap: var(--sp-6); }
 .tags-line { margin: var(--sp-10) 0 0; font-size: var(--fs-sm); color: var(--muted); }
-/* 로프 권장: one quiet line under the facts; with 내 로프 picked the verdict part is bold (ok green, short the soon colour), and the basis stays small */
-.rope-line { margin: var(--sp-4) 0 0; font-size: var(--fs-sm); color: var(--fg); }
-.rope-line .rl-basis { display: block; color: var(--muted); font-size: var(--fs-xs); }
-.rope-line.ok b { color: var(--open); }
-.rope-line.short b { color: var(--soon); }
+/* 로프 pills under the facts: what the wall asks, and (with 내 로프 picked) whether mine is enough, in the parking chips' outlined look */
+.rope-line { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0 0; }
+.chip.rope { border: 1px solid var(--line-strong); background: transparent; font-weight: 600; white-space: nowrap; }
+.chip.rope.ok { color: var(--open); border-color: currentColor; }
+.chip.rope.short { color: var(--soon); border-color: currentColor; }
 /* 길찾기 · 공지사항 · 전화 …: a flat strip like the list rows (hairlines, icon over word); 44px+ tall, a cell is the tap area */
 .linkbar { display: flex; flex-wrap: wrap; margin-top: var(--sp-12); border-block: 1px solid var(--hair); }
 .lb-item { flex: 1 1 0; min-width: 3.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 56px; padding: var(--sp-8) var(--sp-4); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; text-decoration: none; text-align: center; transition: background-color var(--dur-press) var(--ease-out); }
