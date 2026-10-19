@@ -692,31 +692,45 @@ function paintStar(btn) {
 // Every heart and name mark of a wall is repainted in place, so the tapped button keeps focus.
 // ---- 이번 주 변경: the followed walls (♥, 내 지역) that are suspended or have a closed date this week, one line on the home and a sheet ----
 const mdOf = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`;
+const sinceText = (d) => (Date.now() - new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)) > 60 * 864e5 ? `${+d.slice(5, 7)}월부터` : `${mdOf(d)}부터`); // a long-ago start: the month only
 function changeText(c) {
-  const when = c.kind === 'closed' ? (c.from === c.to ? mdOf(c.from) : `${mdOf(c.from)}~${mdOf(c.to)}`) : c.from ? `${mdOf(c.from)}부터` : '';
-  return [c.kind === 'closed' ? '임시 휴무' : '지금은 일반 이용이 어려워요', when, c.note].filter(Boolean).join(' · ');
+  if (c.kind === 'winter') return [c.season === 'start' ? '동절기 시작' : '동절기 끝', `${mdOf(c.from)}${c.season === 'start' ? '부터' : ''}`, c.note].filter(Boolean).join(' · ');
+  const when = c.kind === 'closed' ? (c.from === c.to ? mdOf(c.from) : `${mdOf(c.from)}~${mdOf(c.to)}`) : c.from ? sinceText(c.from) : '';
+  return [c.kind === 'closed' ? '임시 휴무' : '이용 어려움', when, c.note].filter(Boolean).join(' · ');
+}
+const changesList = () => unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen);
+function dismissChanges(keys) {
+  changesSeen = [...changesSeen, ...keys];
+  saveChangesSeen(storage, changesSeen);
+  renderChanges();
 }
 function fillChanges(list) {
   $('changes-list').replaceChildren(...list.map((c) => {
     const w = state.walls.find((x) => x.name === c.name);
-    const ok = el('button', { type: 'button', class: 'ch-ok', 'aria-label': `${w ? shortName(w) : c.name} 변경 확인했어요` }, '확인');
-    ok.addEventListener('click', () => { changesSeen = [...changesSeen, c.key]; saveChangesSeen(storage, changesSeen); renderChanges(); });
-    return el('li', {}, el('span', {}, el('b', {}, w ? shortName(w) : c.name), el('small', {}, changeText(c))), ok);
+    const label = w ? shortName(w) : c.name;
+    const notice = /^https?:\/\//.test(w?.contact?.notice_url ?? '') ? el('a', { href: w.contact.notice_url, target: '_blank', rel: 'noopener noreferrer' }, ' 공지 보기') : null;
+    const name = el('button', { type: 'button', class: 'ch-name', 'aria-label': `${label} 자세히 보기` }, label);
+    name.addEventListener('click', () => { $('changes').close(); openWallSheet(c.name, $('changesLine').hidden ? null : $('changesLine')); }); // to the wall's own sheet (hours, use, notice)
+    const ok = el('button', { type: 'button', class: 'ch-ok', 'aria-label': `${label} 변경 읽음` }, '읽음');
+    ok.addEventListener('click', () => dismissChanges([c.key]));
+    return el('li', {}, el('span', {}, name, el('small', {}, changeText(c), notice)), ok);
   }));
+  $('changes-all').hidden = list.length < 2;
 }
 function renderChanges() {
   const line = $('changesLine');
   if (!line || !$('changes')) return; // an older cached page has neither
-  const list = unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen);
+  const list = changesList();
   line.hidden = !list.length;
-  if (list.length) line.textContent = `내 암장 이번 주 변경 ${list.length}건 ›`;
-  if ($('changes').open) { if (list.length) fillChanges(list); else $('changes').close(); }
+  if (list.length) line.replaceChildren(`내 암장 소식 ${list.length}건 `, el('span', { 'aria-hidden': 'true' }, '›'));
+  if ($('changes').open) {
+    if (list.length) fillChanges(list);
+    else { $('changes').close(); $('tab-list')?.focus(); } // the line is gone with the last one: focus goes to the list tab, not to nowhere
+  }
 }
 if ($('changesLine') && $('changes')) {
-  $('changesLine').addEventListener('click', () => {
-    fillChanges(unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen));
-    $('changes').showModal();
-  });
+  $('changesLine').addEventListener('click', () => { fillChanges(changesList()); $('changes').showModal(); });
+  $('changes-all').addEventListener('click', () => dismissChanges(changesList().map((c) => c.key)));
   $('changes').addEventListener('click', (e) => e.target === $('changes') && $('changes').close()); // the backdrop
 }
 function syncFavs() {
@@ -1567,6 +1581,7 @@ function render() {
   $('map-note').hidden = !unlocated.length;
   mapApi?.setRows(all, at);
   renderPick();
+  renderChanges();
   loadListWeather();
   syncWxCredit();
   showHowtoAuto(); // a first visit: the sheet opens once, over the drawn list
@@ -1579,7 +1594,6 @@ function showPin(row, fromClick) {
   box.classList.remove('enter'); // only a tap plays the slide-in, not the minute re-render
   if (!row) return box.replaceChildren();
   if (fromClick) {
-  renderChanges();
     $('pin-live').textContent = `${row.wall.name} 선택됨`;
     box.classList.add('enter');
   }

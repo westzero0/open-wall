@@ -11,6 +11,21 @@ const isDateStr = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const nextDay = (s) => ymd(addDays(new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)), 1));
 
+// The winter season's two edges that fall in [today, today + days]: it starts on the 1st of from_month and ends with to_month (the day after).
+// A wall with no winter, or winter type none, has none.
+function winterEdges(wall, today, days) {
+  const w = wall.winter;
+  if (!w?.type || w.type === 'none' || !(w.from_month >= 1 && w.to_month >= 1)) return [];
+  const from = ymd(today), until = ymd(addDays(today, days)), out = [];
+  for (let y = today.getFullYear() - 1; y <= today.getFullYear() + 1; y++) {
+    const start = ymd(new Date(y, w.from_month - 1, 1));
+    const end = ymd(new Date(w.from_month <= w.to_month ? y : y + 1, w.to_month, 1)); // the day after the last winter month
+    if (start >= from && start <= until) out.push({ season: 'start', date: start });
+    if (end >= from && end <= until) out.push({ season: 'end', date: end });
+  }
+  return out;
+}
+
 // closed dates inside [today, today + days] as runs of consecutive days: ['2026-10-20', '2026-10-21'] → one { from, to }
 function closedRuns(dates, today, days) {
   const from = ymd(today), until = ymd(addDays(today, days));
@@ -25,7 +40,7 @@ function closedRuns(dates, today, days) {
 }
 
 // What changed for the walls in `favs` (names) or in `regions` (area names). Neither chosen: nothing (a first visit sees no line).
-// → [{ key, name, kind: 'suspended' | 'closed', from, to, note }], the suspended ones first, then by date. `key` is stable per change,
+// → [{ key, name, kind: 'suspended' | 'closed' | 'winter' (+ season 'start' | 'end'), from, to, note }], the suspended ones first, then by date. `key` is stable per change,
 // so a dismissed one stays dismissed and a changed reason comes back.
 export function weekChanges(walls, today, { favs = [], regions = [] } = {}) {
   if (!favs.length && !regions.length) return [];
@@ -39,8 +54,13 @@ export function weekChanges(walls, today, { favs = [], regions = [] } = {}) {
     for (const r of closedRuns(w.exceptions?.closed_dates, today, WINDOW_DAYS)) {
       out.push({ key: `${w.name}|c|${r.from}|${r.to}`, name: w.name, kind: 'closed', from: r.from, to: r.to, note: '' });
     }
+    for (const e of winterEdges(w, today, WINDOW_DAYS)) {
+      const note = e.season === 'start' ? (w.winter.type === 'closed' ? '실외 휴관' : '운영시간 변경') : '평소 시간으로';
+      out.push({ key: `${w.name}|w|${e.date}|${e.season}`, name: w.name, kind: 'winter', season: e.season, from: e.date, to: null, note });
+    }
   }
-  return out.sort((a, b) => (a.kind === b.kind ? (a.from ?? '').localeCompare(b.from ?? '') || a.name.localeCompare(b.name, 'ko') : a.kind === 'suspended' ? -1 : 1));
+  const rank = (c) => (c.kind === 'suspended' ? 0 : 1);
+  return out.sort((a, b) => rank(a) - rank(b) || (a.from ?? '').localeCompare(b.from ?? '') || a.name.localeCompare(b.name, 'ko'));
 }
 
 // The ones not yet dismissed.

@@ -306,6 +306,12 @@ main { padding-bottom: var(--sp-48); }
 .changes-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); padding: var(--sp-10) 0; border-top: 1px solid var(--line); }
 .changes-list li > span { min-width: 0; }
 .changes-list small { display: block; color: var(--muted); font-size: var(--fs-sm); }
+.changes-list small a { color: var(--accent); white-space: nowrap; }
+.ch-name { min-height: var(--tap); margin: 0; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; cursor: pointer; } /* the name opens the wall's sheet */
+.ch-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ch-all { justify-self: end; min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-8); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+.ch-all:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ch-note { margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-xs); }
 .ch-ok { flex: none; min-height: var(--tap); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .ch-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pick { --pad: 16px; margin: var(--sp-10) -16px 0; background: color-mix(in srgb, var(--accent) 7%, var(--bg)); border-block: 1px solid var(--line); }
