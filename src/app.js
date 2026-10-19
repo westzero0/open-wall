@@ -19,7 +19,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanRope, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
@@ -1085,6 +1085,7 @@ function rowDetails(m, wall, at) {
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
         ...(m.photo ? [] : [links]), ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
+        m.rope ? el('p', { class: `rope-line ${m.rope.tone}` }, ...ropeParts(m.rope), el('span', { class: 'rl-basis' }, m.rope.basis)) : null,
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].join(' · ')) : null, // facts, not controls: one muted line
@@ -1368,9 +1369,11 @@ function crowdQuick(name) {
   });
   return box;
 }
+// the rope line: the ask as plain text, the verdict (if any) bold
+const ropeParts = (r) => { const i = r.text.indexOf(' · '); return i < 0 ? [r.text] : [r.text.slice(0, i + 3), el('b', {}, r.text.slice(i + 3))]; };
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
-  weather: weatherCtx(row.wall.name, at),
+  weather: weatherCtx(row.wall.name, at), ropeM: Number(ui.ropeM) || 0,
 });
 
 let rowSeq = 0;
@@ -1808,11 +1811,11 @@ $('axis').append(nowTag);
 
 const sheet = $('conditions');
 const sheetForm = sheet.querySelector('form');
-for (const k of ['minHours', 'sortMode', 'venue']) sheetForm.elements[k].value = ui[k];
+for (const k of ['minHours', 'sortMode', 'venue', 'ropeM']) sheetForm.elements[k].value = ui[k];
 
 const setUi = (k, v) => {
   ui[k] = v;
-  if (k === 'minHours' || k === 'sortMode' || k === 'venue') sheetForm.elements[k].value = v;
+  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'ropeM') sheetForm.elements[k].value = v;
   if (k === 'sortMode') go({ type: 'sort' });
   saveUi();
   render();
@@ -1922,6 +1925,7 @@ sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // 
 sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
+  if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value));
 });
 // 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
 for (const id of ['regionOpts', 'regionOptsC']) {

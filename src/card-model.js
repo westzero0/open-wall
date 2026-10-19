@@ -358,7 +358,27 @@ export function settingText(setting, today) {
  * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy, temp, wind, gust} (the chips of the line). Without it, no key.
  * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
  */
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null } = {}) {
+// ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
+export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
+export const ROPE_MARGIN_M = 5;
+export function ropeNeeded(heightM) {
+  if (!(heightM > 0)) return null; // no height known: say nothing
+  const need = heightM * 2 + ROPE_MARGIN_M;
+  const m = ROPE_LENGTHS.find((l) => l >= need);
+  return { m: m ?? null, over: m === undefined, need };
+}
+// The card's rope line: what the wall asks, and with a rope picked (ownM) whether it is enough. A hint, never a verdict.
+export function ropeLine(heightM, ownM = 0) {
+  const r = ropeNeeded(heightM);
+  if (!r) return null;
+  const own = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
+  const tone = !own ? 'info' : own >= r.need ? 'ok' : 'short';
+  const ask = r.over ? `${ROPE_LENGTHS.at(-1)}m보다 긴 로프 필요` : `로프 ${r.m}m 이상 권장`;
+  const verdict = !own ? '' : tone === 'ok' ? ` · 내 로프 ${own}m는 충분해요` : ` · 내 로프 ${own}m는 부족할 수 있어요`;
+  return { text: `${ask}${verdict}`, basis: `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m`, tone };
+}
+
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, ropeM = 0 } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -432,6 +452,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info: splitInfo([...notes, ...facts.rest]), // expanded row's 안내 (face) and 시설 (wall sheet)
     sizes: facts.sizes,
+    rope: ropeLine(wall.height_m, ropeM),
     indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
     indoorHeight: wall.venue === 'both' && wall.indoor_height_m ? `실내 높이 ${wall.indoor_height_m}m` : '', // only for 실내+실외 walls (for 'indoor' the plain height is the indoor wall); app.js adds it to the tags line
     address: facts.address,

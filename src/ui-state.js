@@ -5,7 +5,7 @@ import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
@@ -21,6 +21,9 @@ const MIN_HOURS = ['0', '3', '5', '8'];
 const migrateMinHours = (v) => ({ 1: '0', 2: '3' }[String(v)] ?? (MIN_HOURS.includes(String(v)) ? String(v) : '0'));
 
 export const cleanVenue = (v) => (VENUE_FILTERS.includes(v) ? v : 'any');
+// 내 로프 길이 (not a filter: it only tells the card whether the wall's height fits). '0' = not set.
+export const ROPE_CHOICES = ['0', '40', '45', '50', '60', '70'];
+export const cleanRope = (v) => (ROPE_CHOICES.includes(String(v)) ? String(v) : '0');
 // Saved selection: 권역 names only (areas.js; an old "서울 동작구" becomes "서울"), no repeats, and (when the list is known) only 권역 that exist.
 export function cleanRegions(v, known = null) {
   return normalizeAreas(v).filter((r) => !known || known.includes(r));
@@ -43,6 +46,7 @@ export function loadUi(storage) {
   ui.regions = cleanRegions(ui.regions);
   ui.hidePick = ui.hidePick === true; // 이번 주말 추천 turned off in 내 정보
   ui.venue = cleanVenue(ui.venue);
+  ui.ropeM = cleanRope(ui.ropeM);
   ui.favOnly = ui.favOnly === true;
   if (!TABS.includes(ui.tab)) ui.tab = 'list';
   ui.theme = cleanTheme(ui.theme);
