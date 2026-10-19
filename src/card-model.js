@@ -2,7 +2,8 @@
 // No DOM: app.js only draws what this returns, so the three views can't phrase the same rule differently.
 import { hasHours, openIntervals } from './hours.js';
 import { hhmm, ymd } from './time.js';
-import { CHAT_URL_RE } from './store.js';
+import { CHAT_URL_RE, ROPE_LENGTHS } from './store.js';
+export { ROPE_LENGTHS }; // (the list lives in store.js: normalizeWall cleans rope_m against it)
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import { weatherLine, windy } from './weather.js';
@@ -359,7 +360,6 @@ export function settingText(setting, today) {
  * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
  */
 // ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
-export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
 // The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
 // Conservative on purpose; change it here and every card follows.
 export const ROPE_MARGIN_M = 5;
@@ -371,13 +371,15 @@ export function ropeNeeded(heightM) {
 }
 // The card's rope pills: what the wall asks (ask) and, with a rope picked (ownM), whether mine is enough (own). A hint, never a verdict:
 // the basis (height × 2 + the margin) is under the pills for screen readers and as a tooltip.
-export function ropeLine(heightM, ownM = 0) {
-  const r = ropeNeeded(heightM);
+// officialM (wall.rope_m): the length the wall itself asks for, which replaces the height-based guess (the basis then says so).
+export function ropeLine(heightM, ownM = 0, officialM = 0) {
+  const official = ROPE_LENGTHS.includes(officialM) ? officialM : 0;
+  const r = official ? { m: official, over: false, need: official } : ropeNeeded(heightM);
   if (!r) return null;
   const mine = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
   const ask = r.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${r.m}m 이상`;
   const own = !mine ? null : mine >= r.need ? { text: `내 ${mine}m 충분`, tone: 'ok' } : { text: `내 ${mine}m 부족`, tone: 'short' };
-  return { ask, own, basis: `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
+  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, ropeM = 0 } = {}) {
@@ -454,7 +456,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info: splitInfo([...notes, ...facts.rest]), // expanded row's 안내 (face) and 시설 (wall sheet)
     sizes: facts.sizes,
-    rope: ropeLine(wall.height_m, ropeM),
+    rope: ropeLine(wall.height_m, ropeM, wall.rope_m),
     indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
     indoorHeight: wall.venue === 'both' && wall.indoor_height_m ? `실내 높이 ${wall.indoor_height_m}m` : '', // only for 실내+실외 walls (for 'indoor' the plain height is the indoor wall); app.js adds it to the tags line
     address: facts.address,

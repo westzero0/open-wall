@@ -205,6 +205,11 @@ function getWinter(v) {
   };
 }
 
+// rope_m: the wall's own (official) rope length in metres, one of the lengths people carry; it replaces the height-based guess on the card.
+// Anything else is dropped (no rope_m → the card works it out from the wall height).
+export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
+const cleanRope = (v) => (ROPE_LENGTHS.includes(v) ? v : null);
+
 // suspended: 임시 휴관 중 with no end date, { since?: 'YYYY-MM-DD', note?: short reason }. An object (even empty) means
 // suspended; anything else means not. Removing it brings the wall back to its timetable.
 export const MAX_SUSPENDED_NOTE = 60;
@@ -361,6 +366,7 @@ export function normalizeWall(raw) {
   const winter = getWinter(raw.winter);
   const seasons = cleanSeasons(raw.seasons);
   const suspended = cleanSuspended(raw.suspended);
+  const rope_m = cleanRope(raw.rope_m);
   const fees = cleanFees(raw.fees);
   const discount = fees.length ? cleanDiscount(raw.discount) : ''; // a discount line belongs to a fee table
   const exceptions = getExceptions(raw.exceptions);
@@ -413,6 +419,7 @@ export function normalizeWall(raw) {
     name,
     ...(seasons.length ? { seasons } : {}),
     ...(suspended ? { suspended } : {}),
+    ...(rope_m ? { rope_m } : {}),
     ...(sun_note ? { sun_note } : {}),
     ...(fees.length ? { fees } : {}),
     ...(discount ? { discount } : {}),
@@ -463,7 +470,7 @@ export function keepGeo(old, next) {
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'route_sets']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -489,7 +496,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'route_sets']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets']) if (w[k] && !old[k]) fill[k] = w[k];
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
