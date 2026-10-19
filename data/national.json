@@ -5,7 +5,7 @@
       "name": "양주인공암벽장",
       "short_name": "양주",
       "region": "경기 양주시",
-      "height_m": null,
+      "height_m": 16,
       "tags": [
         "유료",
         "스피드월"
@@ -191,12 +191,12 @@
       "name": "고양인공암벽장",
       "short_name": "고양",
       "region": "경기 고양시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "유료",
         "스피드월"
       ],
-      "memo": "정기휴무 화",
+      "memo": "정기휴무 화\n시설 샤워실·교육실·사무실\n장비 대여 불가(안전모만 무료 대여), 개인장비 지참\n만 13세 미만 이용 제한",
       "address": "경기 고양시 일산서구 중앙로 1601 (대화동 2325-3)",
       "sun": {
         "facing": "SE",
@@ -377,11 +377,11 @@
           ]
         }
       },
-      "checked_at": "2026-10-15",
+      "checked_at": "2026-10-20",
       "contact": {
         "notice_url": "https://www.gys.or.kr/subpage/index/45",
         "instagram": "goyang_gys",
-        "phone": "031-919-8407",
+        "phone": "031-929-4868",
         "naver_map": "https://naver.me/FbVvLzUn"
       },
       "blog_posts": [
@@ -410,7 +410,8 @@
           },
           "date": "2026-10-19"
         }
-      ]
+      ],
+      "width_m": 35
     },
     {
       "name": "클라임스퀘어 ICN",
@@ -2775,7 +2776,7 @@
       "name": "판교공원 인공암벽장",
       "short_name": "판교공원",
       "region": "경기 성남시",
-      "height_m": null,
+      "height_m": 16,
       "tags": [
         "무료"
       ],
