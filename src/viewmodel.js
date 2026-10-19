@@ -189,12 +189,12 @@ export function verdictOf(open, sun, format) {
   const on = sun.flatMap(([a, b]) => open.map(([s, e]) => [Math.max(a, s), Math.min(b, e)])).filter(([s, e]) => e > s);
   if (on.length) {
     const whole = sun.every(([a, b]) => open.some(([s, e]) => a >= s && b <= e)); // every sunny stretch lies inside the hours: the times above say it all
-    return { kind: 'on', text: whole ? '양달 시간 전부 운영 중' : `운영 중 양달 ${format(on)}` };
+    return { kind: 'on', text: whole ? '양달 시간 전부 운영 중' : `운영 중 양달 ${format(on)}`, on }; // on: the sunny minutes inside the hours
   }
   const first = open[0][0];
   const last = open[open.length - 1][1];
   const hint = !sun.length ? '' : sun.every(([, e]) => e <= first) ? ' · 운영 시작 전에만 들어요' : sun.every(([s]) => s >= last) ? ' · 운영 종료 후에만 들어요' : '';
-  return { kind: 'none', text: `운영 중 양달 없음${hint}` };
+  return { kind: 'none', text: `운영 중 양달 없음${hint}`, on: [] };
 }
 export function sunVerdict(wall, at) {
   const { open, sun } = dayBar(wall, at);

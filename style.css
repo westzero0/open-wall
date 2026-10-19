@@ -221,6 +221,7 @@ button.pill.quiet:hover { border-color: transparent; }
 .pill:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 button.pill { padding: 0 var(--sp-12); font-weight: 600; }
 .toggle[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.filters .toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } /* the filter row: on = filled (green; 양달·응달 take their own colour) */
 /* on = a check mark too, not only the fill (aria-pressed already tells screen readers, so the mark is silent) */
 .toggle[aria-pressed="true"]::before, .sh-toggle[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: var(--sp-2); }
 button.pill, #nowBtn, .btn {
@@ -428,19 +429,25 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .sunnow.unknown.pic svg path:first-child { stroke-dasharray: 2.4 3; }
 .sunnow.indoor.pic { padding: 1px 5px; color: var(--muted); }
 .key li svg { width: 16px; height: 16px; margin-right: var(--sp-4); vertical-align: -3px; }
-.sunnow.pic svg { width: 18px; height: 18px; }
+.sunnow.pic svg { width: 24px; height: 24px; } /* beta feedback: 18px read as too small */
 /* the sun icon: ink on the amber chip in light (the amber itself is 2.4:1 there), the amber in dark (6:1) */
-.sunnow.sun.pic { color: var(--fg); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { color: var(--sun); } }
-:root[data-theme="dark"] .sunnow.sun.pic { color: var(--sun); }
-.sunnow.shade.pic { color: var(--muted); }
-/* 양달 | 응달: one capsule with two segments (the filter wears the same pictures as the rows). The pressed segment is filled; pressing it again clears it. */
+.sunnow.sun.pic { background: #b0630a; color: #fff; } /* a solid chip in the pressed filter's colours: white on a darker amber (4.5:1), white on steel blue */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); } }
+:root[data-theme="dark"] .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); }
+.sunnow.shade.pic { background: var(--shade-bar); color: var(--on-accent); }
+/* 양달 | 응달: one capsule with two segments, the icons in the row bars' colours; the pressed segment is filled with its colour (no ✓: the colour says it). Pressing it again clears it. */
 .sunfilter { flex: none; display: inline-flex; border-radius: var(--r-pill); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); } /* a ring inside, not a border: the buttons keep the full 44px tap height */
-.sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
+.sunfilter-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-xs); white-space: nowrap; }
+.sunfilter-btn svg { width: 24px; height: 24px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
+#sunOnly { color: var(--sun-on-white); } #shadeOnly { color: var(--shade-bar); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly { color: var(--sun); } }
+:root[data-theme="dark"] #sunOnly { color: var(--sun); }
+#sunOnly[aria-pressed="true"] { background: #b0630a; color: #fff; } /* a darker amber for the white icon: 4.5:1 (the bar amber is 3.3:1) */
+#shadeOnly[aria-pressed="true"] { background: var(--shade-bar); color: var(--on-accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); } }
+:root[data-theme="dark"] #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); }
 .sunfilter-btn + .sunfilter-btn { border-left: 1px solid var(--line-strong); }
-.sunfilter-btn svg { width: 20px; height: 20px; flex: none; } /* the icon is the whole label (the words are for screen readers; ? explains them) */
-.sunfilter-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
-.sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: var(--fg); }
+.sunfilter-btn[aria-pressed="true"], .sunfilter-btn[aria-pressed="true"] + .sunfilter-btn { border-left-color: transparent; }
 .sunfilter-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .sunnow.unknown { background: transparent; border: 1px dashed var(--line-strong); padding: 0 5px; color: var(--muted); font-weight: 500; }
 /* the row extras (다녀옴, region, 요금…) share the room between the name and the time. One line high: an extra that does not fit wraps below and is clipped whole, so there is never half a word or a wrapped closing time */
@@ -473,7 +480,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.soon .bar .seg { background: var(--soon); }
 .row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
-.sunband { position: absolute; top: 11px; height: 4px; border-radius: var(--r-xs); background: var(--sun); }
+.sunband { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--sun); } /* the open bar itself turns orange where the wall is sunny (only inside the open hours); square ends, so no rounded orange shows inside the green */
+.sunband.past { opacity: .45; }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
 .tick { position: absolute; top: -4px; height: 19px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
 .row.broken { padding: 10px var(--pad); }
@@ -555,6 +563,9 @@ dialog.gal[open] { display: flex; }
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 .row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg) { color: var(--on-photo); }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
+.row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
+.row.susp .left { min-width: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; } /* a shut wall's reason can be long: it gives way instead of pushing the row wider */
+.row.is-open.susp .row-btn .left { display: none; } /* an open card says the reason itself; a photo says 임시 휴관 중 in its pill */
 .row.has-photo.is-open.soon .row-btn .left { color: var(--soon-on-white); }
 .row.has-photo.is-open:is(.closed, .unknown) .row-btn .left { color: var(--muted-on-white); }
 .row.has-photo.is-open .row-btn .sunnow { text-shadow: none; } /* on the photo the sun mark is a white pill like the time left: a tinted chip washes out over a picture */
@@ -781,8 +792,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 
 /* ---- '더 보기' pictures: hours grid, seasonal sun ----
    Hatching only ever means "not usable" (휴게, 휴무, 동절기 휴장). */
-.hgrid { --lab: 3.6rem; }
-.ssun { --lab: 0px; } /* rows carry their own text line, so the bars take the full width */
+.hgrid, .ssun { --lab: 3.6rem; } /* one label column for both, so the two time axes are the same width */
 .fees table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .fees th, .fees td { padding: var(--sp-6) var(--sp-6); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
@@ -827,7 +837,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
 .g-wrap { display: contents; }
 .g-trk { position: relative; display: block; flex: 1; min-width: 0; }
-.g-row.g-today { min-height: calc(var(--tx) + 42px); background: color-mix(in srgb, var(--open-past) 45%, transparent); }
+.g-row.g-today { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
 .g-row.g-today .g-lab { font-weight: 700; }
 .g-bar { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 3px; background: var(--open-bar); z-index: 2; }
 .g-brk, .g-off, .k-hatch {
@@ -840,26 +850,25 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-txt { position: absolute; top: 3px; padding: 0 3px; border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); line-height: calc(var(--tx) - 2px); white-space: nowrap; z-index: 4; }
 .g-row.g-today .g-txt, .g-row.g-today .g-closed { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
 .g-row.shut .g-bar, .g-row.shut .g-txt { opacity: .35; }
-.g-sun, .g-sunon { position: absolute; top: calc(var(--tx) + 23px); height: 8px; border-radius: var(--r-xs); z-index: 2; }
-.g-sun { border: 1px solid var(--sun-bar); background: color-mix(in srgb, var(--sun-bar) 22%, transparent); }
-.g-sunon { background: var(--sun-bar); }
+/* 운영 중 양달: the open bar itself is orange there (the same as the list row: same place and height as .g-bar, square ends) */
+.g-sunon { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 0; background: var(--sun-bar); z-index: 3; }
 .g-key { list-style: none; margin: var(--sp-8) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-12); font-size: var(--fs-xs); color: var(--muted); }
 .g-key li { display: inline-flex; align-items: center; gap: var(--sp-6); }
 .g-key i { flex: none; display: inline-block; width: 20px; height: 10px; border-radius: var(--r-xs); }
 .k-bar { background: var(--open-bar); }
 .k-hatch { border: 1px solid var(--line-strong); }
-.k-sunall { border: 1px solid var(--sun-bar); background: color-mix(in srgb, var(--sun-bar) 22%, transparent); }
 .k-sunon { background: var(--sun-bar); }
 .g-key i.k-now { width: 2px; height: 14px; background: var(--now); }
 .k-open { border: 1px solid var(--open); background: color-mix(in srgb, var(--open-past) 50%, transparent); }
 .g-notes { list-style: none; margin: var(--sp-6) 0 0; padding: 0; font-size: var(--fs-xs); color: var(--muted); }
-/* seasonal sun: "여름 6/21 · 12:40–19:40" line over a full-width track, so the track keeps its width at large text sizes */
-.s-row { padding: var(--sp-4) 0 var(--sp-2); border-top: 1px solid var(--hair); }
+/* seasonal sun: the season on the left (like a weekday in the hours grid), "6/21 · 예상 12:40–19:40" over the track on the right */
+.s-row { display: flex; align-items: center; padding: var(--sp-4) 0 var(--sp-2); border-top: 1px solid var(--hair); }
+.s-main { flex: 1; min-width: 0; }
+.ws-legend { margin: var(--sp-6) 0 var(--sp-10); }
 .s-head { font-size: var(--fs-sm); line-height: 1.35; }
 .s-row .g-trk { height: 30px; }
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
-.s-open { position: absolute; top: 5px; height: 20px; border: 1px solid var(--open); border-radius: 3px; background: color-mix(in srgb, var(--open-past) 50%, transparent); }
-.s-row .g-sun, .s-row .g-sunon { top: 10px; height: 10px; }
+.s-row .g-bar, .s-row .g-sunon { top: 9px; } /* the 30px track: the 12px bar sits in its middle */
 .s-row[hidden] { display: none; }
 .ssun-more { display: block; width: 100%; min-height: var(--tap); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
 /* the hours time line is dragged along the axis and the bars; pan-y leaves the page's up-and-down scroll and keeps the sheet's sideways tab swipe out */
@@ -1660,7 +1669,7 @@ html[data-text] .bd-body { flex: 1 1 100%; }
 html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet stands still (and the browser's own scroll buttons have nothing to offer over it) */
 .wall-sheet:has(.ws-tabs:not([hidden])) .ws-panel { padding-bottom: var(--sp-16); } /* the tab bar carries the safe-area inset, so it is not added twice */
 .ws-report { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; white-space: nowrap; }
-.ws-tabs { display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
+.ws-tabs { order: 1; display: flex; flex: none; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); background: var(--surface); }
 .ws-tabs[hidden] { display: none; }
 /* icon over label; the tab in view gets a pill behind its icon, and the pill follows a swipe (--on: 0 to 1, set from the scroll) */
 @property --on { syntax: "<number>"; inherits: true; initial-value: 0; }
@@ -1677,15 +1686,16 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-sec-h h3 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
 .ws-sec-h .ws-fix { min-height: var(--tap); padding: 0 var(--sp-4); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 .ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-10); color: var(--muted); font-size: var(--fs-xs); }
+.ws-chk.end { margin: var(--sp-10) 0 0; text-align: right; } /* a section's check date: bottom right of its card */
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
-.ws-fix { min-height: var(--tap); display: inline-flex; align-items: center; }
+.ws-fix { min-height: var(--tap); display: inline-flex; align-items: center; white-space: nowrap; }
 /* 루트 tab: the count as bars (the .gy-* rows of the 올해 완등 block), a chip per wall section when counted by section */
 .rt-chips { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0; }
 .rt-chip { min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); white-space: nowrap; }
 .rt-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 700; }
-.rt-bars.stale { opacity: .55; }
+.rt-bars.stale .gy-bar { opacity: .55; } /* only the bars fade: the labels and numbers keep their contrast */
 .rt-total { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 .gy-list li.mine .gy-g { color: var(--fg); font-weight: 700; } /* the rows inside 내 그레이드 */
 .gy-list li.mine .gy-bar { background: var(--accent); }

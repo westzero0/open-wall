@@ -6,9 +6,10 @@ import { config } from './config.js';
 import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
+import { getStatus } from './hours.js';
 import {
   axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sliderValue, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -361,7 +362,7 @@ function rowPhoto(m, li) {
   const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
     ...imgs.map((img) => el('div', { class: 'rhero-slide' }, img)));
   let credit = null;
-  const line = el('div', { class: 'rhero-line' }, m.suspended ? null : el('div', { class: 'rhero-cap' }, el('small', {}, m.today.lead), todayText(m))); // a suspended wall: the chip on the photo already says 임시 휴관 중
+  const line = el('div', { class: 'rhero-line' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m))); // a suspended wall: just the small 임시 휴관 중 pill on the photo
   const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
     const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
     if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
@@ -486,7 +487,7 @@ function hoursGrid(wall, at) {
     // today closed by a closed_date / nth closure: the weekday's usual bar fades under the day's own word
     const shut = r.today && day?.closed && open.length;
     if (shut) trk.append(el('span', { class: 'g-closed' }, day.text));
-    if (r.today && bar?.sun) trk.append(...clipDay(bar.sun).map(([a, b]) => span('g-sun', a, b)), ...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b)));
+    if (r.today && bar?.sun) trk.append(...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b))); // the same as the list: the open bar turns orange where it is sunny
     const said = `${r.days}${r.today ? (r.members > 1 ? '(오늘 포함)' : '(오늘)') : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
     body.append(el('div', { class: `g-row${r.today ? ' g-today' : ''}${shut ? ' shut' : ''}`, role: 'listitem', 'aria-label': said },
       el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
@@ -499,16 +500,17 @@ function hoursGrid(wall, at) {
     ...wk.rows.filter((r) => r.nth).map((r) => `${r.nth.map((n) => NTH_KO[n]).join('·')} ${r.days}요일 휴무`),
     wall.holiday === 'weekend' ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
   ].filter(Boolean);
-  const hatched = wk.rows.some((r) => r.closed || r.breaks.length);
   const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
 
-  // The time line is the picked moment: dragging the axis or the bars moves it (touch-action: pan-y keeps the sheet's
-  // sideways tab swipe out of this zone). The line follows the finger; the moment is picked on release (go 'pick'), and the
-  // grid is drawn again for it. A range input in the zone is the keyboard and screen-reader way to the same thing.
+  // The time line starts at the picked moment; dragging the axis moves it (touch-action: pan-y keeps the sheet's sideways tab
+  // swipe out of this zone). The line follows the finger; on release the grid and the one-line answer are drawn again for that
+  // time. Only this sheet changes: the picked moment of the list (view state) is not touched, and closing the sheet drops it.
+  // A range input in the zone is the keyboard and screen-reader way to the same thing.
   let axis = gridAxis(live ? nowMin : null);
   let zone = [axis, body];
   if (live) {
-    const range = el('input', { type: 'range', class: 'sr-only g-range', min: '360', max: '1410', step: '10', value: String(sliderValue(nowMin)), 'aria-label': '보는 시각' });
+    const hourOf = (m) => Math.min(1380, Math.max(360, Math.round(m / 60) * 60)); // by the hour, 06:00–23:00: the list's own time slider moves the same way
+    const range = el('input', { type: 'range', class: 'sr-only g-range', min: '360', max: '1380', step: '60', value: String(hourOf(nowMin)), 'aria-label': '보는 시각' });
     const showAt = (m) => {
       nl.style.left = axisX(m);
       const next = gridAxis(m);
@@ -519,19 +521,20 @@ function hoursGrid(wall, at) {
     };
     const minAt = (x) => { // the axis is 06:00–24:00 across the plot
       const r = plot.getBoundingClientRect();
-      return sliderValue(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
+      return hourOf(360 + Math.min(1, Math.max(0, (x - r.left) / r.width)) * 1080);
     };
-    const commit = (m, byKey) => {
-      if (m === sliderValue(nowMin)) return;
-      go({ type: 'pick', date: ymd(at), min: m });
-      const next = hoursGrid(wall, shown.at ?? at);
+    const commit = (m, byKey) => { // the sheet only: the grid is drawn again for that time of the same day; the list behind keeps its own moment
+      if (m === hourOf(nowMin)) return;
+      const there = new Date(at);
+      there.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      const next = hoursGrid(wall, there);
       sec.replaceWith(next);
       if (byKey) next.querySelector('.g-range')?.focus();
     };
     let from = null; // the minute a drag started on: cancelling it (the page began to scroll) puts the line back
     const zoneEl = el('div', { class: 'g-zone' }, axis, range); // only the axis strip is dragged: the bars below stay free for the tab swipe
     zoneEl.addEventListener('pointerdown', (e) => {
-      if (e.button) return;
+      if (e.button || e.clientX < plot.getBoundingClientRect().left) return; // the label column left of the axis is not part of the time scale
       from = nowMin;
       zoneEl.setPointerCapture(e.pointerId);
       showAt(minAt(e.clientX));
@@ -544,12 +547,12 @@ function hoursGrid(wall, at) {
     zone = [zoneEl];
   }
   const row = allRows.find((r) => r.wall.name === wall.name);
-  const m = live && !susp && row ? modelOf(row, at) : null; // the answer for the picked time, in words
+  // the answer for this time, in words; the row's status was made for the list's moment, so it is read again for `at` (the sheet's own time)
+  const m = live && !susp && row ? modelOf({ ...row, status: getStatus(row.wall, at) }, at) : null;
   const verdict = m && m.state !== 'unknown' ? el('p', { class: `g-verdict ${m.state}` }, m.state === 'open' ? `${fmtMin(nowMin)} 운영 중 · ` : `${fmtMin(nowMin)} `, m.statusText) : null;
   // one legend only: the hatch is explained here; the sun colours are explained once, under 계절별 양달 (same colours)
   sec.append(...[segRow, susp, verdict, susp ? null : lead, ...zone,
     live ? el('p', { class: 'g-drag-hint' }, '눈금을 좌우로 끌어 시각을 바꿔요') : null, ...(live ? [body] : []),
-    hatched ? el('ul', { class: 'g-key' }, el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무(빗금)')) : null,
     notes.length ? el('ul', { class: 'g-notes' }, ...notes.map((n) => el('li', {}, n))) : null].filter(Boolean));
   return sec;
 }
@@ -571,21 +574,30 @@ function seasonSunBlock(wall, at, d) {
     gridAxis(null),
     ...rows.map((s) => {
       const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
-        ...clipDay(s.open).map(([a, b]) => span('s-open', a, b)),
-        ...clipDay(s.windows).map(([a, b]) => span('g-sun', a, b)),
+        ...clipDay(s.open).map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
         ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
-      const sunText = s.windows.length ? formatRanges(s.windows) : '하루 종일 응달';
+      const open = s.open.length > 0; // with open hours only the sun inside them is told; a closed / unknown day keeps the day's whole window for reference
+      const shown = open ? s.on : s.windows;
+      const sunText = shown.length ? formatRanges(shown) : open ? '운영 중 양달 없음' : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
+      // the same two columns as the hours grid (name on the left, bar on the right), so both axes are as wide
       return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null },
-        el('p', { class: 's-head' }, el('b', {}, s.name), ` ${s.date}${s.current ? '(지금)' : ''} · 예상 ${sunText}${hint}`),
-        trk);
+        el('span', { class: 'g-lab' }, el('b', {}, s.name), s.current ? el('small', {}, '지금') : null),
+        el('div', { class: 's-main' }, el('p', { class: 's-head' }, `${s.date} · ${open && shown.length ? '운영 중 ' : ''}예상 ${sunText}${hint}`), trk));
     }),
     fold ? more : null,
-    el('ul', { class: 'g-key' },
-      el('li', {}, el('i', { class: 'k-open' }), '운영시간'),
-      el('li', {}, el('i', { class: 'k-sunall' }), '양달'),
-      el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달')),
     sunWhy()); // the long caveat is folded under 계산 기준
+}
+
+// The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
+// The hatch is named only when this wall has a break or a closed day to show.
+function timeLegend(blocks) {
+  const sun = Boolean(blocks.sun || blocks.hours?.querySelector('.g-sunon'));
+  const hatch = Boolean(blocks.hours?.querySelector('.g-brk, .g-off'));
+  return el('ul', { class: 'g-key ws-legend' },
+    el('li', {}, el('i', { class: 'k-bar' }), '운영'),
+    sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달') : null,
+    hatch ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무') : null);
 }
 
 // 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
@@ -955,12 +967,17 @@ const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
 // 접힌 계산 기준 (양달 카드 안: 한 줄 접힘, 기본 닫힘)
 const sunWhy = () => el('details', { class: 'sun-why' }, el('summary', {}, '계산 기준'), sunLimit());
 // 맨 위 한 줄: 상태 칩 + 핵심 값 (구간이 여러 개면 구간마다 한 덩어리)
-function sunHead(d) {
+function sunHead(d, verdict) {
   const chip = d.state === 'unknown' ? '계산 불가' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}`; // the chip is the moment's state; the line under it is the day's window
   const cls = d.state === 'unknown' ? 'na' : d.lit ? 'lit' : 'dark';
-  const key = d.state === 'unknown' ? null : d.windows.length
-    ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
-    : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
+  // an open day with hours: only the sun inside them ("운영 중 예상 양달 10:10–17:30", or 없음); no hours: the day's whole window
+  const key = d.state === 'unknown' ? null : verdict
+    ? (verdict.on.length
+      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 운영 중 예상 양달`), ...verdict.on.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+      : el('p', { class: 'dwhen' }, el('b', {}, verdict.text)))
+    : d.windows.length
+      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
+      : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
 function sunBox(d, name, closedDay, verdict) {
@@ -973,11 +990,10 @@ function sunBox(d, name, closedDay, verdict) {
       noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
-    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d), sentence, d.state === 'override' ? sunWhy() : null));
+    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, d.state === 'override' ? sunWhy() : null));
   }
   return el('section', { class: 'sunbox', 'aria-label': '해' },
-    sunHead(d),
-    verdict ? el('p', { class: `sun-verdict ${verdict.kind}` }, verdict.text) : null, // the answer to "is it sunny while it's open"
+    sunHead(d, verdict), // the head already tells the sun inside the open hours
     sentence,
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
     sunWhy());
@@ -1042,11 +1058,11 @@ function sheetSection(m, s, content) {
   const ask = config.reportEndpoint && s.kind // (a computed section such as 계절별 양달 has no report kind)
     ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
-  // the title row carries 수정 요청 (a filled section) and the check date sits under the title, so a section reads as: what it is, when it was checked, the facts
+  // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title },
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
-    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk' }, m.checked),
-    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content);
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
+    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk end' }, m.checked));
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -1103,7 +1119,7 @@ function buildWallSheet(wallName) {
     tabs: sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
     })),
   };
 }
@@ -1336,11 +1352,13 @@ function timeRow(row, at) {
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
       ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
-      ...bar.sunBands.map(([a, b]) => span('sunband', a, b)),
+      // the part before the tick is already gone: its orange is paler, like the green under it
+      ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
+        .map(([a, b, past]) => span(past ? 'sunband past' : 'sunband', a, b)),
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));

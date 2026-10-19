@@ -98,7 +98,7 @@ if (dlg) {
   };
   const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); };
   // 루트 분포: the shared wall of holds counts the wall's own routes (one kind: 루트); refresh runs on every tap
-  routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh() });
+  routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh(), label: '루트 고르기' });
   dlg.querySelector('.rp-wall').append(routeWall.el);
   const clearTab = (kind) => {
     for (const x of f.querySelectorAll(`.rp-extra[data-kind="${kind}"]`)) {

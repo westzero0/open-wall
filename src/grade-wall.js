@@ -5,17 +5,17 @@ import { el } from './dom.js';
 import { GRADE_ROWS, bump, cleanCounts, gradeLabel } from './grades.js';
 
 /**
- * createGradeWall({ kinds: [{ key, word }, …], mode, onChange }) → { el, get(key), set(key, counts), clear() }
+ * createGradeWall({ kinds: [{ key, word }, …], mode, onChange, label }) → { el, get(key), set(key, counts), clear() }
  * kinds: what can be counted (`unit` is the counting word for screen readers, default 번; 'sends' draws a filled hold with its count; a second kind a ring, and a badge when both share a hold).
  * mode(): the key a tap adds to (default: the first kind). onChange(get): after every change and once at the start (for the caller's summary
  * line / send button); `get(key)` reads the counts, since the wall may not be assigned yet.
  */
-export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = () => {} }) {
+export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = () => {}, label = '그레이드 고르기' }) {
   const state = Object.fromEntries(kinds.map((k) => [k.key, {}]));
   const get = (key) => state[key];
   const [first, second] = kinds;
   const holds = new Map(); // grade → its button (built once, updated in place so focus stays)
-  const wall = el('div', { class: 'gw', role: 'group', 'aria-label': '그레이드 고르기' });
+  const wall = el('div', { class: 'gw', role: 'group', 'aria-label': label });
   const sum = el('div', { class: 'la-gsum', 'aria-live': 'polite' });
   const root = el('div', { class: 'gwall' }, wall, sum);
 

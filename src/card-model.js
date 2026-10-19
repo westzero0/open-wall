@@ -79,7 +79,8 @@ function rowBar(wall, status, at) {
   return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}, ${sunText}` };
 }
 
-// segments: the list row's bar on the 06–24 axis ([a, b, past]); sunBands: its sun, empty pieces dropped;
+// segments: the list row's bar on the 06–24 axis ([a, b, past]); sunBands: its sun, only where the wall is open (sun before opening or
+// after closing says nothing about a visit, and drew as an orange line detached from the green bar), empty pieces dropped;
 // note: the card's line under its full-day bar ("10/8(목) 운영 · 양달 정보 없음"), null when nothing to say.
 function barOf(wall, status, at) {
   const bar = rowBar(wall, status, at);
@@ -87,7 +88,7 @@ function barOf(wall, status, at) {
   return {
     ...bar,
     segments: barSegments(bar.open, bar.nowMin ?? -1),
-    sunBands: (bar.sun ?? []).filter(([a, b]) => axisFrac(b) > axisFrac(a)),
+    sunBands: (bar.sun ?? []).flatMap(([s, e]) => bar.open.map(([a, b]) => [Math.max(s, a), Math.min(e, b)])).filter(([a, b]) => axisFrac(b) > axisFrac(a)),
     note: bar.ahead || !bar.sun ? words.join(' · ') : null,
   };
 }
@@ -121,6 +122,27 @@ const parkingWhereOf = (parking) => {
   const names = parkingNames(parking);
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
 };
+
+/**
+ * parkingView(parking) → the parking part of the card model: the badge (`parking`), the lots (`parkingWhere`), the advice line (`parkingTip`),
+ * what the wall sheet's 주차 section adds (`parkingMore`). The admin editor draws its preview from this same function.
+ */
+export function parkingView(parking) {
+  const parkingWhere = parkingWhereOf(parking);
+  const parkingTip = hasLots(parking) ? parking.note ?? '' : ''; // with the lots in the data the note is not names to split but a line of advice
+  return {
+    parking: parkingLabel(parking),
+    parkingNames: parkingNames(parking),
+    parkingWhere,
+    parkingTip,
+    parkingMore: [ // what the 주차 section of the wall sheet adds to the face's one line (status + the wall's own lot)
+      { k: '요금', v: parking?.fee ?? '' },
+      { k: '주변', v: parkingWhere.nearby.join(' · ') },
+      { k: '참고', v: parkingTip },
+    ].filter((r) => r.v),
+    parkingMemo: parking?.note ? `주차 메모 · ${parking.note}` : null,
+  };
+}
 
 export function formatDistance(km) {
   if (km < 1) {
@@ -339,8 +361,6 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const text = statusText(status, at, wall);
   const bar = status.state === 'unknown' || status.suspended ? null : barOf(wall, status, at); // no day bar for a wall that is shut
   const old = staleness(wall, at);
-  const parkingWhere = parkingWhereOf(wall.parking);
-  const parkingTip = hasLots(wall.parking) ? wall.parking.note ?? '' : '';
   const pos = wallPosition(wall);
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
   const winterNote = status.winterNote ? `❄ 동절기 · ${status.winterNote}` : null;
@@ -396,16 +416,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     bar,
     barBreaks: breakTags(wall, bar?.ahead ?? at), // the card's chips follow its bar's day
     breaks: breakTags(wall, at), // the expanded row's: the picked day
-    parking: parkingLabel(wall.parking),
-    parkingNames: parkingNames(wall.parking),
-    parkingWhere,
-    parkingTip, // with the lots in the data the note is not names to split but a line of advice
-    parkingMore: [ // what the 주차 section of the wall sheet adds to the face's one line (status + the wall's own lot)
-      { k: '요금', v: wall.parking?.fee ?? '' },
-      { k: '주변', v: parkingWhere.nearby.join(' · ') },
-      { k: '참고', v: parkingTip },
-    ].filter((r) => r.v),
-    parkingMemo: wall.parking?.note ? `주차 메모 · ${wall.parking.note}` : null,
+    ...parkingView(wall.parking),
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
     checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',
