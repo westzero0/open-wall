@@ -2080,9 +2080,10 @@ if (sharedWall) {
   if (invite) inviteView.banner(invite, sharedWall);
   const u = new URL(location.href);
   // ?wall=<name>&info opens the info sheet; &board opens it on the 게시판 tab (no board url and no reviews: the sheet just starts on its first tab)
-  if (infoRequested(location.search) || boardRequested(location.search)) openWallSheet(sharedWall.name, null, { push: false, tab: boardRequested(location.search) ? 'board' : null });
+  const sheetAsked = infoRequested(location.search) || boardRequested(location.search), sheetTab = boardRequested(location.search) ? 'board' : null;
   for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board', 'info']) u.searchParams.delete(k);
-  history.replaceState(null, '', u);
+  history.replaceState(null, '', u); // the entry under the sheet is the clean app address
+  if (sheetAsked) { openWallSheet(sharedWall.name, null, { tab: sheetTab }); history.replaceState(null, '', u); } // the sheet pushes its own entry, so 뒤로 closes only the sheet and not the app (a link opening it left nothing to go back to); the address stays clean
 }
 { // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)
   const sharedType = config.climberTest ? typeFromSearch(location.search) : null;
