@@ -61,7 +61,7 @@ export async function searchAll({ walls, aliases, env, bases, days = 90, pace = 
           okCalls++;
           const items = p.items(await r.json()).filter((i) => i.link && i.text);
           const fresh = items.filter((i) => !/^\d{4}-\d{2}-\d{2}$/.test(i.date) || (now - new Date(`${i.date}T12:00:00+09:00`)) / 86400000 <= days);
-          for (const c of findCandidates(fresh.map((i) => ({ text: i.text, source: i.link, date: i.date, file: p.label })), [w], aliases)) cands.push({ ...c, walls: [w.name], via: `${p.label}${items.find((i) => i.link === c.source)?.where ? ` · ${items.find((i) => i.link === c.source).where}` : ''}` });
+          for (const c of findCandidates(fresh.map((i) => ({ text: i.text, source: i.link, date: i.date, file: p.label, unit: true })), [w], aliases)) cands.push({ ...c, walls: [w.name], via: `${p.label}${items.find((i) => i.link === c.source)?.where ? ` · ${items.find((i) => i.link === c.source).where}` : ''}` });
         } catch (e) { errors.push(`${p.label}: ${q} → 접속 실패(${String(e.cause?.code ?? e.name)})`); if (/ENOTFOUND|ECONNREFUSED/.test(String(e.cause?.code))) { stop = true; break; } }
         await sleep(pace);
       }

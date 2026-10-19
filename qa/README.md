@@ -157,3 +157,13 @@ node qa/watch-run.mjs --force     # 시간과 상관없이 전부
 - macOS: 로그인 항목에 `node qa/watch-run.mjs` 를 실행하는 셸 스크립트를 추가하거나 `launchd` 의 `RunAtLoad`.
 - Linux: `~/.config/autostart/*.desktop` 또는 `systemctl --user` 서비스.
 수동으로 가끔 돌려도 같은 결과예요.
+
+## 8. 카페·오픈채팅 자동 읽기 (설계 + 입력부)
+
+본인이 가입한 카페·오픈채팅을 Claude(본인 크롬 / 카카오톡 PC 조작)가 읽어 `qa/inbox/` 에 넘기고, 판정은 로컬 도구가 하는 구조예요.
+설계와 위험은 [`DESIGN-agent-reading.md`](DESIGN-agent-reading.md), 에이전트 지시문은 [`agents/`](agents/) 에 있어요.
+
+- 이 저장소에서 **검증한 부분**: `.jsonl`(카페) 읽기, `.txt`(채팅) 처리·삭제, 이미 본 글 걸러내기, 에이전트 상태 점검("N일째 못 읽음").
+- **아직 못 해 본 부분**: 크롬·컴퓨터 제어 에이전트 자체와 실제 카페·카톡 화면(본인 컴퓨터에서 한 곳으로 시험하세요).
+- 읽을 곳은 `qa/sources.example.json` 을 `qa/sources.local.json` 으로 복사해서 채워요(git 에 안 올라가요).
+- 다른 사람의 대화가 화면 캡처로 모델에 전달될 수 있어요(컴퓨터 제어). 방 규칙을 확인하고, 약관 위험(계정 제한 가능성)을 감수할지 먼저 정하세요.

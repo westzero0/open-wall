@@ -88,7 +88,7 @@ export function findCandidates(items, walls, aliases) {
   const keys = [...aliases.keys()].sort((a, b) => b.length - a.length);
   const out = [];
   for (const it of items) {
-    for (const sentence of it.text.split(/(?<=[.!?。…])\s+|\n/)) {
+    for (const sentence of it.unit ? [it.text] : it.text.split(/(?<=[.!?。…])\s+|\n/)) { // unit: 같은 글의 제목+본문 발췌는 쪼개지 않고 한 덩어리로(이름은 제목에, 내용은 본문에 있어도 연결)
       const norm = squash(sentence);
       const kinds = kindsOf(norm);
       if (!kinds.length) continue;
@@ -140,4 +140,20 @@ export function renderCandidates(cands, walls) {
 export function candidateId(c) {
   const key = /:\d+$/.test(String(c.source)) && !/^https?:/.test(String(c.source)) ? c.snippet : `${c.source}|${c.snippet}`;
   return createHash('sha1').update(key).digest('hex').slice(0, 16);
+}
+
+// 에이전트가 카페 목록을 읽고 남기는 한 줄 JSON 파일(.jsonl). 줄마다 {title, text?, url?, date?, board?} — 작성자·닉네임 같은 칸이 있어도 읽지 않는다.
+export function readJsonl(text, file) {
+  const items = [];
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line) return;
+    let o; try { o = JSON.parse(line); } catch { return; }
+    if (!o || typeof o !== 'object') return;
+    const t = [o.title, o.text].filter((x) => typeof x === 'string' && x.trim()).join('. ');
+    if (!t) return;
+    const url = typeof o.url === 'string' && /^https?:\/\//.test(o.url) ? o.url : `${file}:${i + 1}`;
+    items.push({ text: t, source: url, date: typeof o.date === 'string' ? o.date.slice(0, 10) : '', file, unit: true });
+  });
+  return items;
 }

@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, basename } from 'node:path';
 import { ROOT } from './lib.mjs';
-import { buildAliases, findCandidates, readHtml, readText, daysSince, CONF_RANK, loadWalls, loadAliases, renderCandidates, candidateId } from './watch-lib.mjs';
+import { buildAliases, findCandidates, readHtml, readText, readJsonl, daysSince, CONF_RANK, loadWalls, loadAliases, renderCandidates, candidateId } from './watch-lib.mjs';
 
 const OUT = join(ROOT, 'qa', '.out');
 const SEEN_FILE = join(OUT, 'watch-seen.json');
@@ -54,6 +54,7 @@ function selftest() {
     ['전화번호를 가림', !cands.some((c) => /\d{3}-\d{4}-\d{4}/.test(c.snippet)) && cands.some((c) => c.snippet.includes('[전화]'))],
     ['같은 대화를 다시 내보내도(파일 이름·줄 번호가 달라도) 이미 본 글로 취급', candidateId({ source: 'export-1018.txt:2', snippet: '같은 문장' }) === candidateId({ source: 'export-1025.txt:3', snippet: '같은 문장' })],
     ['웹 글은 링크가 다르면 다른 글', candidateId({ source: 'https://x/1', snippet: '같은 문장' }) !== candidateId({ source: 'https://x/2', snippet: '같은 문장' })],
+    ['카페 읽기 결과(.jsonl)에서 제목+본문 발췌를 읽고 링크를 출처로 씀', (() => { const it = readJsonl(JSON.stringify({ title: `${B} 휴관 안내`, text: '11월 3일 보수공사', url: 'https://cafe.example/p/1', date: '2026-10-18T09:00:00', author: '홍길동', nick: '운영자' }) + '\n깨진 줄\n{"title":""}\n', 'c.jsonl'); const c = findCandidates(it, walls, aliases); return it.length === 1 && c.length === 1 && c[0].source === 'https://cafe.example/p/1' && c[0].kinds.includes('공사·점검') && !JSON.stringify(c).includes('홍길동') && !JSON.stringify(c).includes('운영자'); })()],
     ['댓글 수 링크([3])는 제목이 아니라 무시', !cands.some((c) => c.snippet === '[3]')],
   ];
   let bad = 0;
@@ -71,7 +72,7 @@ const items = [];
 for (const f of files) {
   if (!existsSync(f)) { console.error(`없는 파일: ${f}`); process.exit(2); }
   const body = readFileSync(f, 'utf8');
-  items.push(...(/<\/?(?:html|body|table|tr|a)\b/i.test(body) ? readHtml(body, basename(f)) : readText(body, basename(f))));
+  items.push(...(/\.jsonl$/i.test(f) ? readJsonl(body, basename(f)) : /<\/?(?:html|body|table|tr|a)\b/i.test(body) ? readHtml(body, basename(f)) : readText(body, basename(f))));
 }
 for (const f of files) if (!items.some((i) => i.file === basename(f))) console.log(`! ${basename(f)}: 읽은 글이 하나도 없어요. 디시인사이드 "글 목록" 페이지를 저장한 게 맞는지, 로그인·차단 안내 페이지가 저장되지 않았는지 확인하세요. (페이지 구조가 달라졌다면 알려 주세요)`);
 let cands = findCandidates(items, walls, aliases);
