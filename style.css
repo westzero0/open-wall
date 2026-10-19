@@ -299,7 +299,7 @@ main { padding-bottom: var(--sp-48); }
 /* 이번 주말, 여기: a curated pick, set apart from the timetable below (a tinted band, where the list is
    flat rows with bars). Folded: thumbnail, wall, reason. Opened: day pills + basis, then compact rows. Every control is at least --tap high. */
 /* 이번 주 변경: one line on the home for the followed walls, a sheet behind it */
-.changes-line { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: var(--tap); margin-top: var(--sp-10); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; cursor: pointer; }
+.changes-line { display: flex; white-space: nowrap; align-items: center; gap: var(--sp-8); width: 100%; min-height: var(--tap); margin-top: var(--sp-10); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; cursor: pointer; }
 .changes-line::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
 .changes-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .changes-list { list-style: none; margin: 0; padding: 0; }
@@ -309,7 +309,7 @@ main { padding-bottom: var(--sp-48); }
 .changes-list small a { color: var(--accent); white-space: nowrap; }
 .ch-name { min-height: var(--tap); margin: 0; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; cursor: pointer; } /* the name opens the wall's sheet */
 .ch-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ch-all { justify-self: end; min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-8); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+.ch-all { white-space: nowrap; justify-self: end; min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-8); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
 .ch-all:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ch-note { margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-xs); }
 .ch-ok { flex: none; min-height: var(--tap); padding: 0 var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
@@ -447,7 +447,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .key li svg { width: 16px; height: 16px; margin-right: var(--sp-4); vertical-align: -3px; }
 .sunnow.pic svg { width: 24px; height: 24px; } /* beta feedback: 18px read as too small */
 /* the sun icon: ink on the amber chip in light (the amber itself is 2.4:1 there), the amber in dark (6:1) */
-.sunnow.sun.pic { background: #b0630a; color: #fff; } /* a solid chip in the pressed filter's colours: white on a darker amber (4.5:1), white on steel blue */
+.sunnow.sun.pic { background: #a85f0a; color: #fff; } /* a solid chip in the pressed filter's colours: white on a darker amber (4.9:1), white on steel blue */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); } }
 :root[data-theme="dark"] .sunnow.sun.pic { background: var(--sun-bar); color: var(--on-accent); }
 .sunnow.shade.pic { background: var(--shade-bar); color: var(--on-accent); }
@@ -458,7 +458,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 #sunOnly { color: var(--sun-on-white); } #shadeOnly { color: var(--shade-bar); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly { color: var(--sun); } }
 :root[data-theme="dark"] #sunOnly { color: var(--sun); }
-#sunOnly[aria-pressed="true"] { background: #b0630a; color: #fff; } /* a darker amber for the white icon: 4.5:1 (the bar amber is 3.3:1) */
+#sunOnly[aria-pressed="true"] { background: #a85f0a; color: #fff; } /* a darker amber for the white icon: 4.9:1 (the bar amber is 3.3:1) */
 #shadeOnly[aria-pressed="true"] { background: var(--shade-bar); color: var(--on-accent); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); } }
 :root[data-theme="dark"] #sunOnly[aria-pressed="true"] { background: var(--sun-bar); color: var(--on-accent); }
@@ -580,7 +580,7 @@ dialog.gal[open] { display: flex; }
 .row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg) { color: var(--on-photo); }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
-.row.susp .left { min-width: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; } /* a shut wall's reason can be long: it gives way instead of pushing the row wider */
+.row.susp .left { flex: 0 1 auto; min-width: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; } /* a shut wall's reason can be long: it gives way instead of pushing the row wider */
 .row.is-open.susp .row-btn .left { display: none; } /* an open card says the reason itself; a photo says 임시 휴관 중 in its pill */
 .row.has-photo.is-open.soon .row-btn .left { color: var(--soon-on-white); }
 .row.has-photo.is-open:is(.closed, .unknown) .row-btn .left { color: var(--muted-on-white); }
