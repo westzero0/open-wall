@@ -1,5 +1,7 @@
 # qa/ — 배포 전 검사
 
+> 내 컴퓨터에서 처음 켜는 순서는 [`LOCAL-SETUP.md`](LOCAL-SETUP.md) 에 있어요.
+
 앱 코드(`src/`, `index.html` …)는 건드리지 않는 도구들이에요. 결과물은 `qa/.out/`에만 쓰고, 그 폴더는 git에서 제외돼요.
 
 ```
