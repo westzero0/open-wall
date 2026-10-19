@@ -2388,7 +2388,7 @@
       "name": "남양주시 인공암벽",
       "short_name": "남양주",
       "region": "경기 남양주시",
-      "height_m": null,
+      "height_m": 15,
       "tags": [
         "유료"
       ],
@@ -7072,8 +7072,10 @@
       "name": "한림스포츠클라이밍경기장",
       "short_name": "한림",
       "region": "제주 제주시",
-      "height_m": null,
-      "tags": [],
+      "height_m": 18,
+      "tags": [
+        "지붕"
+      ],
       "memo": "",
       "address": "제주 제주시 한림읍 한림중앙로 71-9 (지번 한림리 887-2)",
       "hours": {},
