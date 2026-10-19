@@ -388,7 +388,7 @@ main { padding-bottom: var(--sp-48); }
 .axis .t { top: 3px; color: var(--fg); font-weight: 600; left: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)); }
 .axis .t.under { visibility: hidden; } /* under the time tag (app.js) */
 .axis .nowtag {
-  top: 3px; z-index: 1; left: clamp(24px, calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 24px));
+  top: 3px; z-index: 1; left: clamp(32px, calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 32px)); /* the tag is ~50px wide: 24px let 23:58 poke 1px past the screen edge (horizontal scroll) */
   font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--fg); color: var(--bg);
 }
 .plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; }
@@ -1590,7 +1590,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .to-top svg { width: 22px; height: 22px; }
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .howto-more > summary { display: flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; cursor: pointer; } /* the rest of the guide: folded for a first visit, open when asked with ? */
-.howto-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.howto-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-base); } /* the sheet opens focused on this: a rounded ring, not a square box */
 #howto .ab-sec ul.key { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-14); padding-left: 0; list-style: none; } /* the icon and bar keys run along a line, not down the sheet */
 .howto-more h3 { margin-top: var(--sp-8); }
 .ib-demo { margin: var(--sp-8) 0 var(--sp-4); } /* a real 가로 막대, drawn with the list rows' own classes */
@@ -1904,3 +1904,4 @@ html[data-text="xlarge"] .ys-month { font-size: 13px; }
 .yi-list span { font-size: var(--fs-sm); color: var(--muted); }
 .ys-plot { padding: var(--sp-4) 0 0; }
 .ys-cap { min-height: 1.5rem; margin: var(--sp-4) 0 0; text-align: center; font-size: var(--fs-sm); color: var(--muted); }
+.sheet h2[tabindex="-1"]:focus { outline: none; } /* the sheet opens on its title (not the nickname field: no keyboard popping up); the title is not a control */

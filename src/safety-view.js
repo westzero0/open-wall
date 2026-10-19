@@ -24,6 +24,7 @@ export function createSafetyView() {
     note.textContent = NOTE;
     draw();
     dlg.showModal();
+    dlg.scrollTop = 0; // the browser scrolls to the focused pledge button at the foot: start from the title
   });
   dlg.addEventListener('close', () => opener.focus());
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
