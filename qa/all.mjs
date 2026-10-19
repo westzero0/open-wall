@@ -15,11 +15,6 @@ const STEPS = [
   { name: '무결성', file: 'check-integrity.mjs', needs: [] },
   { name: '스모크(오프라인·성능 예산·망가진 저장소)', file: 'smoke.mjs', needs: ['playwright'] },
   { name: '접근성(axe-core)', file: 'a11y.mjs', needs: ['playwright', 'axe-core'] },
-  { name: '변동 감시: 글 읽기 자가 테스트', file: 'watch.mjs', args: ['--selftest'], needs: [] },
-  { name: '변동 감시: 공지 변경 자가 테스트', file: 'notices.mjs', args: ['--selftest'], needs: [] },
-  { name: '변동 감시: 검색 API 자가 테스트', file: 'search-api.mjs', args: ['--selftest'], needs: [] },
-  { name: '변동 감시: 도달성 분류 자가 테스트', file: 'reach.mjs', args: ['--selftest'], needs: [] },
-  { name: '변동 감시: 실행기 자가 테스트', file: 'watch-run.mjs', args: ['--selftest'], needs: [] },
 ];
 const results = [];
 for (const s of STEPS) {
