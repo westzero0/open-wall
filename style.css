@@ -296,8 +296,9 @@ main { padding-bottom: var(--sp-48); }
 #map .pin-mk.sel .body { stroke-width: 4; }
 #map .pin-mk.soon.sel .body { stroke-width: 6.5; }
 @media (prefers-reduced-motion: reduce) { #map .pin-mk svg { transition: none; } }
-.legend { list-style: none; margin: var(--sp-8) 0 0; padding: 14px 12px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 16px 4px; border-radius: var(--r-base); background-color: #2a2d32; background-image: radial-gradient(circle, #4a4f56 1.6px, transparent 2px); background-size: 22px 22px; }
-.legend li { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* 핀 설명: a gym wall (dark in both themes) with one hold per pin state; the tape under it carries the exact map pin */
+.legend { list-style: none; margin: var(--sp-8) 0 0; padding: var(--sp-14) var(--sp-12) var(--sp-12); display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: var(--sp-16) var(--sp-4); border-radius: var(--r-base); background-color: #2a2d32; background-image: radial-gradient(circle, #4a4f56 1.6px, transparent 2px); background-size: 22px 22px; }
+.legend li { display: flex; flex-direction: column; align-items: center; gap: var(--sp-6); }
 .legend .pin-hold { width: 58px; height: 58px; overflow: visible; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .45)); }
 .legend .pin-hold path { stroke: #f4f2ec; stroke-width: 3; }
 .legend .pin-hold .bolt { fill: #2a2d32; opacity: .75; }
@@ -307,7 +308,7 @@ main { padding-bottom: var(--sp-48); }
 .legend .pin-hold .h-unknown { fill: none; stroke: #fff; stroke-width: 5.5; }
 .legend .pin-hold .h-approx { fill: none; stroke: #fff; stroke-width: 4; stroke-dasharray: 6 4.5; }
 .legend .pin-hold .h-sun { fill: none; stroke: #f4b942; stroke-width: 5; }
-.legend .tape { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; background: #f4f2ec; color: #1b1f1e; font: 700 var(--fs-xs)/1.4 var(--font); box-shadow: 0 1px 2px rgb(0 0 0 / .4); border-radius: 1px; transform: rotate(-1.5deg); white-space: nowrap; }
+.legend .tape { display: inline-flex; align-items: center; gap: var(--sp-6); padding: 3px var(--sp-10) 3px var(--sp-6); background: #f4f2ec; color: #1b1f1e; font: 700 var(--fs-xs)/1.4 var(--font); box-shadow: 0 1px 2px rgb(0 0 0 / .4); border-radius: 1px; transform: rotate(-1.5deg); white-space: nowrap; }
 .legend li:nth-child(even) .tape { transform: rotate(1.2deg); }
 /* the dots mirror the pin styles in src/map.js; the tape is paper in both themes, like the map tiles */
 .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #1b1f1e; flex: none; transform: scale(.85); }
@@ -1134,24 +1135,18 @@ html[data-text] .segs label { flex: 1 1 auto; padding: 0 var(--sp-8); }
 .card.unknown { background: transparent; }
 .card.unknown .btn { background: transparent; color: var(--muted); border-color: var(--line-strong); }
 
-/* day bar: 0–24h, green = open, orange strip = sun, line = chosen time */
+/* the card's day bar is the list's bar (.bar, listBar in app.js): 06–24h, green = open, orange where it is sunny, tick = chosen time */
 .daybar-wrap { padding-top: var(--sp-2); }
-.daybar { position: relative; }
-.track { position: relative; background: var(--sunken); overflow: hidden; }
-.open-track { height: 10px; border-radius: 5px; }
-.sun-track { height: 4px; border-radius: var(--r-xs); margin-top: 3px; background: transparent; }
-.seg { position: absolute; top: 0; bottom: 0; }
-.open-track .seg { background: var(--open-bar); }
-.card.closed .open-track .seg { background: var(--closed); }
-.sun-track .seg { background: var(--sun-bar); border-radius: var(--r-xs); }
-.now { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--now); border-radius: 1px; }
+.daybar-wrap .bar { margin-top: 0; }
+.card.soon .bar .seg { background: var(--soon); }
+.card.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soon) 70%, transparent); }
+.card.closed .bar .seg, .card.unknown .bar .seg { background: var(--off); }
+.card.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
+.card.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only, as in the list */
 .ticks { position: relative; height: 1.1em; margin-top: 3px; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .ticks span { position: absolute; transform: translateX(-50%); line-height: 1.1; }
-.ticks span:nth-child(1) { left: 0; transform: none; }
-.ticks span:nth-child(2) { left: 25%; }
-.ticks span:nth-child(3) { left: 50%; }
-.ticks span:nth-child(4) { left: 75%; }
-.ticks span:nth-child(5) { right: 0; transform: none; }
+.ticks span:first-child { transform: none; }
+.ticks span:last-child { transform: translateX(-100%); }
 .nosun { font-size: var(--fs-xs); color: var(--muted); text-align: right; margin-top: 1px; }
 
 .chips { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
