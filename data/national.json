@@ -673,12 +673,26 @@
         ]
       },
       "parking": {
-        "status": "unknown",
+        "status": "paid",
+        "note": "24시간 운영. 각종 행사·운동장 사정으로 변경될 수 있음. 문의 032-340-0874",
+        "fee": "최초 30분 400원, 10분당 200원, 1일 최대 요금 6,000원(승용차)",
         "nearby": [
-          "부천종합운동장주차장"
-        ]
+          "부천종합운동장 하부주차장(270면)",
+          "부천종합운동장 부설주차장(1,154면)"
+        ],
+        "rate": {
+          "first": {
+            "min": 30,
+            "won": 400
+          },
+          "step": {
+            "min": 10,
+            "won": 200
+          },
+          "day_max": 6000
+        }
       },
-      "checked_at": "2026-10-15",
+      "checked_at": "2026-10-20",
       "contact": {
         "phone": "0507-1333-0868"
       },
@@ -1646,8 +1660,51 @@
           "화랑유원지 주차장"
         ]
       },
-      "checked_at": "2026-10-08",
-      "holiday": "weekend"
+      "checked_at": "2026-10-20",
+      "holiday": "weekend",
+      "width_m": 24,
+      "fees": [
+        {
+          "item": "일일 입장",
+          "groups": [
+            {
+              "label": "관외",
+              "adult": {
+                "weekday": 3000,
+                "weekend": 4000
+              },
+              "youth": {
+                "weekday": 2100,
+                "weekend": 2800
+              },
+              "child": {
+                "weekday": 1800,
+                "weekend": 2400
+              }
+            },
+            {
+              "label": "관내",
+              "adult": {
+                "weekday": 1500,
+                "weekend": 2000
+              },
+              "youth": {
+                "weekday": 1050,
+                "weekend": 1400
+              },
+              "child": {
+                "weekday": 900,
+                "weekend": 1200
+              }
+            }
+          ],
+          "note": "방문 일일입장만 가능. 청소년에 군인 포함, 어린이는 초등학생(65세 이상도 같은 40%)"
+        }
+      ],
+      "discount": "장애인·기초수급자·국가유공자 50% (관외 평일 1,500·휴일 2,000 / 관내 750·1,000), 65세 이상 40%",
+      "contact": {
+        "phone": "031-487-7780"
+      }
     },
     {
       "name": "광교스포츠클라이밍장",
@@ -4259,7 +4316,7 @@
       "winter": {
         "type": "closed",
         "from_month": 1,
-        "to_month": 3
+        "to_month": 2
       },
       "fees": [
         {
@@ -4726,7 +4783,7 @@
       "tags": [
         "무료"
       ],
-      "memo": "정기휴무 월\n겨울 휴장(운영 기간 미확인)",
+      "memo": "정기휴무 월",
       "address": "서울 광진구 자양동 179-4",
       "sun": {
         "facing": "SW",
@@ -4875,7 +4932,7 @@
         "phone": "02-3780-0521",
         "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
       },
-      "checked_at": "2026-07-10",
+      "checked_at": "2026-10-20",
       "photo": "photos/ttukseom.jpg",
       "photo_credit": {
         "text": "직접 촬영"
@@ -4903,7 +4960,15 @@
           "note": "무료"
         }
       ],
-      "venue": "outdoor"
+      "venue": "outdoor",
+      "setting": {
+        "last": "2026-09-08"
+      },
+      "winter": {
+        "type": "closed",
+        "from_month": 1,
+        "to_month": 2
+      }
     },
     {
       "name": "영등포 스포츠클라이밍경기장",
@@ -5321,7 +5386,7 @@
         "유료",
         "스피드월"
       ],
-      "memo": "대치유수지 체육공원 내 야외 외벽\n시설 샤워장\n정기휴무 화\n유수지 침수 시 임시휴관\n동절기 드라이툴링 가능",
+      "memo": "대치유수지 체육공원 내 야외 외벽\n스피드벽 2라인(오토빌레이), 리드벽, 실내 볼더링장\n시설 샤워장\n정기휴무 화\n유수지 침수 시 임시휴관\n동절기 드라이툴링 가능",
       "address": "서울 강남구 역삼로107길 20-30",
       "sun": {
         "facing": "NE",
@@ -5445,7 +5510,7 @@
         "naver_map": "https://naver.me/FIc9PJnQ",
         "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
       },
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-20",
       "location": {
         "lat": 37.509,
         "lng": 127.06756
@@ -5477,7 +5542,76 @@
       "width_m": 40,
       "venue": "both",
       "indoor_kinds": [
-        "지구력"
+        "지구력",
+        "볼더링"
+      ],
+      "winter": {
+        "type": "changed",
+        "from_month": 1,
+        "to_month": 2,
+        "hours": {
+          "sun": [
+            "10:00",
+            "18:00"
+          ],
+          "mon": [
+            "10:00",
+            "21:00"
+          ],
+          "tue": [
+            "10:00",
+            "21:00"
+          ],
+          "wed": [
+            "10:00",
+            "21:00"
+          ],
+          "thu": [
+            "10:00",
+            "21:00"
+          ],
+          "fri": [
+            "10:00",
+            "21:00"
+          ],
+          "sat": [
+            "10:00",
+            "18:00"
+          ]
+        }
+      },
+      "seasons": [
+        {
+          "from_month": 3,
+          "to_month": 3,
+          "hours": {
+            "sun": [
+              "10:00",
+              "21:00"
+            ],
+            "mon": [
+              "10:00",
+              "21:00"
+            ],
+            "tue": null,
+            "wed": [
+              "10:00",
+              "21:00"
+            ],
+            "thu": [
+              "10:00",
+              "21:00"
+            ],
+            "fri": [
+              "10:00",
+              "21:00"
+            ],
+            "sat": [
+              "10:00",
+              "21:00"
+            ]
+          }
+        }
       ]
     },
     {
