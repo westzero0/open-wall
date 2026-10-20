@@ -28,6 +28,32 @@ export function cooldownLeft(ts, now) {
   return Math.max(0, COOLDOWN_MS - (now - ts));
 }
 
+const HUES = [160, 38, 340, 215, 95, 20]; // moss, sun, wine, slate blue, olive, clay: the brand's colours, so no name lands on an off-palette hue
+/** a nickname's colour (hue 0-359): the same name always gets the same one. */
+export function avatarOf(nick) {
+  const name = String(nick ?? '').trim() || '익명';
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360;
+  return { hue: HUES[h % HUES.length] };
+}
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+const clockText = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const dot = (nick) => {
+  const d = el('i', { class: 'bd-dot', 'aria-hidden': 'true' });
+  d.style.setProperty('--h', String(avatarOf(nick).hue));
+  return d;
+};
+const SEND_ICON = 'M3.4 20.4 21 12 3.4 3.6l-.01 6.5L15 12 3.39 13.9z';
+const sendIcon = () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', SEND_ICON); path.setAttribute('fill', 'currentColor');
+  svg.append(path);
+  return svg;
+};
+
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage may be blocked */ } },
@@ -179,8 +205,10 @@ function build(wallName, mode, onOpenAll) {
     const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
     const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);
     const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
-    const send = el('button', { type: 'submit', class: 'bd-send' }, '남기기');
-    const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, el('span', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요'), send));
+    const send = el('button', { type: 'submit', class: 'bd-send', 'aria-label': '남기기', title: '남기기' }, sendIcon());
+    const form = el('form', { class: 'bd-form' },
+      el('div', { class: 'bd-row bd-compose' }, nick, body, send), trap,
+      el('p', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요')); // the hint opens only while the form has focus
     const me = { send, busy: false };
     forms.push(me);
     body.addEventListener('input', () => { count.textContent = `${[...body.value].length}/${MAX_BODY}`; });
@@ -207,7 +235,7 @@ function build(wallName, mode, onOpenAll) {
     return form;
   }
   const mainForm = makeForm(null, status);
-  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? null : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
+  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? el('header', { class: 'bd-hero' }, el('i', { class: 'bd-sun' }), el('i', { class: 'bd-slab' }), el('h3', {}, '한 줄 타임라인'), el('p', {}, '오늘 이 벽에서 있었던 일, 한 줄로')) : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
 
   /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. `parent`: this is a reply under it. */
   function deleteButton(id, token, parent) {
@@ -267,8 +295,10 @@ function build(wallName, mode, onOpenAll) {
     const e = s.replies.get(id);
     const now = Date.now();
     t.ul.replaceChildren(...(e?.list ?? []).map((r) => el('li', { class: 'bd-post bd-reply' },
-      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, r.nick), ' ', r.body),
-      el('p', { class: 'bd-meta' }, ageText(r.created_at, now), ' · ', actionFor(r, id)))));
+      el('div', { class: 'bd-main' },
+        el('p', { class: 'bd-head' }, dot(r.nick), el('b', { class: 'bd-by' }, r.nick), el('span', { class: 'bd-meta' }, ageText(r.created_at, now))),
+        el('p', { class: 'bd-text' }, r.body),
+        el('p', { class: 'bd-acts' }, actionFor(r, id))))));
     t.st.textContent = e?.failed ? '답글을 불러오지 못했어요' : e?.loading ? '불러오는 중…' : '';
     return t.box;
   }
@@ -282,10 +312,15 @@ function build(wallName, mode, onOpenAll) {
       replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp' }, `답글 ${n}`);
       replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
     }
-    return el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
-      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body),
-      el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', replyBtn, replyBtn ? ' · ' : null, actionFor(p, null)),
-      mode === 'full' && open.has(p.id) ? threadFor(p.id) : null);
+    const today = sameDay(p.created_at, now);
+    const li = el('li', { class: `bd-post${fresh ? ' bd-new' : ''}${today ? '' : ' bd-old'}` },
+      el('time', { class: 'bd-time', datetime: new Date(p.created_at).toISOString() }, today ? clockText(p.created_at) : ageText(p.created_at, now)),
+      el('div', { class: 'bd-main' },
+        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, p.nick)),
+        el('p', { class: 'bd-text' }, p.body),
+        el('p', { class: 'bd-acts' }, replyBtn, actionFor(p, null)),
+        mode === 'full' && open.has(p.id) ? threadFor(p.id) : null));
+    return li;
   }
   let newest = 0; // created_at of the newest post drawn so far: only a post newer than that, arriving after the first load, animates in (not older ones from 더 보기)
   let wasLoaded = false;
@@ -298,7 +333,14 @@ function build(wallName, mode, onOpenAll) {
     refocus = null;
     const now = Date.now();
     const shown = mode === 'preview' ? s.posts.slice(0, PREVIEW) : s.posts;
-    list.replaceChildren(...shown.map((p) => postItem(p, now, wasLoaded && p.created_at > newest)));
+    const items = [];
+    let day = null; // full mode: 오늘 / 지난 글 headings (볕과 그늘)
+    for (const p of shown) {
+      const today = sameDay(p.created_at, now);
+      if (mode === 'full' && day !== today) { day = today; items.push(el('li', { class: `bd-day${today ? '' : ' bd-shade'}` }, today ? '오늘' : '지난 글')); }
+      items.push(postItem(p, now, wasLoaded && p.created_at > newest));
+    }
+    list.replaceChildren(...items);
     for (const p of shown) newest = Math.max(newest, p.created_at);
     wasLoaded = s.loaded;
     moreBtn.hidden = mode !== 'full' || !s.more;
