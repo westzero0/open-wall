@@ -1706,23 +1706,19 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-box { margin-top: var(--sp-12); padding-top: var(--sp-10); border-top: 1px solid var(--line); }
 .bd-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .bd-list { list-style: none; margin: var(--sp-6) 0 0; padding: 0; }
-/* the list is a route up the wall: a rope down the left, one hold per post (its colour from the name), each post a 도감 plate */
-.bd-list { position: relative; }
-.bd-list::before { content: ""; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 0; border-left: 2px dashed var(--line-strong); }
-.bd-post { --h: 160; position: relative; padding: var(--sp-6) 0 var(--sp-8) 38px; }
-.bd-post::before { content: ""; position: absolute; left: 0; top: 14px; width: 24px; height: 20px; border-radius: 12px 7px 11px 8px / 9px 8px 11px 10px; background: hsl(var(--h) 72% 60%); box-shadow: inset 0 -3px 0 hsl(var(--h) 55% 40% / .55), 0 0 0 2px var(--bg); } /* the hold */
-.bd-post::after { content: ""; position: absolute; left: 8px; top: 19px; width: 8px; height: 8px; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background: #2a2d32; } /* its bolt */
+/* editorial: no boxes, the type and the space do the work; a name carries one small hold-coloured dot */
+.bd-post { padding: var(--sp-16) 0 var(--sp-12); }
+.bd-post + .bd-post { border-top: 1px solid var(--hair); }
 .bd-new { animation: bd-in var(--dur-ui) var(--ease-out); } /* a post that just arrived (board-view.js); the first load and redraws stay still */
 @keyframes bd-in { from { opacity: 0; transform: translateY(6px); } }
-.bd-main { flex: 1; min-width: 0; padding: var(--sp-8) var(--sp-12) var(--sp-6); border: 2px solid var(--fg); border-radius: var(--r-base) var(--r-base) var(--r-base) var(--r-xs); background: var(--plate); box-shadow: 3px 3px 0 color-mix(in srgb, var(--fg) 20%, transparent); }
-.bd-av { flex: none; width: 36px; height: 36px; margin: -14px 0 -6px -4px; object-fit: contain; filter: drop-shadow(1.5px 0 0 var(--sticker)) drop-shadow(-1.5px 0 0 var(--sticker)) drop-shadow(0 1.5px 0 var(--sticker)) drop-shadow(0 -1.5px 0 var(--sticker)); }
-.bd-av-sm { width: 26px; height: 26px; margin: -6px 0 -4px -2px; }
-.bd-head { display: flex; align-items: center; gap: var(--sp-6); margin: 0; }
-.bd-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); font-weight: 700; }
-.bd-text { margin: var(--sp-2) 0 0; font-size: var(--fs-md); line-height: 1.5; overflow-wrap: anywhere; }
+.bd-main { min-width: 0; }
+.bd-dot { --h: 160; flex: none; width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--h) 62% 50%); }
+.bd-head { display: flex; align-items: center; gap: var(--sp-8); margin: 0; }
+.bd-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); font-weight: 700; letter-spacing: -.01em; }
+.bd-text { margin: var(--sp-6) 0 0; font-size: var(--fs-base); line-height: 1.6; overflow-wrap: anywhere; }
 .bd-meta, .bd-status, .bd-count, .bd-hint { font-size: var(--fs-xs); color: var(--muted); }
-.bd-meta { flex: none; margin-left: auto; padding: 1px var(--sp-8); border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-variant-numeric: tabular-nums; }
-.bd-acts { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin: var(--sp-4) 0 0 calc(var(--sp-8) * -1); padding-top: var(--sp-2); border-top: 1px dotted var(--line-strong); }
+.bd-meta { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
+.bd-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-6) 0 0 calc(var(--sp-8) * -1); }
 .bd-acts:empty { display: none; }
 .bd-status:empty { display: none; }
 .bd-status { margin-top: var(--sp-6); }
@@ -1807,12 +1803,10 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .pf-grade { clear: both; display: flex; align-items: center; gap: var(--sp-8); }
 .pf-grade select { min-height: var(--tap); padding: 0 var(--sp-10); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
 .pf-grade select:disabled { color: var(--muted); }
-.bd-thread { margin: var(--sp-6) calc(var(--sp-4) * -1) 0; padding: var(--sp-6) var(--sp-10) var(--sp-8); border-radius: var(--r-md); background: color-mix(in srgb, var(--fg) 6%, var(--plate)); }
+.bd-thread { margin: var(--sp-6) 0 0 3px; padding: var(--sp-2) 0 var(--sp-4) var(--sp-14); border-left: 2px solid var(--line); }
 .bd-replies { list-style: none; margin: 0; padding: 0; }
-.bd-reply { padding: var(--sp-6) 0; }
-.bd-reply::before, .bd-reply::after, .bd-thread .bd-replies::before { content: none; }
-.bd-reply .bd-main { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
-.bd-reply .bd-acts { border-top: 0; }
+.bd-reply { padding: var(--sp-10) 0 var(--sp-6); }
+.bd-reply + .bd-reply { border-top: 0; }
 .bd-thread .bd-compose { background: var(--surface); }
 html[data-text] .bd-who { flex-wrap: wrap; } /* 큰 글씨: 닉네임과 안내를 각각 한 줄에 */
 .bd-rp[aria-expanded="true"] { background: var(--accent-soft); color: var(--fg); }
