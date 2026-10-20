@@ -43,7 +43,6 @@ const $ = (id) => document.getElementById(id);
 let loadFailed = false;
 const inviteView = createInviteView({ getWalls: () => state.walls }); // the share menu, the 같이 가요 sheet and the banner
 
-const pct = (min) => `${(min / 1440) * 100}%`;
 
 // Inline icons on a 24px grid, drawn in the text colour; the button or link around one carries its name.
 const ICONS = {
@@ -201,26 +200,12 @@ function thumb(m) {
   return img;
 }
 
-function segments(cls, ranges) {
-  return ranges.map(([a, b]) => {
-    const s = el('span', { class: cls });
-    s.style.left = pct(a);
-    s.style.width = pct(b - a);
-    return s;
-  });
-}
-
-// The same day as the list row's bar: a closed wall opening on a later day shows that day, without a now line.
+// The same bar as the list row's (listBar), with the hours under it: a closed wall opening on a later day shows that day, without a tick.
 function dayBarBlock(bar) {
-  const now = bar.ahead ? null : el('span', { class: 'now' });
-  now?.style.setProperty('left', pct(bar.nowMin));
   return el('div', { class: 'daybar-wrap' },
-    el('div', { class: 'daybar', role: 'img', 'aria-label': bar.label },
-      el('div', { class: 'track open-track' }, ...segments('seg', bar.open)),
-      bar.sun ? el('div', { class: 'track sun-track' }, ...segments('seg', bar.sun)) : null,
-      now),
+    listBar(bar),
     el('div', { class: 'ticks', 'aria-hidden': 'true' },
-      ...[0, 6, 12, 18, 24].map((t) => el('span', {}, String(t)))),
+      ...[360, 720, 1080, 1440].map((t) => { const x = el('span', {}, String(t / 60)); x.style.left = axisX(t); return x; })),
     bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
 }
 
@@ -331,6 +316,19 @@ const span = (cls, a, b) => {
 // An orange sun band that starts or ends where the open bar does takes the bar's round end (the list's bar and the sheet's alike);
 // inside the bar it stays square so two colours meet cleanly.
 const capCls = (a, b, open) => `${open.some(([x]) => x === a) ? ' cap-l' : ''}${open.some(([, y]) => y === b) ? ' cap-r' : ''}`;
+// The one bar of a wall's day, drawn the same in the list row and on the map card: green where open (paler once gone), orange where it is
+// sunny inside those hours, the tick at the picked time. `ahead` (a later day) has no tick.
+function listBar(bar) {
+  const tick = bar.ahead ? null : el('span', { class: 'tick' });
+  tick?.style.setProperty('left', axisX(bar.nowMin));
+  return el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
+    // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
+    ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
+    // the part before the tick is already gone: its orange is paler, like the green under it
+    ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
+      .map(([a, b, past]) => span(`${past ? 'sunband past' : 'sunband'}${capCls(a, b, bar.open)}`, a, b)),
+    tick);
+}
 // 13:30 → "13:30", 9:00 → "9": an hour told the short way, for a day with too many stretches to label each bar
 const hourWord = (m) => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60));
 // The hours of one open stretch, on one line over its bar: "10:00–14:00". A stretch that a break follows ends its label at the break's start
@@ -1404,8 +1402,6 @@ function timeRow(row, at) {
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
   const id = `row-x-${++rowSeq}`;
   const isOpen = vs.openName === m.name;
-  const tick = !bar || bar.ahead ? null : el('span', { class: 'tick' });
-  tick?.style.setProperty('left', axisX(bar.nowMin));
   // 양달/응달/방향 모름 in words, not only the orange band
   const { sun } = m;
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
@@ -1424,13 +1420,7 @@ function timeRow(row, at) {
         feeChip(m)), // the least decisive: it is the first to give way
       wxSlot(row.wall, at), // a fixed place left of the time: the temperature at the picked arrival hour (outdoor walls)
       el('span', { class: 'left' }, m.left, a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null)),
-    bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
-      // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
-      ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
-      // the part before the tick is already gone: its orange is paler, like the green under it
-      ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
-        .map(([a, b, past]) => span(`${past ? 'sunband past' : 'sunband'}${capCls(a, b, bar.open)}`, a, b)),
-      tick) : null);
+    bar ? listBar(bar) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
   const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.veil ? ' veil' : ''}` });
