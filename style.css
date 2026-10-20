@@ -272,11 +272,30 @@ main { padding-bottom: var(--sp-48); }
 }
 /* pin names (src/map.js) at street zoom; map.js hides the ones that would overlap */
 #map .pin-label { padding: 1px var(--sp-6); font: 600 .8125rem/1.3 var(--font); color: #1b1f1e; background: #fff; border-color: #b4baaf; white-space: nowrap; }
-/* a crowd of walls: filled disc, white ring, soft halo in the same hue (size set per count in src/map.js); grey when none is open */
-#map .pin-cluster { --hue: var(--pin-open); display: grid; place-items: center; width: var(--size, 32px); height: var(--size, 32px); border-radius: 50%; border: 3px solid #fff; background: var(--hue); color: #fff; font: 700 .875rem/1 var(--font); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 5px color-mix(in srgb, var(--hue) 30%, transparent), 0 2px 8px rgb(0 0 0 / .35); cursor: pointer; transition: transform .15s; }
+/* a crowd of walls: a hold with the count on it, soft halo in the same hue (size set per count in src/map.js); grey when none is open */
+#map .pin-cluster { --hue: var(--pin-open); position: relative; display: block; width: var(--size, 42px); height: var(--size, 42px); font-variant-numeric: tabular-nums; cursor: pointer; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .4)); transition: transform .15s; }
+#map .pin-cluster svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#map .pin-cluster path { fill: var(--hue); stroke: #fff; stroke-width: 3.5; stroke-linejoin: round; }
+#map .pin-cluster path.halo { fill: none; stroke: color-mix(in srgb, var(--hue) 30%, transparent); stroke-width: 11; }
+#map .pin-cluster text { fill: #fff; stroke: none; font: 700 17px/1 var(--font); text-anchor: middle; dominant-baseline: central; }
 #map .pin-cluster:hover { transform: scale(1.08); }
 #map .pin-cluster.idle { --hue: var(--pin-closed); }
 @media (prefers-reduced-motion: reduce) { #map .pin-cluster { transition: none; } #map .pin-cluster:hover { transform: none; } }
+/* a wall's pin: a hold on the map (src/map.js holdIcon); the same states as the legend below */
+#map .pin-mk { display: grid; place-items: center; }
+#map .pin-mk svg { width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / .45)); transition: transform .12s; }
+#map .pin-mk .body { fill: var(--pin-open); stroke: var(--pin-edge); stroke-width: 2.5; stroke-linejoin: round; }
+#map .pin-mk .bolt { fill: #fff; opacity: .85; }
+#map .pin-mk .ring { fill: none; stroke: var(--pin-sun); stroke-width: 3.5; }
+#map .pin-mk.soon .body { fill: var(--pin-soon); stroke-width: 5; }
+#map .pin-mk.closed .body { fill: var(--pin-closed); transform-box: fill-box; transform-origin: center; transform: scale(.8); }
+#map .pin-mk.unknown .body { fill: none; stroke: var(--pin-unknown); stroke-width: 4; }
+#map .pin-mk.unknown .bolt { display: none; }
+#map .pin-mk.approx .body { stroke-dasharray: 4 3; }
+#map .pin-mk.sel svg { transform: scale(1.3); }
+#map .pin-mk.sel .body { stroke-width: 4; }
+#map .pin-mk.soon.sel .body { stroke-width: 6.5; }
+@media (prefers-reduced-motion: reduce) { #map .pin-mk svg { transition: none; } }
 /* 핀 설명: a gym wall (dark in both themes) with one hold per pin state; the tape under it carries the exact map pin */
 .legend { list-style: none; margin: var(--sp-8) 0 0; padding: var(--sp-14) var(--sp-12) var(--sp-12); display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: var(--sp-16) var(--sp-4); border-radius: var(--r-base); background-color: #2a2d32; background-image: radial-gradient(circle, #4a4f56 1.6px, transparent 2px); background-size: 22px 22px; }
 .legend li { display: flex; flex-direction: column; align-items: center; gap: var(--sp-6); }
