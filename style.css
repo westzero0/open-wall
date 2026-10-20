@@ -491,6 +491,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 :root[data-theme="dark"] :is(.wx-rain, .wx-storm) { --wx-bg: #3a63a8; --wx-fg: #fff; }
 :root[data-theme="dark"] :is(.wx-rain, .wx-storm) .rwx-t { color: #8db4ee; }
 :root[data-theme="dark"] .wx-snow { --wx-bg: #6d819a; --wx-fg: #fff; }
+.row.cold:not(.is-open) :is(.rname, .bar) { opacity: .72; } /* a wall below the chosen 기온 recedes (name and bar only: the hours and the temperature stay at full contrast) */
 .wx-credit { padding: var(--sp-8) var(--sp-16) 0; font-size: var(--fs-xs); color: var(--muted); }
 .wx-credit a { color: inherit; }
 .l1 .left { min-width: 5.6em; text-align: right; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */

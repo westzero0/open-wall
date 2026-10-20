@@ -274,12 +274,14 @@ function cleanSeasons(v) {
     .filter((s) => Object.keys(s.hours).length);
 }
 
-// fees: [{item, adult?, youth?, child?, note?}], each who = {all} or {weekday?, weekend?} in won (integers >= 0);
+// fees: [{item, adult?, youth?, child?, groups?: [{label, adult?, youth?, child?}], note?}], each who = {all} or {weekday?, weekend?} in won (integers >= 0);
 // bad numbers/groups dropped, an item with no price and no note dropped; discount: one line of text.
 export const MAX_FEES = 20;
 const MAX_FEE_TEXT = 40;
 const MAX_FEE_NOTE = 120;
 const MAX_FEE_TIMES = 60;
+export const MAX_FEE_GROUPS = 4; // groups: one item priced per 거주지 (관외 / 관내, 시민 / 타시민): a short label, then the same who prices
+export const MAX_GROUP_LABEL = 10;
 const MAX_DISCOUNT = 160;
 const MAX_WON = 10_000_000;
 const cleanWon = (n) => (Number.isInteger(n) && n >= 0 && n <= MAX_WON ? n : undefined);
@@ -298,6 +300,21 @@ function cleanTimes(v) {
   if (t.all !== undefined) return { all: t.all };
   return Object.keys(t).length ? t : null;
 }
+function cleanGroups(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const g of v) {
+    if (!isPlainObject(g) || typeof g.label !== 'string' || !g.label.trim()) continue;
+    const row = { label: g.label.trim().slice(0, MAX_GROUP_LABEL) };
+    for (const who of ['adult', 'youth', 'child']) {
+      const w = cleanWho(g[who]);
+      if (w) row[who] = w;
+    }
+    if (row.adult || row.youth || row.child) out.push(row);
+    if (out.length === MAX_FEE_GROUPS) break;
+  }
+  return out;
+}
 function cleanFees(v) {
   if (!Array.isArray(v)) return [];
   const out = [];
@@ -308,11 +325,13 @@ function cleanFees(v) {
       const w = cleanWho(f[who]);
       if (w) row[who] = w;
     }
+    const groups = cleanGroups(f.groups);
+    if (groups.length) row.groups = groups;
     const times = cleanTimes(f.times);
     if (times) row.times = times;
     const note = typeof f.note === 'string' ? f.note.trim().slice(0, MAX_FEE_NOTE) : '';
     if (note) row.note = note;
-    if (row.adult || row.youth || row.child || row.times || row.note) out.push(row);
+    if (row.adult || row.youth || row.child || row.groups || row.times || row.note) out.push(row);
     if (out.length === MAX_FEES) break;
   }
   return out;

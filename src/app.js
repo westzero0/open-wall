@@ -19,7 +19,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanRegions, cleanRope, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
@@ -830,6 +830,8 @@ function useWxList(spots, json, at) {
   wxList.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
   return !!days;
 }
+// 기온 ○°↑ sorts by the forecast: sort again when it lands, unless a row has the focus (the next minute tick will)
+const renderForWx = () => { if (Number(ui.tempMin) && !document.activeElement?.closest?.('#panel-list .row')) render(); };
 async function loadListWeather() {
   if (wxList.busy) return;
   const spots = listSpots();
@@ -839,7 +841,7 @@ async function loadListWeather() {
   if (!wxList.entry) { // the first ask of this visit: the copy kept in this browser may still be good
     try {
       const saved = JSON.parse(storage.getItem(WXL_KEY));
-      if (saved?.key === key && Date.now() - saved.at >= 0 && Date.now() - saved.at < 3 * 3600e3 && useWxList(spots, saved.json, saved.at)) { paintListWx(); return; }
+      if (saved?.key === key && Date.now() - saved.at >= 0 && Date.now() - saved.at < 3 * 3600e3 && useWxList(spots, saved.json, saved.at)) { paintListWx(); renderForWx(); return; }
     } catch { /* no copy, or a broken one: ask */ }
   }
   wxList.busy = true;
@@ -853,6 +855,7 @@ async function loadListWeather() {
   }
   wxList.busy = false;
   paintListWx();
+  renderForWx();
 }
 const wxEntry = (wall, at) => { const h = wxList.byName.get(wall.name); return h ? pickHour(h, at) : null; };
 function wxChip(h, name) {
@@ -1442,7 +1445,7 @@ function timeRow(row, at) {
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
         feeChip(m)), // the least decisive: it is the first to give way
       wxSlot(row.wall, at), // a fixed place left of the time: the temperature at the picked arrival hour (outdoor walls)
-      el('span', { class: 'left' }, m.left)),
+      el('span', { class: 'left' }, m.left, row.cold ? el('span', { class: 'sr-only' }, `, 기온 ${ui.tempMin}도 미만`) : null)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
       ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
@@ -1452,7 +1455,7 @@ function timeRow(row, at) {
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -1564,6 +1567,13 @@ function render() {
   const groups = groupRows(all);
   const needOrigin = ui.sortMode === 'distance' && !vs.origin;
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
+  // 기온 ○°↑: an outdoor wall whose forecast at the arrival hour is below it sinks (stable), dimmed; no forecast, indoor: left where it is
+  const tmin = Number(ui.tempMin) || 0; // (the open card is never moved: it stays where it is)
+  let coldN = 0;
+  if (tmin) {
+    for (const r of open) { const h = wxEntry(r.wall, at); r.cold = !!h && r.wall.venue !== 'indoor' && r.wall.name !== vs.openName && Math.round(h.t) < tmin; coldN += Number(r.cold); }
+    open.sort((a, b) => Number(a.cold || false) - Number(b.cold || false));
+  }
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
   $('longOnly').textContent = fv.longLabel;
@@ -1593,7 +1603,7 @@ function render() {
   $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
-  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}`;
+  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}${coldN ? ` · ${tmin}° 미만 아래로` : ''}`;
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
@@ -1852,11 +1862,11 @@ $('axis').append(nowTag);
 
 const sheet = $('conditions');
 const sheetForm = sheet.querySelector('form');
-for (const k of ['minHours', 'sortMode', 'venue', 'ropeM']) sheetForm.elements[k].value = ui[k];
+for (const k of ['minHours', 'sortMode', 'venue', 'ropeM', 'tempMin']) sheetForm.elements[k].value = ui[k];
 
 const setUi = (k, v) => {
   ui[k] = v;
-  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'ropeM') sheetForm.elements[k].value = v;
+  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'ropeM' || k === 'tempMin') sheetForm.elements[k].value = v;
   if (k === 'sortMode') go({ type: 'sort' });
   saveUi();
   render();
@@ -1926,6 +1936,7 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
   Object.assign(ui, CLEARED);
   sheetForm.elements.minHours.value = '0';
   sheetForm.elements.venue.value = 'any';
+  sheetForm.elements.tempMin.value = '0';
   saveUi();
   render();
   $('sunOnly').focus(); // the button is gone; land on the first filter
@@ -1967,6 +1978,7 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
   if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value));
+  if (e.target.name === 'tempMin') setUi('tempMin', cleanTemp(e.target.value));
 });
 // 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
 for (const id of ['regionOpts', 'regionOptsC']) {

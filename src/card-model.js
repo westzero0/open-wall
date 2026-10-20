@@ -263,10 +263,12 @@ const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']
 export function feeTable(wall) {
   const fees = wall.fees ?? [];
   if (!fees.length) return null;
+  const whoRows = (o, prefix = '') => WHO.filter(([k]) => o[k]).map(([k, who]) => (
+    o[k].all !== undefined ? { who: prefix + who, all: won(o[k].all) }
+      : { who: prefix + who, weekday: o[k].weekday !== undefined ? won(o[k].weekday) : '-', weekend: o[k].weekend !== undefined ? won(o[k].weekend) : '-' }));
   const items = fees.map((f) => {
-      const rows = WHO.filter(([k]) => f[k]).map(([k, who]) => (
-        f[k].all !== undefined ? { who, all: won(f[k].all) }
-          : { who, weekday: f[k].weekday !== undefined ? won(f[k].weekday) : '-', weekend: f[k].weekend !== undefined ? won(f[k].weekend) : '-' }));
+      // groups (관외 / 관내 …): the same who rows with the group's label in front, under the one item
+      const rows = [...whoRows(f), ...(f.groups ?? []).flatMap((g) => whoRows(g, `${g.label} `))];
       const noteOnly = !rows.length && !f.times;
       // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
       if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
