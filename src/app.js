@@ -2144,7 +2144,7 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     $('howto-guide').hidden = !!due; // only the notice is due: just that
     if ($('tour-again')) $('tour-again').hidden = !!due;
     $('howto-close').textContent = due ? '확인' : '닫기';
-    $('howto-more').open = !due; // ? opens the whole guide
+    $('howto-more').open = false; // 핵심만 먼저: 자세히 보기는 눌러야 펼쳐진다
     howto.showModal();
     howto.scrollTop = 0; // the browser scrolls to the focused 확인 button at the foot: start from the title
   };
