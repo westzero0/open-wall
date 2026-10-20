@@ -28,7 +28,7 @@ import { applyTextSize, applyTheme, createProfileView } from './profile-view.js'
 import { createSafetyView } from './safety-view.js';
 import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { dayKey, dayWeather, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
+import { dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel } from './wall-sheet-model.js';
@@ -91,10 +91,10 @@ function icon(name, filled = false) {
 // information) / 실내 (the sun does not matter) as pictures. The word is the picture's name for readers and a long press, and
 // the key under the list spells all four out for touch users.
 const SUN_PIC = { sun: 'sun', shade: 'shade', unknown: 'unknown', indoor: 'indoor' };
-function sunChip(sun) {
+function sunChip(sun, veiled = false) { // veiled: the sky hides the sun (the list tints the chip); the title says so
   const pic = sun && SUN_PIC[sun.tone];
   if (!pic) return null;
-  return el('span', { class: `sunnow ${sun.tone} pic`, role: 'img', 'aria-label': sun.text, title: sun.text }, icon(pic));
+  return el('span', { class: `sunnow ${sun.tone} pic`, role: 'img', 'aria-label': sun.text, title: veiled ? `${sun.text} · 흐려서 해가 거의 안 나요` : sun.text }, icon(pic));
 }
 
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
@@ -830,8 +830,8 @@ function useWxList(spots, json, at) {
   wxList.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
   return !!days;
 }
-// 기온 ○°↑ sorts by the forecast: sort again when it lands, unless a row has the focus (the next minute tick will)
-const renderForWx = () => { if (Number(ui.tempMin) && !document.activeElement?.closest?.('#panel-list .row')) render(); };
+// the forecast decides the order (비 오는 곳, 기온 ○°↑) and the 해 가려짐 note: sort again when it lands, unless a row has the focus (the next minute tick will)
+const renderForWx = () => { if (!document.activeElement?.closest?.('#panel-list .row')) render(); };
 async function loadListWeather() {
   if (wxList.busy) return;
   const spots = listSpots();
@@ -1062,25 +1062,27 @@ function sunHead(d, verdict) {
       : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
-function sunBox(d, name, closedDay, verdict) {
+function sunBox(d, name, closedDay, verdict, veilText = null) {
   // the dial says why ("해가 벽 뒤에 있어요" under it, 해·벽 색), so a facing/sun reason keeps only the first sentence (where the sun is); a terrain/night reason is not in the picture and stays
   const words = d.sentence.length > 3 && /^ 해가 (벽|등) 뒤쪽/.test(d.sentence[3].text) ? d.sentence.slice(0, 3) : d.sentence;
   const sentence = el('p', { class: 'dsent' }, ...words.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   const sunNoteText = state.walls.find((w) => w.name === name)?.sun_note; // walls that face different ways: the verdict is for the main one
   const sunNote = sunNoteText ? el('p', { class: 'sun-note' }, sunNoteText) : null;
+  const veil = veilText ? el('p', { class: 'sun-veil' }, icon('sky-cloud'), veilText) : null; // the sky hides the sun: the verdict above stays
+  const extra = sunNote || veil ? el('div', { class: 'sun-extra' }, sunNote, veil) : null; // one grid track for both quiet lines
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
       el('p', { class: 'dsent off' }, '이 날은 운영하지 않아서 해 나침반은 접어 두었어요.'),
       noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
-    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, sunNote, d.state === 'override' ? sunWhy() : null));
+    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, extra, d.state === 'override' ? sunWhy() : null));
   }
   return el('section', { class: 'sunbox', 'aria-label': '해' },
     sunHead(d, verdict), // the head already tells the sun inside the open hours
     sentence,
     el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
-    sunNote,
+    extra,
     sunWhy());
 }
 
@@ -1088,6 +1090,11 @@ function sunBox(d, name, closedDay, verdict) {
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Expanded row (v6): what decides the visit first; the rest is in the wall sheet (자세히 ›).
+// the sky hides a lit wall's sun at the picked hour (today / tomorrow only): one quiet line in the sun box, the verdict stays
+function veilText(m, wall, at) {
+  const h = m.sun?.tone === 'sun' && wall.venue !== 'indoor' ? wxEntry(wall, at) : null;
+  return h && skyVeils(h.c) && forecastTrusted(at, new Date()) ? `흐려서 해가 거의 안 나요 (${String(at.getHours()).padStart(2, '0')}시 예보)` : null;
+}
 function rowDetails(m, wall, at) {
   const dial = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   // the way into the wall sheet (hours table, seasonal sun, fees, parking details): one button at the end of the facts
@@ -1127,7 +1134,7 @@ function rowDetails(m, wall, at) {
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
         m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
-      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at)), // above 정보 확인일, after the facts (the right column when wide)
+      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at)), // above 정보 확인일, after the facts (the right column when wide)
       el('div', { class: 'm-foot' }, el('p', { class: 'checked' }, m.checked)),
       sheetBtn),
     visitLog(m),
@@ -1421,6 +1428,8 @@ const modelOf = (row, at) => cardModel(row, at, {
 });
 
 let rowSeq = 0;
+// what the dimmed / veiled look says in words (a screen reader hears no opacity)
+const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
 function timeRow(row, at) {
   const m = modelOf(row, at);
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
@@ -1432,7 +1441,7 @@ function timeRow(row, at) {
   const { sun } = m;
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
-      sunChip(sun), // first: the same column on every open row
+      sunChip(sun, row.veil), // first: the same column on every open row
       el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
       el('span', { class: 'rname', title: m.shortName }, m.shortName),
       // the extras share what room is left, in this order of worth; one that does not fit wraps out of sight whole (style.css .rsub),
@@ -1445,7 +1454,7 @@ function timeRow(row, at) {
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
         feeChip(m)), // the least decisive: it is the first to give way
       wxSlot(row.wall, at), // a fixed place left of the time: the temperature at the picked arrival hour (outdoor walls)
-      el('span', { class: 'left' }, m.left, row.cold ? el('span', { class: 'sr-only' }, `, 기온 ${ui.tempMin}도 미만`) : null)),
+      el('span', { class: 'left' }, m.left, a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null)),
     bar ? el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
       // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
       ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
@@ -1455,7 +1464,7 @@ function timeRow(row, at) {
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.veil ? ' veil' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -1561,6 +1570,10 @@ function render() {
   const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
   const mine = ui.favOnly ? scoped.filter((r) => favs.includes(r.wall.name)) : scoped; // 즐겨찾기만
   const all = withDistance(filterRows(mine, ui.sun), vs.origin);
+  for (const r of all) { // the sun is where it would be, but the sky may hide it: a note, never a new verdict (filters and order ignore it)
+    const h = r.wall.venue !== 'indoor' && r.lit === true ? wxEntry(r.wall, at) : null;
+    r.veil = !!h && skyVeils(h.c) && forecastTrusted(at, now);
+  }
   allRows = rows;
   shown = { rows: all, at };
   go({ type: 'shown', rows: all }); // the open row was filtered out, or moved to another group: forget it
@@ -1568,12 +1581,17 @@ function render() {
   const needOrigin = ui.sortMode === 'distance' && !vs.origin;
   const open = sortRows(groups.open, needOrigin ? 'time' : ui.sortMode);
   // 기온 ○°↑: an outdoor wall whose forecast at the arrival hour is below it sinks (stable), dimmed; no forecast, indoor: left where it is
-  const tmin = Number(ui.tempMin) || 0; // (the open card is never moved: it stays where it is)
-  let coldN = 0;
-  if (tmin) {
-    for (const r of open) { const h = wxEntry(r.wall, at); r.cold = !!h && r.wall.venue !== 'indoor' && r.wall.name !== vs.openName && Math.round(h.t) < tmin; coldN += Number(r.cold); }
-    open.sort((a, b) => Number(a.cold || false) - Number(b.cold || false));
+  const tmin = Number(ui.tempMin) || 0; // (the open card itself is never sunk)
+  let coldN = 0, wetN = 0;
+  for (const r of open) {
+    const h = wxEntry(r.wall, at);
+    const away = !!h && r.wall.venue !== 'indoor' && r.wall.name !== vs.openName;
+    r.cold = away && tmin > 0 && Math.round(h.t) < tmin;
+    r.wet = away && skyWet(h.c) && r.wall.venue !== 'both' && !r.wall.tags?.includes('지붕'); // a roof keeps the rain off, a wall with an indoor side has a dry way: they stay
+    r.wetText = r.wet ? skyKind(h.c).text : null;
+    coldN += Number(r.cold); wetN += Number(r.wet);
   }
+  if (coldN || wetN) open.sort((a, b) => Number(a.cold || a.wet || false) - Number(b.cold || b.wet || false));
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
   $('longOnly').textContent = fv.longLabel;
@@ -1603,7 +1621,7 @@ function render() {
   $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
-  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}${coldN ? ` · ${tmin}° 미만 아래로` : ''}`;
+  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}${wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : ''}`;
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;

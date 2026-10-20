@@ -122,4 +122,14 @@ export function skyKind(c) {
   return { kind: 'rain', text: '비' }; // 51–67 drizzle / rain / freezing rain, 80–82 showers
 }
 
+/** skyVeils(code) → the sun is hidden: cloud, fog, rain, snow, storm ('구름 조금' still lets it through). */
+export const skyVeils = (c) => Number.isFinite(c) && !['clear', 'partly'].includes(skyKind(c).kind);
+/** skyWet(code) → rain, snow or thunderstorm: an outdoor wall without a roof is a poor choice then. */
+export const skyWet = (c) => Number.isFinite(c) && ['rain', 'snow', 'storm'].includes(skyKind(c).kind);
+/** forecastTrusted(at, now, days = 1) → `at` is today or within the next `days` days (the forecast is only said out loud that far). */
+export function forecastTrusted(at, now, days = 1) {
+  const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((day(at) - day(now)) / 864e5);
+  return diff >= 0 && diff <= days;
+}
 export const weatherLine = (h) => `예보 · 기온 ${Math.round(h.t)}° · 바람 ${Math.round(h.w)}m/s · 돌풍 ${Math.round(h.g)}m/s`;

@@ -283,7 +283,8 @@ export function feeTable(wall) {
 export function feeWord(wall) {
   if (wall.tags?.includes('무료')) return '무료';
   for (const f of wall.fees ?? []) {
-    const p = [f.adult?.weekend, f.adult?.all, f.adult?.weekday].find((n) => n > 0);
+    const adult = f.adult ?? f.groups?.[0]?.adult; // an item priced only per 거주지 (groups): its first group (the visitor's: 관외, 타시민) speaks
+    const p = [adult?.weekend, adult?.all, adult?.weekday].find((n) => n > 0);
     if (p) return `성인 ${won(p)}`;
   }
   return wall.tags?.includes('유료') ? '유료' : null;

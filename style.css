@@ -491,7 +491,17 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 :root[data-theme="dark"] :is(.wx-rain, .wx-storm) { --wx-bg: #3a63a8; --wx-fg: #fff; }
 :root[data-theme="dark"] :is(.wx-rain, .wx-storm) .rwx-t { color: #8db4ee; }
 :root[data-theme="dark"] .wx-snow { --wx-bg: #6d819a; --wx-fg: #fff; }
-.row.cold:not(.is-open) :is(.rname, .bar) { opacity: .72; } /* a wall below the chosen 기온 recedes (name and bar only: the hours and the temperature stay at full contrast) */
+.row:is(.cold, .wet):not(.is-open) .rname { opacity: .85; }
+.row:is(.cold, .wet):not(.is-open) .bar { opacity: .65; } /* a wall below the chosen 기온, or under rain without a roof, recedes (name and bar only: the hours and the temperature stay at full contrast) */
+/* a lit wall whose sun the sky hides: the chip turns to a soft tint and takes a small cloud (still the 양달 chip: no new verdict) */
+.row.veil:not(.is-open) .sunnow.sun.pic { position: relative; background: color-mix(in srgb, #a85f0a 12%, transparent); color: #96550a; }
+.row.veil:not(.is-open) .sunnow.sun.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355605a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E") center / 11px no-repeat; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .row.veil:not(.is-open) .sunnow.sun.pic { background: color-mix(in srgb, var(--sun-bar) 25%, transparent); color: var(--sun-bar); }
+  :root:not([data-theme="light"]) .row.veil:not(.is-open) .sunnow.sun.pic::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5cdc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E"); }
+}
+:root[data-theme="dark"] .row.veil:not(.is-open) .sunnow.sun.pic { background: color-mix(in srgb, var(--sun-bar) 25%, transparent); color: var(--sun-bar); }
+:root[data-theme="dark"] .row.veil:not(.is-open) .sunnow.sun.pic::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5cdc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E"); }
 .wx-credit { padding: var(--sp-8) var(--sp-16) 0; font-size: var(--fs-xs); color: var(--muted); }
 .wx-credit a { color: inherit; }
 .l1 .left { min-width: 5.6em; text-align: right; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
@@ -727,7 +737,11 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sunbox:not(.solo) > .sb-fig { grid-area: fig; max-width: 240px; margin: var(--sp-8) auto var(--sp-4); }
 .sunbox:not(.solo) > .dsent { grid-area: sent; }
 .sunbox:not(.solo) > .sun-why { grid-area: why; }
-.sunbox:not(.solo) > .sun-note { grid-area: note; }
+.sunbox:not(.solo) > .sun-extra { grid-area: note; }
+.sun-extra { display: grid; gap: var(--sp-6); }
+/* the sky hides the sun (cloud, rain …): a quiet line, the verdict above is about where the sun falls */
+.sun-veil { margin: 0; display: flex; align-items: center; gap: var(--sp-6); font-size: var(--fs-sm); line-height: 1.5; color: var(--muted); }
+.sun-veil svg { width: 16px; height: 16px; flex: none; }
 /* a wall that faces different ways: the verdict is for the main wall. A quiet callout, not a warning: small, full-contrast text on a thin rule */
 .sun-note { margin: 0; padding-left: var(--sp-10); border-left: 3px solid var(--line-strong); font-size: var(--fs-sm); line-height: 1.5; color: var(--fg); }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
