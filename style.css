@@ -1717,73 +1717,36 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 @keyframes boot-out { to { opacity: 0; visibility: hidden; pointer-events: none; } } /* never trap the page if the script fails */
 @media (prefers-reduced-motion: reduce) { #boot { transition: none; } #boot img { animation: none; } }
 
-/* 한 줄 타임라인 (src/board-view.js): a feed of avatar + name + time + text, a pill composer, ghost action chips */
+/* 한 줄 타임라인 (src/board-view.js) */
 .bd-box { margin-top: var(--sp-12); padding-top: var(--sp-10); border-top: 1px solid var(--line); }
 .bd-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .bd-list { list-style: none; margin: var(--sp-6) 0 0; padding: 0; }
-/* editorial: no boxes, the type and the space do the work; a name carries one small hold-coloured dot */
-.bd-post { display: grid; grid-template-columns: calc(var(--fs-xs) * 4.2) minmax(0, 1fr); column-gap: var(--sp-12); padding: var(--sp-12) 0; }
-.bd-time { white-space: nowrap; padding-top: 3px; text-align: right; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-.bd-reply { display: block; }
-.bd-full .bd-old { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 22%, transparent) 0 3px, transparent 3px); margin-left: calc(var(--sp-16) * -1); padding-left: var(--sp-16); } /* 응달: the slab's shade runs down the older posts */
-.bd-day { display: flex; align-items: center; gap: var(--sp-10); margin: var(--sp-20) 0 var(--sp-4); font-size: var(--fs-sm); font-weight: 800; letter-spacing: .02em; }
-.bd-day::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--sun-disc); }
-.bd-day.bd-shade::before { border-radius: 0; background: color-mix(in srgb, var(--fg) 30%, transparent); clip-path: polygon(0 0, 100% 0, 100% 100%, 40% 100%); }
-.bd-day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-/* the full view's header: the logo's sun and slab */
-.bd-hero { position: relative; order: -2; overflow: hidden; margin: 0 calc(var(--sp-16) * -1); padding: var(--sp-20) var(--sp-16) var(--sp-16); background: color-mix(in srgb, var(--sun-disc) 22%, var(--bg)); }
-:root[data-theme="dark"] .bd-hero { background: color-mix(in srgb, var(--sun-disc) 9%, var(--bg)); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bd-hero { background: color-mix(in srgb, var(--sun-disc) 9%, var(--bg)); } }
-:root[data-theme="dark"] .bd-sun { opacity: .9; }
-.bd-sun { position: absolute; top: -52px; right: 36px; width: 132px; height: 132px; border-radius: 50%; background: var(--sun-disc); }
-.bd-slab { position: absolute; top: 0; bottom: 0; right: 0; width: 28%; background: var(--shade-ink); clip-path: polygon(0 0, 100% 0, 100% 100%, 46% 100%); }
-.bd-hero h3 { position: relative; margin: 0; font-size: var(--fs-xl); letter-spacing: -.02em; }
-.bd-hero p { position: relative; margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-sm); }
+.bd-post { padding: var(--sp-6) 0; border-bottom: 1px solid var(--hair); }
 .bd-new { animation: bd-in var(--dur-ui) var(--ease-out); } /* a post that just arrived (board-view.js); the first load and redraws stay still */
 @keyframes bd-in { from { opacity: 0; transform: translateY(6px); } }
-.bd-main { min-width: 0; }
-.bd-reply .bd-head { gap: var(--sp-8); }
-.bd-dot { --h: 160; flex: none; width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--h) 62% 50%); }
-.bd-head { display: flex; align-items: center; gap: var(--sp-8); margin: 0; }
-.bd-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); font-weight: 700; letter-spacing: -.01em; }
-.bd-text { margin: var(--sp-6) 0 0; font-size: var(--fs-base); line-height: 1.6; overflow-wrap: anywhere; }
+.bd-text { font-size: var(--fs-md); overflow-wrap: break-word; }
+.bd-by { font-weight: 600; }
 .bd-meta, .bd-status, .bd-count, .bd-hint { font-size: var(--fs-xs); color: var(--muted); }
-.bd-meta { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
-.bd-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-6) 0 0 calc(var(--sp-8) * -1); }
-.bd-acts:empty { display: none; }
 .bd-status:empty { display: none; }
 .bd-status { margin-top: var(--sp-6); }
-.bd-rep, .bd-more { padding: 0 var(--sp-8); border: 0; border-radius: var(--r-pill); background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.bd-rep { min-height: 36px; }
-.bd-rep:hover:not(:disabled), .bd-more:hover { background: var(--hair); color: var(--fg); }
-.bd-rep:active:not(:disabled) { opacity: .6; }
-.bd-rep:disabled { cursor: default; opacity: .7; }
-.bd-rp { color: var(--accent); }
-.bd-more { display: block; width: 100%; margin-top: var(--sp-6); min-height: var(--tap); border: 1px solid var(--line); font-size: var(--fs-sm); }
+.bd-rep, .bd-more { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); text-decoration: underline; white-space: nowrap; cursor: pointer; }
+.bd-rep:disabled { text-decoration: none; cursor: default; }
+.bd-more { display: block; margin-top: var(--sp-6); min-height: var(--tap); }
 .bd-more[hidden], .bd-retry[hidden] { display: none; }
-/* composer: the name above (small), then one rounded bar holding the text, its counter and a round send button */
-.bd-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-10); }
-.bd-row { display: flex; gap: var(--sp-8); align-items: center; }
-.bd-compose { gap: var(--sp-6); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-8); border: 1.5px solid var(--fg); border-radius: var(--r-pill); background: var(--surface); transition: border-color var(--dur-ui, .15s), box-shadow var(--dur-ui, .15s); }
-.bd-compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
-.bd-nick { flex: 0 1 5.5em; width: 5.5em; min-width: 0; min-height: 30px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--hair); color: var(--fg); font: inherit; font-size: var(--fs-xs); font-weight: 600; text-overflow: ellipsis; }
-.bd-nick[readonly] { color: var(--muted); }
-.bd-body { flex: 1; min-width: 0; min-height: 40px; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; }
-.bd-body::placeholder, .bd-nick::placeholder { color: var(--muted); }
-.bd-body:focus, .bd-nick:focus { outline: none; }
-.bd-nick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* count + the note: closed until the form is in use, so the bar is one line */
-.bd-hint { display: none; margin: 0 var(--sp-12); }
-.bd-form:focus-within .bd-hint { display: block; }
-.bd-count { font-variant-numeric: tabular-nums; }
+.bd-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-8); }
+.bd-row { display: flex; gap: var(--sp-6); align-items: center; }
+.bd-foot { justify-content: space-between; }
+.bd-nick, .bd-body { min-height: var(--tap); padding: var(--sp-8) var(--sp-12); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg); font: inherit; }
+.bd-nick { flex: 0 0 6.5em; width: 6.5em; }
+.bd-body { flex: 1; min-width: 0; }
+html[data-text] .bd-row:not(.bd-foot) { flex-wrap: wrap; } /* 큰 글씨: 닉네임 한 줄, 글 입력칸 한 줄 */
+html[data-text] .bd-body { flex: 1 1 100%; }
 .bd-hp[hidden] { display: none; }
-.bd-send { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer; transition: opacity var(--dur-ui, .15s), transform var(--dur-ui, .15s); }
-.bd-send svg { width: 20px; height: 20px; margin-left: 2px; }
-.bd-send:active:not(:disabled) { transform: scale(.92); }
-.bd-send:disabled { opacity: .35; cursor: default; }
+.bd-send { min-height: var(--tap); padding: 0 var(--sp-10); border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
+.bd-send:disabled { opacity: .45; cursor: default; }
 .bd-box:focus { outline: none; }
 .bd-off > :not(.bd-status) { display: none; } /* the Worker refused this wall: only the one line saying so stays */
-.bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
+.bd-all { color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 /* the board page: a full-height sheet; the form comes first so a long list never hides it */
 .board-page { height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
 .bp-back { margin-left: -8px; margin-right: 0; }
@@ -1835,17 +1798,12 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .pf-grade { clear: both; display: flex; align-items: center; gap: var(--sp-8); }
 .pf-grade select { min-height: var(--tap); padding: 0 var(--sp-10); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
 .pf-grade select:disabled { color: var(--muted); }
-.bd-thread { margin: var(--sp-6) 0 0 3px; padding: var(--sp-2) 0 var(--sp-4) var(--sp-14); border-left: 2px solid var(--line); }
+.bd-thread { margin: var(--sp-4) 0 var(--sp-6) var(--sp-10); padding-left: var(--sp-10); border-left: 2px solid var(--hair); }
 .bd-replies { list-style: none; margin: 0; padding: 0; }
-.bd-reply { padding: var(--sp-10) 0 var(--sp-6); }
-.bd-reply + .bd-reply { border-top: 0; }
-.bd-thread .bd-compose { background: var(--surface); }
-html[data-text] .bd-compose { flex-wrap: wrap; border-radius: var(--r-lg); } /* 큰 글씨: 닉네임 한 줄, 입력칸 한 줄 */
-html[data-text] .bd-nick { flex: 1 1 100%; width: auto; min-height: 36px; }
-html[data-text] .bd-body { flex: 1; }
-.bd-rp[aria-expanded="true"] { background: var(--accent-soft); color: var(--fg); }
+.bd-reply { padding: var(--sp-4) 0; border-bottom: 0; }
+.bd-rp[aria-expanded="true"] { color: var(--fg); }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
-.bd-full .bd-form { order: -1; margin: var(--sp-12) 0 var(--sp-4); padding: 0; }
+.bd-full .bd-form { order: -1; margin: 0 0 var(--sp-8); padding: 0; }
 .bd-full .bd-form::before { content: none; }
 
 /* 클라이머 유형 테스트 (src/climber-view.js): the intro / friend card, the sheet's question and result (the result is one 도감 plate) */

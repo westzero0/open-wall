@@ -23,3 +23,4 @@ SOFTWARE.
 This license covers the source code only. The contents of data/ (opening hours,
 facility information, photos) follow the terms of their respective sources and
 are not licensed under MIT. Leaflet (vendor/leaflet/) is under its own license.
+See LICENSE-DATA.md for the data, brand and photo terms.
