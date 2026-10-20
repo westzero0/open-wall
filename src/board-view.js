@@ -28,13 +28,16 @@ export function cooldownLeft(ts, now) {
   return Math.max(0, COOLDOWN_MS - (now - ts));
 }
 
+const HUES = [160, 38, 340, 215, 95, 20]; // moss, sun, wine, slate blue, olive, clay: the brand's colours, so no name lands on an off-palette hue
 /** a nickname's colour (hue 0-359): the same name always gets the same one. */
 export function avatarOf(nick) {
   const name = String(nick ?? '').trim() || '익명';
   let h = 0;
   for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360;
-  return { hue: (h * 7) % 360 };
+  return { hue: HUES[h % HUES.length] };
 }
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+const clockText = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const dot = (nick) => {
   const d = el('i', { class: 'bd-dot', 'aria-hidden': 'true' });
   d.style.setProperty('--h', String(avatarOf(nick).hue));
@@ -232,7 +235,7 @@ function build(wallName, mode, onOpenAll) {
     return form;
   }
   const mainForm = makeForm(null, status);
-  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? null : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
+  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? el('header', { class: 'bd-hero' }, el('i', { class: 'bd-sun' }), el('i', { class: 'bd-slab' }), el('h3', {}, '한 줄 타임라인'), el('p', {}, '오늘 이 벽에서 있었던 일, 한 줄로')) : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
 
   /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. `parent`: this is a reply under it. */
   function deleteButton(id, token, parent) {
@@ -309,9 +312,11 @@ function build(wallName, mode, onOpenAll) {
       replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp' }, `답글 ${n}`);
       replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
     }
-    const li = el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
+    const today = sameDay(p.created_at, now);
+    const li = el('li', { class: `bd-post${fresh ? ' bd-new' : ''}${today ? '' : ' bd-old'}` },
+      el('time', { class: 'bd-time', datetime: new Date(p.created_at).toISOString() }, today ? clockText(p.created_at) : ageText(p.created_at, now)),
       el('div', { class: 'bd-main' },
-        el('p', { class: 'bd-head' }, dot(p.nick), el('b', { class: 'bd-by' }, p.nick), el('span', { class: 'bd-meta' }, ageText(p.created_at, now))),
+        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, p.nick)),
         el('p', { class: 'bd-text' }, p.body),
         el('p', { class: 'bd-acts' }, replyBtn, actionFor(p, null)),
         mode === 'full' && open.has(p.id) ? threadFor(p.id) : null));
@@ -328,7 +333,14 @@ function build(wallName, mode, onOpenAll) {
     refocus = null;
     const now = Date.now();
     const shown = mode === 'preview' ? s.posts.slice(0, PREVIEW) : s.posts;
-    list.replaceChildren(...shown.map((p) => postItem(p, now, wasLoaded && p.created_at > newest)));
+    const items = [];
+    let day = null; // full mode: 오늘 / 지난 글 headings (볕과 그늘)
+    for (const p of shown) {
+      const today = sameDay(p.created_at, now);
+      if (mode === 'full' && day !== today) { day = today; items.push(el('li', { class: `bd-day${today ? '' : ' bd-shade'}` }, today ? '오늘' : '지난 글')); }
+      items.push(postItem(p, now, wasLoaded && p.created_at > newest));
+    }
+    list.replaceChildren(...items);
     for (const p of shown) newest = Math.max(newest, p.created_at);
     wasLoaded = s.loaded;
     moreBtn.hidden = mode !== 'full' || !s.more;

@@ -1707,11 +1707,24 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .bd-list { list-style: none; margin: var(--sp-6) 0 0; padding: 0; }
 /* editorial: no boxes, the type and the space do the work; a name carries one small hold-coloured dot */
-.bd-post { padding: var(--sp-16) 0 var(--sp-12); }
-.bd-post + .bd-post { border-top: 1px solid var(--hair); }
+.bd-post { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: var(--sp-12); padding: var(--sp-12) 0; }
+.bd-time { padding-top: 3px; text-align: right; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bd-reply { display: block; }
+.bd-old { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 22%, transparent) 0 3px, transparent 3px); margin-left: calc(var(--sp-16) * -1); padding-left: var(--sp-16); } /* 응달: the slab's shade runs down the older posts */
+.bd-day { display: flex; align-items: center; gap: var(--sp-10); margin: var(--sp-20) 0 var(--sp-4); font-size: var(--fs-sm); font-weight: 800; letter-spacing: .02em; }
+.bd-day::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--sun-disc); }
+.bd-day.bd-shade::before { border-radius: 0; background: color-mix(in srgb, var(--fg) 30%, transparent); clip-path: polygon(0 0, 100% 0, 100% 100%, 40% 100%); }
+.bd-day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+/* the full view's header: the logo's sun and slab */
+.bd-hero { position: relative; order: -2; overflow: hidden; margin: 0 calc(var(--sp-16) * -1); padding: var(--sp-20) var(--sp-16) var(--sp-16); background: color-mix(in srgb, var(--sun-disc) 22%, var(--bg)); }
+.bd-sun { position: absolute; top: -52px; right: 36px; width: 132px; height: 132px; border-radius: 50%; background: var(--sun-disc); }
+.bd-slab { position: absolute; top: 0; bottom: 0; right: 0; width: 28%; background: var(--shade-ink); clip-path: polygon(0 0, 100% 0, 100% 100%, 46% 100%); }
+.bd-hero h3 { position: relative; margin: 0; font-size: var(--fs-xl); letter-spacing: -.02em; }
+.bd-hero p { position: relative; margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 .bd-new { animation: bd-in var(--dur-ui) var(--ease-out); } /* a post that just arrived (board-view.js); the first load and redraws stay still */
 @keyframes bd-in { from { opacity: 0; transform: translateY(6px); } }
 .bd-main { min-width: 0; }
+.bd-reply .bd-head { gap: var(--sp-8); }
 .bd-dot { --h: 160; flex: none; width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--h) 62% 50%); }
 .bd-head { display: flex; align-items: center; gap: var(--sp-8); margin: 0; }
 .bd-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); font-weight: 700; letter-spacing: -.01em; }
@@ -1723,7 +1736,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-status:empty { display: none; }
 .bd-status { margin-top: var(--sp-6); }
 .bd-rep, .bd-more { padding: 0 var(--sp-8); border: 0; border-radius: var(--r-pill); background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.bd-rep { min-height: 30px; }
+.bd-rep { min-height: 36px; }
 .bd-rep:hover:not(:disabled), .bd-more:hover { background: var(--hair); color: var(--fg); }
 .bd-rep:active:not(:disabled) { opacity: .6; }
 .bd-rep:disabled { cursor: default; opacity: .7; }
@@ -1734,7 +1747,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-10); }
 .bd-row { display: flex; gap: var(--sp-8); align-items: center; }
 .bd-who { padding: 0 var(--sp-4); }
-.bd-compose { gap: var(--sp-6); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); transition: border-color var(--dur-ui, .15s), box-shadow var(--dur-ui, .15s); }
+.bd-compose { gap: var(--sp-6); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-14); border: 1.5px solid var(--fg); border-radius: var(--r-pill); background: var(--surface); transition: border-color var(--dur-ui, .15s), box-shadow var(--dur-ui, .15s); }
 .bd-compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
 .bd-nick { flex: 0 1 8em; width: 8em; min-width: 0; min-height: 28px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--hair); color: var(--fg); font: inherit; font-size: var(--fs-xs); font-weight: 600; }
 .bd-nick[readonly] { color: var(--muted); }
@@ -1808,10 +1821,11 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .bd-reply { padding: var(--sp-10) 0 var(--sp-6); }
 .bd-reply + .bd-reply { border-top: 0; }
 .bd-thread .bd-compose { background: var(--surface); }
+.bd-thread .bd-hint { display: none; } /* said once, in the main form */
 html[data-text] .bd-who { flex-wrap: wrap; } /* 큰 글씨: 닉네임과 안내를 각각 한 줄에 */
 .bd-rp[aria-expanded="true"] { background: var(--accent-soft); color: var(--fg); }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
-.bd-full .bd-form { order: -1; margin: var(--sp-4) 0 var(--sp-8); padding: 0; }
+.bd-full .bd-form { order: -1; margin: var(--sp-12) 0 var(--sp-4); padding: 0; }
 .bd-full .bd-form::before { content: none; }
 
 /* 클라이머 유형 테스트 (src/climber-view.js): the intro / friend card, the sheet's question and result (the result is one 도감 plate) */
