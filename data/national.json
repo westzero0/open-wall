@@ -4126,7 +4126,7 @@
       "tags": [
         "무료"
       ],
-      "memo": "정기휴무 월",
+      "memo": "정기휴무 월\n자율 이용은 선착순, 현장 접수. 면책동의서 작성 후 이용\n간소복·암벽화 준비, 보험 가입비는 개별 부담\n문의 강서안내센터 02-3780-0621~3, 공원여가과 02-3780-0873",
       "address": "서울 강서구 방화동 73-6",
       "sun": {
         "facing": "NE",
@@ -4255,7 +4255,32 @@
           "강서한강공원 공영주차장"
         ]
       },
-      "checked_at": "2026-10-08"
+      "checked_at": "2026-10-20",
+      "winter": {
+        "type": "closed",
+        "from_month": 1,
+        "to_month": 3
+      },
+      "fees": [
+        {
+          "item": "자율 이용",
+          "adult": {
+            "all": 0
+          },
+          "note": "선착순 · 현장 접수"
+        },
+        {
+          "item": "무료강습(2시간·리드 기본과정)",
+          "adult": {
+            "all": 0
+          },
+          "note": "수·금 10~12시, 주말(가족 단위) 10~12시. 뚝섬·강서 연 120회, 사전 현장 접수"
+        }
+      ],
+      "contact": {
+        "phone": "02-499-1786",
+        "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
+      }
     },
     {
       "name": "중랑 스포츠클라이밍 경기장",
@@ -4536,7 +4561,7 @@
         "무료",
         "스피드월"
       ],
-      "memo": "벽 2개: 메인벽 북향(N, 계산 기준), 서브벽 북동(NE)\n정기휴무 월\n! 공공서비스 예약제",
+      "memo": "벽 2개: 메인벽 북향(N, 계산 기준), 서브벽 북동(NE)\n정기휴무 월\n! 공공서비스 예약제\n속도벽 폭 9m·높이 15m, 실내 연습벽 폭 7m·높이 3m\n시설 어린이 놀이터·쉼터·야외 체육기구\n찾아가는 길: 경의중앙선 응봉역에서 도보 10분\n문의 암벽교실 02-2286-6061(공원녹지과)",
       "address": "서울 성동구 독서당로60길 13-1",
       "sun": {
         "facing": "N",
@@ -4665,11 +4690,32 @@
           "암벽장 앞(공터 포함)"
         ]
       },
-      "checked_at": "2026-07-10",
+      "checked_at": "2026-10-20",
       "contact": {
-        "phone": "02-2286-5674"
+        "phone": "02-2286-5674",
+        "notice_url": "https://www.sd.go.kr/main/selectBbsNttList.do?bbsNo=183&key=1472",
+        "reserve": {
+          "name": "서울 공공서비스예약",
+          "url": "https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=S210304130938159167"
+        }
       },
-      "sun_note": "벽이 2개예요. 해 판정은 메인벽(북향) 기준이고, 서브벽은 북동향이에요."
+      "sun_note": "벽이 2개예요. 해 판정은 메인벽(북향) 기준이고, 서브벽은 북동향이에요.",
+      "fees": [
+        {
+          "item": "일반 이용",
+          "adult": {
+            "all": 0
+          },
+          "note": "무료, 공공서비스예약 필요"
+        },
+        {
+          "item": "암벽교실(성인 8회·어린이 체험 4회)",
+          "adult": {
+            "all": 0
+          },
+          "note": "시즌 한정(2026년 6~9월), 장비 지급·암벽화 개인 구비, 보험 본인 부담. 네이버 폼·현장 접수"
+        }
+      ]
     },
     {
       "name": "뚝섬한강공원 인공암벽",
@@ -4826,7 +4872,8 @@
         }
       },
       "contact": {
-        "phone": "02-3780-0521"
+        "phone": "02-3780-0521",
+        "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
       },
       "checked_at": "2026-07-10",
       "photo": "photos/ttukseom.jpg",
@@ -5260,7 +5307,10 @@
           "item": "일일체험(2회 등반)",
           "note": "일반인 5,000"
         }
-      ]
+      ],
+      "contact": {
+        "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
+      }
     },
     {
       "name": "강남스포츠클라이밍센터",
@@ -5392,7 +5442,8 @@
       },
       "contact": {
         "phone": "070-7733-8977",
-        "naver_map": "https://naver.me/FIc9PJnQ"
+        "naver_map": "https://naver.me/FIc9PJnQ",
+        "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
       },
       "checked_at": "2026-10-08",
       "location": {
@@ -9945,9 +9996,9 @@
       "name": "문경국제클라이밍센터",
       "short_name": "문경",
       "region": "경북 문경시",
-      "height_m": null,
+      "height_m": 15.7,
       "tags": [],
-      "memo": "시설 관리실·교육장·샤워장·화장실·휴식공간",
+      "memo": "속도벽 폭 6m·높이 15.7m, 외벽 전체 폭 30m·높이 25m\n시설 관리실·교육장·샤워장·화장실·휴식공간·전망대\n문의 새마을체육과 시설담당 054-550-6093",
       "address": "경북 문경시 영강공원길 115",
       "hours": {
         "mon": null,
@@ -9985,7 +10036,7 @@
       "contact": {
         "phone": "054-552-7475"
       },
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-20",
       "sun": {
         "facing": "SE",
         "lat": 36.6027,
@@ -10075,7 +10126,14 @@
           "step_m": 30,
           "observer_height_m": 5
         }
-      }
+      },
+      "width_m": 24,
+      "venue": "both",
+      "indoor_kinds": [
+        "리드",
+        "볼더링"
+      ],
+      "indoor_height_m": 10
     },
     {
       "name": "안동 클라이밍장",
@@ -12008,7 +12066,7 @@
         "스피드월",
         "지붕"
       ],
-      "memo": "운영시간은 안전관리자 부재 등으로 자주 바뀌니 주의하고, 방문 전 그날그날 공지·전화(052-256-6476)로 확인하세요\n정기휴무 월·1월 1일·설날·추석 당일\n실외 난이도벽 3면·볼더링 10면, 천장(지붕)이 있는 형태.\n! 실내는 어린이 체험교실이라 체험만 되고 리드클라이밍은 안 됨\n2026-10-17(토)은 안전관리자 부재로 06:00~18:00만 운영",
+      "memo": "운영시간은 안전관리자 부재 등으로 자주 바뀌니 주의하고, 방문 전 그날그날 공지·전화(052-256-6476)로 확인하세요\n정기휴무 월·1월 1일·설날·추석 당일\n실외 난이도벽 3면·스피드 2면·볼더링 10면, 천장(지붕)이 있는 형태.\n! 실내는 어린이 체험교실이라 체험만 되고 리드클라이밍은 안 됨\n2026-10-17(토)은 안전관리자 부재로 06:00~18:00만 운영\n시설 휴게실·탈의실·관리실",
       "address": "울산 남구 선암동 516-1 선암호수공원 내(축구장 뒤편 건물)",
       "hours": {
         "mon": null,
@@ -12050,9 +12108,10 @@
         "reserve": {
           "name": "예약서비스 CRS",
           "url": "https://crs.uncmc.or.kr/index_main.jsp"
-        }
+        },
+        "notice_url": "https://crs.uncmc.or.kr/community/community01.jsp?selMemId=B0000001"
       },
-      "checked_at": "2026-10-13",
+      "checked_at": "2026-10-20",
       "winter": {
         "type": "changed",
         "from_month": 10,
