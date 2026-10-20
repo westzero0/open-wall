@@ -12,6 +12,7 @@ import {
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
+import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
@@ -628,35 +629,10 @@ function timeLegend(blocks) {
     hatch ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무') : null);
 }
 
-// 요금 tab: a table of 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell over two columns; an item with only
-// a note: its name and the note over the other three. The discount is one line under the table.
+// 요금 tab: the table is drawn by fee-table-view.js (구분 / 대상 / 평일 / 휴일, or one column per 거주지); the 관리자 preview uses the same
 function feesBlock(wall) {
   const t = feeTable(wall);
-  if (!t) return null;
-  const cell = (tag, text, attrs = {}) => el(tag, attrs, text);
-  const body = el('tbody', {});
-  for (const it of t.items) {
-    if (it.noteOnly) {
-      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', it.note, { colspan: t.split ? '3' : '2', class: 'f-note' })));
-      continue;
-    }
-    it.rows.forEach((r, i) => {
-      const tr = el('tr', {});
-      if (i === 0) tr.append(cell('th', it.item, { scope: 'rowgroup', rowspan: String(it.rows.length + (it.note ? 1 : 0)) }));
-      tr.append(cell('td', r.who, { class: 'f-who' }));
-      // session times ("1부 13~17시 · 2부 18~22시") stack one session per line
-      const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, p))) : cell('td', text, attrs));
-      if (r.all !== undefined) tr.append(val(r.all, t.split ? { colspan: '2', class: 'f-all' } : { class: 'f-won' }));
-      else tr.append(val(r.weekday, { class: 'f-won' }), val(r.weekend, { class: 'f-won' }));
-      body.append(tr);
-    });
-    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: t.split ? '3' : '2', class: 'f-note' })));
-  }
-  return el('section', { class: 'fees', 'aria-label': '요금' },
-    el('table', {},
-      el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'), ...(t.split ? [cell('th', '평일'), cell('th', '휴일')] : [cell('th', '요금')]))),
-      body),
-    t.discount ? el('p', { class: 'f-disc' }, t.discount) : null);
+  return t ? feeTableEl(t) : null;
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into

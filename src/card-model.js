@@ -268,14 +268,20 @@ export function feeTable(wall) {
       : { who: prefix + who, weekday: o[k].weekday !== undefined ? won(o[k].weekday) : '-', weekend: o[k].weekend !== undefined ? won(o[k].weekend) : '-' }));
   const items = fees.map((f) => {
       // groups (관외 / 관내 …): the same who rows with the group's label in front, under the one item
-      const rows = [...whoRows(f), ...(f.groups ?? []).flatMap((g) => whoRows(g, `${g.label} `))];
+      // two groups priced the same way for every day (관외 | 관내): one row per who with a price under each group name (groupCols);
+      // anything else (3–4 groups, a weekday / weekend price in a group, a plain price beside them) keeps one row per group and who
+      const groupCols = f.groups?.length === 2 && !WHO.some(([k]) => f[k]) && f.groups.every((g) => WHO.every(([k]) => !g[k] || g[k].all !== undefined)) ? f.groups.map((g) => g.label) : null;
+      const rows = groupCols
+        ? WHO.filter(([k]) => f.groups.some((g) => g[k])).map(([k, who]) => ({ who, cells: f.groups.map((g) => (g[k] ? won(g[k].all) : '-')) }))
+        : [...whoRows(f), ...(f.groups ?? []).flatMap((g) => whoRows(g, `${g.label} `))];
       const noteOnly = !rows.length && !f.times;
       // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
       if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
-      return { item: f.item, rows, note: withWon(f.note ?? null), noteOnly };
+      return { item: f.item, rows, note: withWon(f.note ?? null), noteOnly, groupCols };
   });
   // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
-  return { items, split: items.some((it) => it.rows.some((r) => r.all === undefined)), discount: wall.discount || null };
+  const split = items.some((it) => it.rows.some((r) => !r.cells && r.all === undefined));
+  return { items, split, wide: split || items.some((it) => it.groupCols), discount: wall.discount || null };
 }
 
 // One word of price for a pick on a weekend day: 무료, 성인 1,500원 (the first priced 성인 item: weekend, then all, then

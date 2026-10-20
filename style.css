@@ -862,6 +862,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .fees thead th:nth-child(n+3) { text-align: center; }
 .fees .f-times { white-space: normal; font-size: var(--fs-xs); line-height: 1.5; }
 .fees .f-times span { display: block; white-space: nowrap; }
+.fees tbody .f-gh { width: auto; font-weight: 500; font-size: var(--fs-xs); color: var(--muted); text-align: center; } /* the group names (관외 | 관내) over their price columns */
 .fees .f-note { color: var(--muted); font-size: var(--fs-xs); }
 .f-disc { margin: var(--sp-8) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .g-segrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); margin-bottom: var(--sp-8); }
