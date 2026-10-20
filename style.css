@@ -857,6 +857,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
 .fees tbody th { font-weight: 700; width: 34%; }
 .fees .f-who { color: var(--muted); white-space: nowrap; }
+.fees .f-dup { color: transparent; user-select: none; } /* the 대상 repeated on the 2nd… 거주지 row: kept for a screen reader, not drawn */
 .fees .f-won, .fees .f-all { text-align: center; white-space: nowrap; }
 .fees .f-all { text-align: center; }
 .fees thead th:nth-child(n+3) { text-align: center; }
