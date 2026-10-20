@@ -121,9 +121,11 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   const clusterDot = (members, lat, lng) => {
     const live = members.some((p) => p.pin === 'open' || p.pin === 'soon');
     const n = document.createElement('span');
+    const size = members.length >= 10 ? 44 : members.length >= 5 ? 38 : 32; // a bigger knot reads as a bigger crowd
     n.className = `pin-cluster${live ? '' : ' idle'}`;
+    n.style.setProperty('--size', `${size}px`);
     n.textContent = String(members.length);
-    return L.marker([lat, lng], { icon: L.divIcon({ html: n, className: '', iconSize: [30, 30] }), keyboard: false })
+    return L.marker([lat, lng], { icon: L.divIcon({ html: n, className: '', iconSize: [size, size] }), keyboard: false })
       .on('click', () => map.fitBounds(L.latLngBounds(members.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: CLUSTER_MAX_ZOOM + 1 }));
   };
   const draw = () => {
