@@ -207,8 +207,8 @@ function build(wallName, mode, onOpenAll) {
     const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
     const send = el('button', { type: 'submit', class: 'bd-send', 'aria-label': '남기기', title: '남기기' }, sendIcon());
     const form = el('form', { class: 'bd-form' },
-      el('div', { class: 'bd-row bd-who' }, nick, el('span', { class: 'bd-hint' }, '모두에게 공개돼요')),
-      el('div', { class: 'bd-row bd-compose' }, body, count, send), trap);
+      el('div', { class: 'bd-row bd-compose' }, nick, body, send), trap,
+      el('p', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요')); // the hint opens only while the form has focus
     const me = { send, busy: false };
     forms.push(me);
     body.addEventListener('input', () => { count.textContent = `${[...body.value].length}/${MAX_BODY}`; });

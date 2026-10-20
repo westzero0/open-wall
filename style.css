@@ -1717,6 +1717,9 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 /* the full view's header: the logo's sun and slab */
 .bd-hero { position: relative; order: -2; overflow: hidden; margin: 0 calc(var(--sp-16) * -1); padding: var(--sp-20) var(--sp-16) var(--sp-16); background: color-mix(in srgb, var(--sun-disc) 22%, var(--bg)); }
+:root[data-theme="dark"] .bd-hero { background: color-mix(in srgb, var(--sun-disc) 9%, var(--bg)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bd-hero { background: color-mix(in srgb, var(--sun-disc) 9%, var(--bg)); } }
+:root[data-theme="dark"] .bd-sun { opacity: .9; }
 .bd-sun { position: absolute; top: -52px; right: 36px; width: 132px; height: 132px; border-radius: 50%; background: var(--sun-disc); }
 .bd-slab { position: absolute; top: 0; bottom: 0; right: 0; width: 28%; background: var(--shade-ink); clip-path: polygon(0 0, 100% 0, 100% 100%, 46% 100%); }
 .bd-hero h3 { position: relative; margin: 0; font-size: var(--fs-xl); letter-spacing: -.02em; }
@@ -1746,17 +1749,18 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 /* composer: the name above (small), then one rounded bar holding the text, its counter and a round send button */
 .bd-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-10); }
 .bd-row { display: flex; gap: var(--sp-8); align-items: center; }
-.bd-who { padding: 0 var(--sp-4); }
-.bd-compose { gap: var(--sp-6); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-14); border: 1.5px solid var(--fg); border-radius: var(--r-pill); background: var(--surface); transition: border-color var(--dur-ui, .15s), box-shadow var(--dur-ui, .15s); }
+.bd-compose { gap: var(--sp-6); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-8); border: 1.5px solid var(--fg); border-radius: var(--r-pill); background: var(--surface); transition: border-color var(--dur-ui, .15s), box-shadow var(--dur-ui, .15s); }
 .bd-compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
-.bd-nick { flex: 0 1 8em; width: 8em; min-width: 0; min-height: 28px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--hair); color: var(--fg); font: inherit; font-size: var(--fs-xs); font-weight: 600; }
+.bd-nick { flex: 0 1 5.5em; width: 5.5em; min-width: 0; min-height: 30px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--hair); color: var(--fg); font: inherit; font-size: var(--fs-xs); font-weight: 600; text-overflow: ellipsis; }
 .bd-nick[readonly] { color: var(--muted); }
 .bd-body { flex: 1; min-width: 0; min-height: 40px; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; }
 .bd-body::placeholder, .bd-nick::placeholder { color: var(--muted); }
 .bd-body:focus, .bd-nick:focus { outline: none; }
 .bd-nick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.bd-hint { margin-left: auto; }
-.bd-count { flex: none; font-variant-numeric: tabular-nums; }
+/* count + the note: closed until the form is in use, so the bar is one line */
+.bd-hint { display: none; margin: 0 var(--sp-12); }
+.bd-form:focus-within .bd-hint { display: block; }
+.bd-count { font-variant-numeric: tabular-nums; }
 .bd-hp[hidden] { display: none; }
 .bd-send { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer; transition: opacity var(--dur-ui, .15s), transform var(--dur-ui, .15s); }
 .bd-send svg { width: 20px; height: 20px; margin-left: 2px; }
@@ -1821,8 +1825,8 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .bd-reply { padding: var(--sp-10) 0 var(--sp-6); }
 .bd-reply + .bd-reply { border-top: 0; }
 .bd-thread .bd-compose { background: var(--surface); }
-.bd-thread .bd-hint { display: none; } /* said once, in the main form */
-html[data-text] .bd-who { flex-wrap: wrap; } /* 큰 글씨: 닉네임과 안내를 각각 한 줄에 */
+html[data-text] .bd-compose { flex-wrap: wrap; border-radius: var(--r-lg); } /* 큰 글씨: 닉네임 한 줄, 입력칸 한 줄 */
+html[data-text] .bd-body { flex: 1 1 60%; }
 .bd-rp[aria-expanded="true"] { background: var(--accent-soft); color: var(--fg); }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
 .bd-full .bd-form { order: -1; margin: var(--sp-12) 0 var(--sp-4); padding: 0; }
