@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>제보 감사</title>
+<style>{{BASE_CSS}}
+  .symbol-mark { right: 40px; top: 300px; width: 640px; height: 640px; }
+  .copy { position: absolute; left: 72px; top: 520px; right: 72px; }
+  .copy .big { font-size: 104px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
+  .copy .sub { margin-top: 34px; font-size: 40px; font-weight: 600; line-height: 1.45; max-width: 720px; }
+  .copy .name { background: var(--primary-yellow); padding: 0 12px; }
+</style></head>
+<body>
+  <div class="top"><div class="logo">{{LOGO}}</div><div class="date">{{DATE}}<small>{{WEEKDAY}}</small></div></div>
+  <div class="symbol-mark">{{SYMBOL}}</div>
+  <div class="copy">
+    <div class="big">제보<br>고마워요</div>
+    <div class="sub"><span class="name">{{NAME}}</span> {{NOTE_LINE}}</div>
+  </div>
+  <div class="foot"><div class="note">틀린 정보는 앱의 ‘정보 수정 요청’으로 알려 주세요.</div><div class="site">{{SITE}}</div></div>
+  <div class="bar"></div>
+</body></html>

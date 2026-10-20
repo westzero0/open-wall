@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>오늘의 양달·응달</title>
+<style>{{BASE_CSS}}
+  .rows { top: 410px; gap: 12px; }
+  .section { font-size: 32px; font-weight: 800; margin: 6px 0 4px; display: flex; align-items: center; gap: 14px; }
+  .section i { width: 26px; height: 26px; border-radius: 50%; display: inline-block; }
+  .section i.sun { background: var(--primary-yellow); }
+  .section i.shade { background: #2B2B2B; }
+  .row { padding: 16px 30px; }
+  .row .name { font-size: 32px; }
+  .row .meta { font-size: 23px; }
+  .row .rank { width: 48px; height: 48px; font-size: 26px; }
+</style></head>
+<body>
+  <div class="top"><div class="logo">{{LOGO}}</div><div class="date">{{DATE}}<small>{{WEEKDAY}}</small></div></div>
+  <div class="head"><div class="eyebrow">SUN &amp; SHADE</div><div class="title">오늘의 양달 · 응달</div></div>
+  <div class="rows">{{ROWS}}</div>
+  <div class="foot"><div class="note">{{NOTE}}</div><div class="site">{{SITE}}</div></div>
+  <div class="bar"></div>
+</body></html>

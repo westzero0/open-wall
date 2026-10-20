@@ -6,7 +6,8 @@
   "scripts": {
     "build:logo": "node scripts/build-logo.js",
     "assets": "node generate-assets.js",
-    "assets:tokens": "node generate-assets.js --only tokens"
+    "assets:tokens": "node generate-assets.js --only tokens",
+    "posts": "node social/generate-posts.mjs"
   },
   "devDependencies": { "playwright": "^1.56.0" }
 }

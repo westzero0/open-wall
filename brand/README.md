@@ -98,3 +98,23 @@ Tailwind v4 는 CSS에서 `@config "./brand/dist/tokens/tailwind.config.js";` �
 - 여백: 해(원) 지름의 1/4 이상 비우기.
 - 노란색/검정을 바꾸려면 `brand.config.json` 의 `colors` 만 수정 후 재생성 (SVG 원본의 fallback 색은 `scripts/build-logo.js` 의 `STYLE`).
 - 벽 각도(`WEDGE`)·획 굵기(`W`)·컷 방향(`stroke()` 의 `'v'/'h'`)을 바꾸려면 `scripts/build-logo.js` 를 수정하고 `npm run build:logo` → `npm run assets`.
+
+## 인스타 게시물 자동 생성 (`social/`)
+
+`data/national.json` 과 앱의 계산 로직(`src/hours.js`, `src/sun.js`)을 그대로 읽어 게시물 이미지(1080×1350)와 캡션 초안을 만들어요. 앱과 같은 코드를 쓰므로 운영시간·양달 계산이 앱과 어긋나지 않아요. **자동 발행은 하지 않고, 사람이 확인한 뒤 올리는 초안 생성기**예요.
+
+```bash
+cd brand
+node social/generate-posts.mjs                      # 오늘: 오늘 열린 외벽 / 양달·응달 / 암장 소개
+node social/generate-posts.mjs --date 2026-10-25    # 날짜 지정
+node social/generate-posts.mjs --type today        # 일부만 (today, sunshade, spotlight, thanks)
+node social/generate-posts.mjs --spotlight 금곡     # 소개할 암장 지정 (이름 일부)
+node social/generate-posts.mjs --thanks "고양인공암벽장" --thanks-note "운영시간을 업데이트했어요."
+```
+
+- 결과: `social/out/<날짜>/` 에 `NN-종류.png`, 캡션 `NN-종류.txt`, 확인용 `preview.html` (`out/` 은 git 에 올라가지 않아요).
+- **정보 확인일(`checked_at`)이 `--max-age`(기본 45일) 안인 암장만** 사용해요. 확인일이 없거나 오래된 암장은 자동 제외돼요.
+- 양달·응달은 영업 시간대 안에서만 계산하고, 벽 기준이며 나무 가림·날씨는 반영하지 않는다는 문구가 이미지에 들어가요.
+- 암장 소개는 사진이 있는 암장 중에서 날짜로 순환 선택해요. 사진 출처(`photo_credit`)가 있으면 이미지에 표기돼요.
+- 디자인은 `social/templates/*.html`, `base.css` 를 고치면 돼요. 색·폰트는 `brand.config.json` 을 따라요.
+- 발행 전 체크: ① `preview.html` 에서 운영시간·주소 확인 ② 사진 사용 허락 확인 ③ 캡션 톤 확인.
