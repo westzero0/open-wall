@@ -1225,7 +1225,7 @@
       "name": "안양새물공원인공암벽장",
       "short_name": "안양 새물공원",
       "region": "경기 안양시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "유료",
         "스피드월"
@@ -1397,7 +1397,7 @@
       "name": "화랑유원지인공암벽등반장",
       "short_name": "화랑유원지",
       "region": "경기 안산시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "유료",
         "스피드월"
@@ -5383,7 +5383,7 @@
       "name": "파주스타디움 인공암벽장",
       "short_name": "파주스타디움",
       "region": "경기 파주시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "무료",
         "실내벽"
@@ -6772,7 +6772,7 @@
       "name": "청주국제스포츠클라이밍센터",
       "short_name": "청주",
       "region": "충북 청주시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "유료"
       ],
@@ -11618,7 +11618,8 @@
       },
       "holiday": "closed",
       "address": "강원 속초시 미시령로 3054",
-      "width_m": 15
+      "width_m": 15,
+      "rope_m": 40
     },
     {
       "name": "통영산양스포츠파크인공암벽장",
