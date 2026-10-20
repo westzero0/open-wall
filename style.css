@@ -472,8 +472,25 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 /* a hard rule for a stray letter: when the extras are squeezed to almost nothing, none of them shows */
 @container (max-width: 4.5em) { .rsub > * { visibility: hidden; } }
 /* the arrival-hour weather: a fixed place left of the time (empty and the same width until the forecast lands) */
-.rwx { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; min-width: 3.8em; font-size: var(--fs-sm); font-weight: 600; color: var(--fg); white-space: nowrap; }
-.rwx svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.rwx { --wx-bg: var(--line); --wx-fg: var(--muted); flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 4.6em; font-size: var(--fs-sm); font-weight: 600; color: var(--fg); white-space: nowrap; }
+.rwx-ic { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--wx-bg); color: var(--wx-fg); }
+.rwx svg { width: 16px; height: 16px; flex: none; }
+.rwx-t { font-size: var(--fs-base); font-weight: 700; }
+/* sky colours: calm for clear/cloud, strong only for what changes the plan */
+.wx-clear { --wx-bg: #f6e2a8; --wx-fg: #7a5a00; }
+.wx-rain, .wx-storm { --wx-bg: #2f62b0; --wx-fg: #fff; }
+.wx-rain .rwx-t, .wx-storm .rwx-t { color: #2f62b0; }
+.wx-snow { --wx-bg: #5b6f86; --wx-fg: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wx-clear { --wx-bg: #4a3d12; --wx-fg: #f0d36b; }
+  :root:not([data-theme="light"]) :is(.wx-rain, .wx-storm) { --wx-bg: #3a63a8; --wx-fg: #fff; }
+  :root:not([data-theme="light"]) :is(.wx-rain, .wx-storm) .rwx-t { color: #8db4ee; }
+  :root:not([data-theme="light"]) .wx-snow { --wx-bg: #6d819a; --wx-fg: #fff; }
+}
+:root[data-theme="dark"] .wx-clear { --wx-bg: #4a3d12; --wx-fg: #f0d36b; }
+:root[data-theme="dark"] :is(.wx-rain, .wx-storm) { --wx-bg: #3a63a8; --wx-fg: #fff; }
+:root[data-theme="dark"] :is(.wx-rain, .wx-storm) .rwx-t { color: #8db4ee; }
+:root[data-theme="dark"] .wx-snow { --wx-bg: #6d819a; --wx-fg: #fff; }
 .wx-credit { padding: var(--sp-8) var(--sp-16) 0; font-size: var(--fs-xs); color: var(--muted); }
 .wx-credit a { color: inherit; }
 .l1 .left { min-width: 5.6em; text-align: right; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
@@ -579,7 +596,8 @@ dialog.gal[open] { display: flex; }
 .rhero-cap b { display: block; font-size: 2rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
-.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg) { color: var(--on-photo); }
+.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg, .rwx-t) { color: var(--on-photo); }
+.row.has-photo.is-open .row-btn .rwx-ic { background: rgb(0 0 0 / .4); color: #fff; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .5)); }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
 .row.susp .left { flex: 0 1 auto; min-width: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; } /* a shut wall's reason can be long: it gives way instead of pushing the row wider */

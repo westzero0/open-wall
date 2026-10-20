@@ -858,7 +858,9 @@ const wxEntry = (wall, at) => { const h = wxList.byName.get(wall.name); return h
 function wxChip(h, name) {
   const sky = skyKind(h.c);
   const t = Math.round(h.t) || 0; // never "-0"
-  return el('span', { class: 'rwx', 'data-wx': name, role: 'img', 'aria-label': `기온 ${t}도, ${sky.text}` }, icon(SKY_ICON[sky.kind]), `${t}°`);
+  // the sky is a filled round badge (rain, snow and storm are coloured; the aria-label keeps the word)
+  return el('span', { class: `rwx wx-${sky.kind}`, 'data-wx': name, role: 'img', 'aria-label': `기온 ${t}도, ${sky.text}` },
+    el('span', { class: 'rwx-ic' }, icon(SKY_ICON[sky.kind])), el('span', { class: 'rwx-t' }, `${t}°`));
 }
 // an outdoor wall with a position gets a slot: filled when the forecast covers the picked hour, empty (same width, so nothing
 // shifts when it lands) until the answer comes; once answered, no slot where there is nothing to show
