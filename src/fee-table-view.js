@@ -16,7 +16,7 @@ export function feeTableEl(t) {
     const head = it.groupCols ? 1 : 0; // the small header row of the group names
     let first = true;
     const start = (tr) => {
-      if (first) tr.append(cell('th', it.item, { scope: 'rowgroup', rowspan: String(head + it.rows.length + (it.note ? 1 : 0)) }));
+      if (first) tr.append(cell('th', it.item, { scope: 'rowgroup', rowspan: String(head + it.rows.length) }));
       first = false;
     };
     if (it.groupCols) {
@@ -28,7 +28,8 @@ export function feeTableEl(t) {
     for (const r of it.rows) {
       const tr = el('tr', {});
       start(tr);
-      tr.append(cell('td', r.who, { class: 'f-who' }));
+      // a 대상 priced per 거주지: the 대상 once (the rows after it keep it for a screen reader only), then the 거주지 name at the right edge (the 대상 stays at the left)
+      tr.append(r.group ? el('td', { class: 'f-who' }, el('div', { class: 'f-pg' }, el('span', { class: r.dup ? 'f-dup' : 'f-w' }, r.who), el('span', {}, r.group))) : cell('td', r.who, { class: 'f-who' }));
       // session times ("1부 13~17시 · 2부 18~22시") stack one session per line
       const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, p))) : cell('td', text, attrs));
       if (r.cells) tr.append(...r.cells.map((c) => cell('td', c, { class: 'f-won' })));
@@ -36,7 +37,7 @@ export function feeTableEl(t) {
       else tr.append(val(r.weekday, { class: 'f-won' }), val(r.weekend, { class: 'f-won' }));
       body.append(tr);
     }
-    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: span, class: 'f-note' })));
+    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: String(Number(span) + 1), class: 'f-note' }))); // the note runs under the whole row, 구분 column too
   }
   return el('section', { class: 'fees', 'aria-label': '요금' },
     el('table', {}, el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'),

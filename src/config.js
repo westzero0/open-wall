@@ -11,7 +11,9 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
+// 공지 제보 (docs/prd/notice-links-spec.md 3번, 중단): noticeReport — 켜면 제보 시트에 '공지' 선택이 생긴다. 기본은 꺼 둠(이용자 제보를 기대하지 않기로 함).
 export const config = {
+  noticeReport: false,
   climberTest: true,
   singlePitch: false,
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',

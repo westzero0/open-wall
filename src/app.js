@@ -5,7 +5,7 @@ import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
 import { createMap } from './map.js';
 import { dialModel } from './dial.js';
-import { renderDial } from './dial-view.js';
+import { renderScene } from './sun-scene.js';
 import { getStatus } from './hours.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
@@ -1006,16 +1006,8 @@ function infoBlock(m) {
   return parts;
 }
 
-// The open row is rebuilt on every slider move, so a 양달↔응달 flip is marked on the new SVG
-// (.from-lit/.from-dark) and CSS @starting-style fades the wall, beam and label from the old look.
-let lastDial = null; // { name, lit } of the compass drawn last
-function dialFig(name, d) {
-  const svg = renderDial(d);
-  if (!svg) return null;
-  if (lastDial?.name === name && lastDial.lit !== d.lit) svg.classList.add(lastDial.lit ? 'from-lit' : 'from-dark');
-  lastDial = { name, lit: d.lit };
-  return svg;
-}
+// The picture in the sun box (sun-scene.js): three scenes, only the sun moves; the open row is rebuilt on every slider move
+function dialFig(d, at) { return renderScene(d, at); }
 
 // The sun's now: compass + sentence + today's sunny hours. On a day the wall is closed the compass
 // would describe a visit that can't happen, so a short note stands in for it (sunny hours stay for reference).
@@ -1038,7 +1030,7 @@ function sunHead(d, verdict) {
       : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
   return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
 }
-function sunBox(d, name, closedDay, verdict, veilText = null) {
+function sunBox(d, name, closedDay, verdict, veilText = null, at = null) {
   // the dial says why ("해가 벽 뒤에 있어요" under it, 해·벽 색), so a facing/sun reason keeps only the first sentence (where the sun is); a terrain/night reason is not in the picture and stays
   const words = d.sentence.length > 3 && /^ 해가 (벽|등) 뒤쪽/.test(d.sentence[3].text) ? d.sentence.slice(0, 3) : d.sentence;
   const sentence = el('p', { class: 'dsent' }, ...words.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
@@ -1057,7 +1049,7 @@ function sunBox(d, name, closedDay, verdict, veilText = null) {
   return el('section', { class: 'sunbox', 'aria-label': '해' },
     sunHead(d, verdict), // the head already tells the sun inside the open hours
     sentence,
-    el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(name, d))),
+    el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(d, at))),
     extra,
     sunWhy());
 }
@@ -1106,12 +1098,12 @@ function rowDetails(m, wall, at) {
         m.rope ? el('p', { class: 'rope-line', title: m.rope.basis }, el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)) : null,
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
-        m.noticeChecked ? el('p', { class: m.noticeStale ? 'stale-note' : 'checked' }, m.noticeStale ? `⚠ ${m.noticeChecked} · 공지 주소가 바뀌었을 수 있어요` : m.noticeChecked) : null, // beside the hours' warning; says nothing without a date
+        m.noticeChecked ? el('p', { class: 'checked' }, m.noticeChecked) : null, // says nothing without a (recent) date
         [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].join(' · ')) : null, // facts, not controls: one muted line
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
         m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
-      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at)), // above 정보 확인일, after the facts (the right column when wide)
+      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), // above 정보 확인일, after the facts (the right column when wide)
       el('div', { class: 'm-foot' }, el('p', { class: 'checked' }, m.checked)),
       sheetBtn),
     visitLog(m),

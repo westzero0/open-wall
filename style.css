@@ -725,16 +725,16 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-chip.lit { background: color-mix(in srgb, var(--sun) 28%, var(--paper)); }
 .sb-chip.lit::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .sb-chip.na { color: var(--muted); }
-.sb-fig { width: 100%; max-width: 230px; margin: 0 auto; }
-.sundial-slot { aspect-ratio: 216 / 172; }
-/* a narrow card: the (smaller) dial sits beside the words; the wide two-column layout below keeps it above them */
+.sb-fig { width: 100%; max-width: 360px; margin: 0 auto; }
+.sundial-slot { aspect-ratio: 360 / 200; border-radius: var(--r); overflow: hidden; line-height: 0; }
+/* the picture sits above the words in every layout */
 .sunbox:not(.solo) {
   display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "head" "verd" "fig" "sent" "note" "why"; /* one column: the dial is drawn big enough to read its own labels (it was 120px beside the numbers, with 10px words) */
+  grid-template-areas: "head" "verd" "fig" "sent" "note" "why"; /* one column: the picture is wide enough to read its own labels */
 }
 .sunbox:not(.solo) > .sb-head { grid-area: head; }
 .sunbox:not(.solo) > .sun-verdict { grid-area: verd; }
-.sunbox:not(.solo) > .sb-fig { grid-area: fig; max-width: 240px; margin: var(--sp-8) auto var(--sp-4); }
+.sunbox:not(.solo) > .sb-fig { grid-area: fig; max-width: 360px; margin: var(--sp-8) auto var(--sp-4); }
 .sunbox:not(.solo) > .dsent { grid-area: sent; }
 .sunbox:not(.solo) > .sun-why { grid-area: why; }
 .sunbox:not(.solo) > .sun-extra { grid-area: note; }
@@ -745,37 +745,27 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 /* a wall that faces different ways: the verdict is for the main wall. A quiet callout, not a warning: small, full-contrast text on a thin rule */
 .sun-note { margin: 0; padding-left: var(--sp-10); border-left: 3px solid var(--line-strong); font-size: var(--fs-sm); line-height: 1.5; color: var(--fg); }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
-/* sun side view (src/dial-view.js). Text is 18 user units (EM): the 216-unit viewBox in a 230px slot renders it at 19px. */
-.dial { display: block; width: 100%; height: auto; overflow: visible; }
-.d-ground { stroke: var(--line-strong); stroke-width: 1; }
-.d-hill { fill: color-mix(in srgb, var(--fg) 28%, transparent); }
-.d-wall { fill: var(--fg); }
-.d-wall.lit { fill: var(--sun); filter: drop-shadow(0 0 5px var(--sun)); }
-.d-wall.dark { fill: var(--muted); }
-.d-beam { fill: var(--sun); fill-opacity: .32; stroke: var(--sun); stroke-width: 1.2; stroke-linejoin: round; }
-.d-beam.off { fill-opacity: 0; stroke: var(--muted); stroke-dasharray: 4 4; stroke-width: 1.3; }
-.d-x { stroke: var(--soon); stroke-width: 2.4; stroke-linecap: round; fill: none; }
-.d-person { fill: var(--fg); }
-.d-person.head { fill: var(--paper); stroke: var(--fg); stroke-width: 1.6; }
-.d-halo { fill: var(--sun); opacity: .55; }
-.d-path { fill: var(--sun); stroke: color-mix(in srgb, var(--sun) 70%, var(--fg)); stroke-width: .6; }
-.d-sun { fill: var(--sun); stroke: var(--fg); stroke-width: 1.5; }
-.d-sun.off { fill: var(--paper); stroke: var(--muted); stroke-dasharray: 2 2; }
-.d-lab { font-size: 18px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; fill: var(--fg); }
-.d-lab.me { fill: var(--open); }
-.d-lab.xl { fill: var(--soon); }
-/* 양달↔응달 flip: colours only, nothing moves (app.js marks the new SVG with what it was) */
-.d-wall, .d-beam, .d-halo, .d-lab.wall {
-  transition: fill 140ms var(--ease-out), stroke 140ms var(--ease-out), fill-opacity 140ms var(--ease-out), opacity 140ms var(--ease-out), filter 140ms var(--ease-out);
+/* sun scene (src/sun-scene.js): three scenes, 양달 / 응달 / 밤; only the sun moves. Colours come from the --sc-* tokens of each scene */
+.sun-scene { display: block; width: 100%; height: auto; }
+.sun-scene.k-lit { --sc-sky0: #fbeccb; --sc-sky1: #f4cf94; --sc-sun: #e8731a; --sc-halo: #f6a542; --sc-ground: #c56f2c; --sc-wall: #3b2f27; --sc-face: #f4b04a; --sc-body: #1c140f; --sc-helmet: #e8731a; --sc-ink: #7a4a08; --sc-acc: #a85f0a; --sc-hill: #8d5a2c; }
+.sun-scene.k-shade { --sc-sky0: #c9d6e8; --sc-sky1: #8ea5c5; --sc-sun: #e9892a; --sc-halo: #f2b66a; --sc-ground: #3d5373; --sc-wall: #1b2432; --sc-face: #6f87a9; --sc-body: #0f151f; --sc-helmet: #e9892a; --sc-ink: #1f3550; --sc-acc: #1f3550; --sc-hill: #2b3f5c; }
+.sun-scene.k-night { --sc-sky0: #0c1226; --sc-sky1: #26305a; --sc-sun: #f1e4ae; --sc-halo: #9aa6d6; --sc-ground: #0d1326; --sc-wall: #05080f; --sc-face: #2c3760; --sc-body: #dfe5f5; --sc-helmet: #f1e4ae; --sc-ink: #9aa6d6; --sc-acc: #e0a850; --sc-hill: #05080f; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sun-scene.k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; }
+  :root:not([data-theme="light"]) .sun-scene.k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; }
 }
-@starting-style {
-  .dial.from-dark .d-wall { fill: var(--muted); filter: none; }
-  .dial.from-dark .d-beam { fill-opacity: 0; stroke: var(--muted); }
-  .dial.from-dark .d-halo { opacity: 0; }
-  .dial.from-lit .d-wall { fill: var(--sun); }
-  .dial.from-lit .d-beam { fill-opacity: .32; stroke: var(--sun); }
-  .dial.from-dark .d-lab.wall, .dial.from-lit .d-lab.wall { opacity: 0; }
-}
+:root[data-theme="dark"] .sun-scene.k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; }
+:root[data-theme="dark"] .sun-scene.k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; }
+.sc-s0 { stop-color: var(--sc-sky0); } .sc-s1 { stop-color: var(--sc-sky1); }
+.sc-h0 { stop-color: var(--sc-halo); stop-opacity: .55; } .sc-h1 { stop-color: var(--sc-halo); stop-opacity: 0; }
+.sc-sun, .sc-moon { fill: var(--sc-sun); }
+.sc-ground { fill: var(--sc-ground); } .sc-band.a { fill: #000; opacity: .18; } .sc-band.b { fill: #fff; opacity: .14; }
+.sc-wall { fill: var(--sc-wall); } .sc-face { fill: var(--sc-face); } .sc-hill { fill: var(--sc-hill); }
+.sc-shadow { fill: #08101c; opacity: .38; } .sc-ray { fill: #fff1c2; } .sc-star { fill: #eef1fb; opacity: .85; }
+.sc-tick { fill: var(--sc-acc); } .sc-now { fill: var(--sc-sun); stroke: #fff; stroke-width: 1.2; }
+.sc-body { stroke: var(--sc-body); } .sc-fill-body { fill: var(--sc-body); } .sc-helmet { fill: var(--sc-helmet); } .sc-lamp { fill: #fff3c4; }
+.sc-lab { font-size: 12px; font-weight: 600; fill: var(--sc-ink); text-anchor: middle; }
+.sc-lab.acc { fill: var(--sc-acc); } .sc-lab.on-ground { fill: #cfe0f5; }
 .dsent { margin: 0; font-size: var(--fs-md); line-height: 1.5; }
 .dsent b { font-weight: 700; }
 .dsent.off { color: var(--muted); }
@@ -814,7 +804,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
   .m-cols .sunbox { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; padding: var(--sp-16); }
   .m-cols .sunbox:not(.solo) { display: flex; }
-  .m-cols .sunbox:not(.solo) > .sb-fig { max-width: 230px; }
+  .m-cols .sunbox:not(.solo) > .sb-fig { max-width: 300px; }
   .m-cols > .m-foot { grid-column: 1; grid-row: 3; }
   .m-cols > .sheet-open { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
 }
@@ -857,6 +847,8 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
 .fees tbody th { font-weight: 700; width: 34%; }
 .fees .f-who { color: var(--muted); white-space: nowrap; }
+.fees .f-pg { display: flex; justify-content: space-between; gap: var(--sp-8); } /* 대상 left, 거주지 (관외 / 관내) right-aligned */
+.fees .f-dup { color: transparent; user-select: none; } /* the 대상 repeated on the 2nd… 거주지 row: kept for a screen reader, not drawn */
 .fees .f-won, .fees .f-all { text-align: center; white-space: nowrap; }
 .fees .f-all { text-align: center; }
 .fees thead th:nth-child(n+3) { text-align: center; }
@@ -1165,7 +1157,6 @@ dialog::backdrop { background: var(--scrim); }
   * { animation: none !important; scroll-behavior: auto !important; }
   .expand, .row.is-open > .expand { transition-property: opacity, visibility; } /* fade only, no height change */
   button:active, .btn:active { transform: none !important; } /* press scale off; color transitions stay */
-  .dial * { transition: none !important; } /* compass flips instantly */
   .sheet, .sheet[open] { transform: none; } /* sheets fade, no slide */
   .icon-btn:active svg { transform: none; } /* press scale off for icons too (svg is not a button) */
   .blog-more::after { transition: none; } /* chevron flips instantly */

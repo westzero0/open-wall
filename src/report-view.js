@@ -60,6 +60,7 @@ if (dlg) {
     if (!e.isComposing && picks.querySelectorAll('.la-hit').length === 1) picks.querySelector('.la-hit').click();
   });
 
+  if (!config.noticeReport) f.querySelector(`input[name="kind"][value="${NOTICE_KIND}"]`).closest('label').hidden = true; // off: the 공지 choice (and its fields) never show
   f.elements.body.maxLength = MAX_BODY;
   alt.href = config.reportFormUrl; // fixed constant, not user input
 
