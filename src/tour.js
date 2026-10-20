@@ -6,7 +6,11 @@ const GAP = 6; // 구멍이 타깃보다 사방으로 더 큰 만큼
 const EDGE = 16;
 
 // 첫 번째 '보이는' 일치: 접힌 그룹 안의 같은 선택자(예: 닫힌 details 의 막대)는 건너뛴다
-const find = (sel) => [...document.querySelectorAll(sel)].find((n) => { const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0; }) ?? null;
+const find = (sel) => {
+  try { // 선택자를 모르는 브라우저(:has 등)는 그 단계만 건너뛴다
+    return [...document.querySelectorAll(sel)].find((n) => { const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0; }) ?? null;
+  } catch { return null; }
+};
 const visible = (sel) => find(sel) !== null;
 
 /** startTour({ onClose }) → boolean: false (and nothing opens) when no step has a visible target.
