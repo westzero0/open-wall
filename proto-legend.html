@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- PROTOTYPE (throwaway): three structurally different legends for the map. ?variant=A|B|C  (←/→ cycle). Uses the real style.css. -->
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE · 범례</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { margin: 0; padding: 16px 16px 100px; max-width: 440px; background: var(--paper); color: var(--fg); font-family: var(--font); }
+  .pv-map { position: relative; height: 250px; border-radius: var(--r-base); border: 1px solid var(--line); background: #e8e4d8; overflow: hidden; }
+  .pv-map > .dot, .pv-map > .pin-cluster { position: absolute; }
+  .pv-map > .dot { transform: scale(1.25); }
+  .pv-name { position: absolute; font: 600 .8125rem/1.3 var(--font); background: #fff; color: #1b1f1e; padding: 1px 6px; border: 1px solid #b4baaf; border-radius: 3px; }
+  h4 { margin: var(--sp-12) 0 var(--sp-6); font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
+  .pv-bar { position: fixed;  left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; padding: 8px 14px; border-radius: 999px; background: #111; color: #fff; font: 600 13px var(--font); box-shadow: 0 4px 16px rgb(0 0 0 / .4); }
+  .pv-bar button { all: unset; cursor: pointer; padding: 0 6px; font-size: 18px; }
+
+  /* ---- A · 해가 벽을 넘어가는 중: the pins as the logo's sun going behind the wall ---- */
+  .vA { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; margin-top: var(--sp-10); position: relative; padding-top: 2px; }
+  .vA::before { content: ""; position: absolute; left: 6%; right: 6%; top: 21px; border-top: 2px dotted var(--line-strong); }
+  .vA li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 12px; line-height: 1.25; color: var(--fg); }
+  .vA svg { width: 44px; height: 44px; background: var(--paper); border-radius: 50%; position: relative; }
+  .vA .wall { fill: var(--logo-slab, #2a2d32); }
+  :root[data-theme="dark"] .vA .wall, :root:not([data-theme="light"]) .vA .wall { fill: #f4f2ec; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .vA .wall { fill: #2a2d32; } }
+
+  /* ---- B · 홀드 보드: every state is a hold on a gym wall, named by a setter's tape ---- */
+  .vB { margin-top: var(--sp-10); padding: 14px 12px 12px; border-radius: var(--r-base); background: #2a2d32; background-image: radial-gradient(circle, #4a4f56 1.6px, transparent 2px); background-size: 22px 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 6px; }
+  .vB li { background: none; border: 0; padding: 0; border-radius: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .vB svg { width: 46px; height: 46px; overflow: visible; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .45)); }
+  .vB .tape { padding: 1px 8px; background: #f4f2ec; color: #1b1f1e; font: 700 12px/1.5 var(--font); transform: rotate(-1.5deg); box-shadow: 0 1px 2px rgb(0 0 0 / .4); border-radius: 1px; white-space: nowrap; }
+  .vB li:nth-child(even) .tape { transform: rotate(1.2deg); }
+
+  /* ---- C · 캐릭터 스티커 + 접이식 카드: out of the page flow, on the map itself ---- */
+  .vC { position: absolute; left: 10px; bottom: 10px; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .vC .card { position: relative; width: 190px; padding: 12px 12px 10px; border-radius: var(--r-base); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
+  .vC .card h5 { margin: 0 0 6px; font-size: var(--fs-sm); }
+  .vC .card ul { list-style: none; margin: 0; padding: 0; }
+  .vC .card li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--hair); font-size: var(--fs-xs); color: var(--fg); }
+  .vC .card li:first-child { border-top: 0; }
+  .vC .card li .dot { margin: 0 3px; }
+  .vC .card li .dot.sunring { margin: 0 6px; outline-width: 2.5px; }
+  .vC .peek { position: absolute; right: 4px; top: 2px; width: 54px; height: 54px; filter: drop-shadow(0 0 0 #fff) drop-shadow(1.5px 0 0 var(--sticker)) drop-shadow(-1.5px 0 0 var(--sticker)) drop-shadow(0 1.5px 0 var(--sticker)) drop-shadow(0 -1.5px 0 var(--sticker)) drop-shadow(0 2px 3px rgb(0 0 0 / .3)); transform: rotate(8deg); }
+  .vC .fab { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow-float); font: 700 var(--fs-xs) var(--font); color: var(--fg); }
+  .vC .fab img { width: 30px; height: 30px; }
+</style>
+<body>
+<div class="pv-map" id="map" style="height:320px;min-height:0;background:#e8e4d8">
+  <span class="dot open" style="left:60px;top:150px"></span><span class="pv-name" style="left:78px;top:143px">수락암벽</span>
+  <span class="dot soon" style="left:200px;top:60px"></span><span class="pv-name" style="left:218px;top:53px">북한산 A</span>
+  <span class="dot closed" style="left:300px;top:130px"></span>
+  <span class="dot unknown" style="left:140px;top:100px"></span>
+  <span class="dot approx" style="left:360px;top:60px"></span>
+  <span class="dot open sunring" style="left:330px;top:190px"></span>
+  <span class="pin-cluster" style="--size:38px;left:240px;top:150px">7</span>
+  <span class="pin-cluster idle" style="--size:32px;left:30px;top:40px">3</span>
+  <div id="host"></div>
+</div>
+<div id="below"></div>
+<div class="pv-bar"><button id="prev" aria-label="이전">←</button><span id="lab"></span><button id="next" aria-label="다음">→</button></div>
+<script>
+if (location.search.includes('shot')) document.querySelector('.pv-bar').hidden = true;
+const V = ['A', 'B', 'C'];
+const NAMES = { A: '해가 벽을 넘어가는 중', B: '홀드 보드', C: '캐릭터 스티커 + 접이식 카드' };
+// A: sun disc + wall edge. dx = where the wall starts: far right (clear) → over half → fully covering
+const sunIcon = (kind) => {
+  const c = { open: 'var(--pin-open)', soon: 'var(--pin-soon)', closed: 'var(--pin-closed)', sun: 'var(--pin-open)' }[kind];
+  const wall = (x) => `<polygon class="wall" points="${x + 14},0 240,0 240,240 ${x - 14},240"/>`;
+  const disc = (fill, extra = '') => `<circle cx="104" cy="120" r="64" fill="${fill}" ${extra}/>`;
+  const edge = 'stroke="var(--pin-edge)" stroke-width="10"';
+  const body = {
+    open: disc(c, edge),
+    soon: disc(c, edge) + wall(130),
+    closed: disc(c, edge) + wall(70),
+    unknown: `<circle cx="104" cy="120" r="60" fill="none" stroke="var(--pin-unknown)" stroke-width="16"/>`,
+    approx: `<circle cx="104" cy="120" r="60" fill="none" stroke="var(--muted)" stroke-width="12" stroke-dasharray="22 16"/>`,
+    sun: `<circle cx="104" cy="120" r="94" fill="none" stroke="var(--pin-sun)" stroke-width="16"/>` + disc(c, edge),
+  }[kind === 'sun' ? 'sun' : kind];
+  return `<svg viewBox="0 0 240 240" aria-hidden="true">${kind === 'sun' ? body.replace(/fill="undefined"/, '') : body}</svg>`;
+};
+const sunIconFull = (k) => (k === 'sun' ? sunIcon('sun').replace('var(--pin-open)', 'var(--pin-open)') : sunIcon(k));
+
+// B: hold blob (bean) + bolt hole
+const BEAN = 'M8 30 C2 20 8 6 22 5 C36 4 46 12 44 26 C42 38 28 44 16 40 C12 38 10 34 8 30 Z';
+const hold = (kind) => {
+  const bolt = '<circle cx="24" cy="23" r="3.6" fill="#2a2d32" opacity=".75"/>';
+  const s = {
+    open: `<path d="${BEAN}" fill="#3fa592" stroke="#f4f2ec" stroke-width="2.5"/>${bolt}`,
+    soon: `<path d="${BEAN}" fill="#d0587f" stroke="#f4f2ec" stroke-width="6" stroke-linejoin="round"/>${bolt}`,
+    closed: `<path d="${BEAN}" transform="translate(5 5) scale(.78)" fill="#9aa29c" stroke="#f4f2ec" stroke-width="2.5"/>${bolt.replace('cx="24" cy="23"', 'cx="24" cy="25"')}`,
+    unknown: `<path d="${BEAN}" fill="none" stroke="#c9cdc6" stroke-width="4"/>${bolt}`,
+    approx: `<path d="${BEAN}" fill="none" stroke="#c9cdc6" stroke-width="3" stroke-dasharray="5 4"/>${bolt}`,
+    sun: `<path d="${BEAN}" fill="#3fa592" stroke="#f4f2ec" stroke-width="2.5"/>${bolt}<path d="${BEAN}" transform="translate(-3.5 -3.5) scale(1.15)" fill="none" stroke="#f4b942" stroke-width="3.5"/>`,
+  }[kind];
+  return `<svg viewBox="0 0 48 48" aria-hidden="true">${s}</svg>`;
+};
+
+const ITEMS = [['open', '운영 중'], ['soon', '곧 마감'], ['closed', '닫힘'], ['unknown', '정보 없음'], ['approx', '추정 위치'], ['sun', '양달']];
+const dotCls = { open: 'open', soon: 'soon', closed: 'closed', unknown: 'unknown', approx: 'approx', sun: 'open sunring' };
+let cOpen = true;
+function render() {
+  const v = new URLSearchParams(location.search).get('variant') || 'A';
+  const host = document.getElementById('host'), below = document.getElementById('below');
+  host.innerHTML = ''; below.innerHTML = '';
+  document.getElementById('lab').textContent = `${v} (${NAMES[v]})`;
+  if (v === 'A') {
+    below.innerHTML = `<ul class="legend vA" aria-label="핀 설명">${ITEMS.map(([k, t]) => `<li>${sunIconFull(k)}<span>${t}</span></li>`).join('')}</ul>`;
+    below.querySelector('ul').style.cssText = 'border:0;background:none;padding:0;';
+    below.querySelectorAll('li').forEach((li) => (li.style.cssText = 'border:0;background:none;padding:0;border-radius:0;'));
+  }
+  if (v === 'B') below.innerHTML = `<ul class="legend vB" aria-label="핀 설명">${ITEMS.map(([k, t]) => `<li>${hold(k)}<span class="tape">${t}</span></li>`).join('')}</ul>`;
+  if (v === 'C') {
+    host.innerHTML = `<div class="vC">${cOpen ? `<div class="card"><img class="peek" src="assets/climbers/gecko.png" alt=""><h5>핀 설명</h5><ul>${ITEMS.map(([k, t]) => `<li><span class="dot ${dotCls[k]}"></span>${t}</li>`).join('')}</ul></div>` : ''}<button class="fab" aria-expanded="${cOpen}"><img src="assets/climbers/otter.png" alt="">범례</button></div>`;
+    host.querySelector('.fab').onclick = () => { cOpen = !cOpen; render(); };
+  }
+}
+const go = (d) => { const v = new URLSearchParams(location.search).get('variant') || 'A'; const n = V[(V.indexOf(v) + d + V.length) % V.length]; history.replaceState(null, '', `?variant=${n}`); render(); };
+document.getElementById('prev').onclick = () => go(-1); document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); });
+render();
+</script>
