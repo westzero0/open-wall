@@ -2088,6 +2088,22 @@ $('retry').addEventListener('click', async () => {
   render();
 });
 
+// 문의 메일 (앱 정보 sheet): shown as text with a copy button, no mailto: link (an in-app browser may not open a mail app; the trust boundary keeps links to http/https)
+$('mailCopy')?.addEventListener('click', async () => {
+  const addr = $('footMailAddr');
+  try {
+    await navigator.clipboard.writeText(addr.textContent);
+    toast('문의 주소를 복사했어요');
+  } catch { // no clipboard (some in-app browsers): select the address so a long press copies it
+    const range = document.createRange();
+    range.selectNodeContents(addr);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toast('주소를 길게 눌러 복사해 주세요');
+  }
+});
+
 const first = await loadList();
 state.walls = first ?? [];
 if (config.singlePitch) state.crags = await fetchCrags().catch(() => []);
