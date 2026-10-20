@@ -3,6 +3,7 @@
 // 응달 (the sun is behind the wall, or a hill hides it) and 밤 (the sun is below the horizon). Only the sun moves, to where it really is:
 // across = cos(height)·cos(rel), up = sin(height), the same projection the old compass used.
 const W = 360, H = 200;
+const TOP = 20;                         // the empty strip of sky above is cropped: the picture is 360 x 180
 const HY = 158;                         // ground line
 const WX0 = 258, WX1 = 280, WTOP = 52;  // wall: front face x, back face x, top y
 const WCX = (WX0 + WX1) / 2;
@@ -21,7 +22,7 @@ export function sceneLayout(m, at = null) {
   const night = !m.sun;
   const kind = night ? 'night' : m.lit === true ? 'lit' : 'shade';
   const L = { kind, w: W, h: H, ground: HY, wall: { x: WX0, y: WTOP, w: WX1 - WX0, h: HY - WTOP }, climber: { x: PX, y: HY, u: U },
-    aria: night ? '해가 졌어요, 해는 지평선 아래에 있어요' : '', sun: null, rays: [], shadow: null, hill: null, hillLabel: null, labels: [], moon: null, stars: night ? STARS : [], arc: null, now: null };
+    aria: night ? '해가 졌어요, 해는 지평선 아래에 있어요' : '', low: false, sun: null, rays: [], shadow: null, hill: null, hillLabel: null, labels: [], moon: null, stars: night ? STARS : [], arc: null, now: null };
   if (night) {
     L.moon = { x: 296, y: 52, r: 16 };
     L.arc = NIGHT_HOURS.map((t, k) => ({ x: 40 + k * 46, y: r1(HY + 40 - 17 * Math.sin(Math.PI * k / 6)), text: t }));
@@ -29,18 +30,19 @@ export function sceneLayout(m, at = null) {
       const t = (((at.getHours() + at.getMinutes() / 60 - 18) % 24) + 24) % 24 / 12;
       if (t <= 1) L.now = { x: r1(40 + 276 * t), y: r1(HY + 40 - 17 * Math.sin(Math.PI * t)) };
     }
-    L.labels.push({ x: 12, y: HY + 14, text: '해는 지평선 아래', anchor: 'start', cls: 'dim' });
+    L.labels.push({ x: 12, y: HY + 14, text: 'sun below horizon', anchor: 'start', cls: 'dim' });
     return L;
   }
   const h = m.sun.altitude ?? 90 * (1 - m.sun.radius);
   const u = Math.cos(rad(h)) * Math.cos(rad(m.sun.rel));
   const r = kind === 'lit' ? 30 : 26;
   const sx = clamp(WCX + u * (u < 0 ? XL : XR), r, W - r);
-  const sy = clamp(HY - Math.sin(rad(h)) * SH, r + 4, HY + r * 0.5); // low sun: the ground line cuts it (sunrise / sunset)
+  const sy = clamp(HY - Math.sin(rad(h)) * SH, TOP + r + 4, HY + r * 0.5); // low sun: the ground line cuts it (sunrise / sunset)
   L.sun = { x: r1(sx), y: r1(sy), r };
+  L.low = kind === 'lit' && h < 12;
   if (kind === 'lit') {
     L.rays = [WTOP + 14, WTOP + 44, WTOP + 74].map((y0, i) => ({ points: [[sx + (WX0 - sx) * 0.2, sy + (y0 - sy) * 0.2], [WX0, y0], [WX0, y0 + 9]].map((p) => p.map(r1)), opacity: [0.55, 0.42, 0.3][i] }));
-    L.labels.push({ x: r1(clamp(sx, 48, 168)), y: r1(Math.min(sy + r + 16, HY - 6)), text: `고도 ${Math.round(h)}°`, anchor: 'middle', cls: 'dim' });
+    L.labels.push({ x: r1(clamp(sx, 48, 168)), y: r1(Math.min(sy + r + 16, HY - 6)), text: `alt ${Math.round(h)}°`, anchor: 'middle', cls: 'dim' });
     L.aria = `해가 벽 앞에서 비춰요, 해 높이 ${Math.round(h)}도`;
     return L;
   }
@@ -48,16 +50,22 @@ export function sceneLayout(m, at = null) {
   if (m.state === 'facing' || sx > WX1) {
     const len = clamp((HY - WTOP) / Math.tan(rad(Math.max(h, 5))) * 0.55, 50, 190);
     L.shadow = { points: [[WX0, HY], [WX0, HY + 12], [WX0 - len, HY + 12], [WX0 - len + 14, HY]].map((p) => p.map(r1)) };
-    L.labels.push({ x: r1(WX0 - len / 2), y: HY + 26, text: '벽 그림자', anchor: 'middle', cls: 'on-ground' });
-    L.labels.push({ x: r1(Math.min(sx, W - 44)), y: r1(Math.min(sy + r + 16, HY - 6)), text: '해 · 벽 뒤', anchor: 'middle', cls: 'dim' });
+    L.labels.push({ x: r1(WX0 - len / 2), y: HY + 26, text: 'wall shadow', anchor: 'middle', cls: 'on-ground' });
+    L.labels.push({ x: W - 8, y: r1(Math.max(sy - r - 8, TOP + 12)), text: 'behind wall', anchor: 'end', cls: 'dim' });
   }
   L.aria = m.state === 'terrain' ? '해가 산에 가려져 벽이 그늘이에요' : '해가 벽 뒤에 있어서 벽이 그늘이에요';
   if (m.state === 'terrain' && m.horizonAtSun > 0) {
     const cx = clamp(sx, 50, W - 50), py = HY - Math.sin(rad(m.horizonAtSun)) * SH;
     L.hill = `M${r1(cx - 52)} ${HY} C${r1(cx - 26)} ${HY} ${r1(cx - 28)} ${r1(py)} ${r1(cx)} ${r1(py)} C${r1(cx + 28)} ${r1(py)} ${r1(cx + 26)} ${HY} ${r1(cx + 52)} ${HY} Z`;
-    L.hillLabel = { x: r1(cx), y: r1(py - 8), text: '산에 가려짐', anchor: 'middle', cls: 'dim' };
+    L.hillLabel = { x: r1(cx), y: r1(py - 8), text: 'hill blocks sun', anchor: 'middle', cls: 'dim' };
   }
   return L;
+}
+
+// the tone of the sun box around the picture: 'k-lit' / 'k-shade' / 'k-night', plus ' low' for a low sun (coral evening)
+export function sceneTone(m, at = null) {
+  const L = sceneLayout(m, at);
+  return L ? `k-${L.kind}${L.low ? ' low' : ''}` : '';
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -111,14 +119,12 @@ export function renderScene(model, at = null) {
   const L = sceneLayout(model, at);
   if (!L) return null;
   const id = `sc${seq++}`;
-  const svg = s('svg', { viewBox: `0 0 ${L.w} ${L.h}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
-  const sky = s('linearGradient', { id: `${id}k`, x1: 0, y1: 0, x2: 0, y2: 1 });
-  sky.append(s('stop', { offset: 0, class: 'sc-s0' }), s('stop', { offset: 1, class: 'sc-s1' }));
+  const svg = s('svg', { viewBox: `0 ${TOP} ${L.w} ${L.h - TOP}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
   const halo = s('radialGradient', { id: `${id}h` });
   halo.append(s('stop', { offset: 0, class: 'sc-h0' }), s('stop', { offset: 1, class: 'sc-h1' }));
   const defs = s('defs');
-  defs.append(sky, halo);
-  svg.append(defs, s('rect', { width: L.w, height: L.h, fill: `url(#${id}k)` }));
+  defs.append(halo);
+  svg.append(defs);
   for (const [x, y] of L.stars) svg.append(s('circle', { cx: x, cy: y, r: (x * y) % 3 === 0 ? 1.6 : 1.1, class: 'sc-star' }));
   if (L.moon) {
     const m = L.moon;

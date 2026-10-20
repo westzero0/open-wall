@@ -5,7 +5,7 @@ import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
 import { createMap } from './map.js';
 import { dialModel } from './dial.js';
-import { renderScene } from './sun-scene.js';
+import { renderScene, sceneTone } from './sun-scene.js';
 import { getStatus } from './hours.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
@@ -1046,12 +1046,12 @@ function sunBox(d, name, closedDay, verdict, veilText = null, at = null) {
   if (noSunMath(d)) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, extra, d.state === 'override' ? sunWhy() : null));
   }
-  return el('section', { class: 'sunbox', 'aria-label': '해' },
-    sunHead(d, verdict), // the head already tells the sun inside the open hours
-    sentence,
-    el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(d, at))),
-    extra,
-    sunWhy());
+  // the card is the sky (colour by the sun's state and height), the picture stands in it, the words ride on the ground colour
+  return el('section', { class: `sunbox sc ${sceneTone(d, at)}`, 'aria-label': '해' },
+    el('div', { class: 'sb-sky' },
+      sunHead(d, verdict), // the head already tells the sun inside the open hours
+      el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(d, at)))),
+    el('div', { class: 'sb-ground' }, sentence, extra, sunWhy()));
 }
 
 

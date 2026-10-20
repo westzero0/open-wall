@@ -84,6 +84,7 @@
   --dur-ui: 200ms;
   --dur-exit: 140ms;
   --font: "IBM Plex Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-serif: "Gowun Batang", "IBM Plex Sans KR", "Batang", serif; /* the words under the sun picture; the hours above it stay in --font */
 }
 /* dark: the phone's setting (자동), unless 내 정보 › 화면 picked 라이트; html[data-theme="dark"] below repeats the same values */
 @media (prefers-color-scheme: dark) {
@@ -726,7 +727,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-chip.lit::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .sb-chip.na { color: var(--muted); }
 .sb-fig { width: 100%; max-width: 360px; margin: 0 auto; }
-.sundial-slot { aspect-ratio: 360 / 200; border-radius: var(--r); overflow: hidden; line-height: 0; }
+.sundial-slot { aspect-ratio: 360 / 180; border-radius: var(--r); overflow: hidden; line-height: 0; }
 /* the picture sits above the words in every layout */
 .sunbox:not(.solo) {
   display: grid; grid-template-columns: minmax(0, 1fr);
@@ -745,18 +746,30 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 /* a wall that faces different ways: the verdict is for the main wall. A quiet callout, not a warning: small, full-contrast text on a thin rule */
 .sun-note { margin: 0; padding-left: var(--sp-10); border-left: 3px solid var(--line-strong); font-size: var(--fs-sm); line-height: 1.5; color: var(--fg); }
 .sun-verdict { margin: 0; font-size: var(--fs-md); font-weight: 600; } /* is it sunny while the wall is open? */
-/* sun scene (src/sun-scene.js): three scenes, 양달 / 응달 / 밤; only the sun moves. Colours come from the --sc-* tokens of each scene */
-.sun-scene { display: block; width: 100%; height: auto; }
-.sun-scene.k-lit { --sc-sky0: #fbeccb; --sc-sky1: #f4cf94; --sc-sun: #e8731a; --sc-halo: #f6a542; --sc-ground: #c56f2c; --sc-wall: #3b2f27; --sc-face: #f4b04a; --sc-body: #1c140f; --sc-helmet: #e8731a; --sc-ink: #7a4a08; --sc-acc: #a85f0a; --sc-hill: #8d5a2c; }
-.sun-scene.k-shade { --sc-sky0: #c9d6e8; --sc-sky1: #8ea5c5; --sc-sun: #e9892a; --sc-halo: #f2b66a; --sc-ground: #3d5373; --sc-wall: #1b2432; --sc-face: #6f87a9; --sc-body: #0f151f; --sc-helmet: #e9892a; --sc-ink: #1f3550; --sc-acc: #1f3550; --sc-hill: #2b3f5c; }
-.sun-scene.k-night { --sc-sky0: #0c1226; --sc-sky1: #26305a; --sc-sun: #f1e4ae; --sc-halo: #9aa6d6; --sc-ground: #0d1326; --sc-wall: #05080f; --sc-face: #2c3760; --sc-body: #dfe5f5; --sc-helmet: #f1e4ae; --sc-ink: #9aa6d6; --sc-acc: #e0a850; --sc-hill: #05080f; }
+/* sun scene (src/sun-scene.js): three scenes, 양달 / 응달 / 밤; only the sun moves. The sun box is the sky (k-* tokens by the sun's state, "low" = evening sun),
+   the picture stands in it with no frame, the words below ride on the ground colour. --sc-text on the sky, --sc-gtext on the ground. The admin preview has no box: .sun-scene paints its own sky */
+.sun-scene { display: block; width: 100%; height: auto; background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); }
+.k-lit { --sc-sky0: #fbeccb; --sc-sky1: #f4cf94; --sc-sun: #e8731a; --sc-halo: #f6a542; --sc-ground: #a0561a; --sc-wall: #3b2f27; --sc-face: #f4b04a; --sc-body: #1c140f; --sc-helmet: #e8731a; --sc-ink: #5a3508; --sc-acc: #8a4d08; --sc-hill: #8d5a2c; --sc-text: #4a2c08; --sc-gtext: #fff; }
+.k-lit.low { --sc-sky0: #ffd9b8; --sc-sky1: #f08a6a; --sc-sun: #e8531a; --sc-halo: #ff9a5a; --sc-ground: #8a3f1c; --sc-wall: #3b2218; --sc-face: #ffb070; --sc-body: #1c0f0a; --sc-helmet: #e8531a; --sc-ink: #6a2810; --sc-text: #5a2410; }
+.k-shade { --sc-sky0: #c9d6e8; --sc-sky1: #8ea5c5; --sc-sun: #e9892a; --sc-halo: #f2b66a; --sc-ground: #3d5373; --sc-wall: #1b2432; --sc-face: #6f87a9; --sc-body: #0f151f; --sc-helmet: #e9892a; --sc-ink: #1f3550; --sc-acc: #1f3550; --sc-hill: #2b3f5c; --sc-text: #10202f; --sc-gtext: #fff; }
+.k-night { --sc-sky0: #0c1226; --sc-sky1: #26305a; --sc-sun: #f1e4ae; --sc-halo: #9aa6d6; --sc-ground: #0d1326; --sc-wall: #05080f; --sc-face: #2c3760; --sc-body: #dfe5f5; --sc-helmet: #f1e4ae; --sc-ink: #9aa6d6; --sc-acc: #e0a850; --sc-hill: #05080f; --sc-text: #e6ebf5; --sc-gtext: #e6ebf5; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .sun-scene.k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; }
-  :root:not([data-theme="light"]) .sun-scene.k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; }
+  :root:not([data-theme="light"]) .k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; --sc-text: #f5ecdc; --sc-gtext: #fbf3e6; }
+  :root:not([data-theme="light"]) .k-lit.low { --sc-sky0: #5a3326; --sc-sky1: #7a3b26; --sc-ground: #6a3118; --sc-ink: #ffd2b8; --sc-text: #ffe6d6; }
+  :root:not([data-theme="light"]) .k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; --sc-text: #dbe6f5; --sc-gtext: #e6ebf5; }
 }
-:root[data-theme="dark"] .sun-scene.k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; }
-:root[data-theme="dark"] .sun-scene.k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; }
-.sc-s0 { stop-color: var(--sc-sky0); } .sc-s1 { stop-color: var(--sc-sky1); }
+:root[data-theme="dark"] .k-lit { --sc-sky0: #4a3a26; --sc-sky1: #6b4a24; --sc-ground: #7a4a1e; --sc-wall: #1a1410; --sc-body: #efe3cf; --sc-ink: #f2c98a; --sc-acc: #f2b25c; --sc-text: #f5ecdc; --sc-gtext: #fbf3e6; }
+:root[data-theme="dark"] .k-lit.low { --sc-sky0: #5a3326; --sc-sky1: #7a3b26; --sc-ground: #6a3118; --sc-ink: #ffd2b8; --sc-text: #ffe6d6; }
+:root[data-theme="dark"] .k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; --sc-text: #dbe6f5; --sc-gtext: #e6ebf5; }
+/* the box: sky on top (chip, hours, picture bled to the edges), ground colour below (the sentence and notes) */
+.sunbox.sc { display: block; padding: 0; overflow: hidden; background: none; }
+.sunbox.sc .sb-sky { padding: var(--sp-14) var(--sp-14) 0; background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
+.sunbox.sc .sb-sky :is(.dwhen, .dw-k, .dw-r) { color: var(--sc-text); }
+.sunbox.sc .sb-fig { width: calc(100% + 2 * var(--sp-14)); max-width: none; margin: var(--sp-8) calc(-1 * var(--sp-14)) 0; }
+.sunbox.sc .sun-scene { background: none; }
+.sunbox.sc .sb-ground { font-family: var(--font-serif); display: grid; gap: var(--sp-10); padding: var(--sp-10) var(--sp-14) var(--sp-14); background: var(--sc-ground); color: var(--sc-gtext); }
+.sunbox.sc .sb-ground :is(.dsent, .sun-veil, .sun-note, .sun-limit, summary) { color: inherit; }
+.sunbox.sc .sb-ground .sun-note { border-left-color: currentColor; }
 .sc-h0 { stop-color: var(--sc-halo); stop-opacity: .55; } .sc-h1 { stop-color: var(--sc-halo); stop-opacity: 0; }
 .sc-sun, .sc-moon { fill: var(--sc-sun); }
 .sc-ground { fill: var(--sc-ground); } .sc-band.a { fill: #000; opacity: .18; } .sc-band.b { fill: #fff; opacity: .14; }
@@ -764,7 +777,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sc-shadow { fill: #08101c; opacity: .38; } .sc-ray { fill: #fff1c2; } .sc-star { fill: #eef1fb; opacity: .85; }
 .sc-tick { fill: var(--sc-acc); } .sc-now { fill: var(--sc-sun); stroke: #fff; stroke-width: 1.2; }
 .sc-body { stroke: var(--sc-body); } .sc-fill-body { fill: var(--sc-body); } .sc-helmet { fill: var(--sc-helmet); } .sc-lamp { fill: #fff3c4; }
-.sc-lab { font-size: 12px; font-weight: 600; fill: var(--sc-ink); text-anchor: middle; }
+.sc-lab { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; fill: var(--sc-ink); text-anchor: middle; }
 .sc-lab.acc { fill: var(--sc-acc); } .sc-lab.on-ground { fill: #cfe0f5; }
 .dsent { margin: 0; font-size: var(--fs-md); line-height: 1.5; }
 .dsent b { font-weight: 700; }
@@ -805,6 +818,8 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
   .m-cols .sunbox { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; padding: var(--sp-16); }
   .m-cols .sunbox:not(.solo) { display: flex; }
   .m-cols .sunbox:not(.solo) > .sb-fig { max-width: 300px; }
+  .m-cols .sunbox.sc { padding: 0; display: block; }
+  .m-cols .sunbox.sc .sb-fig { max-width: none; }
   .m-cols > .m-foot { grid-column: 1; grid-row: 3; }
   .m-cols > .sheet-open { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
 }
