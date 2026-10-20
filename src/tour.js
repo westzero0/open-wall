@@ -68,8 +68,14 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   const place = () => {
     const target = resolve(steps[i]);
     if (!target) return;
-    const r = target.getBoundingClientRect();
-    const key = `${i}|${r.left}|${r.top}|${r.width}|${r.height}|${innerWidth}|${innerHeight}`;
+    let r = target.getBoundingClientRect();
+    const more = steps[i].extend && target.closest('.row-btn')?.querySelector(steps[i].extend); // 날씨 칩과 ‘3시간 가능’을 한 구멍으로
+    if (more) {
+      const q = more.getBoundingClientRect();
+      const l = Math.min(r.left, q.left), t = Math.min(r.top, q.top);
+      r = new DOMRect(l, t, Math.max(r.right, q.right) - l, Math.max(r.bottom, q.bottom) - t);
+    }
+    const key =`${i}|${r.left}|${r.top}|${r.width}|${r.height}|${innerWidth}|${innerHeight}`;
     if (key === last) return;
     last = key;
     dlg.classList.toggle('follow', performance.now() > settle);
