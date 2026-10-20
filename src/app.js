@@ -8,7 +8,7 @@ import { dialModel } from './dial.js';
 import { renderDial } from './dial-view.js';
 import { getStatus } from './hours.js';
 import {
-  axisFrac, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
+  axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
@@ -327,6 +327,20 @@ const span = (cls, a, b) => {
   s.style.width = `${(axisFrac(b) - axisFrac(a)) * 100}%`;
   return s;
 };
+// An orange sun band that starts or ends where the open bar does takes the bar's round end (the list's bar and the sheet's alike);
+// inside the bar it stays square so two colours meet cleanly.
+const capCls = (a, b, open) => `${open.some(([x]) => x === a) ? ' cap-l' : ''}${open.some(([, y]) => y === b) ? ' cap-r' : ''}`;
+// 13:30 → "13:30", 9:00 → "9": an hour told the short way, for a day with too many stretches to label each bar
+const hourWord = (m) => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60));
+// The hours of one open stretch, on one line over its bar: "10:00–14:00". A stretch that a break follows ends its label at the break's start
+// (right-aligned to its bar's end); the last stretch starts its label where its bar starts. Kept inside the track by the ch width.
+const barLabel = (a, b, text, endsAtBreak) => {
+  const t = el('span', { class: 'g-txt' }, text);
+  const room = `calc(100% - ${text.length}ch - 6px)`; // the label's own width: the track minus it is the furthest it may start
+  if (endsAtBreak) t.style.right = `min(${(1 - axisFrac(b)) * 100}%, ${room})`;
+  else t.style.left = `min(${axisFrac(a) * 100}%, ${room})`;
+  return t;
+};
 
 // bottom-right chip on the photo; the credit comes from data, so it goes in as text only
 function creditChip(c) {
@@ -480,22 +494,27 @@ function hoursGrid(wall, at) {
     if (r.closed) trk.append(el('span', { class: 'g-off' }), el('span', { class: 'g-closed' }, r.text));
     else if (!open.length) trk.append(el('span', { class: 'g-closed none' }, r.text));
     else {
-      trk.append(...open.map(([a, b]) => span('g-bar', a, b)), ...clipDay(r.breaks).map(([a, b]) => span('g-brk', a, b)));
-      const t = el('span', { class: 'g-txt' }, r.range);
-      t.style.right = `${(1 - axisFrac(open[open.length - 1][1])) * 100}%`;
-      trk.append(t);
+      // today's row is drawn like the list's bar: the part before the time line is paler and outlined, the halves of a split interval meet square
+      const bars = r.today && live ? barSegments(open, nowMin) : open.map(([a, b]) => [a, b, false]);
+      trk.append(...bars.map(([a, b, past], i, all) => span(`g-bar${past ? ' past' : ''}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)), ...clipDay(r.breaks).map(([a, b]) => span('g-brk', a, b)));
+      // every open stretch carries its own hours right above its bar (24h, zero-padded, as in the list and the notes)
+      const parts = r.text.split(', ');
+      const stretches = r.intervals.map(([a, b0], i) => [a, Math.min(b0, 1440), parts[i]]).filter(([a, b, text]) => text && axisFrac(b) > axisFrac(a));
+      // three or more stretches leave no room for a label each over its bar: the day's hours then go in one short line at the left
+      if (stretches.length > 2) trk.append(el('span', { class: 'g-note' }, `${stretches.map(([a, b]) => `${hourWord(a)}–${hourWord(b)}`).join(' · ')}시`));
+      else trk.append(...stretches.map(([a, b, text], i) => barLabel(a, b, text, i < stretches.length - 1)));
     }
     // today closed by a closed_date / nth closure: the weekday's usual bar fades under the day's own word
     const shut = r.today && day?.closed && open.length;
     if (shut) trk.append(el('span', { class: 'g-closed' }, day.text));
-    if (r.today && bar?.sun) trk.append(...clipDay(sunOn).map(([a, b]) => span('g-sunon', a, b))); // the same as the list: the open bar turns orange where it is sunny
+    if (r.today && bar?.sun) trk.append(...clipDay(sunOn).flatMap(([a, b]) => (nowMin <= a ? [[a, b, false]] : nowMin >= b ? [[a, b, true]] : [[a, nowMin, true], [nowMin, b, false]])).map(([a, b, past]) => span(`g-sunon${past ? ' past' : ''}${capCls(a, b, open)}`, a, b))); // the same as the list: the open bar turns orange where it is sunny, paler before the time line
     const said = `${r.days}${r.today ? (r.members > 1 ? '(오늘 포함)' : '(오늘)') : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
     body.append(el('div', { class: `g-row${r.today ? ' g-today' : ''}${shut ? ' shut' : ''}`, role: 'listitem', 'aria-label': said },
       el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
       el('span', { class: 'g-wrap', 'aria-hidden': 'true' }, trk)));
   }
 
-  const breaks = [...new Set(wk.rows.flatMap((r) => r.breaks.map((b) => formatRanges([b]))))];
+  const breaks = [...new Map(wk.rows.flatMap((r) => r.breaks).map((b) => [formatRanges([b]), b])).entries()].sort(([, a], [, b]) => a[0] - b[0]).map(([t]) => t); // one of each, earliest first
   const notes = [
     breaks.length ? `휴게 ${breaks.join(', ')}` : null,
     ...wk.rows.filter((r) => r.nth).map((r) => `${r.nth.map((n) => NTH_KO[n]).join('·')} ${r.days}요일 휴무`),
@@ -569,25 +588,33 @@ function seasonSunBlock(wall, at, d) {
     const on = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(on));
     more.textContent = on ? '접기 ▴' : '다른 계절 보기 ▾';
-    more.closest('.ssun').querySelectorAll('.s-row:not(.cur)').forEach((r) => { r.hidden = !on; });
+    more.closest('.ssun').querySelectorAll('.s-row:not(.cur), .sr-only li:not(.cur)').forEach((r) => { r.hidden = !on; });
   });
+  const texts = []; // what each bar says in words (the bars are aria-hidden): kept for screen readers, a line a season
+  const why = sunWhy(); // the long caveat is folded under 계산 기준
+  why.append(el('p', { class: 's-ref' }, '지금 계절은 고른 날짜의 해로, 나머지 계절은 6/21(여름) · 3/21(봄·가을) · 12/21(겨울)의 해를 기준으로 계산해요.'));
   return el('section', { class: 'ssun', 'aria-label': `계절마다 양달인 시간, ${DAY_KO[at.getDay()]}요일 운영시간 기준` },
     gridAxis(null),
     ...rows.map((s) => {
-      const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
-        ...clipDay(s.open).map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
-        ...clipDay(s.on).map(([a, b]) => span('g-sunon', a, b)));
       const open = s.open.length > 0; // with open hours only the sun inside them is told; a closed / unknown day keeps the day's whole window for reference
+      const openClip = clipDay(s.open);
       const shown = open ? s.on : s.windows;
-      const sunText = shown.length ? formatRanges(shown) : open ? '운영 중 양달 없음' : '하루 종일 응달';
+      const sunText = shown.length ? formatRanges(shown).replaceAll(', ', ' · ') : open ? '운영 중 양달 없음' : '하루 종일 응달';
       const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
+      texts.push(el('li', { class: s.current ? 'cur' : null, hidden: fold && !s.current ? '' : null }, `${s.name} ${sunText}${hint}`));
+      const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
+        ...openClip.map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
+        ...clipDay(s.on).map(([a, b]) => span(`g-sunon${capCls(a, b, openClip)}`, a, b)),
+        // the sunny hours inside the open hours go over their orange part; none, or a closed day, is a quiet word at the left
+        ...(open && s.on.length ? clipDay(s.on).map(([a, b], i, all) => barLabel(a, b, formatRanges([[a, b]]), i < all.length - 1)) : [el('span', { class: 'g-note' }, `${sunText}${hint}`)]));
       // the same two columns as the hours grid (name on the left, bar on the right), so both axes are as wide
-      return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null },
+      return el('div', { class: `s-row${s.current ? ' cur' : ''}`, hidden: fold && !s.current ? '' : null, 'aria-hidden': 'true' }, // read once, by the list below
         el('span', { class: 'g-lab' }, el('b', {}, s.name), s.current ? el('small', {}, '지금') : null),
-        el('div', { class: 's-main' }, el('p', { class: 's-head' }, `${s.date} · ${open && shown.length ? '운영 중 ' : ''}예상 ${sunText}${hint}`), trk));
+        el('div', { class: 's-main' }, trk));
     }),
+    el('ul', { class: 'sr-only', 'aria-label': '계절별 양달 시간, 운영 중 예상' }, ...texts),
     fold ? more : null,
-    sunWhy()); // the long caveat is folded under 계산 기준
+    why);
 }
 
 // The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
@@ -989,9 +1016,12 @@ function infoBlock(m) {
   // only what can stop a visit (closures, warnings, "!" lines); the other memo lines are the wall sheet's 시설 section
   if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map(memoItem)));
   // one line: the status, then the wall's own lot (요금 · 주변 · 참고 are in the wall sheet's 주차 section)
-  const { onsite } = m.parkingWhere;
-  parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'),
-    el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '')));
+  // status → cost for the stay → lot; the whole line opens the sheet at its 주차 section
+  const { cost, where } = m.parkingLine;
+  const go = el('button', { type: 'button', class: 'pv pv-go' }, // no aria-label: the visible words (status, cost, lot) are its name
+    el('span', { class: 'pv-t' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), cost ? ` · ${cost}` : '', where ? ` · ${where}` : ''), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+  go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'use', section: 'parking' }));
+  parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'), go));
   return parts;
 }
 
@@ -1110,10 +1140,12 @@ function sheetSection(m, s, content) {
     ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
-  return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title },
+  return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title, 'data-sec': s.key },
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
     s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
-    s.empty || s.dated === false ? null : el('p', { class: 'ws-chk end' }, m.checked));
+    ...(s.empty || s.dated === false ? [] : s.key === 'parking' // the parking has its own date (or none): the hours' date says nothing about it
+      ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, m.parkingChecked) : null]
+      : [el('p', { class: 'ws-chk end' }, m.checked)]));
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -1148,8 +1180,17 @@ function routePane(m, wall) {
 }
 function sheetParking(m) {
   const { onsite } = m.parkingWhere;
-  return el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '',
-    ...m.parkingMore.map(({ k, v }) => el('span', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v)));
+  // the calculated amounts, the same table for one lot or several: a row per priced lot (name, walk, the stay the card is priced for, 하루, 비고 = free span + conditions)
+  const f = m.parkingFees;
+  const fees = f ? el('div', { class: 'pfee-wrap', role: 'region', 'aria-label': '주차장별 계산한 요금', tabindex: '0' }, el('table', { class: 'pfee' },
+    el('caption', {}, '계산한 주차 요금'),
+    el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, '주차장'), el('th', { scope: 'col' }, `${f.hours}시간`), el('th', { scope: 'col' }, '하루'), el('th', { scope: 'col', class: 'pf-note' }, '비고'))),
+    el('tbody', {}, ...f.rows.map((r) => el('tr', {}, el('th', { scope: 'row' }, r.name, r.walk_min ? el('span', { class: 'pf-walk' }, `도보 ${r.walk_min}분`) : null),
+      el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), el('td', { class: 'pf-note' }, [r.free, r.note].filter(Boolean).join(' · ') || '–')))))) : null;
+  // status and the wall's own lot, then the amounts (the typed wording small under them), then the rest (주변 · 참고)
+  const head = el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '');
+  const rows = m.parkingMore.filter(({ k }) => !(f && k === '요금')).map(({ k, v }) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v));
+  return el('div', {}, head, ...(f ? [fees, m.parking.fee ? el('p', { class: 'pfee-src' }, `안내 원문: ${m.parking.fee}`) : null, ...rows] : rows));
 }
 // 게시판 tab: the wall's one-line board (every post, 더 보기, the form) and the 희노애Rock reviews; made when the tab is first shown
 function boardPane(m) {
@@ -1371,7 +1412,7 @@ function crowdQuick(name) {
 }
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
-  weather: weatherCtx(row.wall.name, at), ropeM: Number(ui.ropeM) || 0,
+  weather: weatherCtx(row.wall.name, at), ropeM: Number(ui.ropeM) || 0, stayHours: Number(ui.minHours) || undefined, // the parking cost is told for the stay the filter asks (3/5/8시간+), else the default
 });
 
 let rowSeq = 0;
@@ -1405,7 +1446,7 @@ function timeRow(row, at) {
       ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
       // the part before the tick is already gone: its orange is paler, like the green under it
       ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
-        .map(([a, b, past]) => span(past ? 'sunband past' : 'sunband', a, b)),
+        .map(([a, b, past]) => span(`${past ? 'sunband past' : 'sunband'}${capCls(a, b, bar.open)}`, a, b)),
       tick) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));

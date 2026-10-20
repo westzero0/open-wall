@@ -496,6 +496,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.soon .bar .seg { background: var(--soon); }
 .row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
+.sunband.cap-l, .g-sunon.cap-l { border-top-left-radius: var(--r-sm); border-bottom-left-radius: var(--r-sm); } /* the orange that starts at the bar's start keeps its round end */
+.sunband.cap-r, .g-sunon.cap-r { border-top-right-radius: var(--r-sm); border-bottom-right-radius: var(--r-sm); }
 .sunband { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--sun); } /* the open bar itself turns orange where the wall is sunny (only inside the open hours); square ends, so no rounded orange shows inside the green */
 .sunband.past { opacity: .45; }
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
@@ -822,9 +824,9 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
 .fees tbody th { font-weight: 700; width: 34%; }
 .fees .f-who { color: var(--muted); white-space: nowrap; }
-.fees .f-won, .fees .f-all { text-align: right; white-space: nowrap; }
+.fees .f-won, .fees .f-all { text-align: center; white-space: nowrap; }
 .fees .f-all { text-align: center; }
-.fees thead th:nth-child(n+3) { text-align: right; }
+.fees thead th:nth-child(n+3) { text-align: center; }
 .fees .f-times { white-space: normal; font-size: var(--fs-xs); line-height: 1.5; }
 .fees .f-times span { display: block; white-space: nowrap; }
 .fees .f-note { color: var(--muted); font-size: var(--fs-xs); }
@@ -843,7 +845,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-seg button.shut:not([aria-pressed="true"]) .sw-m { font-weight: 700; opacity: 1; }
 .g-seg button[aria-pressed="true"] .sw-k::before { content: "✓ "; }
 .g-lead { font-size: var(--fs-sm); margin-bottom: var(--sp-4); }
-.g-lead b { color: var(--open); }
+.g-lead b { color: var(--warn); } /* only drawn for a closed day: the closure reads in the closed colour, not the open one */
 .g-lead.preview { color: var(--warn); font-weight: 600; }
 .g-axis { position: relative; height: 22px; margin-left: var(--lab); font-size: var(--fs-xs); color: var(--muted); }
 .g-axis span { position: absolute; top: 0; line-height: 22px; transform: translateX(-50%); white-space: nowrap; }
@@ -854,28 +856,32 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-plot { position: absolute; top: 0; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
 .g-plot .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); z-index: 1; }
 .g-plot .nowl { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--now); z-index: 3; }
-/* --tx: the hour-text line above each bar; bar, break and sun sit below it, so larger text pushes them down */
-.g-body { --tx: 1.15rem; }
-.g-row { display: flex; min-height: max(44px, calc(var(--tx) + 26px)); border-top: 1px solid var(--hair); }
+.g-row { display: flex; min-height: 44px; border-top: 1px solid var(--hair); }
 .g-lab { width: var(--lab); flex: none; display: flex; flex-direction: column; justify-content: center; font-size: var(--fs-sm); line-height: 1.2; }
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
 .g-wrap { display: contents; }
 .g-trk { position: relative; display: block; flex: 1; min-width: 0; }
 .g-row.g-today { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
 .g-row.g-today .g-lab { font-weight: 700; }
-.g-bar { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 3px; background: var(--open-bar); z-index: 2; }
+/* the week's bars are the list's bar (.bar .seg): 8px, the same radius and tones, the part before the time line paler with a 1px edge */
+.g-bar { position: absolute; bottom: 10px; height: 8px; border-radius: var(--r-sm); background: var(--open); z-index: 2; }
+.g-bar.past { background: var(--open-past); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
+.g-bar.j-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.g-bar.j-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .g-brk, .g-off, .k-hatch {
   background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 6px);
 }
-.g-brk { position: absolute; top: calc(var(--tx) + 4px); height: 16px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); z-index: 2; }
-.g-off { position: absolute; left: 0; right: 0; top: 12px; bottom: 12px; border: 1px solid var(--line); border-radius: var(--r-sm); }
-.g-closed { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); padding: 0 var(--sp-4); border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); font-weight: 600; z-index: 4; white-space: nowrap; }
+.g-brk { position: absolute; bottom: 8px; height: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); z-index: 2; }
+.g-off { position: absolute; left: 0; right: 0; bottom: 6px; height: 16px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.g-closed { position: absolute; left: 6px; bottom: 6px; line-height: 16px; padding: 0 var(--sp-4); border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); font-weight: 600; z-index: 4; white-space: nowrap; }
 .g-closed.none { left: 0; font-weight: 400; color: var(--muted); background: none; }
-.g-txt { position: absolute; top: 3px; padding: 0 3px; border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); line-height: calc(var(--tx) - 2px); white-space: nowrap; z-index: 4; }
-.g-row.g-today .g-txt, .g-row.g-today .g-closed { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
-.g-row.shut .g-bar, .g-row.shut .g-txt { opacity: .35; }
+.g-txt { position: absolute; bottom: 20px; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface); font-size: var(--fs-xs); line-height: 1.25; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 4; } /* one line over its bar */
+.g-note { position: absolute; left: 0; max-width: 100%; bottom: 20px; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface); color: var(--muted); font-size: var(--fs-xs); line-height: 1.25; font-variant-numeric: tabular-nums; z-index: 4; } /* a quiet word or a short line over the bar, above the time line; it may wrap on large text */
+.s-row.cur .g-txt, .s-row.cur .g-note, .g-row.g-today .g-txt, .g-row.g-today .g-note, .g-row.g-today .g-closed { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
+.g-row.shut .g-bar, .g-row.shut .g-txt, .g-row.shut .g-sunon { opacity: .35; }
 /* 운영 중 양달: the open bar itself is orange there (the same as the list row: same place and height as .g-bar, square ends) */
-.g-sunon { position: absolute; top: calc(var(--tx) + 6px); height: 12px; border-radius: 0; background: var(--sun-bar); z-index: 3; }
+.g-sunon { position: absolute; bottom: 10px; height: 8px; border-radius: 0; background: var(--sun-bar); z-index: 3; }
+.g-sunon.past { opacity: .45; }
 .g-key { list-style: none; margin: var(--sp-8) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-12); font-size: var(--fs-xs); color: var(--muted); }
 .g-key li { display: inline-flex; align-items: center; gap: var(--sp-6); }
 .g-key i { flex: none; display: inline-block; width: 20px; height: 10px; border-radius: var(--r-xs); }
@@ -886,13 +892,13 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .k-open { border: 1px solid var(--open); background: color-mix(in srgb, var(--open-past) 50%, transparent); }
 .g-notes { list-style: none; margin: var(--sp-6) 0 0; padding: 0; font-size: var(--fs-xs); color: var(--muted); }
 /* seasonal sun: the season on the left (like a weekday in the hours grid), "6/21 · 예상 12:40–19:40" over the track on the right */
-.s-row { display: flex; align-items: center; padding: var(--sp-4) 0 var(--sp-2); border-top: 1px solid var(--hair); }
+.s-row { display: flex; align-items: center; padding: 0; border-top: 1px solid var(--hair); }
 .s-main { flex: 1; min-width: 0; }
 .ws-legend { margin: var(--sp-6) 0 var(--sp-10); }
-.s-head { font-size: var(--fs-sm); line-height: 1.35; }
-.s-row .g-trk { height: 30px; }
+.g-lab small { white-space: nowrap; }
+.s-ref { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.s-row .g-trk { height: 44px; }
 .s-row.cur { background: color-mix(in srgb, var(--open-past) 45%, transparent); }
-.s-row .g-bar, .s-row .g-sunon { top: 9px; } /* the 30px track: the 12px bar sits in its middle */
 .s-row[hidden] { display: none; }
 .ssun-more { display: block; width: 100%; min-height: var(--tap); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
 /* the hours time line is dragged along the axis and the bars; pan-y leaves the page's up-and-down scroll and keeps the sheet's sideways tab swipe out */
@@ -910,11 +916,26 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .irow .mk { color: var(--muted); align-self: start; padding-top: 1px; }
 .pv { grid-column: 2 / -1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .pk-word { font-weight: 600; }
-.pnear { display: block; margin-top: var(--sp-2); color: var(--muted); }
-.pn-k { margin-right: var(--sp-6); font-weight: 600; }
+.pnear { display: block; margin: var(--sp-4) 0 0; } /* a labelled row: the label is the quiet one (as in the memo list), the words are the text */
+.pn-k { margin-right: var(--sp-6); color: var(--muted); font-weight: 600; }
 .pk-word.good { color: var(--open); }
 .pk-word.warn { color: var(--warn); }
 .pk-word.muted { color: var(--muted); font-weight: 400; }
+.pv-go { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); min-height: var(--tap); width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pv-t { min-width: 0; }
+.pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-lg); }
+/* 주차 요금표: 행 = 주차장, 열 = 1시간·하루·비고. The name column stays while the rest scrolls sideways. */
+.pfee-wrap { margin-top: var(--sp-8); overflow-x: auto; }
+.pfee { border-collapse: separate; border-spacing: 0; font-size: var(--fs-sm); white-space: nowrap; }
+.pfee caption { padding-bottom: var(--sp-4); color: var(--muted); font-weight: 600; text-align: left; caption-side: top; }
+.pfee th, .pfee td { padding: var(--sp-6); border-top: 1px solid var(--hair); font-weight: 400; text-align: center; font-variant-numeric: tabular-nums; }
+.pfee thead th, .pfee thead th.pf-note { color: var(--muted); font-size: var(--fs-xs); text-align: center; }
+.pfee tbody th { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 600; white-space: normal; min-width: 5.5em; max-width: 8.5em; }
+.pfee .pf-note { text-align: left; white-space: normal; min-width: 6em; color: var(--muted); font-size: var(--fs-xs); }
+.pfee-src { margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.pf-walk { display: block; color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
+.ws-sec.flash { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (prefers-reduced-motion: no-preference) { .ws-sec.flash { transition: outline-color .4s; } }
 .addr-line { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0 0; }
 .addr-line .icon-btn { margin: -10px 0; }
 /* the whole line is the button: no copy chip; a dotted underline says it can be tapped */
@@ -939,7 +960,8 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 
 .key { list-style: none; margin: var(--sp-10) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-14); color: var(--muted); font-size: var(--fs-xs); }
 .key li { display: inline-flex; align-items: center; gap: 5px; }
-.key i { display: inline-block; width: 16px; height: 5px; border-radius: var(--r-xs); }
+.key i, .ab-sec p > i[class^="k-"] { display: inline-block; width: 16px; height: 5px; border-radius: var(--r-xs); }
+.ab-sec p > i[class^="k-"] { margin-right: var(--sp-6); vertical-align: middle; } /* the swatch that starts a how-to line */
 .k-open { background: var(--open); }
 .k-sun { background: var(--sun); }
 .k-soon { background: var(--soon); }
@@ -1714,11 +1736,13 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 /* a section is a lighter panel on the sheet's backdrop: title (with 수정 요청 at its right), the check date under it, then the facts */
 .wall-sheet { background: var(--bg); }
 .ws-sec { margin: 0 0 var(--sp-10); padding: var(--sp-14) var(--sp-16) var(--sp-16); border-radius: var(--r-base); background: var(--surface); }
+.ws-sec.empty { border: 0; color: inherit; font-size: inherit; } /* not the page-wide .empty box: the section holds its own dotted .ws-empty */
 .ws-sec-h { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: var(--tap); }
 .ws-sec-h h3 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
 .ws-sec-h .ws-fix { min-height: var(--tap); padding: 0 var(--sp-4); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
 .ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-10); color: var(--muted); font-size: var(--fs-xs); }
 .ws-chk.end { margin: var(--sp-10) 0 0; text-align: right; } /* a section's check date: bottom right of its card */
+.ws-stale { margin: var(--sp-8) 0 0; color: var(--warn); font-size: var(--fs-xs); }
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }

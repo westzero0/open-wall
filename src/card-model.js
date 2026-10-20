@@ -7,6 +7,7 @@ export { ROPE_LENGTHS }; // (the list lives in store.js: normalizeWall cleans ro
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import { weatherLine, windy } from './weather.js';
+import { DEFAULT_STAY_H, TABLE_HOURS, feeAfter, feeBrief, lotFeeTable, pricedLots } from './parking-rate.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
 } from './viewmodel.js';
@@ -100,6 +101,15 @@ function breakTags(wall, at) {
   return open.slice(1).map(([a], i) => [open[i][1], a]).filter(([x, y]) => y > x).map((r) => `휴게 ${formatRanges([r])}`);
 }
 
+// The parking's own check date for the sheet's 주차 section (not the hours' date), and a warning once it is older than PARKING_STALE_DAYS.
+const PARKING_STALE_DAYS = 183;
+export function parkingFresh(parking, now) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(parking?.checked_at ?? '');
+  if (!m) return { parkingChecked: null, parkingStale: false };
+  const days = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
+  return { parkingChecked: `주차 확인일 ${parking.checked_at}`, parkingStale: days > PARKING_STALE_DAYS };
+}
+
 // ---- facts ----
 const PARKING_TEXT = {
   free: ['주차 가능', 'good'], // 무료·유료 is no reason to leave the car at home: both read 가능 (the price is the 요금 line)
@@ -117,9 +127,12 @@ const parkingNames = (parking) => (parking?.note ?? '').split(/\s*·\s*/).map((s
 const ON_SITE = /^(?:(?:인공)?(?:외벽|암벽장)\s*앞|(?:건물|센터)\s*주차장)/;
 // Lists kept in the data (parking.onsite / nearby) win; a wall without them (older storage, an import) falls back to the note's wording.
 // A fee counts too: a wall that has its price in the data has its note as advice, not as lot names.
-const hasLots = (parking) => Boolean(parking?.onsite?.length || parking?.nearby?.length || parking?.fee);
+const hasLots = (parking) => Boolean(parking?.onsite?.length || parking?.nearby?.length || parking?.lots?.length || parking?.fee);
 const parkingWhereOf = (parking) => {
-  if (hasLots(parking)) return { onsite: parking.onsite ?? [], nearby: parking.nearby ?? [] };
+  if (hasLots(parking)) {
+    const nearby = parking.nearby ?? [];
+    return { onsite: parking.onsite ?? [], nearby: [...nearby, ...(parking.lots ?? []).map((l) => l.name).filter((n) => !nearby.includes(n))] };
+  }
   const names = parkingNames(parking);
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
 };
@@ -127,12 +140,27 @@ const parkingWhereOf = (parking) => {
 /**
  * parkingView(parking) → the parking part of the card model: the badge (`parking`), the lots (`parkingWhere`), the advice line (`parkingTip`),
  * what the wall sheet's 주차 section adds (`parkingMore`). The admin editor draws its preview from this same function.
+ * The card's one line is `parkingLine` { cost, where }: the cost words for a stay of `stayHours` (only with a rate/cost, or 무료), then the lot
+ * (the wall's own; a wall with no parking tells the nearby one instead). `parkingFees` is the sheet's 3·5·8시간·하루 table (null without a rate/cost).
  */
-export function parkingView(parking) {
+export function parkingView(parking, stayHours = DEFAULT_STAY_H) {
   const parkingWhere = parkingWhereOf(parking);
   const parkingTip = hasLots(parking) ? parking.note ?? '' : ''; // with the lots in the data the note is not names to split but a line of advice
+  // the lot the card prices: the wall's own, else the cheapest nearby lot that has a rate for this stay
+  const lots = pricedLots(parking);
+  const pick = lots.find((l) => l.own) ?? lots.map((l) => [feeAfter(l, stayHours), l]).filter(([n]) => n != null).sort((a, b) => a[0] - b[0])[0]?.[1] ?? lots[0];
+  const brief = pick ? feeBrief(pick, stayHours) : '';
+  const first = pick?.rate?.conditions?.[0]; // the one that matters most, by the order it was typed; notes belong in parking.note
+  const cost = parking?.status === 'free' ? '무료' : parking?.status === 'paid' ? (pick ? (brief === '요금 확인 필요' ? '유료 · 요금 확인 필요' : [brief, first].filter(Boolean).join(' · ')) : '유료') : ''; // paid with no rate: still 유료, so it never reads as free
+  const where = parking?.status === 'none' ? (parkingWhere.nearby[0] ? `주변 ${parkingWhere.nearby[0]}` : '')
+    : pick && !pick.own ? `주변 ${pick.name}${pick.walk_min ? ` · 도보 ${pick.walk_min}분` : ''}` // the lot that prices the card is not the wall's own
+      : parkingWhere.onsite.length ? parkingWhere.onsite.join(' · ')
+        : ['free', 'paid'].includes(parking?.status) && (parking.nearby?.[0] ?? parking.lots?.[0]?.name) ? `주변 ${parking.nearby?.[0] ?? parking.lots[0].name}` : ''; // 가능 = a lot within walking distance; say whether it is at the wall or nearby (a name typed in the data, never a piece of the note)
+  const priced = lots.length > 0;
   return {
     parking: parkingLabel(parking),
+    parkingLine: { cost, where },
+    parkingFees: priced ? { rows: lotFeeTable(parking), cols: TABLE_HOURS, hours: stayHours } : null,
     parkingNames: parkingNames(parking),
     parkingWhere,
     parkingTip,
@@ -225,6 +253,9 @@ function memoLines(memo) {
 
 // ---- fees (wall.fees / wall.discount, cleaned in normalizeWall) ----
 const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g, ',')}원`);
+// A note is free text, so its prices may come without the unit ("1일 500 · 월 5,000"): add 원 to a comma-grouped number or one of 3+ digits,
+// unless a unit already follows (원 명 % 년 시 분 cm 개월 세 타임) or it is part of a time or range (15:00, 09~13).
+export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
 // only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '-' when only one is known.
@@ -244,9 +275,6 @@ export function feeTable(wall) {
   // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
   return { items, split: items.some((it) => it.rows.some((r) => r.all === undefined)), discount: wall.discount || null };
 }
-// A note is free text, so its prices may come without the unit ("1일 500 · 월 5,000"): add 원 to a comma-grouped number or one of 3+ digits,
-// unless a unit already follows (원 명 % 년 시 분 cm 개월 세 타임) or it is part of a time or range (15:00, 09~13).
-export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 
 // One word of price for a pick on a weekend day: 무료, 성인 1,500원 (the first priced 성인 item: weekend, then all, then
 // weekday; a 0 won item such as a free lesson is skipped), 유료 when only the tag says so, else null.
@@ -382,7 +410,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, ropeM = 0 } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -447,7 +475,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     bar,
     barBreaks: breakTags(wall, bar?.ahead ?? at), // the card's chips follow its bar's day
     breaks: breakTags(wall, at), // the expanded row's: the picked day
-    ...parkingView(wall.parking),
+    ...parkingView(wall.parking, stayHours),
+    ...parkingFresh(wall.parking, now),
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
     checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',

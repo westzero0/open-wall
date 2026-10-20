@@ -6,6 +6,7 @@
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
 import { el } from './dom.js';
 import { config } from './config.js';
+import { nameBreak } from './wall-sheet-model.js';
 
 let build = null; // (wallName) => { tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
 let onClose = null;
@@ -14,6 +15,7 @@ let opener = null; // the button that opened it: focus goes back there
 let wall = '';
 let pushed = false; // did we push a history entry that closing has to undo?
 let tabEls = [], panels = [], lazy = [];
+let flashTimer = 0;
 let cur = 0; // the tab in view
 
 export const registerWallSheet = (fn) => { build = fn; };
@@ -78,14 +80,16 @@ function make() {
   document.body.append(dlg);
 }
 
-/** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `tab`: the key of the tab to start on (an unknown key = the first). */
-export function openWallSheet(wallName, from = null, { push = true, tab = null } = {}) {
+/** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `tab`: the key of the tab to start on (an unknown key = the first). `section`: a section key of that tab to scroll to and mark. */
+export function openWallSheet(wallName, from = null, { push = true, tab = null, section = null } = {}) {
   const built = build?.(wallName);
   if (!built?.tabs.length) return; // not registered, or an unknown wall
   if (!dlg) make();
   if (dlg.open) return;
   wall = wallName;
-  title.textContent = wallName;
+  const split = nameBreak(wallName); // a long name with no space breaks ahead of its kind of place (인공암벽장 …), not inside a word
+  if (split) title.replaceChildren(split[0], document.createElement('wbr'), split[1]);
+  else title.textContent = wallName;
   tabEls = built.tabs.map((t, i) => el('button', { type: 'button', role: 'tab', id: `ws-t${i}`, 'aria-controls': `ws-p${i}` },
     t.icon ? el('span', { class: 'ws-ic' }, t.icon) : null, el('span', { class: 'ws-tl' }, t.label)));
   const several = built.tabs.length > 1; // one tab: no tab bar, so its content is no tabpanel either
@@ -118,4 +122,11 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null }
   paint(first);
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
   title.focus();
+  const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
+  if (sec) {
+    sec.scrollIntoView({ block: 'start', behavior: 'instant' });
+    sec.classList.add('flash');
+    clearTimeout(flashTimer); // a reopen within the 1.6 s must not have its mark wiped by the earlier timer
+    flashTimer = setTimeout(() => sec.classList.remove('flash'), 1600);
+  }
 }

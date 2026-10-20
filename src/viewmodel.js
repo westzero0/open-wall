@@ -331,8 +331,11 @@ export function seasonSun(wall, at) {
     const day = i === cur ? at : new Date(at.getFullYear(), mo, d);
     const v = slotOf(wall, key, inWinter(wall, day), day);
     const open = v ? dayHours(v).intervals.map(([a, b]) => [a, Math.min(b, 1440)]) : [];
-    const on = overlap(open, s.windows);
-    return { ...s, open, on, closed: v === null, unknown: v === undefined, current: i === cur };
+    // the current row is figured for the picked day itself (the same sun as the 오늘 양달 above it; 3/21 is 50 minutes to 2 hours off in mid-autumn);
+    // the other rows stay on their season's day (6/21 · 3/21 · 12/21)
+    const windows = i === cur ? sunIntervals(wall, new Date(at.getFullYear(), at.getMonth(), at.getDate(), 12)) : s.windows;
+    const on = overlap(open, windows);
+    return { ...s, windows, open, on, closed: v === null, unknown: v === undefined, current: i === cur };
   });
 }
 

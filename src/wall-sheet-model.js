@@ -8,9 +8,18 @@ const TIME = [
 ];
 const USE = [
   { key: 'facility', title: '시설', kind: '기타' }, // the memo lines the card face does not show; only with such lines
-  { key: 'fees', title: '요금', kind: '기타' },
+  { key: 'fees', title: '입장 요금', kind: '기타' }, // 입장, so it is not taken for the parking fee below
   { key: 'parking', title: '주차', kind: '주차' },
 ];
+
+// A long name with no space ("천안시도솔광장인공암벽장") may break where its kind of place begins, never inside a word:
+// → [before, after] split ahead of the first of these words, or null (a name with a space, or none of them, keeps keep-all as it is).
+const PLACE_WORDS = /인공암벽|스포츠클라이밍|클라이밍|암벽장|암벽/;
+export function nameBreak(name) {
+  if (/\s/.test(name)) return null;
+  const i = name.search(PLACE_WORDS);
+  return i > 0 ? [name.slice(0, i), name.slice(i)] : null;
+}
 
 export function sheetModel(m, avail) {
   const empty = {

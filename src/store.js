@@ -124,13 +124,60 @@ const cleanLots = (v) => (Array.isArray(v)
   ? v.filter((s) => typeof s === 'string').map((s) => s.replaceAll(';', ',').trim().slice(0, MAX_PARKING_LOT_NAME).trim()).filter(Boolean).slice(0, MAX_PARKING_LOTS)
   : []);
 
+// parking.rate (src/parking-rate.js): whole numbers in a sane range, chips as short text; anything else is dropped. An empty rule is no rule.
+const cleanInt = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+const cleanBlock = (v) => {
+  const min = isPlainObject(v) ? cleanInt(v.min, 1440) : null;
+  const won = isPlainObject(v) ? cleanInt(v.won, 1000000) : null;
+  return min > 0 && won != null ? { min, won } : null;
+};
+export function cleanRate(v) {
+  if (!isPlainObject(v)) return null;
+  const out = {};
+  const free = cleanInt(v.free_min, 1440);
+  if (free) out.free_min = free;
+  const first = cleanBlock(v.first);
+  if (first) out.first = first;
+  const step = cleanBlock(v.step);
+  if (step) out.step = step;
+  const tiers = (Array.isArray(v.tiers) ? v.tiers : []).slice(0, 8)
+    .map((t) => (isPlainObject(t) && cleanInt(t.upto, 1440) > 0 && cleanInt(t.won, 1000000) != null ? { upto: t.upto, won: t.won } : null)).filter(Boolean);
+  if (tiers.length) out.tiers = tiers;
+  for (const k of ['day_flat', 'day_max']) { const n = cleanInt(v[k], 1000000); if (n != null) out[k] = n; }
+  const conditions = (Array.isArray(v.conditions) ? v.conditions : []).filter((s) => typeof s === 'string').map((s) => s.trim().slice(0, 30)).filter(Boolean).slice(0, 4);
+  if (conditions.length) out.conditions = conditions;
+  return Object.keys(out).length ? out : null;
+}
+function cleanCost(v) {
+  if (!isPlainObject(v)) return null;
+  const out = {};
+  for (const k of ['h3', 'h5', 'h8', 'day']) { const n = cleanInt(v[k], 1000000); if (n != null) out[k] = n; }
+  return Object.keys(out).length ? out : null;
+}
+
+// parking.lots: the lots with a price or a walk: { name, walk_min?, rate? }. The names also read as 주변 on the card, so a lot is kept in one of the lists.
+export function cleanPricedLots(v) {
+  return (Array.isArray(v) ? v : []).slice(0, MAX_PARKING_LOTS).map((l) => {
+    if (!isPlainObject(l) || typeof l.name !== 'string') return null;
+    const name = l.name.replaceAll(';', ',').trim().slice(0, MAX_PARKING_LOT_NAME).trim();
+    if (!name) return null;
+    const walk = cleanInt(l.walk_min, 120);
+    const rate = cleanRate(l.rate);
+    return { name, ...(walk ? { walk_min: walk } : {}), ...(rate ? { rate } : {}) };
+  }).filter(Boolean);
+}
+
 function cleanParking(v) {
   if (!isPlainObject(v) || !PARKING.includes(v.status)) return null;
   const note = typeof v.note === 'string' ? v.note.trim().slice(0, MAX_PARKING_NOTE) : '';
   const fee = typeof v.fee === 'string' ? v.fee.trim().slice(0, MAX_PARKING_FEE) : ''; // the price in one line, apart from the lot names
   const onsite = cleanLots(v.onsite);
   const nearby = cleanLots(v.nearby);
-  return { status: v.status, ...(note ? { note } : {}), ...(fee ? { fee } : {}), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}) };
+  const rate = cleanRate(v.rate);
+  const cost = cleanCost(v.cost);
+  const lots = cleanPricedLots(v.lots);
+  const checked_at = isDateStr(v.checked_at) ? v.checked_at : null; // the parking's own check date (the wall's checked_at is its hours')
+  return { status: v.status, ...(note ? { note } : {}), ...(fee ? { fee } : {}), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}), ...(rate ? { rate } : {}), ...(cost ? { cost } : {}), ...(lots.length ? { lots } : {}), ...(checked_at ? { checked_at } : {}) };
 }
 
 // indoor/outdoor: absent means 'outdoor' (the app is about outdoor walls); anything else is dropped
@@ -456,6 +503,11 @@ export function keepGeo(old, next) {
   if (!out.location && old.location
     && (!Number.isFinite(out.sun?.lat) || (old.sun?.lat === out.sun.lat && old.sun?.lng === out.sun.lng))) {
     out.location = old.location;
+  }
+  // a CSV carries no fee rule: keep the stored one while the fee wording it was made from is unchanged (an edited fee means the rule may be stale)
+  if (out.parking && old.parking && out.parking.status === old.parking.status && out.parking.fee === old.parking.fee) {
+    const kept = Object.fromEntries(['rate', 'cost', 'lots', 'checked_at'].filter((k) => old.parking[k] !== undefined && out.parking[k] === undefined).map((k) => [k, old.parking[k]]));
+    if (Object.keys(kept).length) out.parking = { ...out.parking, ...kept };
   }
   if (!out.photo && old.photo) {
     out.photo = old.photo;
