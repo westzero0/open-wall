@@ -357,6 +357,9 @@ function blogOf(wall) {
   };
 }
 
+// 세팅이 마지막 방문 뒤에 바뀌었나: setting.last is later than the newest 기록 of this wall (records newest first). No record, nothing to compare.
+export const settingAfterVisit = (setting, visits) => Boolean(setting?.last && visits?.length && setting.last > visits[0].date);
+
 // 내 기록 (log.js records of this wall, newest first): "✓ 다녀옴 2번" on the row, the latest 3 in the open card.
 function visitsOf(records) {
   return {
@@ -407,7 +410,7 @@ export function settingText(setting, today) {
  * visits: this wall's 기록 (newest first). Without any, the model has no `visits` key (same output as before).
  * crowd: see crowdOf. Without it (혼잡도 not set up), or with nothing to show, the model has no `crowd` key.
  * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy, temp, wind, gust} (the chips of the line). Without it, no key.
- * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`.
+ * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`. A wall whose 세팅일 is later than your newest 기록 says so instead ("방문 뒤 세팅이 바뀌었어요").
  */
 // ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
 // The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
@@ -504,7 +507,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
     checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',
     setting: settingText(wall.setting, ymd(now)),
-    settingBadge: settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
+    settingBadge: settingAfterVisit(wall.setting, visits) ? '방문 뒤 새 세팅' : settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
+    settingBadgeShort: settingAfterVisit(wall.setting, visits) ? '새 세팅' : null, // the list row has little room: the short word (the full one is its title)
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info: splitInfo([...notes, ...facts.rest]), // expanded row's 안내 (face) and 시설 (wall sheet)
     sizes: facts.sizes,

@@ -608,7 +608,7 @@ dialog.gal[open] { display: flex; }
 .rhero-cap b { display: block; font-size: 2rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 .row.has-photo.is-open > .row-btn { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
-.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .rwx, .rwx svg, .rwx-t) { color: var(--on-photo); }
+.row.has-photo.is-open .row-btn :is(.rname, .rmeta, .basis, .fee, .been, .setnew, .rwx, .rwx svg, .rwx-t) { color: var(--on-photo); }
 .row.has-photo.is-open .row-btn .rwx-ic { background: rgb(0 0 0 / .4); color: #fff; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .5)); }
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
@@ -1778,7 +1778,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-count { font-variant-numeric: tabular-nums; }
 .bd-hp[hidden] { display: none; }
 .bd-send { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer; transition: opacity var(--dur-ui, .15s), transform var(--dur-ui, .15s); }
-.bd-send svg { width: 20px; height: 20px; margin-left: 2px; }
+.bd-send svg { width: 20px; height: 20px; margin-left: var(--sp-2); }
 .bd-send:active:not(:disabled) { transform: scale(.92); }
 .bd-send:disabled { opacity: .35; cursor: default; }
 .bd-box:focus { outline: none; }

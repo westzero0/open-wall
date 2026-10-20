@@ -1416,7 +1416,7 @@ function timeRow(row, at) {
       // the extras share what room is left, in this order of worth; one that does not fit wraps out of sight whole (style.css .rsub),
       // so the closing time never wraps and no region is cut to a stray letter (it is on the card)
       el('span', { class: 'rsub' },
-        m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
+        m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name, title: m.settingBadge }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadgeShort ?? m.settingBadge) : null,
         m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
           el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
         m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
