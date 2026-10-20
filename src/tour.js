@@ -11,7 +11,15 @@ const find = (sel) => {
     return [...document.querySelectorAll(sel)].find((n) => { const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0; }) ?? null;
   } catch { return null; }
 };
-const visible = (sel) => find(sel) !== null;
+// 예시 카드의 원본: 날씨가 이미 뜬 줄을 먼저, 없으면 아무 줄(접힌 그룹 안의 줄도 DOM 에는 있다)
+// 한 줄로 아이콘(양달)·날씨·막대를 모두 보여 주는 줄이 가장 좋다
+const sampleSource = () => {
+  for (const sel of ['#panel-list .row-btn:has(.sunnow.sun):has(.rwx:not(.pending)):has(.bar)', '#panel-list .row-btn:has(.rwx:not(.pending)):has(.bar)', '#panel-list .row-btn:has(.bar)', '#panel-list .row-btn']) {
+    try { const n = document.querySelector(sel); if (n) return n; } catch { /* :has 를 모르는 브라우저: 다음 선택자 */ }
+  }
+  return null;
+};
+const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && sampleSource()?.querySelector(s.sample)); };
 
 /** startTour({ onClose }) → boolean: false (and nothing opens) when no step has a visible target.
  *  onClose({ completed }) runs once however the tour ends; completed = 마지막 단계에서 끝내기를 눌렀다. */
@@ -36,10 +44,29 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   const tip = el('div', { class: 'tour-tip' }, arrow, el('div', { class: 'tour-top' }, num, skip), txt, el('div', { class: 'tour-foot' }, dots, count, el('span', { class: 'tour-nav' }, prev, next)));
   const dlg = el('dialog', { class: 'tour', 'aria-labelledby': 'tour-title' }, hole, tip);
 
+  let sampleBox = null;
+  const sampleFor = (sel) => { // 열린 곳이 없는 시간대: 화면의 줄을 복제해 예시 카드로 보여 준다(아이콘·날씨·막대가 실제와 같다)
+    if (!sampleBox) {
+      const src = sampleSource();
+      if (!src) return null;
+      const row = src.cloneNode(true);
+      for (const a of ['aria-controls', 'aria-expanded', 'id']) row.removeAttribute(a);
+      sampleBox = el('ul', { class: 'tour-sample rows', 'aria-hidden': 'true' }, el('li', { class: 'row' }, row));
+      sampleBox.inert = true;
+      dlg.prepend(sampleBox); // 구멍(어둠)보다 아래에 깔린다
+    }
+    return sampleBox.querySelector(sel);
+  };
+  const resolve = (s) => {
+    const real = s.forceSample ? null : find(s.target);
+    const smp = real || !s.sample ? null : sampleFor(s.sample);
+    if (sampleBox) { sampleBox.hidden = !smp; sampleBox.firstChild.classList.toggle('veil', Boolean(s.veil)); }
+    return real ?? smp;
+  };
   let last = ''; // 마지막으로 그린 타깃 사각형: 같으면 다시 그리지 않는다
   let settle = 0; // 단계를 옮긴 직후(이 시각까지)에만 구멍이 미끄러진다. 스크롤·리렌더를 따라갈 때는 즉시 붙는다
   const place = () => {
-    const target = find(steps[i].target);
+    const target = resolve(steps[i]);
     if (!target) return;
     const r = target.getBoundingClientRect();
     const key = `${i}|${r.left}|${r.top}|${r.width}|${r.height}|${innerWidth}|${innerHeight}`;
@@ -72,7 +99,7 @@ export const startTour = ({ onClose = () => {} } = {}) => {
     prev.hidden = i === 0;
     settle = performance.now() + 450;
     last = '';
-    find(s.target)?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    (s.forceSample ? null : find(s.target))?.scrollIntoView({ block: 'center', behavior: 'instant' }); // 예시 카드는 고정 위치라 스크롤하지 않는다
     place();
   };
 
