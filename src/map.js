@@ -11,23 +11,15 @@ const RANK = { soon: 0, open: 0, closed: 1, unknown: 2 }; // whose name wins whe
 const dark = matchMedia('(prefers-color-scheme: dark)');
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-// Shape carries the meaning as well as color: open = filled, soon = filled with a thick ring,
-// closed = smaller filled, unknown = hollow ring, approximate position = dashed outline.
-function pinStyle({ pin, approx }, selected) {
-  const edge = cssVar('--pin-edge');
-  const s = {
-    open: { radius: 9, weight: 2, color: edge, fillColor: cssVar('--pin-open'), fillOpacity: 1 },
-    soon: { radius: 9, weight: 4, color: edge, fillColor: cssVar('--pin-soon'), fillOpacity: 1 },
-    closed: { radius: 7, weight: 2, color: edge, fillColor: cssVar('--pin-closed'), fillOpacity: 1 },
-    unknown: { radius: 7, weight: 3, color: cssVar('--pin-unknown'), fillOpacity: 0 },
-  }[pin];
-  s.dashArray = approx ? '3 3' : null;
-  if (selected) {
-    s.radius += 3;
-    s.weight += 2;
-  }
-  return s;
-}
+// A pin is a climbing hold with a bolt hole (colors and shapes in style.css `.pin-mk`). Shape carries the meaning as well as color:
+// open = filled, soon = filled with a thick edge, closed = smaller, unknown = hollow ring, approximate position = dashed edge,
+// 양달 = an amber ring round it. The box is 44px: the whole of it is the hit area.
+const HOLD = 'M8 30 C2 20 8 6 22 5 C36 4 46 12 44 26 C42 38 28 44 16 40 C12 38 10 34 8 30 Z';
+const holdIcon = ({ pin, approx }, lit) => L.divIcon({
+  className: `pin-mk ${pin}${approx ? ' approx' : ''}`,
+  iconSize: [44, 44],
+  html: `<svg viewBox="-6 -6 60 60" aria-hidden="true">${lit ? `<path class="ring" d="${HOLD}" transform="translate(-6 -6) scale(1.25)"/>` : ''}<path class="body" d="${HOLD}"/><circle class="bolt" cx="24" cy="23" r="3.4"/></svg>`,
+});
 
 /**
  * createMap(container, {onSelect, onError, onOk, covered, coveredTop}) → {select(name|null), setRows(rows, at), setUser(latlng|null), refresh(), fitAll()}
@@ -62,7 +54,11 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   let fitted = false; // first fit is instant; later ones may animate
 
   const restyle = () => {
-    markers.forEach((m, i) => m.setStyle(pinStyle(pins[i], pins[i].row.wall.name === selected)));
+    markers.forEach((m, i) => {
+      const on = pins[i].row.wall.name === selected;
+      m.getElement()?.classList.toggle('sel', on);
+      m.setZIndexOffset(on ? 1000 : 0); // the selected pin lies over its neighbours
+    });
     user?.setStyle({ color: '#fff', fillColor: cssVar('--pin-me') });
   };
   // Names beside the pins at LABEL_ZOOM+. A name that would overlap one already shown is hidden:
@@ -74,7 +70,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
       if (m.getTooltip()) return;
       const t = document.createElement('span');
       t.textContent = shortName(pins[i].row.wall);
-      m.bindTooltip(t, { permanent: true, direction: 'right', offset: [10, 0], className: 'pin-label', opacity: 1 });
+      m.bindTooltip(t, { permanent: true, direction: 'right', offset: [16, 0], className: 'pin-label', opacity: 1 });
     });
     if (!on) return;
     const first = (i) => (pins[i].row.wall.name === selected ? -1 : RANK[pins[i].pin]);
@@ -96,7 +92,6 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     if (p && !markers[pins.indexOf(p)]) draw(); // picked from outside (the search) while inside a cluster: it steps out
     restyle();
     labels();
-    markers[pins.indexOf(p)]?.bringToFront();
     onSelect(p?.row ?? null, fromClick, at);
     // the selected card covers the map's foot: keep the tapped pin above it
     if (p && fromClick) {
@@ -120,11 +115,11 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
 
   const clusterDot = (members, lat, lng) => {
     const live = members.some((p) => p.pin === 'open' || p.pin === 'soon');
+    const size = members.length >= 10 ? 50 : members.length >= 5 ? 44 : 38; // a bigger knot reads as a bigger crowd
     const n = document.createElement('span');
-    const size = members.length >= 10 ? 44 : members.length >= 5 ? 38 : 32; // a bigger knot reads as a bigger crowd
     n.className = `pin-cluster${live ? '' : ' idle'}`;
     n.style.setProperty('--size', `${size}px`);
-    n.textContent = String(members.length);
+    n.innerHTML = `<svg viewBox="-3 -3 54 54" aria-hidden="true"><path class="halo" d="${HOLD}"/><path d="${HOLD}"/><text x="24" y="24.5">${members.length}</text></svg>`; // a hold with the count on it
     return L.marker([lat, lng], { icon: L.divIcon({ html: n, className: '', iconSize: [size, size] }), keyboard: false })
       .on('click', () => map.fitBounds(L.latLngBounds(members.map((p) => [p.lat, p.lng])), { padding: [40, 40], maxZoom: CLUSTER_MAX_ZOOM + 1 }));
   };
@@ -135,22 +130,10 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     const groups = map.getZoom() > CLUSTER_MAX_ZOOM
       ? pins.map((_, i) => [i])
       : clusterPins(pins.map((p) => ({ lat: p.lat, lng: p.lng, keep: p.row.wall.name === selected })), (lat, lng) => map.project([lat, lng]), CLUSTER_PX);
-    const lone = groups.filter((g) => g.length === 1).map((g) => g[0]);
-    // drawn in order, so every visible pin sits above every hit area:
-    // 44px invisible hit areas, then 양달 rings (shape, not only color), then the pins
-    for (const i of lone) {
+    for (const g of groups.filter((g) => g.length === 1)) {
+      const i = g[0];
       const p = pins[i];
-      L.circleMarker([p.lat, p.lng], { radius: 22, stroke: false, fillOpacity: 0, bubblingMouseEvents: false })
-        .on('click', pick(p)).addTo(layer);
-    }
-    for (const i of lone) {
-      const p = pins[i];
-      if (p.row.lit !== true || (p.pin !== 'open' && p.pin !== 'soon')) continue;
-      L.circleMarker([p.lat, p.lng], { radius: 16, weight: 3, color: cssVar('--pin-sun'), fill: false, interactive: false }).addTo(layer);
-    }
-    for (const i of lone) {
-      const p = pins[i];
-      markers[i] = L.circleMarker([p.lat, p.lng], { bubblingMouseEvents: false, ...pinStyle(p, false) })
+      markers[i] = L.marker([p.lat, p.lng], { icon: holdIcon(p, p.row.lit === true && (p.pin === 'open' || p.pin === 'soon')), keyboard: false })
         .on('click', pick(p))
         .addTo(layer);
     }
