@@ -5,6 +5,7 @@ import { el } from './dom.js';
 import { config } from './config.js';
 import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
+import { CODES, characterSrc } from './climber-test.js';
 import { MAX_BODY, MAX_NICK, PREVIEW, ageText, cleanBoardNick, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
 
 export const COOLDOWN_MS = 20_000;
@@ -28,17 +29,16 @@ export function cooldownLeft(ts, now) {
   return Math.max(0, COOLDOWN_MS - (now - ts));
 }
 
-/** a nickname's avatar: its first letter on a tint that stays the same for the same name (hue 0-359). */
+/** a nickname's mascot (one of the 8 climbers) and hold colour (hue 0-359): the same name always gets the same pair. */
 export function avatarOf(nick) {
   const name = String(nick ?? '').trim() || '익명';
   let h = 0;
   for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360;
-  return { letter: [...name][0], hue: h };
+  return { code: CODES[h % CODES.length], hue: (h * 7) % 360 };
 }
 const avatar = (nick, cls = '') => {
   const a = avatarOf(nick);
-  const n = el('span', { class: `bd-av ${cls}`.trim(), 'aria-hidden': 'true' }, a.letter);
-  n.style.setProperty('--h', String(a.hue));
+  const n = el('img', { class: `bd-av ${cls}`.trim(), src: characterSrc(a.code), alt: '', width: '64', height: '64', loading: 'lazy', decoding: 'async' });
   return n;
 };
 const SEND_ICON = 'M3.4 20.4 21 12 3.4 3.6l-.01 6.5L15 12 3.39 13.9z';
@@ -293,9 +293,8 @@ function build(wallName, mode, onOpenAll) {
     const e = s.replies.get(id);
     const now = Date.now();
     t.ul.replaceChildren(...(e?.list ?? []).map((r) => el('li', { class: 'bd-post bd-reply' },
-      avatar(r.nick, 'bd-av-sm'),
       el('div', { class: 'bd-main' },
-        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, r.nick), el('span', { class: 'bd-meta' }, ageText(r.created_at, now))),
+        el('p', { class: 'bd-head' }, avatar(r.nick, 'bd-av-sm'), el('b', { class: 'bd-by' }, r.nick), el('span', { class: 'bd-meta' }, ageText(r.created_at, now))),
         el('p', { class: 'bd-text' }, r.body),
         el('p', { class: 'bd-acts' }, actionFor(r, id))))));
     t.st.textContent = e?.failed ? '답글을 불러오지 못했어요' : e?.loading ? '불러오는 중…' : '';
@@ -311,13 +310,14 @@ function build(wallName, mode, onOpenAll) {
       replyBtn = el('button', { type: 'button', class: 'bd-rep bd-rp' }, `답글 ${n}`);
       replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
     }
-    return el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
-      avatar(p.nick),
+    const li = el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
       el('div', { class: 'bd-main' },
-        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, p.nick), el('span', { class: 'bd-meta' }, ageText(p.created_at, now))),
+        el('p', { class: 'bd-head' }, avatar(p.nick), el('b', { class: 'bd-by' }, p.nick), el('span', { class: 'bd-meta' }, ageText(p.created_at, now))),
         el('p', { class: 'bd-text' }, p.body),
         el('p', { class: 'bd-acts' }, replyBtn, actionFor(p, null)),
         mode === 'full' && open.has(p.id) ? threadFor(p.id) : null));
+    li.style.setProperty('--h', String(avatarOf(p.nick).hue));
+    return li;
   }
   let newest = 0; // created_at of the newest post drawn so far: only a post newer than that, arriving after the first load, animates in (not older ones from 더 보기)
   let wasLoaded = false;
