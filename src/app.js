@@ -32,7 +32,7 @@ import { bumpCrowd } from './rank.js';
 import { dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
-import { sheetModel } from './wall-sheet-model.js';
+import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
 import { routeView } from './routes.js';
 import { loadMyGrade } from './my-grade.js';
 import { openGallery } from './gallery-view.js';
@@ -355,7 +355,7 @@ function creditChip(c) {
 function photoLink(m) {
   if (m.photo || !config.boardUrl) return null;
   const b = el('button', { type: 'button', class: 'photo-ask', 'aria-label': `${m.name} 외벽 사진 보내기` }, icon('camera'), '사진 보내기');
-  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
+  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
   return b;
 }
 
@@ -394,7 +394,7 @@ function rowPhoto(m, li) {
   imgs[0].addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); }, { once: true });
   imgs.slice(1).forEach((img, k) => img.addEventListener('error', () => img.closest('.rhero-slide')?.remove(), { once: true }));
   const add = config.boardUrl ? el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 사진 더 보내기`, title: '사진 더 보내기' }, icon('camera-plus')) : null;
-  add?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진' } })));
+  add?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
   if (!many && !add) return wrap;
   // right-bottom: faint dots say where we are (the current one stretches out when it changes), the camera sends one more
   const dots = el('span', { class: 'rhero-dots', 'aria-hidden': 'true' });
@@ -1106,6 +1106,7 @@ function rowDetails(m, wall, at) {
         m.rope ? el('p', { class: 'rope-line', title: m.rope.basis }, el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)) : null,
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
+        m.noticeChecked ? el('p', { class: m.noticeStale ? 'stale-note' : 'checked' }, m.noticeStale ? `⚠ ${m.noticeChecked} · 공지 주소가 바뀌었을 수 있어요` : m.noticeChecked) : null, // beside the hours' warning; says nothing without a date
         [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].join(' · ')) : null, // facts, not controls: one muted line
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
@@ -1126,7 +1127,7 @@ function sheetSection(m, s, content) {
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
   const ask = config.reportEndpoint && s.kind // (a computed section such as 계절별 양달 has no report kind)
     ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
-  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind } })));
+  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind, kinds: TAB_KINDS[s.kind === '운영시간' ? 'time' : 'use'] } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title, 'data-sec': s.key },
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
@@ -1141,7 +1142,7 @@ function routePane(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
   const v = routeView(wall, new Date(), mine);
   const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
-  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포' } })));
+  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포', kinds: TAB_KINDS.routes } })));
   const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? ask : null);
   if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
@@ -2030,7 +2031,7 @@ $('locate').addEventListener('click', () => locate());
 
 document.querySelector('main').addEventListener('click', (e) => {
   const b = e.target.closest('.cards button[data-act], .rows button[data-act]');
-  if (b && (canEdit || b.dataset.act === 'report')) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.kind ? { name: b.dataset.name, kind: b.dataset.kind } : b.dataset.name }));
+  if (b && (canEdit || b.dataset.act === 'report')) document.dispatchEvent(new CustomEvent(`wall:${b.dataset.act}`, { detail: b.dataset.kind ? { name: b.dataset.name, kind: b.dataset.kind, kinds: [b.dataset.kind] } : b.dataset.name }));
   const rb = e.target.closest('.row-btn');
   if (rb) toggleRow(rb.parentElement);
 });

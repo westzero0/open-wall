@@ -28,8 +28,7 @@ export function feeTableEl(t) {
     for (const r of it.rows) {
       const tr = el('tr', {});
       start(tr);
-      // a 대상 priced per 거주지: the 대상 once (the rows after it keep it for a screen reader only), then the 거주지 name
-      tr.append(r.group ? el('td', { class: 'f-who' }, el('span', { class: r.dup ? 'f-dup' : 'f-w' }, r.who), ' ', r.group) : cell('td', r.who, { class: 'f-who' }));
+      tr.append(cell('td', r.who, { class: 'f-who' }));
       // session times ("1부 13~17시 · 2부 18~22시") stack one session per line
       const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, p))) : cell('td', text, attrs));
       if (r.cells) tr.append(...r.cells.map((c) => cell('td', c, { class: 'f-won' })));

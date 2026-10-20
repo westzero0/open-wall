@@ -95,6 +95,15 @@ function barOf(wall, status, at) {
   };
 }
 
+// The notice link's own check date (a person opened that address), apart from the hours' date. No date, no notice link or an unreadable date: nothing is said.
+const NOTICE_STALE_DAYS = 180;
+export function noticeFresh(wall, now) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(wall.notice_checked_at ?? '');
+  if (!m || !safeUrl(wall.contact?.notice_url)) return { noticeChecked: null, noticeStale: false };
+  const days = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
+  return { noticeChecked: `공지 확인 ${wall.notice_checked_at}`, noticeStale: days > NOTICE_STALE_DAYS };
+}
+
 // Gaps between a day's open intervals (lunch break etc.), as chip words.
 function breakTags(wall, at) {
   const open = openIntervals(wall, at);
@@ -208,7 +217,7 @@ function noticeLink(c) {
     c.instagram && { id: 'insta', label: '인스타그램', href: `https://www.instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, ''))}/` },
   ].filter(Boolean);
   if (!from.length) return null;
-  return from.length === 1 ? { label: '공지', href: from[0].href } : { label: '공지', href: from[0].href, choices: from, ask: true };
+  return from.length === 1 ? { label: '공지 보기', href: from[0].href } : { label: '공지 보기', href: from[0].href, choices: from, ask: true };
 }
 
 // 전화: one cell however many numbers (the wall's own, plus any 문의 number from the memo, all just 전화); with several the card asks which to call.
@@ -269,15 +278,11 @@ export function feeTable(wall) {
   const items = fees.map((f) => {
       // groups (관외 / 관내 …): the same who rows with the group's label in front, under the one item
       // two groups priced the same way for every day (관외 | 관내): one row per who with a price under each group name (groupCols);
-      // anything else (3–4 groups, a weekday / weekend price in a group, a plain price beside them) keeps one row per group and who, ordered by who (성인 of every group first)
+      // anything else (3–4 groups, a weekday / weekend price in a group, a plain price beside them) keeps one row per group and who
       const groupCols = f.groups?.length === 2 && !WHO.some(([k]) => f[k]) && f.groups.every((g) => WHO.every(([k]) => !g[k] || g[k].all !== undefined)) ? f.groups.map((g) => g.label) : null;
       const rows = groupCols
         ? WHO.filter(([k]) => f.groups.some((g) => g[k])).map(([k, who]) => ({ who, cells: f.groups.map((g) => (g[k] ? won(g[k].all) : '-')) }))
-        // 대상 by 대상: 성인 (plain, then one row per 거주지: group = 관외, 관내), then 청소년 …; the who is written once, `dup` on the rows after it
-        : WHO.flatMap(([k, who]) => {
-          const list = [...whoRows({ [k]: f[k] }), ...(f.groups ?? []).flatMap((g) => whoRows({ [k]: g[k] }, '').map((r) => ({ ...r, who, group: g.label })))];
-          return list.map((r, i) => (i ? { ...r, dup: true } : r));
-        });
+        : [...whoRows(f), ...(f.groups ?? []).flatMap((g) => whoRows(g, `${g.label} `))];
       const noteOnly = !rows.length && !f.times;
       // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
       if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
@@ -490,6 +495,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     breaks: breakTags(wall, at), // the expanded row's: the picked day
     ...parkingView(wall.parking, stayHours),
     ...parkingFresh(wall.parking, now),
+    ...noticeFresh(wall, now),
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
     checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',

@@ -38,7 +38,14 @@ export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRe
 
 export const PARKING = ['무료', '유료', '주차 불가', '모름'];
 // A choice in the sheet, not a kind of the Google Form (whose options are fixed): it goes out as 기타 with the link on the first line.
+// 시설 and 요금 are tabs of the sheet only: the form still gets 기타, with the topic as the first line
+export const TOPIC_KINDS = ['시설', '요금'];
 export const CHAT_KIND = '오픈채팅방';
+// 공지 제보: a choice in the sheet, not a Google Form kind: it goes out as 기타 with the header on the first line. Operator-only: nothing of it is shown in the app.
+export const NOTICE_KIND = '공지';
+const NOTICE_HEAD = '[공지 제보]';
+// 인스타그램 링크: only a post (/p, /reel, /tv) or a profile address; the link is never opened by the app.
+export const INSTA_RE = /^https:\/\/(www\.)?instagram\.com\/((p|reel|tv)\/[\w-]{5,40}|(?!(p|reel|reels|tv|explore|accounts|stories|direct)\/?(\?|$))[\w.]{1,30})\/?(\?[\w=&%.-]{0,100})?$/;
 // 암장 사진 is a choice in the sheet but not a Google Form kind: the photo goes to the board Worker (src/photo-upload.js), never through validateReport.
 export const PHOTO_KIND = '암장 사진';
 
@@ -63,7 +70,7 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
   const note = s(input.note);
   const fail = (error) => ({ ok: false, error });
   if (!name) return fail('암장 이름이 없어요.');
-  if (!KINDS.includes(kind) && kind !== CHAT_KIND) return fail('무엇이 달라졌는지 골라 주세요.');
+  if (!KINDS.includes(kind) && kind !== CHAT_KIND && kind !== NOTICE_KIND && !TOPIC_KINDS.includes(kind)) return fail('무엇이 달라졌는지 골라 주세요.');
   const mode = opts.nick ?? 'off'; // 'off' | 'optional' | 'required' (nickMode)
   const nick = mode === 'off' ? '' : cleanNick(input.nick);
   if (mode === 'required' && !nick) return fail('닉네임을 적어 주세요.');
@@ -83,6 +90,14 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     const chat = s(input.chat);
     if (!CHAT_URL_RE.test(chat)) return fail('카카오톡 오픈채팅방 링크(https://open.kakao.com/o/…)를 적어 주세요.');
     lines.push(`오픈채팅: ${chat}`);
+  } else if (kind === NOTICE_KIND) {
+    const insta = s(input.insta);
+    const newUrl = s(input.newUrl);
+    if (insta && !INSTA_RE.test(insta)) return fail('인스타그램은 게시물이나 프로필 주소(https://www.instagram.com/…)만 받아요.');
+    if (newUrl && !(/^https?:\/\/\S+$/i.test(newUrl) && newUrl.length <= 300)) return fail('새 공지 주소는 http(s):// 로 시작하는 한 줄이어야 해요.');
+    lines.push(NOTICE_HEAD);
+    if (newUrl) lines.push(`새 주소: ${newUrl}`);
+    if (insta) lines.push(`인스타그램: ${insta}`);
   } else if (kind === '세팅일') {
     const last = s(input.setLast);
     const next = s(input.setNext);
@@ -99,9 +114,10 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     if (!line && !memo) return fail('루트 개수를 누르거나 메모를 적어 주세요.');
     if (line) lines.push(`루트: ${line}`);
   } else if (!memo) return fail('내용을 적어 주세요.');
+  else if (TOPIC_KINDS.includes(kind)) lines.push(`[${kind}]`);
   if (memo && kind !== '세팅일') lines.push(lines.length ? `메모: ${memo}` : memo);
   if (note.length > MAX_NOTE) return fail(`날짜·출처는 ${MAX_NOTE}자까지 적을 수 있어요.`);
-  const report = { name, kind: kind === CHAT_KIND ? '기타' : kind, body: lines.join('\n'), note };
+  const report = { name, kind: kind === CHAT_KIND || kind === NOTICE_KIND || TOPIC_KINDS.includes(kind) ? '기타' : kind, body: lines.join('\n'), note };
   if (nick) report.nick = nick;
   return { ok: true, report, honeypot: s(input.hp) !== '' };
 }

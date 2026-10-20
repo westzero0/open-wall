@@ -38,7 +38,7 @@ function build() {
   sendBtn.addEventListener('click', () => {
     const name = wallName;
     dlg.close();
-    document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: '암장 사진' } }));
+    document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: '암장 사진', kinds: ['암장 사진'] } }));
   });
   dlg = el('dialog', { class: 'gal', 'aria-label': '암장 사진' },
     el('div', { class: 'gal-bar' }, counter, close),

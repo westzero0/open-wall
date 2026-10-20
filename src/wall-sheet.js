@@ -6,7 +6,7 @@
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
 import { el } from './dom.js';
 import { config } from './config.js';
-import { nameBreak } from './wall-sheet-model.js';
+import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 
 let build = null; // (wallName) => { tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
 let onClose = null;
@@ -16,6 +16,7 @@ let wall = '';
 let pushed = false; // did we push a history entry that closing has to undo?
 let tabEls = [], panels = [], lazy = [];
 let flashTimer = 0;
+let tabKeys = [];
 let cur = 0; // the tab in view
 
 export const registerWallSheet = (fn) => { build = fn; };
@@ -53,7 +54,7 @@ function make() {
   const back = el('button', { type: 'button', class: 'sh-done bp-back' }, '← 닫기');
   back.addEventListener('click', () => dlg.close());
   const report = config.reportEndpoint ? el('button', { type: 'button', class: 'ws-report' }, '정보 제보') : null;
-  report?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall } })));
+  report?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kinds: TAB_KINDS[tabKeys[cur]] } })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
     if (!body.clientWidth) return;
@@ -92,6 +93,7 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   else title.textContent = wallName;
   tabEls = built.tabs.map((t, i) => el('button', { type: 'button', role: 'tab', id: `ws-t${i}`, 'aria-controls': `ws-p${i}` },
     t.icon ? el('span', { class: 'ws-ic' }, t.icon) : null, el('span', { class: 'ws-tl' }, t.label)));
+  tabKeys = built.tabs.map((t) => t.key);
   const several = built.tabs.length > 1; // one tab: no tab bar, so its content is no tabpanel either
   lazy = built.tabs.map((t) => (typeof t.pane === 'function' ? t.pane : null));
   panels = built.tabs.map((t, i) => el('div', { ...(several ? { role: 'tabpanel', 'aria-labelledby': `ws-t${i}` } : {}), id: `ws-p${i}`, class: 'ws-panel' }, lazy[i] ? null : t.pane));

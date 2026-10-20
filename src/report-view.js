@@ -4,7 +4,7 @@ import { el } from './dom.js';
 import { searchPicks } from './viewmodel.js';
 import { createGradeWall } from './grade-wall.js';
 import { totalOf } from './grades.js';
-import { MAX_BODY, MAX_NICK, NICK_KEY, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
+import { MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
@@ -70,13 +70,16 @@ if (dlg) {
     주차: ['메모 (선택)', '예) 건물 뒤 공영주차장 2시간 무료'],
     세팅일: ['메모 (선택)', '예) 왼쪽 벽 새 루트 12개, 공지에서 확인'],
     '루트 분포': ['메모 (선택)', '예) 왼쪽 벽 6개 · 오른쪽 벽 4개 · 오버행 2개'],
+    시설: ['내용', '예) 샤워실이 생겼어요 · 대여 신발이 없어졌어요'],
+    요금: ['내용', '예) 일일 이용 15,000원 · 학생 할인 생겼어요'],
     기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
+    공지: ['메모 (선택)', '예) 10/20 휴관 공지가 올라왔어요 · 공지 주소가 바뀌었어요 · 링크가 안 열려요'],
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
     '암장 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
   };
   // One report per tab: each kind keeps its own memo/source draft, the send button lives only while the current kind has something to send,
   // and a sent report empties just its own tab.
-  const EVIDENCE_OK = (kind) => !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방'; // kinds that can carry a supporting picture
+  const EVIDENCE_OK = (kind) => !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방' && kind !== NOTICE_KIND; // kinds that can carry a supporting picture
   let cur = '';
   let routeWall = null; // 루트 분포's wall of holds (made below; hasText may run before it exists)
   let drafts = {};
@@ -97,6 +100,7 @@ if (dlg) {
       case '임시휴무': return !!v('from');
       case '주차': return !!f.elements.parking.value;
       case '오픈채팅방': return !!v('chat');
+      case NOTICE_KIND: return true; // every field is optional
       case '세팅일': return !!(v('setLast') || v('setNext') || v('body'));
       case '루트 분포': return (routeWall ? totalOf(routeWall.get('routes')) : 0) > 0 || !!v('body');
       case PHOTO_KIND: return picked.length > 0;
@@ -108,7 +112,7 @@ if (dlg) {
   routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh(), label: '루트 고르기' });
   dlg.querySelector('.rp-wall').append(routeWall.el);
   const clearTab = (kind) => {
-    for (const x of f.querySelectorAll(`.rp-extra[data-kind="${kind}"]`)) {
+    for (const x of [...f.querySelectorAll('.rp-extra')].filter((e) => e.dataset.kind.split('|').includes(kind))) {
       for (const i of x.querySelectorAll('input, textarea')) { if (i.type === 'radio' || i.type === 'checkbox') i.checked = false; else i.value = ''; }
     }
     f.elements.body.value = ''; f.elements.note.value = '';
@@ -130,7 +134,7 @@ if (dlg) {
 
   const syncKind = () => {
     const kind = f.elements.kind.value;
-    for (const x of f.querySelectorAll('.rp-extra')) x.hidden = x.dataset.kind !== kind;
+    for (const x of f.querySelectorAll('.rp-extra')) x.hidden = !x.dataset.kind.split('|').includes(kind);
     const [label, hint] = MEMO[kind] ?? ['내용', ''];
     f.querySelector('.rp-label').textContent = label;
     f.elements.body.placeholder = hint;
@@ -232,12 +236,13 @@ if (dlg) {
       f.elements.nick.readOnly = locked;
       nickBox.querySelector('.rp-nick-lock').hidden = !locked;
     }
-    const { name, kind, names } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
+    const { name, kind, kinds, names } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
     const picking = Array.isArray(names) && !name;
     pickBox.hidden = !picking;
     nameEl.parentElement.hidden = picking; // the whole "암장 이름" row, not just the empty value
     wallNames = picking ? names : [];
     picks.hidden = true; picks.replaceChildren();
+    for (const r of f.elements.kind) r.closest('label').hidden = !!kinds && !kinds.includes(r.value); // opened from a tab: only that tab's kinds
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPicked(); clearEvidencePreview();
@@ -261,7 +266,7 @@ if (dlg) {
     if (kind === PHOTO_KIND || (hasEvidence(kind) && !hasText(kind))) return sendPhoto(kind);
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
-      from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value,
+      from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value, insta: f.elements.insta.value, newUrl: f.elements.newUrl.value,
       setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.get('routes'),
       note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
     }, new Date(), { nick: mode });

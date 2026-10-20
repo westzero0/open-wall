@@ -2,13 +2,16 @@
 // `avail` says which blocks the page could draw for this wall: { hours, fees, sun, board } (board: the one-line board is on, or the wall has reviews).
 // 시간 = when (the hours table and, with sun math, the seasonal sun on the same axis); 이용 = what and how (시설, 요금, 주차).
 
+// the report kinds each tab offers, so 정보 제보 lists only what that tab shows (a tab not listed offers all)
+export const TAB_KINDS = { time: ['운영시간', '임시휴무', '공지'], use: ['시설', '요금', '주차'], routes: ['세팅일', '루트 분포'], board: ['오픈채팅방', '기타'] };
+
 const TIME = [
   { key: 'hours', title: '운영시간', kind: '운영시간' }, // `kind` is the report form's 종류 the section's 수정 요청 pre-fills
   { key: 'sun', title: '계절별 양달', kind: null, dated: false }, // computed from the wall's direction and terrain: no check date, nothing to report
 ];
 const USE = [
-  { key: 'facility', title: '시설', kind: '기타' }, // the memo lines the card face does not show; only with such lines
-  { key: 'fees', title: '입장 요금', kind: '기타' }, // 입장, so it is not taken for the parking fee below
+  { key: 'facility', title: '시설', kind: '시설' }, // the memo lines the card face does not show; only with such lines
+  { key: 'fees', title: '입장 요금', kind: '요금' }, // 입장, so it is not taken for the parking fee below
   { key: 'parking', title: '주차', kind: '주차' },
 ];
 

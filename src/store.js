@@ -447,6 +447,7 @@ export function normalizeWall(raw) {
   const width_m = cleanMeters(raw.width_m);
   const indoor_height_m = cleanMeters(raw.indoor_height_m, MAX_INDOOR_HEIGHT); // only meaningful for venue 'both' (for 'indoor' height_m is the indoor wall), but kept as data whatever the venue
   const checked_at = typeof raw.checked_at === 'string' ? raw.checked_at : null;
+  const notice_checked_at = isDateStr(raw.notice_checked_at) ? raw.notice_checked_at : null; // the notice address's own check date (the hours' is checked_at)
 
   const shadow = cleanShadow(raw.shadow);
   const sun_override = cleanOverride(raw.sun_override);
@@ -477,6 +478,7 @@ export function normalizeWall(raw) {
     memo,
     ...(address ? { address } : {}),
     checked_at,
+    ...(notice_checked_at ? { notice_checked_at } : {}),
     hours,
     winter,
     exceptions,
