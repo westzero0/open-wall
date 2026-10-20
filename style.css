@@ -1707,10 +1707,10 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .bd-list { list-style: none; margin: var(--sp-6) 0 0; padding: 0; }
 /* editorial: no boxes, the type and the space do the work; a name carries one small hold-coloured dot */
-.bd-post { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: var(--sp-12); padding: var(--sp-12) 0; }
-.bd-time { padding-top: 3px; text-align: right; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bd-post { display: grid; grid-template-columns: calc(var(--fs-xs) * 4.2) minmax(0, 1fr); column-gap: var(--sp-12); padding: var(--sp-12) 0; }
+.bd-time { white-space: nowrap; padding-top: 3px; text-align: right; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .bd-reply { display: block; }
-.bd-old { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 22%, transparent) 0 3px, transparent 3px); margin-left: calc(var(--sp-16) * -1); padding-left: var(--sp-16); } /* 응달: the slab's shade runs down the older posts */
+.bd-full .bd-old { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 22%, transparent) 0 3px, transparent 3px); margin-left: calc(var(--sp-16) * -1); padding-left: var(--sp-16); } /* 응달: the slab's shade runs down the older posts */
 .bd-day { display: flex; align-items: center; gap: var(--sp-10); margin: var(--sp-20) 0 var(--sp-4); font-size: var(--fs-sm); font-weight: 800; letter-spacing: .02em; }
 .bd-day::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--sun-disc); }
 .bd-day.bd-shade::before { border-radius: 0; background: color-mix(in srgb, var(--fg) 30%, transparent); clip-path: polygon(0 0, 100% 0, 100% 100%, 40% 100%); }
@@ -1826,7 +1826,8 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .bd-reply + .bd-reply { border-top: 0; }
 .bd-thread .bd-compose { background: var(--surface); }
 html[data-text] .bd-compose { flex-wrap: wrap; border-radius: var(--r-lg); } /* 큰 글씨: 닉네임 한 줄, 입력칸 한 줄 */
-html[data-text] .bd-body { flex: 1 1 60%; }
+html[data-text] .bd-nick { flex: 1 1 100%; width: auto; min-height: 36px; }
+html[data-text] .bd-body { flex: 1; }
 .bd-rp[aria-expanded="true"] { background: var(--accent-soft); color: var(--fg); }
 .bd-full { display: flex; flex-direction: column; margin-top: 0; padding-top: 0; border-top: 0; }
 .bd-full .bd-form { order: -1; margin: var(--sp-12) 0 var(--sp-4); padding: 0; }
