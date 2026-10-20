@@ -24,6 +24,7 @@ import { CLEARED, TABS, cleanRegions, cleanRope, cleanTemp, cleanTextSize, clean
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { el } from './dom.js';
+import { startTour } from './tour.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
 import { createSafetyView } from './safety-view.js';
@@ -2126,34 +2127,44 @@ if (sharedWall) {
     history.replaceState(null, '', u);
   }
 }
-// 화면 읽는 법 sheet: the header ? opens it. On a first visit it opens by itself once the list is drawn (and carries the KakaoTalk
-// notice inside KakaoTalk), then stays closed; a share link skips the guide but keeps the notice (inapp.js howtoDue).
+// 화면 읽는 법 sheet: the header ? opens it. On a first visit the 투어 (tour.js, 6 spotlight steps) opens by itself once the list is
+// drawn, after the KakaoTalk notice inside KakaoTalk (that one is this sheet); a share link skips the tour but keeps the notice (inapp.js howtoDue).
 if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page has none of it
   const howto = $('howto');
   let opener = null;
-  let auto = null; // what an automatic opening showed: closing it, however it happens, marks that as seen
+  let auto = null; // what an automatic opening showed (only the KakaoTalk notice now): closing it, however it happens, marks that as seen
+  let afterNotice = null; // the tour that waits for the notice to be read
+  // the tour ends however it ends (finish, skip, Esc, backdrop): that is the first-visit intro seen. No visible target: nothing opens, nothing is saved.
+  const runTour = () => startTour({ onClose: () => { ui.introDone = true; saveUi(); } });
   const show = (from, due) => {
     opener = from;
     auto = due;
-    $('howto-title').textContent = due?.intro ? '처음이세요? 이렇게 읽어요' : due ? '안내' : '화면 읽는 법';
+    $('howto-title').textContent = due ? '안내' : '화면 읽는 법';
     $('howto-kakao').hidden = !due?.kakao;
-    $('howto-guide').hidden = !!due && !due.intro; // only the notice is due: just that
+    $('howto-guide').hidden = !!due; // only the notice is due: just that
+    if ($('tour-again')) $('tour-again').hidden = !!due;
     $('howto-close').textContent = due ? '확인' : '닫기';
-    $('howto-more').open = !due; // a first visit sees the short part; ? opens the whole guide
+    $('howto-more').open = !due; // ? opens the whole guide
     howto.showModal();
     howto.scrollTop = 0; // the browser scrolls to the focused 확인 button at the foot: start from the title
   };
   howto.addEventListener('close', () => {
-    if (auto?.intro) { ui.introDone = true; saveUi(); }
     if (auto?.kakao) closeInApp();
     (opener ?? $('tab-list'))?.focus();
     auto = null;
+    const tour = afterNotice;
+    afterNotice = null;
+    tour?.();
   });
   howto.addEventListener('click', (e) => e.target === howto && howto.close()); // the backdrop
   $('helpBtn').addEventListener('click', (e) => show(e.currentTarget, null));
+  $('tour-again')?.addEventListener('click', () => { howto.close(); startTour(); }); // a replay does not touch introDone
   $('inapp-open')?.addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });
   const due = howtoDue({ introDone: ui.introDone, kakao: isKakaoInApp(navigator.userAgent), kakaoClosed: inAppClosed(), shareLink: new URL(entryHref || location.href).searchParams.has('wall') });
-  if (due) showHowtoAuto = () => { showHowtoAuto = () => {}; show(null, due); };
+  if (due) showHowtoAuto = () => {
+    showHowtoAuto = () => {};
+    if (due.kakao) { afterNotice = due.intro ? runTour : null; show(null, { kakao: true }); } else if (due.intro) runTour();
+  };
 }
 { // handed over from KakaoTalk (?from=kakao): offer the install once, as soon as this browser can do it
   const u = new URL(location.href);
