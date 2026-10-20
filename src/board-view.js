@@ -28,6 +28,30 @@ export function cooldownLeft(ts, now) {
   return Math.max(0, COOLDOWN_MS - (now - ts));
 }
 
+/** a nickname's avatar: its first letter on a tint that stays the same for the same name (hue 0-359). */
+export function avatarOf(nick) {
+  const name = String(nick ?? '').trim() || '익명';
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360;
+  return { letter: [...name][0], hue: h };
+}
+const avatar = (nick, cls = '') => {
+  const a = avatarOf(nick);
+  const n = el('span', { class: `bd-av ${cls}`.trim(), 'aria-hidden': 'true' }, a.letter);
+  n.style.setProperty('--h', String(a.hue));
+  return n;
+};
+const SEND_ICON = 'M3.4 20.4 21 12 3.4 3.6l-.01 6.5L15 12 3.39 13.9z';
+const sendIcon = () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', SEND_ICON); path.setAttribute('fill', 'currentColor');
+  svg.append(path);
+  return svg;
+};
+
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage may be blocked */ } },
@@ -179,8 +203,10 @@ function build(wallName, mode, onOpenAll) {
     const hp = el('input', { type: 'text', name: 'bd_q7x2', tabindex: '-1', autocomplete: 'off' });
     const trap = el('div', { class: 'bd-hp', hidden: '', 'aria-hidden': 'true', inert: '' }, hp);
     const count = el('span', { class: 'bd-count' }, `0/${MAX_BODY}`);
-    const send = el('button', { type: 'submit', class: 'bd-send' }, '남기기');
-    const form = el('form', { class: 'bd-form' }, el('div', { class: 'bd-row' }, nick, body), trap, el('div', { class: 'bd-row bd-foot' }, el('span', { class: 'bd-hint' }, count, ' · 모두에게 공개돼요'), send));
+    const send = el('button', { type: 'submit', class: 'bd-send', 'aria-label': '남기기', title: '남기기' }, sendIcon());
+    const form = el('form', { class: 'bd-form' },
+      el('div', { class: 'bd-row bd-who' }, nick, el('span', { class: 'bd-hint' }, '모두에게 공개돼요')),
+      el('div', { class: 'bd-row bd-compose' }, body, count, send), trap);
     const me = { send, busy: false };
     forms.push(me);
     body.addEventListener('input', () => { count.textContent = `${[...body.value].length}/${MAX_BODY}`; });
@@ -267,8 +293,11 @@ function build(wallName, mode, onOpenAll) {
     const e = s.replies.get(id);
     const now = Date.now();
     t.ul.replaceChildren(...(e?.list ?? []).map((r) => el('li', { class: 'bd-post bd-reply' },
-      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, r.nick), ' ', r.body),
-      el('p', { class: 'bd-meta' }, ageText(r.created_at, now), ' · ', actionFor(r, id)))));
+      avatar(r.nick, 'bd-av-sm'),
+      el('div', { class: 'bd-main' },
+        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, r.nick), el('span', { class: 'bd-meta' }, ageText(r.created_at, now))),
+        el('p', { class: 'bd-text' }, r.body),
+        el('p', { class: 'bd-acts' }, actionFor(r, id))))));
     t.st.textContent = e?.failed ? '답글을 불러오지 못했어요' : e?.loading ? '불러오는 중…' : '';
     return t.box;
   }
@@ -283,9 +312,12 @@ function build(wallName, mode, onOpenAll) {
       replyBtn.addEventListener('click', () => onOpenAll?.(replyBtn));
     }
     return el('li', { class: fresh ? 'bd-post bd-new' : 'bd-post' },
-      el('p', { class: 'bd-text' }, el('b', { class: 'bd-by' }, p.nick), ' ', p.body),
-      el('p', { class: 'bd-meta' }, ageText(p.created_at, now), ' · ', replyBtn, replyBtn ? ' · ' : null, actionFor(p, null)),
-      mode === 'full' && open.has(p.id) ? threadFor(p.id) : null);
+      avatar(p.nick),
+      el('div', { class: 'bd-main' },
+        el('p', { class: 'bd-head' }, el('b', { class: 'bd-by' }, p.nick), el('span', { class: 'bd-meta' }, ageText(p.created_at, now))),
+        el('p', { class: 'bd-text' }, p.body),
+        el('p', { class: 'bd-acts' }, replyBtn, actionFor(p, null)),
+        mode === 'full' && open.has(p.id) ? threadFor(p.id) : null));
   }
   let newest = 0; // created_at of the newest post drawn so far: only a post newer than that, arriving after the first load, animates in (not older ones from 더 보기)
   let wasLoaded = false;
