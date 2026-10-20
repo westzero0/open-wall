@@ -655,7 +655,8 @@
       },
       "checked_at": "2026-10-15",
       "contact": {
-        "phone": "0507-1333-0868"
+        "phone": "0507-1333-0868",
+        "notice_url": "https://www.best.or.kr/fmcs/156"
       },
       "sun": {
         "facing": "S",
@@ -1333,7 +1334,7 @@
       "name": "화랑유원지인공암벽등반장",
       "short_name": "화랑유원지",
       "region": "경기 안산시",
-      "height_m": null,
+      "height_m": 18,
       "tags": [
         "유료",
         "스피드월"
@@ -1572,7 +1573,12 @@
         ]
       },
       "checked_at": "2026-10-08",
-      "holiday": "weekend"
+      "holiday": "weekend",
+      "width_m": 24,
+      "contact": {
+        "phone": "031-487-7780",
+        "notice_url": "https://www.ansanuc.net/homenew/10502/20005/bbsList.do"
+      }
     },
     {
       "name": "광교스포츠클라이밍장",
@@ -2243,7 +2249,8 @@
         "reserve": {
           "name": "포천도시공사 예약",
           "url": "https://res.pcuc.kr/res/fclt/rental/view/4/008"
-        }
+        },
+        "notice_url": "https://res.pcuc.kr/res/boardList/rsv_notice"
       },
       "location": {
         "lat": 37.82127,
@@ -9630,7 +9637,8 @@
         "reserve": {
           "name": "네이버 예약(하나클라이밍짐)",
           "url": "https://map.naver.com/p/entry/place/1503912790"
-        }
+        },
+        "instagram": "hanaclimbing"
       },
       "checked_at": "2026-10-13",
       "sun": {
@@ -10667,7 +10675,8 @@
         "reserve": {
           "name": "예약서비스 CRS",
           "url": "https://crs.uncmc.or.kr/index_main.jsp"
-        }
+        },
+        "notice_url": "https://crs.uncmc.or.kr/community/community01.jsp?seek=&selKeyword=&pg=&selMemId=B0000001"
       },
       "checked_at": "2026-10-13",
       "winter": {
