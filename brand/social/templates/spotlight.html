@@ -1,29 +1,37 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><title>암장 소개</title>
 <style>{{BASE_CSS}}
-  .photo { position: absolute; left: 72px; right: 72px; top: 190px; height: 520px; border-radius: 32px; overflow: hidden; background: #DDD9CE; }
+  .photo { position: absolute; left: 0; top: 0; width: 1080px; height: 700px; background: var(--primary-yellow); overflow: hidden; }
   .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .photo.empty { background: var(--primary-yellow); }
-  .photo .credit { position: absolute; right: 18px; bottom: 14px; font-size: 20px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-  .sym { position: absolute; right: 90px; top: 130px; width: 360px; height: 360px; }
-  .body { position: absolute; left: 72px; right: 72px; top: 750px; }
-  .body .region { font-size: 28px; font-weight: 700; opacity: .65; }
-  .body .name { margin-top: 8px; font-size: 76px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; }
-  .facts { margin-top: 34px; display: flex; flex-direction: column; gap: 16px; }
-  .fact { display: flex; gap: 22px; align-items: baseline; font-size: 31px; font-weight: 600; }
-  .fact b { flex: none; width: 128px; font-size: 25px; font-weight: 800; letter-spacing: .04em; opacity: .55; }
-  .tags { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; }
-  .tags span { font-size: 24px; font-weight: 700; padding: 8px 18px; border-radius: 999px; background: #FFFFFF; }
+  .photo .bigsym { position: absolute; right: -170px; top: -90px; width: 860px; height: 860px; }
+  .photo .bigsym svg { width: 100%; height: 100%; display: block; }
+  .photo .credit { position: absolute; right: 22px; bottom: 16px; font-size: 20px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+  .chip { position: absolute; left: 56px; top: 48px; background: var(--brand-paper); border-radius: 22px; padding: 14px 24px; z-index: 2; }
+  .chip svg { height: 64px; width: auto; display: block; }
+  .chip.on-y { background: transparent; padding: 0; }
+  .dchip { position: absolute; right: 56px; top: 56px; z-index: 2; background: var(--primary-black); color: var(--primary-yellow); border-radius: 999px; padding: 12px 26px; font-size: 28px; font-weight: 800; }
+  .panel { position: absolute; left: 0; right: 0; top: 700px; bottom: 18px; background: var(--primary-yellow); padding: 44px 72px 0; }
+  .panel .region { font-size: 28px; font-weight: 800; opacity: .7; }
+  .panel .name { margin-top: 6px; font-size: 84px; font-weight: 900; letter-spacing: -0.05em; line-height: 1.05; }
+  .facts { margin-top: 26px; display: flex; flex-direction: column; gap: 12px; }
+  .fact { display: flex; gap: 20px; align-items: baseline; font-size: 31px; font-weight: 700; }
+  .fact b { flex: none; width: 96px; font-size: 24px; font-weight: 900; letter-spacing: .06em; opacity: .55; }
+  .sunbar { margin-top: 28px; }
+  .sunbar .bar { height: 22px; border-radius: 11px; background: rgba(255,255,255,.55); }
+  .sunbar .bar .s { background: #FFFFFF; }
+  .sunbar .ticks { display: flex; justify-content: space-between; margin-top: 6px; font-size: 20px; font-weight: 700; opacity: .65; }
+  .panel .foot { left: 72px; right: 72px; bottom: 44px; }
 </style></head>
 <body>
-  <div class="top"><div class="logo">{{LOGO}}</div><div class="date">{{DATE}}<small>{{WEEKDAY}}</small></div></div>
-  <div class="photo {{PHOTO_CLASS}}">{{PHOTO}}</div>
-  <div class="body">
+  <div class="photo">{{PHOTO}}</div>
+  <div class="chip {{CHIP_CLASS}}">{{LOGO_CHIP}}</div>
+  <div class="dchip">{{DATE}} {{WEEKDAY_SHORT}}</div>
+  <div class="panel">
     <div class="region">{{REGION}}</div>
     <div class="name">{{NAME}}</div>
     <div class="facts">{{FACTS}}</div>
-    <div class="tags">{{TAGS}}</div>
+    <div class="sunbar">{{SUNBAR}}<div class="ticks"><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div></div>
+    <div class="foot"><div class="note">{{NOTE}}</div><div class="site">{{SITE}}</div></div>
   </div>
-  <div class="foot"><div class="note">{{NOTE}}</div><div class="site">{{SITE}}</div></div>
-  <div class="bar"></div>
+  <div class="bar-bottom"></div>
 </body></html>

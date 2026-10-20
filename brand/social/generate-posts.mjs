@@ -93,8 +93,11 @@ const read = (f) => fs.readFileSync(path.join(HERE, f), 'utf8');
 const vars = { '--primary-yellow': C.yellow, '--primary-black': C.black, '--logo-text': C.ink, '--logo-sub': C.ink, '--brand-paper': C.paper };
 const themed = (svg) => svg.replace('</style>', `    :root{${Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';')}}\n  </style>`);
 const uniq = (svg, p) => svg.replace(/\bhb-(clip|cap|title|mask)\b/g, `${p}-$1`);
-const logoSvg = themed(fs.readFileSync(path.join(BRAND, 'full-logo-horizontal.svg'), 'utf8'));
-const symbolSvg = themed(fs.readFileSync(path.join(BRAND, 'symbol.svg'), 'utf8'));
+const themedY = (svg) => svg.replace('</style>', `    svg{--primary-yellow:${C.paper};--primary-black:${C.black};--logo-text:${C.black};--logo-sub:${C.black}}\n  </style>`); // 노란 배경 위: 해를 paper 색으로
+const rawLogo = fs.readFileSync(path.join(BRAND, 'full-logo-horizontal.svg'), 'utf8');
+const rawSymbol = fs.readFileSync(path.join(BRAND, 'symbol.svg'), 'utf8');
+const logoSvg = themed(rawLogo);
+const symbolSvg = themed(rawSymbol);
 const baseCss = () => fill(read('templates/base.css'), {
   CSS_VARS: Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join(' '),
   FONT_SANS: cfg.fonts.sans.map((f) => (/\s/.test(f) ? `"${f}"` : f)).join(', '),
@@ -104,6 +107,8 @@ const common = () => ({
   BASE_CSS: baseCss(),
   LOGO: uniq(logoSvg, 'p-a'),
   SYMBOL: uniq(symbolSvg, 'p-b'),
+  LOGO_Y: uniq(themedY(rawLogo), 'p-y'),
+  BIGSYM: uniq(themedY(rawSymbol), 'p-s'),
   DATE: `${mm}월 ${dd}일`,
   WEEKDAY: `${DAY_KO[DATE.getDay()]}요일${holidayName(DATE) ? ` · ${holidayName(DATE)}` : ''}`,
   SITE,
@@ -113,19 +118,22 @@ const NOTE = '운영시간은 바뀔 수 있어요. 방문 전 시설 공지를 
 const posts = []; // {id, title, png, caption}
 
 /* ───────── 게시물 정의 ───────── */
-const badge = (d) => {
-  if (d.indoor) return '<span class="badge indoor">실내</span>';
-  if (!d.known) return '<span class="badge na">해 정보 없음</span>';
-  if (d.ratio >= 0.75) return `<span class="badge sun">양달 ${esc(winText(d.wins, 1))}</span>`;
-  if (d.ratio <= 0.15) return '<span class="badge shade">응달</span>';
-  return `<span class="badge mixed">양달 ${esc(winText(d.wins, 1))}</span>`;
+const pct = (m) => Math.max(0, Math.min(100, ((m - 360) / (1440 - 360)) * 100));
+const seg = (cls, a, b) => (b > 360 && a < 1440 ? `<i class="${cls}" style="left:${pct(a).toFixed(2)}%;width:${(pct(b) - pct(a)).toFixed(2)}%"></i>` : '');
+// 06~24시 막대: 검정 = 운영 중(그늘/실내), 노랑 = 운영 중 양달
+const barHtml = (d) => `<div class="bar">${d.iv.map(([a, b]) => seg('o', a, b)).join('')}${d.wins.map(([a, b]) => seg('s', a, b)).join('')}</div>`;
+const timeTag = (d) => {
+  if (d.indoor) return '<span class="t indoor">실내</span>';
+  if (!d.known) return '<span class="t na">해 정보 없음</span>';
+  if (d.ratio <= 0.15) return '<span class="t shade">응달</span>';
+  return `<span class="t sun">양달 ${esc(winText(d.wins, 1))}</span>`;
 };
-const rowHtml = (i, w, d, meta) => `<div class="row"><div class="rank">${i}</div><div class="info"><div class="name">${esc(w.name)}</div><div class="meta">${esc(meta)}</div></div>${badge(d)}</div>`;
+const rowHtml = (i, w, d, meta) => `<div class="row"><div class="rank">${i}</div><div class="main"><div class="line"><span class="name">${esc(w.name)}</span>${timeTag(d)}</div><div class="meta">${esc(meta)}</div>${barHtml(d)}</div></div>`;
 
 function buildToday() {
   // 해 정보가 있는 야외·복합 암장을 우선 (양달 비율 높은 순), 그다음 실내/미정
   const rank = (x) => (x.d.indoor ? -2 : x.d.known ? (x.d.ratio ?? 0) : -1);
-  const list = [...cands].sort((a, b) => rank(b) - rank(a) || a.w.name.localeCompare(b.w.name, 'ko')).slice(0, 5);
+  const list = [...cands].sort((a, b) => rank(b) - rank(a) || a.w.name.localeCompare(b.w.name, 'ko')).slice(0, 4);
   if (!list.length) return null;
   const rows = list.map((x, i) => rowHtml(i + 1, x.w, x.d, `${x.w.region} · ${x.d.hours}`)).join('');
   const more = cands.length - list.length;
@@ -137,7 +145,7 @@ function buildToday() {
 
 function buildSunshade() {
   const outdoor = cands.filter((x) => !x.d.indoor && x.d.known);
-  const sunny = [...outdoor].sort((a, b) => b.d.litMin - a.d.litMin).filter((x) => x.d.ratio >= 0.5).slice(0, 3);
+  const sunny = [...outdoor].sort((a, b) => b.d.litMin - a.d.litMin).filter((x) => x.d.ratio >= 0.5).slice(0, 2);
   const shady = [...outdoor].sort((a, b) => a.d.ratio - b.d.ratio || b.d.openMin - a.d.openMin).filter((x) => x.d.ratio <= 0.2).slice(0, 2);
   if (!sunny.length && !shady.length) return null;
   const sec = (cls, name, arr) => arr.length
@@ -167,24 +175,24 @@ function buildSpotlight() {
   const d = pick.d || dayInfo(w);
   const rel = w.photos?.find((p) => p.main)?.src || w.photos?.[0]?.src || w.photo;
   const credit = w.photos?.find((p) => p.main)?.credit?.text || w.photo_credit?.text || w.photo_credit;
-  let photo = '', pcls = 'empty';
+  let photo = '', chipCls = '';
   if (rel && fs.existsSync(path.join(REPO, 'data', rel))) {
     const buf = fs.readFileSync(path.join(REPO, 'data', rel));
     photo = `<img src="data:image/jpeg;base64,${buf.toString('base64')}" alt="">${credit ? `<div class="credit">사진 ${esc(typeof credit === 'string' ? credit : credit.text ?? '')}</div>` : ''}`;
-    pcls = '';
-  } else photo = `<div class="sym" style="position:absolute;inset:0;margin:auto">${uniq(symbolSvg, 'p-c')}</div>`;
+  } else { photo = `<div class="bigsym">${uniq(themedY(rawSymbol), 'p-c')}</div>`; chipCls = 'on-y'; }
   const fact = (k, v) => (v ? `<div class="fact"><b>${k}</b><span>${esc(v)}</span></div>` : '');
   const parking = { free: '무료', paid: '유료', none: '없음' }[w.parking?.status] || '';
   const sunLine = !d ? '' : d.indoor ? '실내 암장' : d.known && d.wins.length ? `양달 ${winText(d.wins)}` : d.known ? '오늘은 응달' : '';
   const facts = [
-    fact('오늘', d ? d.hours : '휴무'),
+    fact('운영', d ? d.hours : '휴무'),
     fact('해', sunLine),
     fact('주소', w.address),
     fact('주차', parking ? `${parking}${w.parking?.nearby?.length ? ` · ${w.parking.nearby[0]}` : ''}` : ''),
   ].join('');
-  const tg = (w.tags || []).slice(0, 5).map((t) => `<span>${esc(t)}</span>`).join('');
   const html = fill(read('templates/spotlight.html'), {
-    ...common(), PHOTO: photo, PHOTO_CLASS: pcls, REGION: esc(w.region), NAME: esc(w.name), FACTS: facts, TAGS: tg,
+    ...common(), PHOTO: photo, CHIP_CLASS: chipCls, LOGO_CHIP: chipCls ? uniq(themedY(rawLogo), 'p-k') : uniq(logoSvg, 'p-k'),
+    WEEKDAY_SHORT: DAY_KO[DATE.getDay()], REGION: esc(w.region), NAME: esc(w.name), FACTS: facts,
+    SUNBAR: d ? barHtml(d) : '<div class="bar"></div>',
     NOTE: `${NOTE} 정보 확인일 ${w.checked_at || '미확인'}`,
   });
   const caption = `📍 ${w.name} (${w.region})\n\n오늘 ${d ? d.hours : '휴무'}${sunLine ? `\n해: ${sunLine}` : ''}\n${w.address ? `주소: ${w.address}\n` : ''}${parking ? `주차: ${parking}\n` : ''}\n정보 확인일 ${w.checked_at || '미확인'} · 운영시간은 바뀔 수 있어요. 방문 전 시설에 확인해 주세요.\n틀린 정보는 앱의 ‘정보 수정 요청’으로 알려 주세요 → haebyeok.app\n${w.photo_credit || credit ? `\n사진: ${typeof credit === 'string' ? credit : credit?.text ?? ''}` : ''}\n\n${tags('암장소개', w.region.split(' ')[0] + '암장')}`;
