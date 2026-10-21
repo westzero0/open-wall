@@ -988,6 +988,7 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
     btn.classList.add('done');
     btn.replaceChildren(icon('check'), ...(label ? ['복사됨'] : []));
     say.textContent = '링크를 복사했어요';
+    document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     clearTimeout(timer);
     timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(...face()); say.textContent = ''; }, 1800);
     toast('링크를 복사했어요', () => inviteView.openInvite(name), '같이 가요 초대 만들기');
@@ -1487,6 +1488,7 @@ function toggleRow(li) {
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
 // Used by a share link and by the map card's 자세히 보기.
+  document.dispatchEvent(new CustomEvent('stats:card-open')); // stats.js counts it (no wall name in it)
 function revealRow(name, { focus = false } = {}) {
   const row = shown.rows.find((r) => r.wall.name === name);
   if (!row) return false;
@@ -1889,8 +1891,8 @@ $('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the r
 $('shadeOnly').prepend(icon('shade'));
 $('findLoc').prepend(icon('pin')); // the search field's own 내 위치: one press = 가까운 순 (asks for the position the first time), a second = back to 남은 시간 순
 $('findLoc').addEventListener('click', () => chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'));
-$('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
-$('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
+$('sunOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); }); // stats.js counts it (turning on only)
+$('shadeOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); });
 // 정렬 (the 조건 sheet): 가까운 순 needs a position; without one, don't keep it on (and saved) while the list stays as it was; the note stays
 function chooseSort(mode) {
   setUi('sortMode', mode);
@@ -1995,7 +1997,10 @@ sheet.addEventListener('change', (e) => {
 });
 // 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
 for (const id of ['regionOpts', 'regionOptsC']) {
-  $(id)?.addEventListener('change', (e) => setUi('regions', [...e.currentTarget.querySelectorAll('input[name="region"]:checked')].map((b) => b.value)));
+  $(id)?.addEventListener('change', (e) => {
+    setUi('regions', [...e.currentTarget.querySelectorAll('input[name="region"]:checked')].map((b) => b.value));
+    if (e.target.checked) document.dispatchEvent(new CustomEvent('stats:region-set')); // stats.js counts it (no region name in it)
+  });
 }
 $('parkingOnly').addEventListener('click', () => setUi('parkingOnly', !ui.parkingOnly));
 $('favOnly').addEventListener('click', () => setUi('favOnly', !ui.favOnly));
@@ -2018,6 +2023,7 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   e.preventDefault();
   showTab(order[(next + order.length) % order.length], true);
 });
+    if (k !== 'list') document.dispatchEvent(new CustomEvent(`stats:tab-${k}`)); // stats.js counts map and log by name
 
 // Asks for the position (only on a press: 내 위치 / 가까운 순 in the list); kept in memory only.
 // sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); no caller passes false now (the 기록 sheet

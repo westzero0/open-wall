@@ -215,7 +215,7 @@ if (dlg) {
       send: (file) => postPhotoWhy(file, note, nick),
       onProgress: (n, total) => { if (total > 1) say2(`${n}/${total} 보내는 중…`); },
     });
-    if (res.sent.length) { if (c.save) saveNick(c.nick); set(); }
+    if (res.sent.length) { if (c.save) saveNick(c.nick); set(); document.dispatchEvent(new CustomEvent('stats:report-send')); }
     if (mine === gen) {
       if (res.sent.length === res.total) clearTab(kind); // all sent: empty this tab, so the same photos are not sent twice
       else if (kind === PHOTO_KIND && res.sent.length) { picked = picked.filter((_, i) => !res.sent.includes(i)); drawPicked(); } // keep only what is left to send
@@ -290,6 +290,7 @@ if (dlg) {
         return say('보내지 못했어요. 연결을 확인하거나 아래 링크로 직접 제보해 주세요.');
       }
       set();
+      document.dispatchEvent(new CustomEvent('stats:report-send')); // stats.js counts it (no wall name or text in it)
     }
     // text report went out; a attached picture goes to the board Worker after it (a failed picture must not hide that the text was sent)
     const ev = hasEvidence(kind) ? f.elements.evidence.files[0] : null;

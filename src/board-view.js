@@ -223,6 +223,7 @@ function build(wallName, mode, onOpenAll) {
         const payload = { ...v.post, hp: hp.value };
         const made = parent ? await s.submitReply(parent, payload) : await s.submit(payload); // redraws every view of this wall
         rememberMine(made.post.id, made.token);
+        document.dispatchEvent(new CustomEvent('stats:board-post')); // stats.js counts it (no wall name or text in it)
         store.set(K_NICK_DRAFT, v.post.nick); // the next form starts with it; it never becomes the saved (ranking) nickname
         store.set(K_TS, String(Date.now()));
         body.value = ''; count.textContent = `0/${MAX_BODY}`;

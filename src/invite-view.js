@@ -175,6 +175,7 @@ export function createInviteView({ getWalls }) {
     }
     feedback(KAKAO_SAY.copied);
     toast(KAKAO_SAY.copied);
+    document.dispatchEvent(new CustomEvent('stats:invite-make')); // stats.js counts it (no wall name or note in it)
   }
   kakaoBtn.addEventListener('click', async () => {
     const now = keyOf();
@@ -188,7 +189,7 @@ export function createInviteView({ getWalls }) {
     if (uploaded.key !== key) feedback('그림을 카카오 서버에 올리는 중이에요…');
     const r = await shareKakao(kakao, { key, blob: card, build: (imageUrl) => kakaoPayload({ picture: shown, url, imageUrl }) }, uploaded);
     if (key !== keyOf() || r.why === 'cancelled') return;
-    if (r.ok) feedback(KAKAO_SAY.ok);
+    if (r.ok) { feedback(KAKAO_SAY.ok); document.dispatchEvent(new CustomEvent('stats:invite-make')); }
     else copyInstead(url);
   });
   function startKakao() {
