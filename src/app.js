@@ -538,8 +538,8 @@ function hoursGrid(wall, at) {
       // every open stretch carries its own hours right above its bar (24h, zero-padded, as in the list and the notes)
       const parts = r.text.split(', ');
       const stretches = r.intervals.map(([a, b0], i) => [a, Math.min(b0, 1440), parts[i]]).filter(([a, b, text]) => text && axisFrac(b) > axisFrac(a));
-      // three or more stretches leave no room for a label each over its bar: the day's hours then go in one short line at the left
-      if (stretches.length > 2) trk.append(el('span', { class: 'g-note' }, `${stretches.map(([a, b]) => `${hourWord(a)}–${hourWord(b)}`).join(' · ')}시`));
+      // two or more stretches leave no room for a label each over its bar (two 11ch labels overlap on a phone's track, worse on large text): the day's hours then go in one short line at the left
+      if (stretches.length > 1) trk.append(el('span', { class: 'g-note' }, `${stretches.map(([a, b]) => `${hourWord(a)}–${hourWord(b)}`).join(' · ')}시`));
       else trk.append(...stretches.map(([a, b, text], i) => barLabel(a, b, text, i < stretches.length - 1)));
     }
     // today closed by a closed_date / nth closure: the weekday's usual bar fades under the day's own word
@@ -548,7 +548,7 @@ function hoursGrid(wall, at) {
     if (r.today && bar?.sun) trk.append(...clipDay(sunOn).flatMap(([a, b]) => (nowMin <= a ? [[a, b, false]] : nowMin >= b ? [[a, b, true]] : [[a, nowMin, true], [nowMin, b, false]])).map(([a, b, past]) => span(`g-sunon${past ? ' past' : ''}${capCls(a, b, open)}`, a, b))); // the same as the list: the open bar turns orange where it is sunny, paler before the time line
     const said = `${r.days}${r.today ? (r.members > 1 ? '(오늘 포함)' : '(오늘)') : ''} ${r.text}${r.breaks.length ? `, 휴게 ${formatRanges(r.breaks)}` : ''}${shut ? `, 오늘은 ${day.text}` : ''}`;
     body.append(el('div', { class: `g-row${r.today ? ' g-today' : ''}${shut ? ' shut' : ''}`, role: 'listitem', 'aria-label': said },
-      el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
+      el('span', { class: 'g-lab', 'aria-hidden': 'true' }, r.days.replace(/·/g, '·​').replace(/–/g, '–⁠'), r.today ? el('small', {}, r.members > 1 ? '오늘 포함' : '오늘') : null), // a zero-width space after · lets 월·화·목·토 wrap in the narrow label column
       el('span', { class: 'g-wrap', 'aria-hidden': 'true' }, trk)));
   }
 
