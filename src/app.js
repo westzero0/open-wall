@@ -31,7 +31,7 @@ import { applyTextSize, applyTheme, createProfileView } from './profile-view.js'
 import { createSafetyView } from './safety-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
+import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, skyKind, weatherFresh, weekendForecastUrl, windy } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
@@ -1076,7 +1076,7 @@ function rowDetails(m, wall, at) {
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
-        (m.state === 'open' || m.suspended ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
+        (m.state === 'open' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
         m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
         addrLine(m)), // the address right under 오늘 운영
@@ -1269,16 +1269,17 @@ const wx = { byWall: new Map(), busy: new Set() };
 async function loadWeather(wall) {
   const pos = wallPosition(wall); // location, else the sun coordinates; none → no request
   if (!pos || wall.venue === 'indoor' || wx.busy.has(wall.name)) return; // an indoor wall has no weather to plan for
-  if (weatherFresh(wx.byWall.get(wall.name), Date.now())) return;
+  const known = wx.byWall.get(wall.name);
+  if (weatherFresh(known, Date.now()) && !(known.current && Date.now() - known.at > CURRENT_MS)) return; // 실황 is asked again after 15 minutes
   wx.busy.add(wall.name);
-  let hours = null;
+  let hours = null, current = null;
   try {
     const res = await fetch(forecastUrl(pos.lat, pos.lng), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
-    if (res.ok) hours = parseForecast(await res.json());
+    if (res.ok) { const j = await res.json(); hours = parseForecast(j); current = parseCurrent(j); }
   } catch { /* quiet: no forecast line */ }
-  wx.byWall.set(wall.name, { hours, at: Date.now() });
+  wx.byWall.set(wall.name, { hours, current, at: Date.now() });
   wx.busy.delete(wall.name);
-  if (hours) refillOpen(wall.name);
+  if (hours || current) refillOpen(wall.name);
 }
 // A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off). Instead only
 // the forecast line is put into the open card (first in .m-info, after the 혼잡도 chip, where rowDetails puts it), so nothing
@@ -1307,7 +1308,6 @@ async function posterWeather(name, at) {
   await Promise.race([loadWeather(wall), new Promise((ok) => setTimeout(ok, 2000))]);
   return weatherCtx(name, at);
 }
-// the 날씨 상자: the temperature at the picked hour (big), the sky word when the list forecast has one, wind and gust, 바람 셈, the next hours, and a rain line
 // The 날씨 is the first line of the sun box's sky (one sky, no seam); a box without a picture (closed day, no sun math) keeps it right above.
 // → the nodes to put in the card (`inPlace`: the box is already there, so only the weather is added)
 function withWeather(sun, wx, inPlace = false) {
@@ -1317,19 +1317,22 @@ function withWeather(sun, wx, inPlace = false) {
   else return [...wx, sun];
   return inPlace ? [] : [sun];
 }
-// (chance and hourly amount) only when rain is forecast; no forecast for the picked moment → nothing, not even a gap
+// the 날씨 상자: the 실황 (Open-Meteo `current`): the temperature now (big), the sky word, wind and gust, 바람 셈 and the observation time. Only while the
+// picked moment is now (no forecast is told here); no 실황 yet → nothing, not even a gap. The first one shown in a visit is counted (stats.js, a name only).
+let wxShownSent = false;
 function weatherBox(m, wall, at) {
-  const w = m.weather;
-  if (!w) return [];
-  const h = wxEntry(wall, at);
-  const sky = h && Number.isFinite(h.c) ? skyKind(h.c).text : null;
-  return [el('section', { class: 'wx-box', 'aria-label': `예보, ${w.line.replace(/^예보 · /, '')}${w.windy ? ', 바람 셈' : ''}${w.rain ? `, ${w.rain.text}` : ''}` },
+  const cur = vs.live ? wx.byWall.get(wall.name)?.current : null;
+  if (!cur) return [];
+  if (!wxShownSent) { wxShownSent = true; document.dispatchEvent(new CustomEvent('stats:weather-shown')); }
+  const strong = windy(cur);
+  const [w, g] = [Math.round(cur.w), Math.round(cur.g)];
+  const words = [skyKind(cur.c).text, g > w ? `바람 ${w}–${g}m/s` : `바람 ${w}m/s`]; // wind and gust as one range: the row stays one line
+  return [el('section', { class: 'wx-box', 'aria-label': `날씨, ${cur.hhmm} 관측, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}` },
     el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
-      el('span', { class: 'wxb-t' }, w.temp),
-      w.windy ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // beside the temperature; the words wrap under both
-      el('span', { class: 'wxb-d' }, [sky, w.wind, w.gust].filter(Boolean).join(' · '))),
-    w.ahead.length > 1 ? el('ul', { class: 'wxb-hrs', 'aria-hidden': 'true' }, ...w.ahead.map((a) => el('li', {}, el('span', {}, a.label), el('b', {}, a.temp), a.rain ? el('small', {}, a.rain) : null))) : null,
-    w.rain ? el('p', { class: 'wxb-rain', 'aria-hidden': 'true' }, w.rain.text) : null)];
+      el('span', { class: 'wxb-t' }, `${Math.round(cur.t)}°`),
+      strong ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // beside the temperature; the words wrap under both
+      el('span', { class: 'wxb-d' }, words.join(' · ')),
+      el('span', { class: 'wxb-obs' }, `${cur.hhmm} 관측`)))];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -1902,23 +1905,28 @@ const fitSticky = () => {
     tabbar.classList.remove('unstuck');
     const root = document.documentElement.style;
     root.setProperty('--ctl-h', '0px');
-    root.setProperty('--stick-h', `${wide.matches ? 0 : tabbar.offsetHeight}px`);
+    root.setProperty('--stick-h', '0px');
     return;
   }
   const box = controls.getBoundingClientRect();
   const off = Math.max(0, controls.querySelector('.scrub').getBoundingClientRect().top - box.top - 4);
   const h = box.height - off;
   const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
-  const tabH = wide.matches ? 0 : tabbar.offsetHeight; // wide: the tab bar does not stick
-  const stick = h + tabH + axisH <= innerHeight * 0.3;
+  const bandH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2; // the list's heading line sticks under the axis too
+  const stick = h + axisH + bandH <= innerHeight * 0.3;
   controls.classList.toggle('unstuck', !stick);
   tabbar.classList.toggle('unstuck', !stick);
   controls.style.top = stick ? `${-off}px` : '';
   const root = document.documentElement.style;
   root.setProperty('--ctl-h', `${stick ? h : 0}px`);
-  root.setProperty('--stick-h', `${stick ? h + tabH : 0}px`);
+  root.setProperty('--stick-h', `${stick ? h : 0}px`);
 };
 new ResizeObserver(fitSticky).observe(controls);
+// the tab bar is fixed at the bottom except on wide screens: its height (home-bar inset included) pads the page end and lifts the toast and 맨 위로
+const fitTabbar = () => document.documentElement.style.setProperty('--tabbar-h', `${wide.matches ? 0 : tabbar.offsetHeight}px`);
+new ResizeObserver(fitTabbar).observe(tabbar);
+wide.addEventListener('change', fitTabbar);
+fitTabbar();
 addEventListener('resize', fitSticky);
 fitSticky();
 sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // the dialog has no padding: only the backdrop hits it

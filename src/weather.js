@@ -11,6 +11,7 @@ const round2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
 /** forecastUrl(lat, lng) → the request URL. Only the wall's coordinates (2 decimals) vary. */
 export const forecastUrl = (lat, lng) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${round2(lat)}&longitude=${round2(lng)}`
+  + '&current=temperature_2m,wind_speed_10m,wind_gusts_10m,weather_code'
   + '&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=4';
 
 const within = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
@@ -30,6 +31,16 @@ export function parseForecast(json) {
     out.set(time[i], { t: t[i], w: w[i], g: g[i], r: within(r?.[i], 0, 200) ? r[i] : null, p: within(pr?.[i], 0, 100) ? pr[i] : null });
   }
   return out;
+}
+
+const NOW_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+export const CURRENT_MS = 15 * 60e3; // the card's 실황 is asked again after this
+/** parseCurrent(json) → {t °C, w m/s, g m/s, c WMO code, hhmm 'HH:MM' (the observation time)} for right now, or null when anything is off. */
+export function parseCurrent(json) {
+  const c = json?.current;
+  if (!c || typeof c.time !== 'string' || !NOW_RE.test(c.time)) return null;
+  if (!within(c.temperature_2m, -80, 80) || !within(c.wind_speed_10m, 0, 100) || !within(c.wind_gusts_10m, 0, 100) || !within(c.weather_code, 0, 99)) return null;
+  return { t: c.temperature_2m, w: c.wind_speed_10m, g: c.wind_gusts_10m, c: c.weather_code, hhmm: c.time.slice(11, 16) };
 }
 
 /** rainOf(hour) → { p, mm, text } when the hour is a 비 예보 one (chance ≥ RAIN_PROB or amount ≥ RAIN_MM), else null. */

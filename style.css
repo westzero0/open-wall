@@ -233,23 +233,37 @@ button.pill:active, #nowBtn:active, .btn:active { transform: scale(.97); }
 #locateMsg { font-size: var(--fs-sm); color: var(--muted); }
 
 /* ---- tabs ---- */
-main { padding-bottom: var(--sp-48); }
+main { padding-bottom: calc(var(--sp-48) + var(--tabbar-h, 0px)); } /* the fixed tab bar must not cover the list's end */
+html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
 /* 목록/지도 stay in view under the date + slider, so the map is never a place you can't leave (app.js sets --ctl-h, and
    --stick-h = controls + this bar; .unstuck when even that would take over a short screen) */
-.tabbar { position: sticky; top: var(--ctl-h, 0px); z-index: 4; margin: 0 -16px; padding: var(--sp-4) var(--sp-16); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
-.tabbar.unstuck { position: static; box-shadow: none; }
+/* phones and tablets: the bar is fixed at the bottom (thumb reach; the same grammar as the wall sheet's tabs). It carries the home-bar inset
+   itself; app.js sets --tabbar-h (its height) for the page's end padding, the toast, the map and the 맨 위로 button. */
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7; margin: 0; padding: var(--sp-4) max(var(--sp-16), env(safe-area-inset-right)) calc(var(--sp-4) + env(safe-area-inset-bottom)) max(var(--sp-16), env(safe-area-inset-left)); background: var(--bg); box-shadow: 0 -1px 0 var(--line); }
+.tabbar > .tabs { max-width: 680px; margin: 0 auto; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4); padding: var(--sp-4); background: var(--sunken); border-radius: var(--r-base); }
 .tabs [role="tab"] {
   min-height: var(--tap); border: 0; border-radius: var(--r-md); background: transparent;
   font-weight: 600; color: var(--muted); white-space: nowrap;
 }
 .tabs [aria-selected="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-seg); }
+.tb-ic { display: none; }
+/* phones and tablets: icon over label; the current tab is told by the app's sun, a small dot at the icon's right (no pill) */
+@media (max-width: 1023.98px) {
+  .tabbar > .tabs { grid-template-columns: repeat(3, 1fr); gap: 0; padding: 0; background: none; border-radius: 0; }
+  .tabs [role="tab"] { display: grid; justify-items: center; align-content: center; gap: var(--sp-2); min-height: 52px; padding: var(--sp-4) 0 var(--sp-2); border-radius: var(--r-md); font-size: var(--fs-xs); }
+  .tabs [aria-selected="true"] { background: none; box-shadow: none; color: var(--fg); }
+  .tb-ic { position: relative; display: block; }
+  .tb-ic svg { display: block; width: 24px; height: 24px; }
+  .tabs [aria-selected="true"] .tb-ic svg { color: var(--accent); }
+  .tabs [aria-selected="true"] .tb-ic::after { content: ""; position: absolute; top: 0; right: -9px; width: 8px; height: 8px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 25%, transparent); }
+}
 
 /* ---- map ---- */
 #panel-map { margin-top: var(--sp-14); display: grid; gap: var(--sp-10); }
 /* the map fills what is left under the sticky controls (minus a strip of page below it, so a finger can still scroll the
    page); opening the tab scrolls it into exactly that place (app.js), so it is never half off screen while it pans */
-#map { height: calc(100vh - var(--stick-h, 0px) - 72px); height: calc(100dvh - var(--stick-h, 0px) - 72px); min-height: 320px; border-radius: var(--r-base); border: 1px solid var(--line); background: var(--sunken); z-index: 0; }
+#map { height: calc(100vh - var(--stick-h, 0px) - var(--tabbar-h, 0px) - 40px); height: calc(100dvh - var(--stick-h, 0px) - var(--tabbar-h, 0px) - 40px); min-height: 320px; border-radius: var(--r-base); border: 1px solid var(--line); background: var(--sunken); z-index: 0; }
 #map .leaflet-bar a { width: var(--tap); height: var(--tap); line-height: var(--tap); font-size: var(--fs-lg); }
 #map.leaflet-container, #map .leaflet-control-attribution { font-size: var(--fs-xs); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #map .leaflet-tile-pane { filter: brightness(.85); } }
@@ -265,7 +279,8 @@ main { padding-bottom: var(--sp-48); }
   main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
   .controls > .wrap > * { max-width: 460px; } /* the filters and the slider are as wide as the list column under them, not the whole page */
   main.wrap > #panel-log { max-width: 680px; } /* 기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
-  .tabbar { position: static; box-shadow: none; }
+  .tabbar { position: static; padding: var(--sp-4) var(--sp-16); box-shadow: none; z-index: 4; margin: 0 -16px; }
+  .tabbar > .tabs { max-width: none; margin: 0; }
   .tabs { grid-template-columns: 1fr 1fr; }
   #tab-map { display: none; }
   #map { height: calc(100dvh - var(--stick-h, 0px) - 275px); } /* room for the strip under the controls and the legend below */
@@ -442,13 +457,14 @@ main { padding-bottom: var(--sp-48); }
   top: 3px; z-index: 1; left: clamp(24px, calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 24px));
   font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--fg); color: var(--bg);
 }
-.plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; }
+.plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; display: none; } /* the hour grid behind the rows is off: the axis labels and each row's own bar say the time */
 .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); }
 .tgroup { position: relative; }
 .band {
   display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: 32px; padding: 4px var(--pad);
   background: var(--sunken); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 600; color: var(--muted);
 }
+#group-open > .band { position: sticky; top: calc(var(--stick-h, 0px) + 1.625rem); z-index: 2; } /* "이 시각에 열려 있는 곳 · 남은 시간 순" stays under the time axis */
 summary.band { list-style: none; min-height: var(--tap); }
 summary.band::-webkit-details-marker { display: none; }
 summary.band > span:first-child::before { content: "▸"; display: inline-block; width: 1.1em; }
@@ -673,8 +689,16 @@ dialog.gal[open] { display: flex; }
 .x-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .x-top { display: flex; align-items: flex-start; justify-content: flex-end; gap: var(--sp-8); }
 .x-top .x-name { flex: 1; min-width: 0; }
-.row.is-open:not(.has-photo) > .row-btn { background: var(--off); } /* no photo: the row's own line is part of the same grey block as the hours below it */
+.row.is-open { position: relative; z-index: 1; background: var(--bg); } /* above the board's hour grid: an open card hides the grid lines behind it */
+.row.is-open:not(.has-photo) { --ph-tint: color-mix(in srgb, var(--off) 70%, var(--sun) 12%); }
+.row.is-open:not(.has-photo) > .row-btn { background: var(--ph-tint); box-shadow: 0 1px 0 var(--ph-tint); } /* the shadow closes the sub-pixel seam above the hours block */ /* no photo: the row's own line is part of the same grey block as the hours below it */
 .ph-hero { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-8); min-height: 96px; padding: var(--sp-12) var(--pad); margin: 0 calc(var(--pad) * -1); background: var(--off); }
+/* no photo yet: the 해벽 mark, very faint, stands where the picture would be */
+.ph-hero { overflow: hidden; background: var(--ph-tint); }
+.ph-hero::before { content: ""; position: absolute; right: 22%; top: 50%; width: 76px; height: 76px; transform: translateY(-50%); background: url("assets/haebyeok-mark.svg") center / contain no-repeat; opacity: .16; pointer-events: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ph-hero::before { background-image: url("assets/haebyeok-mark-dark.svg"); opacity: .2; } }
+:root[data-theme="dark"] .ph-hero::before { background-image: url("assets/haebyeok-mark-dark.svg"); opacity: .2; }
+.ph-hero > * { position: relative; }
 .ph-hero .rhero-cap { color: var(--fg); text-shadow: none; }
 .ph-hero .rhero-add { color: var(--accent); margin-right: -6px; }
 .photo-ask { flex: none; display: inline-flex; align-items: center; gap: var(--sp-6); min-height: var(--tap); margin: calc(var(--sp-4) * -1) 0 calc(var(--sp-12) * -1); padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; } /* no photo yet: a quiet link at the right end of the name row */
@@ -701,15 +725,16 @@ dialog.gal[open] { display: flex; }
 .wx-box { margin: var(--sp-10) 0 0; padding: var(--sp-8) var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-base); background: var(--surface); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); } /* one slim row: now · the next hours (the hours wrap under at a narrow width) */
 /* in the sun box the 날씨 is the sky's first line: no card of its own, a hairline under it, the sky's own text colour */
 .sunbox.sc .wx-box { margin: 0; padding: var(--sp-8) 0; border: 0; border-radius: 0; background: none; color: inherit; border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
-.sunbox.sc .wx-box :is(.wxb-d, .wxb-hrs li, .wxb-hrs small, .wxb-rain) { color: inherit; }
-.sunbox.sc .wx-box :is(.wxb-d, .wxb-hrs li) { opacity: .85; }
+.sunbox.sc .wx-box :is(.wxb-d, .wxb-obs, .wxb-hrs li, .wxb-hrs small, .wxb-rain) { color: inherit; }
+.sunbox.sc .wx-box :is(.wxb-d, .wxb-obs, .wxb-hrs li) { opacity: .85; }
 .sunbox.sc .wx-box .wxb-hrs b { color: inherit; }
 .sunbox.sc .wx-box .wxb-hrs li { border-left-color: color-mix(in srgb, currentColor 18%, transparent); }
 .wxb-top { flex: 1 1 9rem; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); }
 .wxb-t { font-size: var(--fs-xl); font-weight: 700; line-height: 1.2; }
 .wxb-d { font-size: var(--fs-xs); color: var(--muted); }
+.wxb-obs { flex: none; margin-left: auto; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .wxb-top .wx-pill { margin-left: 0; align-self: center; }
-.wxb-top .wxb-d { flex: 1 0 100%; }
+.wxb-top .wxb-d { flex: 0 1 auto; min-width: 0; }
 .sunbox.sc .wx-box .wx-pill { background: #9a3a55; color: #fff; } /* readable on every sky, light or dark */
 .wxb-hrs { flex: 0 1 auto; list-style: none; display: flex; margin: 0; padding: 0; }
 .wxb-hrs li { flex: none; min-width: 2.6rem; display: grid; justify-items: center; font-size: var(--fs-xs); color: var(--muted); border-left: 1px solid var(--hair); }
@@ -1039,7 +1064,8 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .memo-list.info { margin-top: var(--sp-8); border-top: 1px solid var(--hair); }
 .memo-list.info li { padding: 3px 0; } /* tight: the open panel stays near one screen */
 .irow { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) auto; gap: var(--sp-8); align-items: center; padding: 3px 0; border-top: 1px solid var(--hair); font-size: var(--fs-sm); line-height: 1.45; }
-.irow .mk { color: var(--muted); align-self: start; padding-top: 1px; }
+.irow .mk { color: var(--muted); align-self: center; } /* the row is a 44px tap target: the label sits on the value's middle, not at the top */
+.memo-list li:has(> .pv-go) { align-items: center; }
 .pv { grid-column: 2 / -1; min-width: 0; margin: 0; overflow-wrap: break-word; }
 .pk-word { font-weight: 600; }
 .pnear { display: block; margin: var(--sp-4) 0 0; } /* a labelled row: the label is the quiet one (as in the memo list), the words are the text */
@@ -1716,7 +1742,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 
 /* ---- toast: a line at the foot, above the home indicator; 실행 취소 inside ---- */
 .toast {
-  position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 1000; max-width: 560px; margin: 0 auto;
+  position: fixed; left: 16px; right: 16px; bottom: calc(16px + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: 1000; max-width: 560px; margin: 0 auto;
   display: flex; align-items: center; gap: var(--sp-8); padding: var(--sp-6) var(--sp-6) var(--sp-6) var(--sp-16); border-radius: var(--r-base); background: var(--fg); color: var(--bg);
   font-size: var(--fs-sm); font-weight: 600; box-shadow: var(--shadow-float);
   top: auto; width: auto; height: auto; border: 0; overflow: visible; /* it is a popover (log-view.js): drop the UA box */
@@ -1773,7 +1799,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .k-past { background: var(--open-past); }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
-.to-top { position: fixed; right: max(var(--sp-16), env(safe-area-inset-right)); bottom: max(var(--sp-16), env(safe-area-inset-bottom)); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
+.to-top { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* centred, just above the tab bar */
 .to-top[hidden] { display: none; }
 .to-top svg { width: 22px; height: 22px; }
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
