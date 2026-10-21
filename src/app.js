@@ -13,6 +13,7 @@ import {
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance, rowExtra, shortenDates } from './card-model.js';
+import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
@@ -991,10 +992,10 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
       prompt('링크를 복사하세요', url); // no clipboard (http, denied)
       return;
     }
+    document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     btn.classList.add('done');
     btn.replaceChildren(icon('check'), ...(label ? [el('span', { class: 'sr-only' }, '복사됨')] : []));
     say.textContent = '링크를 복사했어요';
-    document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     clearTimeout(timer);
     timer = setTimeout(() => { btn.classList.remove('done'); btn.replaceChildren(...face()); say.textContent = ''; }, 1800);
     toast('링크를 복사했어요', () => inviteView.openInvite(name), '같이 가요 초대 만들기');
@@ -1207,8 +1208,16 @@ function sheetParking(m) {
   const fees = f ? el('div', { class: 'pfee-wrap', role: 'region', 'aria-label': '주차장별 계산한 요금', tabindex: '0' }, el('table', { class: 'pfee' },
     el('caption', {}, '계산한 주차 요금'),
     el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, '주차장'), el('th', { scope: 'col' }, `${f.hours}시간`), el('th', { scope: 'col' }, '하루'), el('th', { scope: 'col', class: 'pf-note' }, '비고'))),
-    el('tbody', {}, ...f.rows.map((r) => el('tr', {}, el('th', { scope: 'row' }, r.name, r.walk_min ? el('span', { class: 'pf-walk' }, `도보 ${r.walk_min}분`) : null),
-      el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), el('td', { class: 'pf-note' }, [r.free, r.note].filter(Boolean).join(' · ') || '–')))))) : null;
+    el('tbody', {}, ...f.rows.flatMap((r) => {
+      // 비고: free span + conditions. Short: in its cell. Long (NOTE_MAX): a line of its own under the row across every column.
+      const note = [r.free, r.note].filter(Boolean).join(' · ');
+      const long = note.length > NOTE_MAX;
+      const name = el('th', { scope: 'row' }, r.name, r.walk_min ? el('span', { class: 'pf-walk' }, `도보 ${r.walk_min}분`) : null);
+      // one price for any stay: the stay, 하루 and 비고 cells become one (the amount, its short condition after it)
+      const cells = r.flat ? [el('td', { colspan: '3', class: 'pf-flat' }, r.cells.at(-1), note && !long ? el('span', { class: 'pf-cond' }, ` (${note})`) : null)]
+        : [el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), el('td', { class: 'pf-note' }, (long ? '' : note) || '–')];
+      return [el('tr', long ? { class: 'pf-has-more' } : {}, name, ...cells), ...(long ? [el('tr', { class: 'pf-more' }, el('td', { colspan: '4' }, note))] : [])];
+    })))) : null;
   // status and the wall's own lot, then the amounts (the typed wording small under them), then the rest (주변 · 참고)
   const head = el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '');
   const rows = m.parkingMore.filter(({ k }) => !(f && k === '요금')).map(({ k, v }) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v));
