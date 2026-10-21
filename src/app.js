@@ -740,6 +740,7 @@ function favBtn(name, label = null) { // label: a word under the heart (the link
     saveFavs(storage, favs);
     syncFavs();
     renderChanges();
+    if (favs.includes(name)) document.dispatchEvent(new CustomEvent('stats:fav-add')); // stats.js counts it (no wall name in it)
     if (favs.includes(name) && hintDue(storage)) { markHint(storage); toast('이 암장에 변경이 생기면 홈에 알려 드려요'); } // the first ♥ only
     if (ui.favOnly) render(); // the list itself follows the hearts
   });
@@ -946,6 +947,7 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
       prompt('링크를 복사하세요', url); // no clipboard (http, denied)
       return;
     }
+    document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     btn.classList.add('done');
     btn.replaceChildren(icon('check'), ...(label ? ['복사됨'] : []));
     say.textContent = '링크를 복사했어요';
@@ -1436,6 +1438,7 @@ function toggleRow(li) {
   if (others.length) { void li.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => others.forEach((o) => o.classList.remove('snap')))); }
   go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
   if (vs.openName !== li.wallName) return;
+  document.dispatchEvent(new CustomEvent('stats:card-open')); // stats.js counts it (no wall name in it)
   li.fill();
   weatherFor(li.wallName);
   seeSetting(li.wallName);
