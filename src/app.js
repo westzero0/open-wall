@@ -1494,6 +1494,7 @@ function toggleRow(li) {
   if (others.length) { void li.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => others.forEach((o) => o.classList.remove('snap')))); }
   go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
   if (vs.openName !== li.wallName) return;
+  document.dispatchEvent(new CustomEvent('stats:card-open')); // stats.js counts it (no wall name in it)
   li.fill();
   weatherFor(li.wallName);
   seeSetting(li.wallName);
@@ -1505,7 +1506,6 @@ function toggleRow(li) {
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
 // Used by a share link and by the map card's 자세히 보기.
-  document.dispatchEvent(new CustomEvent('stats:card-open')); // stats.js counts it (no wall name in it)
 function revealRow(name, { focus = false } = {}) {
   const row = shown.rows.find((r) => r.wall.name === name);
   if (!row) return false;
