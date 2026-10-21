@@ -222,7 +222,7 @@ function openNav(choice, copyText, nav, choices) {
   try { localStorage.setItem(NAV_KEY, choice.id); } catch { /* private mode: asks again next time */ }
   window.open(choice.href, '_blank', 'noopener,noreferrer');
   if (copyText) navigator.clipboard?.writeText(copyText).catch(() => {});
-  toast(`${choice.label} 열었어요${copyText ? ' · 주소도 복사했어요' : ''}`, () => pickNav(nav, choices, copyText), '바꾸기');
+  toast(`${choice.label} 열었어요${copyText ? ' · 주소도 복사했어요' : ''}`, nav ? () => pickNav(nav, choices, copyText) : null, nav ? '바꾸기' : null);
 }
 function pickNav(nav, choices, copyText, ask = null) { // ask: the cell's word (공지, 전화): plain links to pick from, nothing remembered or copied
   nav.parentElement.querySelector('.nav-pick')?.remove();
@@ -239,7 +239,44 @@ function pickNav(nav, choices, copyText, ask = null) { // ask: the cell's word (
   const off = (e) => { if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', off, true); } };
   setTimeout(() => document.addEventListener('click', off, true));
 }
-function linkBar(links, copyText = null, edge = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins. edge: {start, end} cells at the two ends (♥ and share)
+// 길찾기 (the map link, not 공지 / 전화): a small dialog titled with the address, "지도에서 보기" (Android: a geo: link, so the phone lists only the map apps it
+// has, and opens the only one at once; iPhone: Apple Maps; elsewhere the remembered app, else the first) and "복사"; "다른 지도 앱으로" lists the apps.
+function openNavDialog(choices, copyText, geo) {
+  const dlg = el('dialog', { class: 'nav-dlg', 'aria-label': '길찾기' });
+  const close = () => { dlg.close(); dlg.remove(); };
+  const row = (text, run, extra = null) => {
+    const b = el('button', { type: 'button', class: 'nd-opt' }, el('span', {}, text), extra);
+    b.addEventListener('click', () => { close(); run(); });
+    return b;
+  };
+  const q = geo ? `${geo.lat},${geo.lng}` : null;
+  const place = q ? `geo:${q}?q=${q}(${encodeURIComponent(geo.name)})` : `geo:0,0?q=${encodeURIComponent(copyText ?? '')}`;
+  const apple = `https://maps.apple.com/?${q ? `ll=${q}&` : ''}q=${encodeURIComponent(q ? geo.name : copyText ?? '')}`;
+  const android = /Android/i.test(navigator.userAgent), ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const view = () => {
+    if (android) return location.assign(place);
+    if (ios) return location.assign(apple);
+    const mine = choices.find((c) => c.id === navPref()) ?? choices[0];
+    if (mine) window.open(mine.href, '_blank', 'noopener,noreferrer');
+  };
+  const copy = () => navigator.clipboard?.writeText(copyText ?? '').then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {});
+  const list = el('div', { class: 'nd-list' });
+  const main = () => {
+    list.replaceChildren(row('지도에서 보기', view), row('복사', copy),
+      (() => { const m = el('button', { type: 'button', class: 'nd-more' }, el('span', {}, '다른 지도 앱으로'), el('span', { 'aria-hidden': 'true' }, '›')); m.addEventListener('click', apps); return m; })());
+  };
+  const apps = () => {
+    list.replaceChildren(...choices.map((c) => row(c.label, () => openNav(c, copyText, null, choices), c.id === navPref() ? el('em', { class: 'nd-def' }, '기본') : null)), row('주소 복사', copy));
+    list.firstChild?.focus();
+  };
+  dlg.append(el('h3', { class: 'nd-title' }, copyText || '주소 정보가 없어요'), list);
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+  dlg.addEventListener('close', () => dlg.remove());
+  main();
+  document.body.append(dlg);
+  dlg.showModal();
+}
+function linkBar(links, copyText = null, edge = null, geo = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins. edge: {start, end} cells at the two ends (♥ and share)
   if (!links.length && !edge) return null;
   const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
   const nav = el('nav', { class: 'linkbar', 'aria-label': '길찾기와 연락' },
@@ -251,7 +288,8 @@ function linkBar(links, copyText = null, edge = null) { // copyText: 길찾기 a
         a.addEventListener('click', (e) => {
           e.preventDefault();
           const mine = ask ? null : choices.find((c) => c.id === navPref());
-          if (mine) openNav(mine, copyText, nav, choices); else pickNav(nav, choices, copyText, ask ? label : null);
+          if (!ask) openNavDialog(choices, copyText, geo);
+          else if (mine) openNav(mine, copyText, nav, choices); else pickNav(nav, choices, copyText, label);
         });
       } else if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
       return a;
@@ -947,7 +985,6 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
       prompt('링크를 복사하세요', url); // no clipboard (http, denied)
       return;
     }
-    document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     btn.classList.add('done');
     btn.replaceChildren(icon('check'), ...(label ? ['복사됨'] : []));
     say.textContent = '링크를 복사했어요';
@@ -1070,7 +1107,8 @@ function rowDetails(m, wall, at) {
     : null;
   // 다녀왔어요 sits beside 자세히 at the card's foot (go-row); its sheet asks the visit time and the crowd
   const goRow = el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
-  const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
+  const pos = wallPosition(wall);
+  const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
     m.photo ? null : el('div', { class: 'ph-hero' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m)), photoAsk),
@@ -1081,7 +1119,7 @@ function rowDetails(m, wall, at) {
         el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
         (m.state === 'open' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
         m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
-        m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
+        // (no 휴게 chips on the card: the hours already split around the break, the list bar and the wall sheet's table show it)
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
@@ -1369,10 +1407,10 @@ const modelOf = (row, at) => cardModel(row, at, {
 });
 
 let rowSeq = 0;
-// what the dimmed / veiled look says in words (a screen reader hears no opacity)
 // the list row says only the value ("4시간"); the open card's pill keeps "4시간 가능" (style.css .lf-pre): said once in the group heading, not on every row
 const FEW_MIN = 180; // 3 hours or less to stay: said bolder, so a short row stands out among the same-looking rest
 const leftParts = (left) => { const m = /^(\d+시간)( 가능)$/.exec(left); return m ? [m[1], el('span', { class: 'lf-pre' }, m[2])] : [left]; };
+// what the dimmed / veiled look says in words (a screen reader hears no opacity)
 const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
 function timeRow(row, at) {
   const m = modelOf(row, at);
@@ -1438,7 +1476,6 @@ function toggleRow(li) {
   if (others.length) { void li.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => others.forEach((o) => o.classList.remove('snap')))); }
   go({ type: 'toggle', name: li.wallName, state: li.state }); // its folds and a previewed season start over
   if (vs.openName !== li.wallName) return;
-  document.dispatchEvent(new CustomEvent('stats:card-open')); // stats.js counts it (no wall name in it)
   li.fill();
   weatherFor(li.wallName);
   seeSetting(li.wallName);
@@ -1480,9 +1517,9 @@ function render() {
   const { date, min, at } = clockView(vs, now);
   if ($('date').value !== date) $('date').value = date;
   if ($('time').value !== String(min)) $('time').value = String(min);
+  $('time').style.setProperty('--fill', String((min - 360) / (1380 - 360))); // the slider's passed stretch (style.css #time)
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
-  $('time').style.setProperty('--fill', String((min - 360) / (1380 - 360))); // the slider's passed stretch (style.css #time)
   if (Number.isNaN(+at)) return;
   if (loadFailed) { // never show "0 open" for a list that did not load
     $('summary').dataset.key = 'load-failed';
@@ -1940,12 +1977,12 @@ const fitSticky = () => {
   root.setProperty('--ctl-h', `${stick ? h : 0}px`);
   root.setProperty('--stick-h', `${stick ? h : 0}px`);
 };
-new ResizeObserver(fitSticky).observe(controls);
 // the tab bar is fixed at the bottom except on wide screens: its height (home-bar inset included) pads the page end and lifts the toast and 맨 위로
 const fitTabbar = () => document.documentElement.style.setProperty('--tabbar-h', `${wide.matches ? 0 : tabbar.offsetHeight}px`);
 new ResizeObserver(fitTabbar).observe(tabbar);
 wide.addEventListener('change', fitTabbar);
 fitTabbar();
+new ResizeObserver(fitSticky).observe(controls);
 addEventListener('resize', fitSticky);
 fitSticky();
 sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // the dialog has no padding: only the backdrop hits it
