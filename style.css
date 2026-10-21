@@ -673,6 +673,7 @@ dialog.gal[open] { display: flex; }
 .x-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .x-top { display: flex; align-items: flex-start; justify-content: flex-end; gap: var(--sp-8); }
 .x-top .x-name { flex: 1; min-width: 0; }
+.row.is-open:not(.has-photo) > .row-btn { background: var(--off); } /* no photo: the row's own line is part of the same grey block as the hours below it */
 .ph-hero { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-8); min-height: 96px; padding: var(--sp-12) var(--pad); margin: 0 calc(var(--pad) * -1); background: var(--off); }
 .ph-hero .rhero-cap { color: var(--fg); text-shadow: none; }
 .ph-hero .rhero-add { color: var(--accent); margin-right: -6px; }
