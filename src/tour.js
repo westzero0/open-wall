@@ -19,7 +19,7 @@ const sampleSource = () => {
   }
   return null;
 };
-const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && sampleSource()?.querySelector(s.sample)); };
+const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && (sampleSource()?.matches(s.sample) || sampleSource()?.querySelector(s.sample))); };
 
 /** startTour({ onClose }) → boolean: false (and nothing opens) when no step has a visible target.
  *  onClose({ completed }) runs once however the tour ends; completed = 마지막 단계에서 끝내기를 눌렀다. */
@@ -68,14 +68,8 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   const place = () => {
     const target = resolve(steps[i]);
     if (!target) return;
-    let r = target.getBoundingClientRect();
-    const more = steps[i].extend && target.closest('.row-btn')?.querySelector(steps[i].extend); // 날씨 칩과 남은 시간을 한 구멍으로
-    if (more) {
-      const q = more.getBoundingClientRect();
-      const l = Math.min(r.left, q.left), t = Math.min(r.top, q.top);
-      r = new DOMRect(l, t, Math.max(r.right, q.right) - l, Math.max(r.bottom, q.bottom) - t);
-    }
-    const key =`${i}|${r.left}|${r.top}|${r.width}|${r.height}|${innerWidth}|${innerHeight}`;
+    const r = target.getBoundingClientRect();
+    const key = `${i}|${r.left}|${r.top}|${r.width}|${r.height}|${innerWidth}|${innerHeight}`;
     if (key === last) return;
     last = key;
     dlg.classList.toggle('follow', performance.now() > settle);
