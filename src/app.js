@@ -9,7 +9,7 @@ import { dialModel } from './dial.js';
 import { renderScene, sceneTone } from './sun-scene.js';
 import { getStatus } from './hours.js';
 import {
-  axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
+  axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, formatDistance, rowExtra, shortenDates } from './card-model.js';
@@ -79,9 +79,12 @@ const ICONS = {
   indoor: ['M3 12l9-9 9 9', 'M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10'],
   shade: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M2 12h2', 'M20 12h2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M3 21L21 3'],
 };
+// a glyph drawn small in its 24 grid (the megaphone is 18 x 12) is cut closer so it reads as big as its neighbours; the stroke is thinned by the same factor
+const ICON_BOX = { megaphone: { box: '1.8 1.8 20.4 20.4', stroke: '1.7' } };
 function icon(name, filled = false) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: filled ? 'currentColor' : 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(k, v);
+  const cut = ICON_BOX[name];
+  for (const [k, v] of Object.entries({ viewBox: cut?.box ?? '0 0 24 24', fill: filled ? 'currentColor' : 'none', stroke: 'currentColor', 'stroke-width': cut?.stroke ?? '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(k, v);
   for (const d of ICONS[name]) {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     p.setAttribute('d', d);
@@ -283,7 +286,7 @@ function linkBar(links, copyText = null, edge = null, geo = null) { // copyText:
     edge?.start ?? null,
     ...ordered.map(({ label, href, sub, primary, choices, ask }) => {
       const a = el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
-        LINK_ICON[label] ? icon(LINK_ICON[label]) : null, LINK_WORD[label] ?? label);
+        LINK_ICON[label] ? icon(LINK_ICON[label]) : null, LINK_ICON[label] ? el('span', { class: 'sr-only' }, LINK_WORD[label] ?? label) : (LINK_WORD[label] ?? label)); // icon cells say it with the icon (the word is for screen readers); a link without an icon keeps its word
       if (choices) {
         a.addEventListener('click', (e) => {
           e.preventDefault();
@@ -721,7 +724,7 @@ function paintStar(btn) {
   const on = favs.includes(btn.dataset.fav);
   btn.setAttribute('aria-pressed', String(on));
   btn.classList.toggle('on', on);
-  btn.replaceChildren(icon('heart', on), ...(btn.dataset.label ? [btn.dataset.label] : []));
+  btn.replaceChildren(icon('heart', on), ...(btn.dataset.label ? [el('span', { class: 'sr-only' }, btn.dataset.label)] : [])); // the link strip says it with the icon; the word is for screen readers
 }
 // Every heart and name mark of a wall is repainted in place, so the tapped button keeps focus.
 // ---- 이번 주 변경: the followed walls (♥, 내 지역) that are suspended or have a closed date this week, one line on the home and a sheet ----
@@ -973,7 +976,7 @@ function renderPick() {
 // 공유하기 icon at the end of the name line: the link is copied right away (the icon turns into a check for a moment and
 // the live note says so), and the toast offers 같이 가요 초대 for that wall.
 function shareBtn(name, label = null) { // label: a word under the icon (the link strip's cell)
-  const face = () => [icon('share'), ...(label ? [label] : [])];
+  const face = () => [icon('share'), ...(label ? [el('span', { class: 'sr-only' }, label)] : [])];
   const btn = el('button', { type: 'button', class: label ? 'lb-item' : 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, ...face());
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
   let timer;
@@ -986,7 +989,7 @@ function shareBtn(name, label = null) { // label: a word under the icon (the lin
       return;
     }
     btn.classList.add('done');
-    btn.replaceChildren(icon('check'), ...(label ? ['복사됨'] : []));
+    btn.replaceChildren(icon('check'), ...(label ? [el('span', { class: 'sr-only' }, '복사됨')] : []));
     say.textContent = '링크를 복사했어요';
     document.dispatchEvent(new CustomEvent('stats:share-send')); // stats.js counts it (no wall name in it)
     clearTimeout(timer);
@@ -1012,15 +1015,23 @@ function closedItem(l, m) {
 }
 // one row under the 다녀왔어요 line: the rope chip(s) first, then the facts (tags, indoor side) as one muted line; the wall size is in the wall sheet's 시설
 function metaRow(m) {
-  const facts = [...m.tags, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])];
+  // 외벽 facilities (스피드월, 지붕) are chips that only inform; the indoor side (실내벽, 실내 종류, 실내 높이) stays a muted line
+  const wallTags = m.tags.filter((t) => t !== '실내벽');
+  const facts = [...m.tags.filter((t) => t === '실내벽'), ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])];
+  const tagChips = wallTags.map((t) => el('span', { class: 'chip fact' }, t));
   const chips = m.rope ? [el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)] : [];
-  if (!chips.length && !facts.length) return [];
-  const line = [...chips, facts.length ? el('span', { class: 'tags-line' }, facts.join(' · ')) : null];
-  if (!m.info.folded.length && !m.sizes.length) return [el('p', { class: 'meta-row', title: m.rope?.basis }, ...line)]; // no 시설 section to go to
-  // the row opens the wall sheet at 시설 (the wall size and the memo lines), like the 주차 row opens 주차
-  const go = el('button', { type: 'button', class: 'meta-row meta-go', title: m.rope?.basis }, el('span', { class: 'meta-in' }, ...line), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
-  go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'use', section: 'facility' }));
-  return [go];
+  // 장비 대여 가능: a chip beside the rope chip; it opens the wall sheet at the fees (where the prices are)
+  const rent = m.rental ? el('button', { type: 'button', class: 'chip rental', 'aria-label': `장비 대여 가능${m.rental.text ? `, ${m.rental.text}` : ''}, 요금 보기` }, '장비 대여') : null;
+  rent?.addEventListener('click', () => openWallSheet(m.name, rent, { tab: 'use', section: 'fees' }));
+  if (!chips.length && !facts.length && !rent && !tagChips.length) return [];
+  const factsEl = facts.length ? el('span', { class: 'tags-line' }, facts.join(' · ')) : null;
+  if (!m.info.folded.length && !m.sizes.length) return [el('p', { class: 'meta-row', title: m.rope?.basis }, ...chips, rent, ...tagChips, factsEl)]; // no 시설 section to go to
+  // the rope chip opens the wall sheet at 시설 (the wall size and the memo lines); with no rope chip the facts line does. No arrow: the chip is the button
+  const toFacility = (b) => { b.addEventListener('click', () => openWallSheet(m.name, b, { tab: 'use', section: 'facility' })); return b; };
+  return [el('div', { class: 'meta-row meta-go' },
+    chips.length ? toFacility(el('button', { type: 'button', class: 'meta-part', title: m.rope?.basis }, ...chips)) : null,
+    rent, ...tagChips,
+    factsEl ? (chips.length ? factsEl : toFacility(el('button', { type: 'button', class: 'meta-part' }, factsEl))) : null)];
 }
 function infoBlock(m) {
   const parts = [];
@@ -1541,11 +1552,13 @@ function render() {
   // the stored flag is ignored (not deleted) while no wall has parking data
   const canPark = state.walls.some(hasParking);
   $('parkRow').hidden = !canPark;
+  const canRent = state.walls.some(hasRental);
+  $('rentRow').hidden = !canRent;
   const rows = buildList(state.walls, at, { minHours: Number(ui.minHours), withBreaks: ui.withBreaks, venue: ui.venue });
   const openTotal = rows.filter((r) => r.status.state === 'open').length;
-  const fv = filterView(ui, { canPark, openTotal, isNow });
+  const fv = filterView(ui, { canPark, canRent, openTotal, isNow });
   // 내 지역 · 구분 · 주차 narrow every group, the map and the counts alike (scopeRows)
-  const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
+  const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly, rentalOnly: fv.rentalOnly });
   const mine = ui.favOnly ? scoped.filter((r) => favs.includes(r.wall.name)) : scoped; // 즐겨찾기만
   const all = withDistance(filterRows(mine, ui.sun), vs.origin);
   if (pinnedName && !all.some((r) => r.wall.name === pinnedName)) { // a wall found by search / 기록 that the filters hide: shown for this visit, the filters stay as they are
@@ -2003,12 +2016,14 @@ for (const id of ['regionOpts', 'regionOptsC']) {
   });
 }
 $('parkingOnly').addEventListener('click', () => setUi('parkingOnly', !ui.parkingOnly));
+$('rentalOnly').addEventListener('click', () => setUi('rentalOnly', !ui.rentalOnly));
 $('favOnly').addEventListener('click', () => setUi('favOnly', !ui.favOnly));
 $('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBreaks));
 
 for (const k of tabs) {
   $(`tab-${k}`).addEventListener('click', () => {
     showTab(k);
+    if (k !== 'list') document.dispatchEvent(new CustomEvent(`stats:tab-${k}`)); // stats.js counts map and log by name
     // the tab's content lands right under the sticky date/slider/tab bar (never up at the filter row, never behind it)
     const panel = $(`panel-${ui.tab}`); // showTab has just set --stick-h; reading the rect lays the page out first
     const top = panel.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stick-h') || '0') - 8;
@@ -2023,7 +2038,6 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
   e.preventDefault();
   showTab(order[(next + order.length) % order.length], true);
 });
-    if (k !== 'list') document.dispatchEvent(new CustomEvent(`stats:tab-${k}`)); // stats.js counts map and log by name
 
 // Asks for the position (only on a press: 내 위치 / 가까운 순 in the list); kept in memory only.
 // sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); no caller passes false now (the 기록 sheet

@@ -806,8 +806,11 @@ dialog.gal[open] { display: flex; }
 .tags-line { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-8); margin: var(--sp-10) 0 0; } /* the rope chip and the wall's facts share a row */
 .meta-row .chip { white-space: nowrap; }
-.expand-in .meta-go { box-sizing: border-box; width: 100%; margin: var(--sp-6) 0 0; flex-wrap: nowrap; align-items: center; min-height: var(--tap); padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; justify-content: space-between; }
-.expand-in .meta-go .meta-in { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-8); }
+.expand-in .meta-go { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-8); box-sizing: border-box; width: 100%; margin: var(--sp-6) 0 0; min-height: var(--tap); }
+.meta-part { display: flex; align-items: center; gap: var(--sp-6); min-height: var(--tap); padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.chip.fact { white-space: nowrap; } /* an informing chip (스피드월, 지붕): the plain grey .chip, no border, nothing to press */
+.chip.rental { border: 1px solid currentColor; background: transparent; color: var(--open); font: inherit; font-size: var(--fs-xs); font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: pointer; padding: var(--sp-2) var(--sp-8); border-radius: var(--r-6); }
+.chip.rental:focus-visible, .meta-part:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pv-sub { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); } /* the wall's own lot, under the cost */
 /* 로프 pills under the facts: what the wall asks, and (with 내 로프 picked) whether mine is enough, in the parking chips' outlined look */
 .rope-line { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-8) 0 0; }
@@ -816,8 +819,8 @@ dialog.gal[open] { display: flex; }
 .chip.rope.short { color: var(--soon); border-color: currentColor; }
 /* 길찾기 · 공지사항 · 전화 …: a flat strip like the list rows (hairlines, icon over word); 44px+ tall, a cell is the tap area */
 .linkbar { display: flex; flex-wrap: wrap; margin-top: var(--sp-12); border-block: 1px solid var(--hair); }
-.lb-item { flex: 1 1 0; min-width: 3.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 56px; padding: var(--sp-8) var(--sp-4); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; text-decoration: none; text-align: center; transition: background-color var(--dur-press) var(--ease-out); }
-.lb-item svg { width: 18px; height: 18px; color: var(--muted); }
+.lb-item { flex: 1 1 0; min-width: 3.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 48px; padding: var(--sp-8) var(--sp-4); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; text-decoration: none; text-align: center; transition: background-color var(--dur-press) var(--ease-out); }
+.lb-item svg { width: 22px; height: 22px; color: var(--fg); } /* icon only: a bit larger and as dark as the text it replaces */
 .lb-item:active { background: color-mix(in srgb, var(--fg) 6%, transparent); }
 .lb-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .linkbar > * + * { border-left: 1px solid var(--hair); }

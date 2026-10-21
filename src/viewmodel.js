@@ -54,13 +54,30 @@ export const unknownText = (wall) => (wall?.timeBasis === 'indoor-missing' ? '�
 // ---- list: scope, filters, groups, order ----
 export const hasParking = (wall) => wall.parking?.status === 'free' || wall.parking?.status === 'paid';
 
+// 장비 대여: the fee items that rent gear by itself ("장비 대여(1일)", "하네스 대여"). Not the ones that merely include it ("체험(장비대여 포함)", "체험·강습 장비 대여")
+// nor the ones that name who rents ("자유입장 대여 암벽화 이용자") or other things ("돗자리 대여").
+const RENT_ITEM = /(장비|하네스|초크백)\s*대여/; // lead gear (harness, rope, chalk bag); renting shoes alone ("암벽화 대여") does not count
+const RENT_NOT = /포함|체험|강습|이용자|돗자리/;
+export const rentalOf = (wall) => (wall.fees ?? []).filter((f) => RENT_ITEM.test(f.item ?? '') && !RENT_NOT.test(f.item ?? ''));
+export const hasRental = (wall) => rentalOf(wall).length > 0;
+/** "장비 3,000원" for a price note ("3,000", "3,000 (…)"), the note itself when it already says what it is ("암벽화 3,000 · 하네스 3,000", "무료"); up to two items. '' = rentable, price not told. */
+export function rentalText(wall) {
+  return rentalOf(wall).slice(0, 2).map((f) => {
+    const note = String(f.note ?? '').trim();
+    if (!note) return '';
+    const name = String(f.item).replace(/\s*대여.*$/, '').trim();
+    return /^[\d,]/.test(note) ? `${name} ${note.replace(/^([\d,]+)/, '$1원')}` : note;
+  }).filter(Boolean).join(' · ');
+}
+
 // The one place that narrows the walls themselves (every group, the map pins, the counts):
-// 내 지역 (권역 names, areas.js), 실내/실외, 주차 가능만. The sun / minimum-stay filters stay with filterRows (open group only).
-export function scopeRows(rows, { regions = [], venue = 'any', parkOnly = false } = {}) {
+// 내 지역 (권역 names, areas.js), 실내/실외, 주차 가능만, 장비 대여 가능만. The sun / minimum-stay filters stay with filterRows (open group only).
+export function scopeRows(rows, { regions = [], venue = 'any', parkOnly = false, rentalOnly = false } = {}) {
   return rows.filter(({ wall }) =>
     (!regions.length || regions.includes(areaOf(wall.region)))
     && (!VENUE_OK[venue] || VENUE_OK[venue].includes(venueOf(wall)))
-    && (!parkOnly || hasParking(wall)));
+    && (!parkOnly || hasParking(wall))
+    && (!rentalOnly || hasRental(wall)));
 }
 
 // Filters only reach the open group; closed/unknown stay as they are. A sun filter drops walls
@@ -100,7 +117,7 @@ export function wallPosition(wall) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng, approx: false } : null;
 }
 
-function distanceKm(a, b) {
+export function distanceKm(a, b) {
   const rad = Math.PI / 180;
   const dLat = (b.lat - a.lat) * rad;
   const dLng = (b.lng - a.lng) * rad;

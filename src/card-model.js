@@ -9,7 +9,7 @@ import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import { RAIN_MM, rainOf, weatherLine, windy } from './weather.js';
 import { DEFAULT_STAY_H, TABLE_HOURS, feeAfter, feeBrief, lotFeeTable, pricedLots } from './parking-rate.js';
 import {
-  axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
+  axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, hasRental, rentalText, shortName, unknownText, wallPosition,
 } from './viewmodel.js';
 
 // ---- status ----
@@ -559,6 +559,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     credit,
     photos,
     // 다녀왔어요 pill: "다녀왔어요" until the first record, then "다녀옴 N번" (a tap adds one more)
+    ...(hasRental(wall) ? { rental: { text: rentalText(wall) } } : {}), // 장비 대여: the card says it (a row that opens the fee section), the filter finds it
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),

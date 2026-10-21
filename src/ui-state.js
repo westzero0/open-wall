@@ -5,14 +5,14 @@ import { normalizeAreas } from './areas.js';
 import { sharePageUrl } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false };
+const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
 // 글자 크기: html[data-text] scales the root font size (style.css), on top of the phone's own text-size setting
 export const cleanTextSize = (v) => (['large', 'xlarge'].includes(v) ? v : 'normal');
 // what "조건 지우기" resets (내 지역 has its own way back, 전국으로 보기; sort and 휴게 합산 stay)
-export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, venue: 'any', favOnly: false, tempMin: '0' });
+export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, rentalOnly: false, venue: 'any', favOnly: false, tempMin: '0' });
 
 const SUN_FILTERS = ['any', 'sun', 'shade'];
 const VENUE_FILTERS = ['any', 'indoor', 'outdoor'];
@@ -45,6 +45,7 @@ export function loadUi(storage) {
   ui.minHours = migrateMinHours(ui.minHours); // 1h/2h choices from before 3·5·8
   if (!['time', 'distance'].includes(ui.sortMode)) ui.sortMode = 'time';
   ui.parkingOnly = ui.parkingOnly === true;
+  ui.rentalOnly = ui.rentalOnly === true;
   ui.withBreaks = ui.withBreaks === true;
   ui.regions = cleanRegions(ui.regions);
   ui.hidePick = ui.hidePick === true; // 이번 주말 추천 turned off in 내 정보
@@ -74,9 +75,9 @@ const regionLabel = (regions) =>
   (!regions?.length ? '' : regions.length === 1 ? `내 지역: ${regions[0]}` : `내 지역 ${regions.length}곳`);
 
 // The filters that can hide open walls, by name.
-const activeFilters = ({ sun, minHours, parkOnly, venue, regions, favOnly }) =>
+const activeFilters = ({ sun, minHours, parkOnly, rentalOnly, venue, regions, favOnly }) =>
   [regionLabel(regions), venue === 'indoor' && '실내', venue === 'outdoor' && '실외',
-    sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만',
+    sun === 'sun' && '양달', sun === 'shade' && '응달', minHours !== '0' && `${minHours}시간+`, parkOnly && '주차 가능만', rentalOnly && '장비 대여만',
     favOnly && '즐겨찾기만'].filter(Boolean);
 
 /**
@@ -84,21 +85,23 @@ const activeFilters = ({ sun, minHours, parkOnly, venue, regions, favOnly }) =>
  * canPark: some wall has parking data (else the stored 주차 가능만 is ignored, not deleted).
  * openTotal: walls open before the filters; isNow: the live clock (wording).
  */
-export function filterView(ui, { canPark, openTotal, isNow }) {
+export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
   const parkOnly = ui.parkingOnly && canPark;
-  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly, venue: ui.venue, regions: ui.regions, favOnly: ui.favOnly };
+  const rentalOnly = ui.rentalOnly && canRent;
+  const f = { sun: ui.sun, minHours: ui.minHours, parkOnly, rentalOnly, venue: ui.venue, regions: ui.regions, favOnly: ui.favOnly };
   const on = activeFilters(f);
   const label = regionLabel(ui.regions);
   return {
     parkOnly,
+    rentalOnly,
     pressed: {
       sunOnly: ui.sun === 'sun', shadeOnly: ui.sun === 'shade',
-      parkingOnly: ui.parkingOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
+      parkingOnly: ui.parkingOnly, rentalOnly: ui.rentalOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
     },
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
     // the sheet button counts what only the sheet shows: 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온
-    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance') + Number(parkOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
+    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
       ? `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`
