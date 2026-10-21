@@ -11,7 +11,7 @@ import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import { barRows, gradeLabel, gradeLine, totalOf } from './grades.js';
 import { createGradeWall } from './grade-wall.js';
-import { featureOn, logSections } from './stage.js';
+import { tiersFor, newTier, logSections } from './stage.js';
 import { createMonthShare } from './month-share.js';
 import { createPosterShare } from './poster-share.js';
 import { createPosterStore, idbBackend } from './poster-store.js';
@@ -857,7 +857,7 @@ export function createLogView({
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
   }
 
-  // beta: the 기록 tab shows only this plain list of where you went (the showcase — calendar, stamps, rank, posters — opens with config.stage 'open')
+  // until a person has 3 records the 기록 tab shows only this plain list of where you went (the rest opens by tiersFor, src/stage.js)
   function visitList() {
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-visits-title' },
       el('h3', { id: 'lg-visits-title', tabindex: '-1' }, '다녀온 곳', el('span', {}, ` · ${log.length}번`)),
@@ -890,10 +890,28 @@ export function createLogView({
       calendar: () => calendar(byDay), dayList: () => dayList(byDay),
       strip: () => renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }),
     };
+    const tiers = tiersFor(log);
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
-      ...logSections({ open: featureOn('logShowcase'), hasRecords: log.length > 0 }).map((k) => parts[k]()),
+      tierNote(tiers),
+      ...logSections({ tiers, hasRecords: log.length > 0 }).map((k) => parts[k]()),
     ].filter(Boolean));
+  }
+
+  // one quiet line when a new step of the 기록 tab has opened for this person; 확인 remembers it (this browser only)
+  const SEEN_KEY = 'open-wall:tiers-seen';
+  const seenTiers = () => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY)) ?? []); } catch { return new Set(); } };
+  function tierNote(tiers) {
+    const seen = seenTiers();
+    const t = log.length ? newTier(tiers, seen) : null;
+    if (!t) return null;
+    const ok = el('button', { type: 'button', class: 'lg-card-link' }, '확인');
+    ok.addEventListener('click', () => {
+      seen.add(t.id);
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* private mode: the note shows again next time */ }
+      render();
+    });
+    return el('p', { class: 'sh-hint', role: 'status' }, t.say, ' ', ok);
   }
 
   return {

@@ -11,8 +11,8 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
 // 공지 제보 (docs/prd/notice-links-spec.md 3번, 중단): noticeReport — 켜면 제보 시트에 '공지' 선택이 생긴다. 기본은 꺼 둠(이용자 제보를 기대하지 않기로 함).
-// 공개 단계 (docs/superpowers/specs/2026-10-21-home-simplify-design.md): stage — 'beta' hides the 기록 showcase (달력·도장·등급·포스터 띠), 클라이머 유형 테스트와
-// 이번 주말 추천; 'open'으로 바꿔 배포하면 숨긴 기능이 한꺼번에 열린다(기록은 beta에서도 그대로 저장된다). src/stage.js가 읽는다.
+// 공개 단계 (docs/superpowers/specs/2026-10-21-home-simplify-design.md): stage — 'beta'는 클라이머 유형 테스트와 이번 주말 추천을 숨기고, 'open'이면 연다.
+// 기록 탭(달력·카드·도장)은 stage와 무관하게 사람마다 기록 수로 열린다(docs/superpowers/specs/2026-10-21-staged-opening.md). src/stage.js가 읽는다.
 export const config = {
   stage: 'beta',
   noticeReport: false,
