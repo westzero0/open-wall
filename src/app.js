@@ -964,6 +964,7 @@ const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
 
 // the regular closing day (정기휴무 월): the row carries a › and opens the wall sheet at 운영시간, the way the 주차 row opens its section
 const CLOSED_LABEL = /^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
+const CLOSED_WORD = /(휴무|휴관|휴장)/; // a memo line that says a closing without a label ("설 연휴 휴무") gets the same row, labelled 지정휴무
 function closedItem(l, m) {
   const go = el('button', { type: 'button', class: 'mv pv-go' }, el('span', { class: 'pv-t' }, l.value), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
   go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'time', section: 'hours' }));
@@ -984,7 +985,7 @@ function metaRow(m) {
 function infoBlock(m) {
   const parts = [];
   // only what can stop a visit (closures, warnings, "!" lines); the other memo lines are the wall sheet's 시설 section
-  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map((l) => (CLOSED_LABEL.test(l.label ?? '') ? closedItem(l, m) : memoItem(l)))));
+  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map((l) => (CLOSED_LABEL.test(l.label ?? '') ? closedItem(l, m) : !l.label && l.key && CLOSED_WORD.test(l.value) ? closedItem({ ...l, label: '지정휴무' }, m) : memoItem(l)))));
   // one line: the status, then the wall's own lot (요금 · 주변 · 참고 are in the wall sheet's 주차 section)
   // status → cost for the stay → lot; the whole line opens the sheet at its 주차 section
   const { cost, where } = m.parkingLine;
