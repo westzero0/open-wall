@@ -1397,7 +1397,7 @@ function timeRow(row, at) {
     bar ? listBar(bar) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.veil ? ' veil' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -1508,6 +1508,7 @@ function render() {
     r.veil = !!h && skyVeils(h.c) && forecastTrusted(at, now);
   }
   allRows = rows;
+    r.part = !!h && !r.veil && skyKind(h.c).kind === 'partly' && forecastTrusted(at, now); // 구름 조금: the sun still gets through, a little weaker
   shown = { rows: all, at };
   go({ type: 'shown', rows: all }); // the open row was filtered out, or moved to another group: forget it
   const groups = groupRows(all);
@@ -1804,6 +1805,8 @@ const nowTag = el('span', { class: 'nowtag' });
 $('axis').append(nowTag);
 
 const sheet = $('conditions');
+// the date field lies invisibly over the date text: on desktop a click lands on a field segment, so it opens the calendar itself
+$('date').addEventListener('click', () => { try { $('date').showPicker?.(); } catch { /* already open, or not allowed: the field still works */ } });
 const sheetForm = sheet.querySelector('form');
 // 확인 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
 // closing is one tap from anywhere in the sheet. The 조건 sheet also says how many walls its choices leave (updated in render).
