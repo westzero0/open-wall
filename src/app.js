@@ -1069,7 +1069,9 @@ function rowDetails(m, wall, at) {
   const goRow = el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
-    m.photo ? links : null, // a photo card: the strip hangs under the photo across both columns of the wide layout
+    // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
+    m.photo ? null : el('div', { class: 'ph-hero' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m)), photoAsk),
+    links, // the link strip hangs under the photo (or its place) across both columns of the wide layout
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
