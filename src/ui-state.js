@@ -92,14 +92,13 @@ export function filterView(ui, { canPark, openTotal, isNow }) {
   return {
     parkOnly,
     pressed: {
-      sunOnly: ui.sun === 'sun', shadeOnly: ui.sun === 'shade', longOnly: ui.minHours !== '0',
-      nearFirst: ui.sortMode === 'distance', parkingOnly: ui.parkingOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
+      sunOnly: ui.sun === 'sun', shadeOnly: ui.sun === 'shade',
+      parkingOnly: ui.parkingOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
     },
-    longLabel: `${ui.minHours === '0' ? '3' : ui.minHours}시간+`, // the chip and the sheet share one value
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
-    // the sheet button counts what only the sheet shows: parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만
-    sheetCount: Number(parkOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
+    // the sheet button counts what only the sheet shows: 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온
+    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance') + Number(parkOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
       ? `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`

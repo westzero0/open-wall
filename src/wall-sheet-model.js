@@ -37,7 +37,7 @@ export function sheetModel(m, avail) {
   return {
     tabs: [{ key: 'time', label: '시간' }, { key: 'use', label: '이용' }, { key: 'routes', label: '루트' }, ...(avail.board ? [{ key: 'board', label: '게시판' }] : [])],
     time: TIME.filter((s) => s.key !== 'sun' || avail.sun).map(withEmpty),
-    use: USE.filter((s) => s.key !== 'facility' || m.info.folded.length).map(withEmpty),
+    use: USE.filter((s) => s.key !== 'facility' || m.info.folded.length || m.sizes.length).map(withEmpty),
     checked: m.checked,
   };
 }

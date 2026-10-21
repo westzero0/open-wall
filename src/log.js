@@ -297,6 +297,8 @@ export function visitStats(log) {
 
 export const countFor = (log, wall) => log.filter((r) => r.wall === wall).length;
 export const recentFor = (log, wall, n = 3) => log.filter((r) => r.wall === wall).sort(newestFirst).slice(0, n);
+/** recentVisits(log, limit = 50) → the newest records of any wall (the plain 방문 목록 of the beta 기록 tab); the input is not changed. */
+export const recentVisits = (log, limit = 50) => [...log].sort(newestFirst).slice(0, limit);
 
 // ---- backup file ----
 export function exportLog(log, now = new Date()) {

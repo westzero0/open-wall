@@ -6,7 +6,7 @@ import { CHAT_URL_RE, ROPE_LENGTHS } from './store.js';
 export { ROPE_LENGTHS }; // (the list lives in store.js: normalizeWall cleans rope_m against it)
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
-import { weatherLine, windy } from './weather.js';
+import { RAIN_MM, rainOf, weatherLine, windy } from './weather.js';
 import { DEFAULT_STAY_H, TABLE_HOURS, feeAfter, feeBrief, lotFeeTable, pricedLots } from './parking-rate.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, shortName, unknownText, wallPosition,
@@ -45,7 +45,8 @@ function rowLeft(status, at, wall) {
   const brk = status.endKind === 'break';
   if (r <= 60) return brk ? `곧 휴게 · ${r}분 후` : `곧 마감 · ${r}분 남음`;
   // whole hours only ("3시간 45분" rounds down): the list says roughly how long, the card has the exact minutes
-  return `${Math.floor(r / 60)}시간 ${brk ? '뒤 휴게' : '가능'}`; // "가능": the slider is the arrival time, so it is how long you can stay from then
+  const h = Math.floor(r / 60);
+  return brk ? `${h}시간 뒤 휴게` : `${h}시간 가능`; // the slider is the arrival time, so it is how long you can stay from then
 }
 
 // ---- sun ----
@@ -387,6 +388,20 @@ function crowdOf(crowd, state) {
 
 // The list row's 혼잡 pill: only when a level is settled (fewer than 3 reports → nothing on the row).
 // text is the word alone; aria adds where it comes from.
+/** shortDate('2026-10-15', today) → '10-15' within this year; another year (or text that is no date) is left as it is. */
+export const shortDate = (ymdStr, today) => (typeof ymdStr === 'string' && typeof today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ymdStr) && ymdStr.slice(0, 4) === today.slice(0, 4) ? ymdStr.slice(5) : ymdStr);
+/** shortenDates(text, today) → text with every YYYY-MM-DD of this year cut to MM-DD (the sheet's check-date lines). */
+export const shortenDates = (text, today) => (typeof text === 'string' ? text.replace(/\d{4}-\d{2}-\d{2}/g, (d) => shortDate(d, today)) : text);
+
+/** rowExtra(m) → the one chip beside the wall's name on a list row, or null: 새 세팅 > 혼잡 > 무료 (the rest is on the card). */
+export function rowExtra(m) {
+  const set = m.settingBadgeShort ?? m.settingBadge;
+  if (set) return { kind: 'setnew', text: set };
+  if (m.crowdTag?.text) return { kind: 'crowd', text: m.crowdTag.text };
+  if (m.fee?.endsWith('무료')) return { kind: 'free', text: '무료' };
+  return null;
+}
+
 function crowdTagOf(s) {
   const level = s.recent ? s.recent.level : s.level;
   return { level, text: level, aria: s.recent ? `혼잡도 ${level}, 방금 제보 ${s.recent.n}건` : `혼잡도 ${level}, 이 시간대 제보 ${s.n}건` };
@@ -435,7 +450,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
@@ -486,7 +501,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     dist, // "850m" (list row)
     distLine, // "직선 850m" (card)
     basis,
-    meta: [wall.region, dist].filter(Boolean).join(' · ') || null, // list row
+    meta: wall.region || null, // list row: the region only (no distance)
     where,
     place, // expanded row
     state: status.state,
@@ -547,7 +562,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),
-    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather), temp: `${Math.round(weather.t)}°`, wind: `바람 ${Math.round(weather.w)}m/s`, gust: `돌풍 ${Math.round(weather.g)}m/s` } } : {}),
+    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather), temp: `${Math.round(weather.t)}°`, wind: `바람 ${Math.round(weather.w)}m/s`, gust: `돌풍 ${Math.round(weather.g)}m/s`, rain: rainOf(weather), ahead: weatherAhead.map((a) => ({ label: a.label, temp: `${a.t}°`, rain: a.r >= RAIN_MM ? `${a.r < 10 ? Math.round(a.r * 10) / 10 : Math.round(a.r)}mm` : null })) } } : {}),
     ...(crowdModel?.chip?.level ? { crowdTag: crowdTagOf(crowd.stat) } : {}),
   };
 }

@@ -20,6 +20,9 @@ export function createMonthShare({ getWalls, icon = null }) {
   let file = 'haebyeok.png';
   let token = 0; // only the newest redraw may enable the button
   let from = null;
+  let downOnBackdrop = false; // a press that began inside and ended on the backdrop is not a tap outside
+  dlg.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === dlg; });
+  dlg.addEventListener('click', (e) => e.target === dlg && downOnBackdrop && dlg.close()); // the backdrop
 
   async function redraw() {
     const mine = ++token;

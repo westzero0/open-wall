@@ -5,8 +5,7 @@
 // The panes sit side by side in one scroll-snapped row: swiping sideways or tapping a tab moves between them; each pane scrolls
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
 import { el } from './dom.js';
-import { config } from './config.js';
-import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
+import { nameBreak } from './wall-sheet-model.js';
 
 let build = null; // (wallName) => { tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
 let onClose = null;
@@ -53,8 +52,6 @@ function make() {
   title = el('h2', { id: 'ws-title', class: 'bp-title ws-title', tabindex: '-1' });
   const back = el('button', { type: 'button', class: 'sh-done bp-back' }, '← 닫기');
   back.addEventListener('click', () => dlg.close());
-  const report = config.reportEndpoint ? el('button', { type: 'button', class: 'ws-report' }, '정보 제보') : null;
-  report?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kinds: TAB_KINDS[tabKeys[cur]] } })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
     if (!body.clientWidth) return;
@@ -66,7 +63,7 @@ function make() {
   window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
   dlg = el('dialog', { class: 'sheet board-page wall-sheet', 'aria-labelledby': 'ws-title' },
-    el('div', { class: 'ws-top' }, el('div', { class: 'sh-head' }, back, title, report)), bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
+    el('div', { class: 'ws-top' }, el('div', { class: 'sh-head' }, back, title)), bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
   dlg.addEventListener('close', () => { // 뒤로, Esc or popstate
     if (pushed) { pushed = false; history.back(); }
     onClose?.();

@@ -11,6 +11,7 @@ import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
 import { barRows, gradeLabel, gradeLine, totalOf } from './grades.js';
 import { createGradeWall } from './grade-wall.js';
+import { featureOn, logSections } from './stage.js';
 import { createMonthShare } from './month-share.js';
 import { createPosterShare } from './poster-share.js';
 import { createPosterStore, idbBackend } from './poster-store.js';
@@ -21,7 +22,7 @@ import { KIND_TEXT } from './year-seal.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades, recentVisits,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -472,6 +473,7 @@ export function createLogView({
     const after = rankNow();
     rankUp = after.level > before.level;
     persist();
+    document.dispatchEvent(new CustomEvent('stats:log-add')); // stats.js counts it (no wall name or memo in it)
     if (!panel.hidden) { // added from the 기록 tab: show the day it went on
       picked = focusDay = res.record.date;
       const p = dayParts(picked);
@@ -620,11 +622,13 @@ export function createLogView({
   const yearDlg = $('year-info');
   let yearOpener = null;
   yearDlg.addEventListener('close', () => yearOpener?.focus());
+  yearDlg.addEventListener('click', (e) => e.target === yearDlg && yearDlg.close()); // the backdrop
 
   // 등급 안내 sheet: every tier this list can reach with the walls it takes (the tier now is marked, passed ones are ticked).
   const rankDlg = $('rank-info');
   let rankOpener = null;
   rankDlg.addEventListener('close', () => rankOpener?.focus());
+  rankDlg.addEventListener('click', (e) => e.target === rankDlg && rankDlg.close()); // the backdrop
   function openRankInfo(places, total, from) {
     rankOpener = from;
     const cur = rankOf(places, total);
@@ -853,6 +857,23 @@ export function createLogView({
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
   }
 
+  // beta: the 기록 tab shows only this plain list of where you went (the showcase — calendar, stamps, rank, posters — opens with config.stage 'open')
+  function visitList() {
+    return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-visits-title' },
+      el('h3', { id: 'lg-visits-title', tabindex: '-1' }, '다녀온 곳', el('span', {}, ` · ${log.length}번`)),
+      el('ul', { class: 'lg-recs' }, ...recentVisits(log).map((r) => {
+        const p = dayParts(r.date);
+        const open = el('button', { type: 'button', class: 'lg-open' },
+          el('span', { class: 'lg-name' }, r.wall),
+          el('span', { class: 'lg-region' }, [`${p.month}월 ${p.day}일`, regionOf(r.wall)].filter(Boolean).join(' · ')),
+          recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null);
+        open.addEventListener('click', () => reveal(r.wall));
+        const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
+        del.addEventListener('click', () => remove(r));
+        return el('li', {}, open, del);
+      })));
+  }
+
   // a thumbnail of the strip opens its card; a card whose record is gone (a backup restored elsewhere) still opens, from what the thumbnail row knows
   function openFromStrip(id) {
     const it = thumbItems.find((x) => x.id === id);
@@ -864,10 +885,14 @@ export function createLogView({
     if (panel.hidden) return;
     const byDay = recordsByDay(log);
     firsts = firstVisits(log);
+    const parts = {
+      empty, visitList, activity, yearMap, gradeYear, backup: backupNote,
+      calendar: () => calendar(byDay), dayList: () => dayList(byDay),
+      strip: () => renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }),
+    };
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
-      activity(),
-      ...(log.length ? [calendar(byDay), dayList(byDay), renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }), yearMap(), gradeYear(), backupNote()] : [empty()]),
+      ...logSections({ open: featureOn('logShowcase'), hasRecords: log.length > 0 }).map((k) => parts[k]()),
     ].filter(Boolean));
   }
 

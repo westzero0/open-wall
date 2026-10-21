@@ -9,7 +9,7 @@ import {
   CODES, ORDER, QUESTIONS, answerQuiz, axisWords, backQuiz, characterSrc, compareLine, loadClimber, oppositeOf, quizDone, routeLine,
   saveClimber, scoreResult, shareText, startQuiz, tipText, typeUrl,
 } from './climber-test.js';
-import { config } from './config.js';
+import { featureOn } from './stage.js';
 import { el } from './dom.js';
 import { KAKAO_SAY, climberKakaoPayload, loadKakao, shareKakao } from './kakao-share.js';
 import { pictureBlob, shareInvite, shareSay } from './share-image.js';
@@ -25,7 +25,7 @@ export function createClimberView({ getOpenCount = () => null, isCardDone = () =
   const resultBox = $('climberResult');
   const card = $('climberCard');
   // off, or an older cached index.html without the sheet (sw.js shows the stored page first): do nothing rather than break the app
-  if (!config.climberTest || !dlg || !quizBox || !resultBox || !card || !$('pfClimberRow') || !$('pfClimber')) return { open() {}, banner() {} };
+  if (!featureOn('climber') || !dlg || !quizBox || !resultBox || !card || !$('pfClimberRow') || !$('pfClimber')) return { open() {}, banner() {} };
   let quiz = startQuiz();
   let opener = $('meBtn');
   let kakao = null; // the SDK once loaded and initialised (loaded when a result shows, so the tap has nothing to wait for)

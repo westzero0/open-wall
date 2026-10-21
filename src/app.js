@@ -3,6 +3,7 @@ import { DAY_KO, hhmm, isNight, ymd } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
+import { featureOn } from './stage.js';
 import { createMap } from './map.js';
 import { dialModel } from './dial.js';
 import { renderScene, sceneTone } from './sun-scene.js';
@@ -11,7 +12,7 @@ import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, feeTable, feeWord, formatDistance } from './card-model.js';
+import { cardModel, feeTable, feeWord, formatDistance, rowExtra, shortenDates } from './card-model.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
@@ -28,9 +29,9 @@ import { startTour } from './tour.js';
 import { createLogView, toast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
 import { createSafetyView } from './safety-view.js';
-import { LEVELS, aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
+import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
+import { dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, skyKind, weatherFresh, weekendForecastUrl } from './weather.js';
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
@@ -50,6 +51,7 @@ const ICONS = {
   share: ['M12 3v12', 'M8 7l4-4 4 4', 'M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'],
   nav: ['M3 11L22 2l-9 19-2-8-8-2z'],
   check: ['M5 12l5 5 9-10'],
+  stamp: ['M5 22h14', 'M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77', 'M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-3-3c-1.66 0-3 1-3 3s1 2 1 3.5V13'],
   megaphone: ['M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M18.5 6a9 9 0 0 1 0 12'],
   chat: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
   phone: ['M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'],
@@ -146,7 +148,7 @@ let liveOpenCount = null; // the header's count of open walls while the clock is
 // first, so a half-updated cache (a new module next to an older one it imports) must never be able to stop the app from starting.
 let climberView = { open() {}, banner() {} };
 let typeFromSearch = () => null;
-if (config.climberTest) {
+if (featureOn('climber')) {
   try {
     const [view, test] = await Promise.all([import('./climber-view.js'), import('./climber-test.js')]);
     typeFromSearch = test.typeFromSearch;
@@ -211,7 +213,8 @@ function dayBarBlock(bar) {
 }
 
 // 길찾기 · 공지 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
-const LINK_ICON = { 길찾기: 'nav', 공지: 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone' };
+const LINK_ICON = { 길찾기: 'nav', '공지 보기': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone' };
+const LINK_WORD = { '공지 보기': '공지' }; // the cell says the short word (the link's own label keeps the long one for the model and the picker)
 // 길찾기: the first tap asks which map app (the web cannot see what is installed); the pick is remembered, later taps open it directly.
 const NAV_KEY = 'open-wall:nav-app';
 const navPref = () => { try { return localStorage.getItem(NAV_KEY); } catch { return null; } };
@@ -243,7 +246,7 @@ function linkBar(links, copyText = null, edge = null) { // copyText: 길찾기 a
     edge?.start ?? null,
     ...ordered.map(({ label, href, sub, primary, choices, ask }) => {
       const a = el('a', { class: 'lb-item', href, target: '_blank', rel: 'noopener noreferrer', ...(sub ? { 'aria-label': `${label} · ${sub} 열기`, title: sub } : {}) },
-        LINK_ICON[label] ? icon(LINK_ICON[label]) : null, label);
+        LINK_ICON[label] ? icon(LINK_ICON[label]) : null, LINK_WORD[label] ?? label);
       if (choices) {
         a.addEventListener('click', (e) => {
           e.preventDefault();
@@ -353,22 +356,13 @@ function creditChip(c) {
 // no photo yet: a quiet link at the right end of the name row opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
 function photoLink(m) {
   if (m.photo || !config.boardUrl) return null;
-  const b = el('button', { type: 'button', class: 'photo-ask', 'aria-label': `${m.name} 외벽 사진 보내기` }, icon('camera'), '사진 보내기');
+  const b = el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 외벽 사진 보내기`, title: '사진 보내기' }, icon('camera-plus'));
   b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
   return b;
 }
 
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
 // today's hours ride on its foot. The photo and its credit leave the expanded part, which would repeat them.
-// the forecast under the hours on the photo (an open card gets it again when the forecast arrives: refillOpen)
-// An outdoor wall with a position gets a forecast: until it arrives (or when it has none for this moment) the line stays as an
-// empty row, so the hours above it do not jump up when the forecast lands.
-const weatherExpected = (name) => { const w = state.walls.find((x) => x.name === name); return !!w && w.venue !== 'indoor' && !!wallPosition(w); };
-function photoWeather(m) {
-  const w = m.weather;
-  if (!w) return weatherExpected(m.name) ? el('p', { class: 'rhero-wx', 'aria-hidden': 'true' }, ' ') : null;
-  return el('p', { class: 'rhero-wx', 'aria-label': `${w.line}${w.windy ? ', 바람 셈' : ''}` }, `${w.temp} · ${w.wind} · ${w.gust}`, w.windy ? el('span', { class: 'wx-pill' }, '바람 셈') : null);
-}
 const CARD_PHOTOS = 5; // the card swipes the main photo and the newest four; the gallery has them all (at most 10)
 const CARD_DOTS = 5;
 function rowPhoto(m, li) {
@@ -386,7 +380,7 @@ function rowPhoto(m, li) {
     credit = next;
   };
   setCredit(list[0].credit ?? m.credit);
-  const wrap = el('div', { class: 'herowrap rhero' }, track, el('div', { class: 'rhero-foot' }, line, photoWeather(m)));
+  const wrap = el('div', { class: 'herowrap rhero' }, track, el('div', { class: 'rhero-foot' }, line));
   // the photo sits in a hidden box until the row opens (lazy never loads it): fetch the first when the row nears the screen, so opening shows it at once
   const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { imgs[0].loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
   near.observe(li);
@@ -795,7 +789,6 @@ async function loadWeekendWeather() {
 // answer is not retried for 5 minutes. A row shows the temperature at the picked arrival hour; indoor walls have none.
 const WXL_KEY = 'open-wall:wx-list';
 const wxList = { byName: new Map(), entry: null, busy: false };
-const SKY_ICON = { clear: 'sun', partly: 'sky-partly', cloud: 'sky-cloud', fog: 'sky-fog', rain: 'sky-rain', snow: 'sky-snow', storm: 'sky-storm' };
 const listSpots = () => state.walls.filter((w) => w.venue !== 'indoor').map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
 // names and coordinates (2 decimals, what is sent): a wall added, removed or moved while the page is open asks again
 const listKey = (spots) => spots.map(([w, p]) => `${w.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join('|');
@@ -833,37 +826,15 @@ async function loadListWeather() {
   renderForWx();
 }
 const wxEntry = (wall, at) => { const h = wxList.byName.get(wall.name); return h ? pickHour(h, at) : null; };
-function wxChip(h, name) {
-  const sky = skyKind(h.c);
-  const t = Math.round(h.t) || 0; // never "-0"
-  // the sky is a filled round badge (rain, snow and storm are coloured; the aria-label keeps the word)
-  return el('span', { class: `rwx wx-${sky.kind}`, 'data-wx': name, role: 'img', 'aria-label': `기온 ${t}도, ${sky.text}` },
-    el('span', { class: 'rwx-ic' }, icon(SKY_ICON[sky.kind])), el('span', { class: 'rwx-t' }, `${t}°`));
-}
-// an outdoor wall with a position gets a slot: filled when the forecast covers the picked hour, empty (same width, so nothing
-// shifts when it lands) until the answer comes; once answered, no slot where there is nothing to show
-function wxSlot(wall, at) {
-  if (wall.venue === 'indoor' || !wallPosition(wall)) return null;
-  const h = wxEntry(wall, at);
-  if (h) return wxChip(h, wall.name);
-  return wxList.entry ? null : el('span', { class: 'rwx pending', 'data-wx': wall.name, 'aria-hidden': 'true' });
-}
-function paintListWx() {
-  const at = shown.at;
-  for (const slot of document.querySelectorAll('#panel-list .rwx[data-wx]')) {
-    const wall = at && state.walls.find((w) => w.name === slot.dataset.wx);
-    const h = wall ? wxEntry(wall, at) : null;
-    if (h) slot.replaceWith(wxChip(h, wall.name)); else slot.remove();
-  }
-  syncWxCredit();
-}
-// Open-Meteo asks for credit (CC BY 4.0): a line under the list whenever a row shows its weather
-const syncWxCredit = () => { if ($('wxCredit')) $('wxCredit').hidden = !document.querySelector('#panel-list .rwx:not(.pending)'); };
+// the list rows carry no temperature: the forecast shows as a cloud (해 가려짐) or an umbrella (비 예보) on the 양달 chip, and in full on the open card.
+// Open-Meteo asks for credit (CC BY 4.0): a line under the list whenever its forecast is in use
+const syncWxCredit = () => { if ($('wxCredit')) $('wxCredit').hidden = !wxList.byName.size; };
+const paintListWx = syncWxCredit;
 const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get(dayKey(date)));
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
 function renderPick() {
   const box = $('pick');
-  const wanted = state.walls.length && (ui.regions.length || favs.length) && !ui.hidePick; // a 내 지역, or 내 암장 to lead with
+  const wanted = featureOn('pick') && state.walls.length && (ui.regions.length || favs.length) && !ui.hidePick; // a 내 지역, or 내 암장 to lead with
   if (wanted) loadWeekendWeather();
   const r = wanted ? weekendPicks(state.walls, new Date(), { pref: pickPref, regions: ui.regions, venue: ui.venue, weather: pickWeather, favs }) : null;
   // a day with 내 암장 leads with them (+ the 대안 and the ones that are out); a day without any is the plain list
@@ -991,15 +962,34 @@ const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
   l.label ? el('span', { class: 'mk' }, l.label) : null,
   el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
 
+// the regular closing day (정기휴무 월): the row carries a › and opens the wall sheet at 운영시간, the way the 주차 row opens its section
+const CLOSED_LABEL = /^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
+function closedItem(l, m) {
+  const go = el('button', { type: 'button', class: 'mv pv-go' }, el('span', { class: 'pv-t' }, l.value), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+  go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'time', section: 'hours' }));
+  return el('li', { class: l.key ? 'key' : null }, el('span', { class: 'mk' }, l.label), go);
+}
+// one row under the 다녀왔어요 line: the rope chip(s) first, then the facts (tags, indoor side) as one muted line; the wall size is in the wall sheet's 시설
+function metaRow(m) {
+  const facts = [...m.tags, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])];
+  const chips = m.rope ? [el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)] : [];
+  if (!chips.length && !facts.length) return [];
+  const line = [...chips, facts.length ? el('span', { class: 'tags-line' }, facts.join(' · ')) : null];
+  if (!m.info.folded.length && !m.sizes.length) return [el('p', { class: 'meta-row', title: m.rope?.basis }, ...line)]; // no 시설 section to go to
+  // the row opens the wall sheet at 시설 (the wall size and the memo lines), like the 주차 row opens 주차
+  const go = el('button', { type: 'button', class: 'meta-row meta-go', title: m.rope?.basis }, el('span', { class: 'meta-in' }, ...line), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+  go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'use', section: 'facility' }));
+  return [go];
+}
 function infoBlock(m) {
   const parts = [];
   // only what can stop a visit (closures, warnings, "!" lines); the other memo lines are the wall sheet's 시설 section
-  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map(memoItem)));
+  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map((l) => (CLOSED_LABEL.test(l.label ?? '') ? closedItem(l, m) : memoItem(l)))));
   // one line: the status, then the wall's own lot (요금 · 주변 · 참고 are in the wall sheet's 주차 section)
   // status → cost for the stay → lot; the whole line opens the sheet at its 주차 section
   const { cost, where } = m.parkingLine;
   const go = el('button', { type: 'button', class: 'pv pv-go' }, // no aria-label: the visible words (status, cost, lot) are its name
-    el('span', { class: 'pv-t' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), cost ? ` · ${cost}` : '', where ? ` · ${where}` : ''), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+    el('span', { class: 'pv-t' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), cost ? ` · ${cost}` : '', where ? el('span', { class: 'pv-sub' }, where) : null), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
   go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'use', section: 'parking' }));
   parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'), go));
   return parts;
@@ -1065,7 +1055,8 @@ function veilText(m, wall, at) {
 function rowDetails(m, wall, at) {
   const dial = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   // the way into the wall sheet (hours table, seasonal sun, fees, parking details): one button at the end of the facts
-  const sheetBtn = el('button', { type: 'button', class: 'sheet-open', 'data-sheet-open': '', 'data-name': m.name }, '자세히 ›');
+  const sheetBtn = el('button', { type: 'button', class: 'sheet-open', 'data-sheet-open': '', 'data-name': m.name },
+    el('span', { class: 'so-t' }, el('b', {}, '암장 정보 자세히'), el('small', {}, '운영시간 · 요금 · 주차 · 루트')), el('i', { 'aria-hidden': 'true' }, '›'));
   sheetBtn.addEventListener('click', () => openWallSheet(m.name, sheetBtn));
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
   const photoAsk = photoLink(m); // (this one is on the name row: a photo is what the card lacks most)
@@ -1074,37 +1065,29 @@ function rowDetails(m, wall, at) {
       el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
       m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
     : null;
-  // "지금 어때요?" and 다녀왔어요 share a row: the visit and the crowd are both what you do on arriving (wraps when narrow)
-  const act = el('div', { class: 'act-row' }, beenBtn(m), m.crowd ? crowdQuick(m.name) : null, null); // the one filled pill; the crowd question is a text link
+  // 다녀왔어요 sits beside 자세히 at the card's foot (go-row); its sheet asks the visit time and the crowd
+  const goRow = el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
     m.photo ? links : null, // a photo card: the strip hangs under the photo across both columns of the wide layout
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
-        m.photo ? el('h3', { class: 'x-name' }, m.name) // the name is on the photo's row
-          : el('div', { class: 'x-top' }, el('h3', { class: 'x-name' }, m.name, feeChip(m)), photoAsk), // ♥ and share are the end cells of the link strip
+        el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
         (m.state === 'open' || m.suspended ? m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
-        m.photo ? null : el('div', { class: 'today-row' }, // with a photo the hours are on its foot
-          el('p', { class: 'today' }, m.suspended ? null : el('span', {}, m.today.lead), todayText(m))),
         m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
         m.breaks.length ? el('div', { class: 'tags brk-row' }, ...m.breaks.map((t) => el('span', { class: 'tag brk' }, t))) : null, // the 휴게 pill under the hours it cuts out of
-        ...(m.photo ? [] : weatherBox(m)), // the forecast right under the hours (a photo card wears it on the photo)
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
-        ...(m.photo ? [] : [links]), ...crowdBox(m), act, // before the visit (길찾기 · 전화), then 다녀왔어요
-        m.rope ? el('p', { class: 'rope-line', title: m.rope.basis }, el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)) : null,
+        ...crowdBox(m), // before the visit (길찾기 · 전화), then 다녀왔어요
+        ...metaRow(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
-        m.noticeChecked ? el('p', { class: 'checked' }, m.noticeChecked) : null, // says nothing without a (recent) date
-        [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].length ? el('p', { class: 'tags-line' }, [...m.tags, ...m.sizes, ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])].join(' · ')) : null, // facts, not controls: one muted line
         ...infoBlock(m),
-        m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null,
-        m.setting ? el('p', { class: 'checked setting' }, m.setting) : null),
-      sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), // above 정보 확인일, after the facts (the right column when wide)
-      el('div', { class: 'm-foot' }, el('p', { class: 'checked' }, m.checked)),
-      sheetBtn),
+        m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
+      ...withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)), // the sun box (the 날씨 is the top line of its sky), after the facts (the right column when wide)
+      goRow),
     visitLog(m),
     helps,
     rowButtons(m.name),
@@ -1124,8 +1107,8 @@ function sheetSection(m, s, content) {
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
     s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
     ...(s.empty || s.dated === false ? [] : s.key === 'parking' // the parking has its own date (or none): the hours' date says nothing about it
-      ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, m.parkingChecked) : null]
-      : [el('p', { class: 'ws-chk end' }, m.checked)]));
+      ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, shortenDates(m.parkingChecked, ymd(new Date()))) : null]
+      : [el('p', { class: 'ws-chk end' }, shortenDates([m.checked, s.key === 'hours' ? m.noticeChecked : null].filter(Boolean).join(' · '), ymd(new Date())))]));
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -1135,7 +1118,8 @@ function routePane(m, wall) {
   const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포', kinds: TAB_KINDS.routes } })));
   const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? ask : null);
-  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
+  const setLine = m.setting ? el('p', { class: 'ws-chk' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
+  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, setLine, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
   const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
   const chips = v.views.length > 1 ? el('div', { class: 'rt-chips', role: 'group', 'aria-label': '벽 고르기' }) : null;
@@ -1155,7 +1139,7 @@ function routePane(m, wall) {
     return b;
   }));
   show('all');
-  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, el('p', { class: 'ws-chk' }, v.head), chips, bars, total,
+  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, setLine, el('p', { class: 'ws-chk' }, v.head), chips, bars, total,
     v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'));
 }
 function sheetParking(m) {
@@ -1185,7 +1169,7 @@ function buildWallSheet(wallName) {
   const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   const blocks = { hours: hoursGrid(wall, at), fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d) };
   const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
-  const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...m.info.folded.map(memoItem)) };
+  const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...(m.sizes.length ? [memoItem({ label: '벽 스펙', value: [...m.sizes.filter((x) => x.startsWith('폭')), ...m.sizes.filter((x) => !x.startsWith('폭'))].join(' · ') })] : []), ...m.info.folded.map(memoItem)) };
   return {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
     tabs: sheet.tabs.map((t) => ({
@@ -1227,11 +1211,11 @@ function blogBox(blog, withList = true) {
 
 // the hours text of 오늘 운영; while the wall is 임시 휴관 중 it is a pill instead
 const todayText = (m) => el('b', { class: m.suspended ? 'susp-pill' : null }, m.today.text);
-// 다녀왔어요 (the open card only): the right end of the 오늘 운영 line; opens the 기록 추가 sheet with this wall fixed.
-// Just after a save the check gives way to the 해벽 stamp, pressed once (same .stamp-in as the 기록 calendar).
+// 다녀왔어요 (the open card only): a stamp square left of 자세히; opens the 기록 추가 sheet with this wall fixed.
+// Outlined until there is a record, then filled with the count; just after a save the stamp icon gives way to the 해벽 stamp, pressed once.
 function beenBtn(m) {
-  const mark = logView.justStamped(m.name) ? inkStamp(el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }), state.walls.find((w) => w.name === m.name)) : icon('check');
-  const been = el('button', { type: 'button', class: 'btn been-btn', 'data-focus': 'been', 'aria-label': m.beenAria ?? null }, mark, m.beenLabel);
+  const mark = logView.justStamped(m.name) ? inkStamp(el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }), state.walls.find((w) => w.name === m.name)) : icon('stamp');
+  const been = el('button', { type: 'button', class: `btn been-btn${m.visits ? ' done' : ''}`, 'data-focus': 'been', 'aria-label': m.beenAria ?? '다녀왔어요 기록 추가' }, mark, el('small', {}, m.visits ? m.beenLabel.replace('다녀옴 ', '') : m.beenLabel));
   been.addEventListener('click', () => logView.openAdd({ wall: m.name, from: been }));
   return been;
 }
@@ -1303,19 +1287,13 @@ function refillOpen(name) {
   const info = li?.querySelector('.m-info');
   if (!info || !row) return;
   const m = modelOf(row, shown.at);
-  if (m.photo) { // a photo card wears the forecast on the photo
-    li.querySelector('.rhero-wx')?.remove();
-    const p = photoWeather(m);
-    if (p) li.querySelector('.rhero-foot')?.append(p);
-    return;
-  }
-  li.querySelector('.wx-line')?.remove();
-  const anchor = [...li.querySelectorAll('.m-head .brk-row, .m-head .today-row')].pop(); // the forecast goes right under the hours
-  const box = weatherBox(m);
-  if (anchor) anchor.after(...box);
+  li.querySelector('.wx-box')?.remove();
+  const sun = li.querySelector('.sunbox');
+  if (sun) withWeather(sun, weatherBox(m, row.wall, shown.at), true);
 }
 // the open card's forecast: render (a shared link opens a row, the minute tick) and toggleRow (a tap opens one without a render)
 const weatherFor = (name) => { const r = shown.rows.find((x) => x.wall.name === name); if (r) loadWeather(r.wall); };
+const weatherAheadOf = (name, at) => { const hours = wx.byWall.get(name)?.hours; return hours ? hoursAhead(hours, at) : []; };
 const weatherCtx = (name, at) => {
   const hours = wx.byWall.get(name)?.hours;
   return hours ? pickHour(hours, at) : null;
@@ -1327,16 +1305,29 @@ async function posterWeather(name, at) {
   await Promise.race([loadWeather(wall), new Promise((ok) => setTimeout(ok, 2000))]);
   return weatherCtx(name, at);
 }
-// the line (+ 바람 셈 pill) under 혼잡도; no forecast for the picked moment → nothing, not even a gap
-function weatherBox(m) {
-  if (!m.weather) return [];
+// the 날씨 상자: the temperature at the picked hour (big), the sky word when the list forecast has one, wind and gust, 바람 셈, the next hours, and a rain line
+// The 날씨 is the first line of the sun box's sky (one sky, no seam); a box without a picture (closed day, no sun math) keeps it right above.
+// → the nodes to put in the card (`inPlace`: the box is already there, so only the weather is added)
+function withWeather(sun, wx, inPlace = false) {
+  const sky = sun.querySelector('.sb-sky');
+  if (sky) sky.prepend(...wx);
+  else if (inPlace) sun.before(...wx);
+  else return [...wx, sun];
+  return inPlace ? [] : [sun];
+}
+// (chance and hourly amount) only when rain is forecast; no forecast for the picked moment → nothing, not even a gap
+function weatherBox(m, wall, at) {
   const w = m.weather;
-  return [el('p', { class: 'wx-line', 'aria-label': `${w.line}${w.windy ? ', 바람 셈' : ''}` },
-    el('span', { class: 'wx-k', 'aria-hidden': 'true' }, '예보'),
-    el('span', { class: 'wx-chip wx-t', 'aria-hidden': 'true' }, w.temp),
-    el('span', { class: 'wx-chip', 'aria-hidden': 'true' }, w.wind),
-    el('span', { class: `wx-chip${w.windy ? ' strong' : ''}`, 'aria-hidden': 'true' }, w.gust),
-    w.windy ? el('span', { class: 'wx-pill', 'aria-hidden': 'true' }, '바람 셈') : null)];
+  if (!w) return [];
+  const h = wxEntry(wall, at);
+  const sky = h && Number.isFinite(h.c) ? skyKind(h.c).text : null;
+  return [el('section', { class: 'wx-box', 'aria-label': `예보, ${w.line.replace(/^예보 · /, '')}${w.windy ? ', 바람 셈' : ''}${w.rain ? `, ${w.rain.text}` : ''}` },
+    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
+      el('span', { class: 'wxb-t' }, w.temp),
+      w.windy ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // beside the temperature; the words wrap under both
+      el('span', { class: 'wxb-d' }, [sky, w.wind, w.gust].filter(Boolean).join(' · '))),
+    w.ahead.length > 1 ? el('ul', { class: 'wxb-hrs', 'aria-hidden': 'true' }, ...w.ahead.map((a) => el('li', {}, el('span', {}, a.label), el('b', {}, a.temp), a.rain ? el('small', {}, a.rain) : null))) : null,
+    w.rain ? el('p', { class: 'wxb-rain', 'aria-hidden': 'true' }, w.rain.text) : null)];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -1359,44 +1350,21 @@ async function sendCrowd(name, level, date, time) {
 // chip: level in words + a 1–3 bar meter (not colour alone)
 function crowdBox(m) {
   const c = m.crowd;
-  if (!c || c.chip.muted) return []; // "제보 모으는 중" is only an empty state: the 지금 어때요? button next to it asks the same
+  if (!c || c.chip.muted) return []; // "제보 모으는 중" is only an empty state
   return [el('p', { class: `crowd-chip${c.chip.muted ? ' muted' : ''}`, 'data-level': c.chip.level ?? 'none' },
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
     c.chip.text)];
 }
-// "지금 어때요?": one tap on the open card reports the crowd of right now (same limits and data as the 기록 추가 sheet's
-// question). Only while the picked moment is now and the wall is open (crowdBox is for open walls); gone for good once the
-// limits say so (a re-render finds crowdAsk ≠ 'ask').
-function crowdQuick(name) {
-  const now = new Date();
-  const [date, time] = [ymd(now), hhmm(now)];
-  if (!vs.live || crowdAsk(name, date, time) !== 'ask') return null;
-  // folded to one small button ("지금 어때요?" + the meter); a tap opens 여유 · 보통 · 혼잡 in its place
-  const box = el('div', { class: 'crowd-quick', role: 'group', 'aria-label': '지금 혼잡도 제보' });
-  const open = el('button', { type: 'button', class: 'cq-open', 'aria-expanded': 'false' },
-    el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), '지금 어때요?');
-  box.append(open);
-  const pills = LEVELS.map((level) => el('button', { type: 'button', class: 'crowd-pill', value: level }, level));
-  for (const b of pills) {
-    b.addEventListener('click', async () => {
-      pills.forEach((x) => { x.disabled = true; });
-      if (await sendCrowd(name, b.value, date, time)) box.replaceChildren(el('span', { class: 'cq-done', role: 'status' }, '제보 고마워요'));
-      else { pills.forEach((x) => { x.disabled = false; }); toast('혼잡도를 보내지 못했어요 — 연결을 확인해 주세요.'); }
-    });
-  }
-  open.addEventListener('click', () => {
-    box.replaceChildren(el('span', { class: 'cq-q' }, '지금'), el('span', { class: 'crowd-pills' }, ...pills));
-    pills[0].focus();
-  });
-  return box;
-}
 const modelOf = (row, at) => cardModel(row, at, {
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
-  weather: weatherCtx(row.wall.name, at), ropeM: Number(ui.ropeM) || 0, stayHours: Number(ui.minHours) || undefined, // the parking cost is told for the stay the filter asks (3/5/8시간+), else the default
+  weather: weatherCtx(row.wall.name, at), weatherAhead: weatherAheadOf(row.wall.name, at), ropeM: Number(ui.ropeM) || 0, stayHours: Number(ui.minHours) || undefined, // the parking cost is told for the stay the filter asks (3/5/8시간+), else the default
 });
 
 let rowSeq = 0;
 // what the dimmed / veiled look says in words (a screen reader hears no opacity)
+// the list row says only the value ("4시간"); the open card's pill keeps "4시간 가능" (style.css .lf-pre): said once in the group heading, not on every row
+const FEW_MIN = 180; // 3 hours or less to stay: said bolder, so a short row stands out among the same-looking rest
+const leftParts = (left) => { const m = /^(\d+시간)( 가능)$/.exec(left); return m ? [m[1], el('span', { class: 'lf-pre' }, m[2])] : [left]; };
 const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
 function timeRow(row, at) {
   const m = modelOf(row, at);
@@ -1405,22 +1373,22 @@ function timeRow(row, at) {
   const isOpen = vs.openName === m.name;
   // 양달/응달/방향 모름 in words, not only the orange band
   const { sun } = m;
+  const extra = rowExtra(m);
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
       sunChip(sun, row.veil), // first: the same column on every open row
       el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
       el('span', { class: 'rname', title: m.shortName }, m.shortName),
-      // the extras share what room is left, in this order of worth; one that does not fit wraps out of sight whole (style.css .rsub),
-      // so the closing time never wraps and no region is cut to a stray letter (it is on the card)
+      // the one extra chip (새 세팅 > 혼잡 > 무료, card-model rowExtra) and the region share what room is left; one that does not fit wraps
+      // out of sight whole (style.css .rsub), so the closing time never wraps and no region is cut to a stray letter (the rest is on the card)
       el('span', { class: 'rsub' },
-        m.settingBadge ? el('span', { class: 'setnew', 'data-setmark': m.name, title: m.settingBadge }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadgeShort ?? m.settingBadge) : null,
-        m.crowdTag ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
-          el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), m.crowdTag.text) : null,
-        m.visits ? el('span', { class: 'been' }, m.visits.label) : null,
-        m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null,
-        feeChip(m)), // the least decisive: it is the first to give way
-      wxSlot(row.wall, at), // a fixed place left of the time: the temperature at the picked arrival hour (outdoor walls)
-      el('span', { class: 'left' }, m.left, a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null)),
+        extra?.kind === 'setnew' ? el('span', { class: 'setnew', 'data-setmark': m.name, title: m.settingBadge ?? extra.text }, el('span', { 'aria-hidden': 'true' }, '✦ '), extra.text) : null,
+        extra?.kind === 'crowd' ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
+          el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), extra.text) : null,
+        extra?.kind === 'free' ? feeChip(m) : null,
+        m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
+      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...leftParts(m.left), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
+      el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
     bar ? listBar(bar) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
@@ -1554,13 +1522,12 @@ function render() {
   if (coldN || wetN) open.sort((a, b) => Number(a.cold || a.wet || false) - Number(b.cold || b.wet || false));
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
-  $('longOnly').textContent = fv.longLabel;
   const rc = $('regionChip');
   rc.hidden = !ui.regions.length;
   rc.firstChild.textContent = fv.regionLabel;
   rc.setAttribute('aria-label', fv.regionChipLabel);
   for (const box of regionBoxes()) box.checked = ui.regions.includes(box.value);
-  if ($('pickRow')) $('pickRow').hidden = !ui.regions.length; // the pick shows only with a 내 지역; nothing to turn off before
+  if ($('pickRow')) $('pickRow').hidden = !ui.regions.length || !featureOn('pick'); // the pick shows only with a 내 지역; nothing to turn off before
   if ($('pickOn')) $('pickOn').checked = !ui.hidePick; // (a cached older page may not have it yet: sw.js shows the stored page first)
   syncRegionCounts();
   const sheetOn = fv.sheetCount;
@@ -1573,6 +1540,8 @@ function render() {
   if ($('condDone')) $('condDone').textContent = `확인 · ${n}곳`;
   // another day names the day (the live region is read without the date input)
   const lead = summaryLead(at, now, isNow);
+  const sc = $('conditions').querySelector('.sh-count'); // (the sheet's top ✓ says the same count)
+  if (sc) { sc.textContent = `${n}곳`; sc.nextElementSibling.setAttribute('aria-label', `확인, ${n}곳`); }
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
@@ -1581,7 +1550,7 @@ function render() {
   $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
-  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '오래 운동할 수 있는 순'}${wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : ''}`;
+  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순'}${wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : ''}`;
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
@@ -1685,15 +1654,6 @@ function openMap() {
 
 const tabs = TABS; // 목록 | 지도 | 기록
 const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): no 지도 tab
-// the wall search: phones put it under the title, above the filters (the 10/16 sketch); wide screens keep it at the top of the list column
-const placeFind = () => {
-  const f = $('find');
-  const host = wide.matches ? document.querySelector('main.wrap') : document.querySelector('header.top .wrap');
-  if (!f || !host) return;
-  if (wide.matches) host.prepend(f); else host.append(f);
-};
-wide.addEventListener('change', placeFind);
-placeFind();
 function showTab(key, focus = false) {
   if (wide.matches && key === 'map') key = 'list';
   ui.tab = key;
@@ -1840,6 +1800,15 @@ $('axis').append(nowTag);
 
 const sheet = $('conditions');
 const sheetForm = sheet.querySelector('form');
+// 확인 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
+// closing is one tap from anywhere in the sheet. The 조건 sheet also says how many walls its choices leave (updated in render).
+for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info']) {
+  const dlg = $(id), head = dlg?.querySelector('.sh-head');
+  if (!head || head.querySelector('.sh-okw')) continue;
+  const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '확인' }, icon('check'));
+  ok.addEventListener('click', () => dlg.close());
+  head.append(el('div', { class: 'sh-okw' }, id === 'conditions' ? el('small', { class: 'sh-count', 'aria-hidden': 'true' }) : null, ok));
+}
 for (const k of ['minHours', 'sortMode', 'venue', 'ropeM', 'tempMin']) sheetForm.elements[k].value = ui[k];
 
 const setUi = (k, v) => {
@@ -1861,15 +1830,14 @@ $('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the r
 $('shadeOnly').prepend(icon('shade'));
 $('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
-$('longOnly').addEventListener('click', () => setUi('minHours', ui.minHours !== '0' ? '0' : '3'));
-$('nearFirst').addEventListener('click', () => {
-  if (ui.sortMode === 'distance') return setUi('sortMode', 'time');
-  setUi('sortMode', 'distance');
-  if (!vs.origin) locate().then((why) => { // no position: don't keep 가까운 순 on (and saved) while the list stays as it was; the note stays
+// 정렬 (the 조건 sheet): 가까운 순 needs a position; without one, don't keep it on (and saved) while the list stays as it was; the note stays
+function chooseSort(mode) {
+  setUi('sortMode', mode);
+  if (mode === 'distance' && !vs.origin) locate().then((why) => {
     if (!why || ui.sortMode !== 'distance') return;
     ui.sortMode = 'time'; sheetForm.elements.sortMode.value = 'time'; saveUi(); render();
   });
-});
+}
 
 $('regionChip').addEventListener('click', () => {
   setUi('regions', []);
@@ -1953,7 +1921,8 @@ addEventListener('resize', fitSticky);
 fitSticky();
 sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // the dialog has no padding: only the backdrop hits it
 sheet.addEventListener('change', (e) => {
-  if (e.target.name === 'minHours' || e.target.name === 'sortMode') setUi(e.target.name, e.target.value);
+  if (e.target.name === 'minHours') setUi('minHours', e.target.value);
+  if (e.target.name === 'sortMode') chooseSort(e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
   if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value));
   if (e.target.name === 'tempMin') setUi('tempMin', cleanTemp(e.target.value));
@@ -2134,7 +2103,7 @@ if (sharedWall) {
   if (sheetAsked) { openWallSheet(sharedWall.name, null, { tab: sheetTab }); history.replaceState(null, '', u); } // the sheet pushes its own entry, so 뒤로 closes only the sheet and not the app (a link opening it left nothing to go back to); the address stays clean
 }
 { // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)
-  const sharedType = config.climberTest ? typeFromSearch(location.search) : null;
+  const sharedType = featureOn('climber') ? typeFromSearch(location.search) : null;
   if (sharedType) {
     climberView.banner(sharedType);
     const u = new URL(location.href);

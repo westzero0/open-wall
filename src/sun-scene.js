@@ -4,8 +4,9 @@
 // across = cos(height)·cos(rel), up = sin(height), the same projection the old compass used.
 const W = 360, H = 200;
 const TOP = 20;                         // the empty strip of sky above is cropped: the picture is 360 x 180
+const CROP_Y = 34, CROP_H = 152;           // the empty sky above is cropped; 양달/응달 also lose the strip under the ground (night keeps the full arc)
 const HY = 158;                         // ground line
-const WX0 = 258, WX1 = 280, WTOP = 52;  // wall: front face x, back face x, top y
+const WX0 = 258, WX1 = 280, WTOP = 76;  // wall: front face x, back face x, top y (a short wall: the empty sky above it holds the sun box's words)
 const WCX = (WX0 + WX1) / 2;
 const PX = 205, U = 64;                 // the climber: feet x, body height
 const XL = 215, XR = 80, SH = 112;      // sun reach on your side / behind the wall (units at height 0), height of the zenith above the ground
@@ -37,18 +38,18 @@ export function sceneLayout(m, at = null) {
   const u = Math.cos(rad(h)) * Math.cos(rad(m.sun.rel));
   const r = kind === 'lit' ? 30 : 26;
   const sx = clamp(WCX + u * (u < 0 ? XL : XR), r, W - r);
-  const sy = clamp(HY - Math.sin(rad(h)) * SH, TOP + r + 4, HY + r * 0.5); // low sun: the ground line cuts it (sunrise / sunset)
+  const sy = clamp(HY - Math.sin(rad(h)) * SH, CROP_Y + r + 4, HY + r * 0.5); // low sun: the ground line cuts it (sunrise / sunset)
   L.sun = { x: r1(sx), y: r1(sy), r };
   L.low = kind === 'lit' && h < 12;
   if (kind === 'lit') {
-    L.rays = [WTOP + 14, WTOP + 44, WTOP + 74].map((y0, i) => ({ points: [[sx + (WX0 - sx) * 0.2, sy + (y0 - sy) * 0.2], [WX0, y0], [WX0, y0 + 9]].map((p) => p.map(r1)), opacity: [0.55, 0.42, 0.3][i] }));
+    L.rays = [WTOP + 12, WTOP + 36, WTOP + 60].map((y0, i) => ({ points: [[sx + (WX0 - sx) * 0.2, sy + (y0 - sy) * 0.2], [WX0, y0], [WX0, y0 + 9]].map((p) => p.map(r1)), opacity: [0.55, 0.42, 0.3][i] }));
     L.labels.push({ x: r1(clamp(sx, 48, 168)), y: r1(Math.min(sy + r + 16, HY - 6)), text: `alt ${Math.round(h)}°`, anchor: 'middle', cls: 'dim' });
     L.aria = `해가 벽 앞에서 비춰요, 해 높이 ${Math.round(h)}도`;
     return L;
   }
   // shade: the sun is behind the wall (its shadow reaches toward you) or a hill hides it
   if (m.state === 'facing' || sx > WX1) {
-    const len = clamp((HY - WTOP) / Math.tan(rad(Math.max(h, 5))) * 0.55, 50, 190);
+    const len = clamp((HY - WTOP) / Math.tan(rad(Math.max(h, 5))) * 0.71, 50, 190);
     L.shadow = { points: [[WX0, HY], [WX0, HY + 12], [WX0 - len, HY + 12], [WX0 - len + 14, HY]].map((p) => p.map(r1)) };
     L.labels.push({ x: r1(WX0 - len / 2), y: HY + 26, text: 'wall shadow', anchor: 'middle', cls: 'on-ground' });
     L.labels.push({ x: W - 8, y: r1(Math.max(sy - r - 8, TOP + 12)), text: 'behind wall', anchor: 'end', cls: 'dim' });
@@ -119,7 +120,7 @@ export function renderScene(model, at = null) {
   const L = sceneLayout(model, at);
   if (!L) return null;
   const id = `sc${seq++}`;
-  const svg = s('svg', { viewBox: `0 ${TOP} ${L.w} ${L.h - TOP}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
+  const svg = s('svg', { viewBox: L.kind === 'night' ? `0 ${CROP_Y} ${L.w} ${L.h - CROP_Y}` : `0 ${CROP_Y} ${L.w} ${CROP_H}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
   const halo = s('radialGradient', { id: `${id}h` });
   halo.append(s('stop', { offset: 0, class: 'sc-h0' }), s('stop', { offset: 1, class: 'sc-h1' }));
   const defs = s('defs');

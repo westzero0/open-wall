@@ -14,7 +14,7 @@ const find = (sel) => {
 // 예시 카드의 원본: 날씨가 이미 뜬 줄을 먼저, 없으면 아무 줄(접힌 그룹 안의 줄도 DOM 에는 있다)
 // 한 줄로 아이콘(양달)·날씨·막대를 모두 보여 주는 줄이 가장 좋다
 const sampleSource = () => {
-  for (const sel of ['#panel-list .row-btn:has(.sunnow.sun):has(.rwx:not(.pending)):has(.bar)', '#panel-list .row-btn:has(.rwx:not(.pending)):has(.bar)', '#panel-list .row-btn:has(.bar)', '#panel-list .row-btn']) {
+  for (const sel of ['#panel-list .row-btn:has(.sunnow.sun):has(.bar)', '#panel-list .row-btn:has(.bar)', '#panel-list .row-btn']) {
     try { const n = document.querySelector(sel); if (n) return n; } catch { /* :has 를 모르는 브라우저: 다음 선택자 */ }
   }
   return null;
@@ -69,7 +69,7 @@ export const startTour = ({ onClose = () => {} } = {}) => {
     const target = resolve(steps[i]);
     if (!target) return;
     let r = target.getBoundingClientRect();
-    const more = steps[i].extend && target.closest('.row-btn')?.querySelector(steps[i].extend); // 날씨 칩과 ‘3시간 가능’을 한 구멍으로
+    const more = steps[i].extend && target.closest('.row-btn')?.querySelector(steps[i].extend); // 날씨 칩과 남은 시간을 한 구멍으로
     if (more) {
       const q = more.getBoundingClientRect();
       const l = Math.min(r.left, q.left), t = Math.min(r.top, q.top);

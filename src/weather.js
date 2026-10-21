@@ -11,15 +11,15 @@ const round2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
 /** forecastUrl(lat, lng) → the request URL. Only the wall's coordinates (2 decimals) vary. */
 export const forecastUrl = (lat, lng) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${round2(lat)}&longitude=${round2(lng)}`
-  + '&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=4';
+  + '&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation,precipitation_probability&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=4';
 
 const within = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
 
-/** parseForecast(json) → Map 'YYYY-MM-DDTHH:00' → {t °C, w m/s, g m/s}, or null when anything is off. */
+/** parseForecast(json) → Map 'YYYY-MM-DDTHH:00' → {t °C, w m/s, g m/s, r mm, p %}, or null when anything is off. r and p (rain amount and chance) may be null: a missing or bad one drops only itself. */
 export function parseForecast(json) {
   const h = json?.hourly;
   if (!h || !Array.isArray(h.time)) return null;
-  const { time, temperature_2m: t, wind_speed_10m: w, wind_gusts_10m: g } = h;
+  const { time, temperature_2m: t, wind_speed_10m: w, wind_gusts_10m: g, precipitation: r, precipitation_probability: pr } = h;
   if (!Array.isArray(t) || !Array.isArray(w) || !Array.isArray(g)) return null;
   const n = time.length;
   if (!n || n > MAX_HOURS || t.length !== n || w.length !== n || g.length !== n) return null;
@@ -27,7 +27,28 @@ export function parseForecast(json) {
   for (let i = 0; i < n; i++) {
     if (typeof time[i] !== 'string' || !HOUR_RE.test(time[i])) return null;
     if (!within(t[i], -80, 80) || !within(w[i], 0, 100) || !within(g[i], 0, 100)) return null;
-    out.set(time[i], { t: t[i], w: w[i], g: g[i] });
+    out.set(time[i], { t: t[i], w: w[i], g: g[i], r: within(r?.[i], 0, 200) ? r[i] : null, p: within(pr?.[i], 0, 100) ? pr[i] : null });
+  }
+  return out;
+}
+
+/** rainOf(hour) → { p, mm, text } when the hour is a 비 예보 one (chance ≥ RAIN_PROB or amount ≥ RAIN_MM), else null. */
+export function rainOf(h) {
+  if (!h) return null;
+  const p = Number.isFinite(h.p) ? h.p : null, mm = Number.isFinite(h.r) ? h.r : null;
+  if (!((p !== null && p >= RAIN_PROB) || (mm !== null && mm >= RAIN_MM))) return null;
+  const amount = mm && mm > 0 ? `시간당 ${mm < 10 ? Math.round(mm * 10) / 10 : Math.round(mm)}mm` : null;
+  return { p, mm, text: `비 예보 ${[p !== null && `${Math.round(p)}%`, amount].filter(Boolean).join(' · ')}` };
+}
+
+/** hoursAhead(hours, at, n = 4) → [{ label: '15시', t, r }] for the hour `at` falls in and the next ones; it stops where the forecast ends. */
+export function hoursAhead(hours, at, n = 4) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const d = new Date(at.getFullYear(), at.getMonth(), at.getDate(), at.getHours() + k);
+    const h = pickHour(hours, d);
+    if (!h) break;
+    out.push({ label: `${d.getHours()}시`, t: Math.round(h.t) || 0, r: h.r });
   }
   return out;
 }

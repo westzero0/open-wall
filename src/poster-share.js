@@ -47,6 +47,9 @@ const shareText = (pic) => `${pic.title} ${pic.issue} · ${pic.name}\n${new URL(
  */
 export function createPosterShare({ getWalls, getLog = () => [], getWeather = async () => null, icon = null, posters, onChange = () => {}, storage = safeStorage() }) {
   const dlg = $('poster-share');
+  let downOnBackdrop = false; // the photo is dragged and zoomed here: a drag that ends on the backdrop must not close the sheet
+  dlg.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === dlg; });
+  dlg.addEventListener('click', (e) => e.target === dlg && downOnBackdrop && dlg.close()); // the backdrop
   const canvas = $('ps-canvas');
   const img = $('ps-img');
   const pickBtn = $('ps-pick');
