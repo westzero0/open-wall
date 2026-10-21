@@ -468,7 +468,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
 .axis .t { top: 3px; color: var(--fg); font-weight: 600; left: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)); }
 .axis .t.under { visibility: hidden; } /* under the time tag (app.js) */
 .axis .nowtag {
-  top: 3px; z-index: 1; left: clamp(24px, calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 24px));
+  top: 3px; z-index: 1; left: clamp(calc(1.5em + 6px), calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 1.5em - 6px)); /* half the tag, so big text keeps it on screen */
   font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--fg); color: var(--bg);
 }
 .plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; display: none; } /* the hour grid behind the rows is off: the axis labels and each row's own bar say the time */
@@ -1491,6 +1491,7 @@ div.la-when { row-gap: 0; }
 .la-search { clear: both; }
 .map-find-btn { position: absolute; top: 34px; right: 10px; z-index: 1; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 2px solid rgba(0,0,0,.2); border-radius: var(--r-md); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; }
 .map-find-btn svg { width: 22px; height: 22px; }
+html[data-text="xlarge"] .map-find-btn { top: calc(var(--tap) + var(--sp-8)); } /* the map credit wraps to 3 lines in big text: below it, not over "contributors" */
 .map-find-btn:focus-visible, .map-find-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-find { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 2; }
 .map-find-bar { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-4) var(--sp-4) var(--sp-8); border-radius: var(--r-base); background: var(--surface); box-shadow: var(--shadow-float); }

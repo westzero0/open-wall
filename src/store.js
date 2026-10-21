@@ -610,7 +610,7 @@ export function parseJson(text) {
 
 // The shipped list. Anything but a non-empty list is an error, so a bad network never reads as "0 open".
 export async function fetchNational(fetchFn = fetch) {
-  const r = await fetchFn('data/national.json');
+  const r = await fetchFn('data/national.json', { cache: 'no-cache' }); // revalidate (304 is cheap): Pages' max-age=600 would show a data deploy up to 10 minutes late
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const list = parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
   if (!list.length) throw new Error('empty');
