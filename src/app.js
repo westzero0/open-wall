@@ -1,6 +1,6 @@
 import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, ymd } from './time.js';
-import { fetchNational, fetchCrags, loadWalls } from './store.js';
+import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config } from './config.js';
 import { createMap } from './map.js';
@@ -2106,7 +2106,6 @@ $('mailCopy')?.addEventListener('click', async () => {
 
 const first = await loadList();
 state.walls = first ?? [];
-if (config.singlePitch) state.crags = await fetchCrags().catch(() => []);
 showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
 // memory only; nothing is saved until the visitor changes a filter) and starts on the list.
