@@ -1427,6 +1427,7 @@ function setRowOpen(li, open) {
 
 // One row open at a time.
 function toggleRow(li) {
+  if (pinnedName && li.wallName !== pinnedName) pinnedName = null; // opening another card ends the one-wall exception (the row goes at the next draw)
   // Another open card above shrinks while this one opens. Its collapse animates, so the smooth scroll below would aim at a row that is
   // still moving and end up far past it (the bottom of the new card). The other card snaps shut instead: the row stays where it is.
   const others = [...document.querySelectorAll('#panel-list .row.is-open')].filter((o) => o !== li);
@@ -1505,6 +1506,10 @@ function render() {
   const scoped = scopeRows(rows, { regions: ui.regions, venue: ui.venue, parkOnly: fv.parkOnly });
   const mine = ui.favOnly ? scoped.filter((r) => favs.includes(r.wall.name)) : scoped; // 즐겨찾기만
   const all = withDistance(filterRows(mine, ui.sun), vs.origin);
+  if (pinnedName && !all.some((r) => r.wall.name === pinnedName)) { // a wall found by search / 기록 that the filters hide: shown for this visit, the filters stay as they are
+    const p = rows.find((r) => r.wall.name === pinnedName);
+    if (p) all.push(...withDistance([{ ...p, short: false }], vs.origin));
+  }
   for (const r of all) { // the sun is where it would be, but the sky may hide it: a note, never a new verdict (filters and order ignore it)
     const h = r.wall.venue !== 'indoor' && r.lit === true ? wxEntry(r.wall, at) : null;
     r.veil = !!h && skyVeils(h.c) && forecastTrusted(at, now);
@@ -1713,14 +1718,16 @@ function revealFromLog(name) {
   if (!state.walls.some((w) => w.name === name)) return toast('지금 목록에 없는 암장이에요');
   const cleared = revealClearing(name);
   document.querySelector('#panel-list .row.is-open .row-btn')?.focus({ preventScroll: true });
-  if (cleared) toast('조건을 모두 지우고 보여 드려요');
+  if (cleared) toast('조건에 안 맞지만 이 암장만 보여 드려요');
 }
 
-// revealRow, and when the filters hide the wall: clear them for this visit only (nothing is saved until a filter is
-// changed) and reveal again. → true when filters were cleared. Used by 내 암장 and 기록.
+// revealRow, and when the filters hide the wall: show that one wall anyway for this visit (the filters are not touched)
+// and reveal it. → true when it was pinned. Used by 내 암장 and 기록.
+let pinnedName = null; // the one wall shown although the filters hide it (set by revealClearing / the map's search; dropped on any filter change or when another card opens)
 function revealClearing(name) {
   if (revealRow(name, { focus: true })) return false;
-  clearFilters();
+  pinnedName = name;
+  render();
   revealRow(name, { focus: true });
   return true;
 }
@@ -1765,14 +1772,15 @@ function wireFind(input, box, onPick) {
 function pickOnMap(w) {
   if (!wallPosition(w)) return toast('이 암장은 지도에 위치 정보가 없어요');
   if (!shown.rows.some((r) => r.wall.name === w.name)) {
-    clearFilters();
-    toast('조건을 모두 지우고 보여 드려요');
+    pinnedName = w.name;
+    render();
+    toast('조건에 안 맞지만 이 암장만 보여 드려요');
   }
   mapApi?.select(w.name, true);
 }
 wireFind($('findQ'), $('findHits'), (w) => {
   if (ui.tab === 'map') return pickOnMap(w);
-  if (revealClearing(w.name)) toast('조건을 모두 지우고 보여 드려요');
+  if (revealClearing(w.name)) toast('조건에 안 맞지만 이 암장만 보여 드려요');
   if (wide.matches && wallPosition(w)) mapApi?.select(w.name, true);
 });
 
@@ -1822,6 +1830,7 @@ const sheetForm = sheet.querySelector('form');
 for (const k of ['minHours', 'sortMode', 'venue', 'ropeM', 'tempMin']) sheetForm.elements[k].value = ui[k];
 
 const setUi = (k, v) => {
+  pinnedName = null; // a filter change ends the one-wall exception
   ui[k] = v;
   if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'ropeM' || k === 'tempMin') sheetForm.elements[k].value = v;
   if (k === 'sortMode') go({ type: 'sort' });
