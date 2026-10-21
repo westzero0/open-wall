@@ -1506,9 +1506,9 @@ function render() {
   for (const r of all) { // the sun is where it would be, but the sky may hide it: a note, never a new verdict (filters and order ignore it)
     const h = r.wall.venue !== 'indoor' && r.lit === true ? wxEntry(r.wall, at) : null;
     r.veil = !!h && skyVeils(h.c) && forecastTrusted(at, now);
+    r.part = !!h && !r.veil && skyKind(h.c).kind === 'partly' && forecastTrusted(at, now); // 구름 조금: the sun still gets through, a little weaker
   }
   allRows = rows;
-    r.part = !!h && !r.veil && skyKind(h.c).kind === 'partly' && forecastTrusted(at, now); // 구름 조금: the sun still gets through, a little weaker
   shown = { rows: all, at };
   go({ type: 'shown', rows: all }); // the open row was filtered out, or moved to another group: forget it
   const groups = groupRows(all);
