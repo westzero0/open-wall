@@ -1,21 +1,22 @@
 /* ---- tokens (palette B: moss green, wine, amber) ---- */
 :root {
-  --paper: #f4f4f0;
+  --paper: #f4f2ec; /* the logo's paper (was #f4f4f0, a cool grey-green) */
   --logo-paper: #f4f2ec; /* the logo's paper: manifest background_color, the app icons and the loading screen share it, so the OS start screen hands over without a seam */
-  --sheet: #fafaf7;
-  --panel: #e0e3db;
+  --sheet: #faf8f3;
+  --panel: #e8e5dc;
   --open-past: #c7dad5;
   --soon: #a8325a;
   --sun: #cc7a14;
   --off: #d0d4cb;
-  --hair: #e7e9e2;
+  --hair: #e9e7e0;
   --bg: var(--paper);
   --surface: var(--sheet);
   --sunken: var(--panel);
-  --fg: #1b1f1e;
-  --muted: #555c58;
-  --line: #d3d7ce;
-  --line-strong: #b4baaf;
+  --fg: #17191c; /* the logo's ink */
+  --muted: #55585b;
+  --line: #d9d5ca;
+  --line-strong: #bcb8ac;
+  --wall: #2a2d32; /* the logo's wall: the slider's passed stretch (dark: the paper) */
   --open: #1f5f55;        /* text on surface */
   --open-bar: var(--open); /* day bar fill */
   --warn: var(--soon);    /* text on surface */
@@ -37,6 +38,11 @@
   --open-on-white: #1f5f55; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
   --shadow-seg: 0 1px 2px rgb(0 0 0 / .12); /* the raised segment of a segmented control */
   --shadow-float: 0 4px 16px rgb(0 0 0 / .25); /* floating card, toast */
+  --shadow-pop: 0 2px 12px rgb(0 0 0 / .25); /* a smaller floating piece (the share previews' picture) */
+  --shadow-hair: 0 1px 0 var(--line); /* the hairline under a sticky bar */
+  /* page-level layers, low to high: list bands < sticky controls < the search dropdown < the tab bar < toast < boot screen.
+     Inside one component the numbers are local (0-3) and stay as they are. */
+  --z-band: 2; --z-axis: 3; --z-tabbar-flow: 4; --z-controls: 5; --z-picks: 6; --z-to-top: 6; --z-tabbar: 7; --z-boot: 100; --z-toast: 1000;
   --now: var(--fg);
   --pin-open: #1f5f55;
   --pin-soon: #a8325a;
@@ -89,24 +95,25 @@
 /* dark: the phone's setting (자동), unless 내 정보 › 화면 picked 라이트; html[data-theme="dark"] below repeats the same values */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #101312;
-    --sheet: #141716;
-    --panel: #1f2422;
+    --paper: #17191c;
+    --sheet: #1e2125;
+    --panel: #262a2f;
+    --wall: #f4f2ec;
     --open-past: #284039;
     --soon: #f08aa8;
     --sun: #f2b25c;
     --fav: #ffd34d;
     --fav-edge: #ffd34d;
     --off: #343a37;
-    --hair: #202523;
-    --fg: #e9ece9;
-    --muted: #a3aaa6;
-    --line: #343a37;
-    --line-strong: #4a514d;
+    --hair: #24282c;
+    --fg: #f4f2ec;
+    --muted: #a9aaa7;
+    --line: #33373c;
+    --line-strong: #4a4e54;
     --open: #6cc4b0;
     --scrim: rgb(0 0 0 / .6);
-    --on-accent: #101312;
-    --plate: #1a1e1c;
+    --on-accent: #17191c;
+    --plate: #1e2125;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
@@ -122,10 +129,10 @@
   }
 }
 :root[data-theme="dark"] {
-  --paper: #101312; --sheet: #141716; --panel: #1f2422; --open-past: #284039; --soon: #f08aa8; --sun: #f2b25c;
-  --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #202523; --fg: #e9ece9; --muted: #a3aaa6;
-  --line: #343a37; --line-strong: #4a514d; --open: #6cc4b0; --scrim: rgb(0 0 0 / .6); --on-accent: #101312;
-    --plate: #1a1e1c;
+  --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --open-past: #284039; --soon: #f08aa8; --sun: #f2b25c;
+  --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
+  --line: #33373c; --line-strong: #4a4e54; --open: #6cc4b0; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
+    --plate: #1e2125;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
@@ -164,8 +171,8 @@ h1 { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); letter-spac
 h1 { display: flex; align-items: center; gap: var(--sp-6); }
 h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .logo { flex: none; display: block; }
-#summary { font-size: min(var(--fs-xl), calc((100vw - 32px) / 14.6)); /* the headline fits one row whatever the system font size; a long lead may still wrap */
-   font-weight: 700; line-height: 1.15; letter-spacing: -.025em; margin-top: 0; }
+#summary { font-size: min(var(--fs-xl), calc((100vw - 32px) / 15.4)); /* the headline fits one row whatever the system font size; a long lead may still wrap */
+   font-family: "Noto Sans KR", var(--font); font-weight: 900; /* the logo's lettering */ line-height: 1.15; letter-spacing: -.025em; margin-top: 0; }
 #summary b { color: var(--open); }
 #summary b.zero { color: var(--muted); }
 /* 내 지역 on: a small line under the summary; pressing it goes back to 전국 (the 44px tap area is padding pulled back by the margin) */
@@ -176,7 +183,7 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .sub { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
 /* date + slider stay sticky while the list scrolls; app.js sets a negative top so the filter row scrolls away,
    and --stick-h (0 when .unstuck) to the part that stays */
-.controls { position: sticky; top: 0; z-index: 5; padding: var(--sp-6) 0 var(--sp-2); background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+.controls { position: sticky; top: 0; z-index: var(--z-controls); padding: var(--sp-6) 0 var(--sp-2); background: var(--bg); box-shadow: var(--shadow-hair); }
 .controls.unstuck { position: static; box-shadow: none; }
 .controls[hidden] { display: none; }
 .controls > .wrap { display: grid; gap: var(--sp-4); }
@@ -200,7 +207,13 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .scrub-label { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 #timeOut { color: var(--fg); font-weight: 700; font-size: var(--fs-base); margin-left: var(--sp-4); }
 .scrub-row { display: flex; align-items: center; gap: var(--sp-8); min-height: calc(var(--tap) - 4px); } /* same height with or without the button */
-#time { flex: 1 1 0; min-width: 0; height: calc(var(--tap) - 4px); margin: 0; accent-color: var(--fg); }
+#time { flex: 1 1 0; min-width: 0; height: calc(var(--tap) - 4px); margin: 0; accent-color: var(--fg); -webkit-appearance: none; appearance: none; background: transparent; }
+/* the logo's sun on its wall: the passed stretch is the wall's colour (app.js sets --fill), the thumb is the same sun as the current tab's dot */
+#time::-webkit-slider-runnable-track { height: 8px; border-radius: var(--r-sm); background: linear-gradient(to right, var(--wall) calc(var(--fill, 0) * 100%), var(--line-strong) 0); }
+#time::-moz-range-track { height: 8px; border-radius: var(--r-sm); background: var(--line-strong); }
+#time::-moz-range-progress { height: 8px; border-radius: var(--r-sm); background: var(--wall); }
+#time::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; margin-top: -1px; border: 0; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 35%, transparent); }
+#time::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 35%, transparent); }
 #nowBtn { flex: none; }
 .scrub-hd #nowBtn { position: relative; min-height: 32px; padding: 0 var(--sp-8); font-size: var(--fs-xs); } /* beside the arrival time, not at the slider's end: the slider keeps the full width, so its thumb stays above the same time on the axis */
 .scrub-hd #nowBtn::after { content: ""; position: absolute; inset: -6px -4px; } /* the tap area stays 44px */
@@ -240,7 +253,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
    --stick-h = controls + this bar; .unstuck when even that would take over a short screen) */
 /* phones and tablets: the bar is fixed at the bottom (thumb reach; the same grammar as the wall sheet's tabs). It carries the home-bar inset
    itself; app.js sets --tabbar-h (its height) for the page's end padding, the toast, the map and the 맨 위로 button. */
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7; margin: 0; padding: var(--sp-4) max(var(--sp-16), env(safe-area-inset-right)) calc(var(--sp-4) + env(safe-area-inset-bottom)) max(var(--sp-16), env(safe-area-inset-left)); background: var(--bg); box-shadow: 0 -1px 0 var(--line); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar); margin: 0; padding: var(--sp-4) max(var(--sp-16), env(safe-area-inset-right)) calc(var(--sp-4) + env(safe-area-inset-bottom)) max(var(--sp-16), env(safe-area-inset-left)); background: var(--bg); box-shadow: 0 -1px 0 var(--line); }
 .tabbar > .tabs { max-width: 680px; margin: 0 auto; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4); padding: var(--sp-4); background: var(--sunken); border-radius: var(--r-base); }
 .tabs [role="tab"] {
@@ -280,7 +293,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
   main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
   .controls > .wrap > * { max-width: 460px; } /* the filters and the slider are as wide as the list column under them, not the whole page */
   main.wrap > #panel-log { max-width: 680px; } /* 기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
-  .tabbar { position: static; padding: var(--sp-4) var(--sp-16); box-shadow: none; z-index: 4; margin: 0 -16px; }
+  .tabbar { position: static; padding: var(--sp-4) var(--sp-16); box-shadow: none; z-index: var(--z-tabbar-flow); margin: 0 -16px; }
   .tabbar > .tabs { max-width: none; margin: 0; }
   .tabs { grid-template-columns: 1fr 1fr; }
   #tab-map { display: none; }
@@ -445,7 +458,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
 /* ---- timetable ---- */
 .board { --pad: 16px; position: relative; margin: var(--sp-10) -16px 0; background: var(--surface); border-block: 1px solid var(--line); }
 .axis {
-  position: sticky; top: var(--stick-h, 0px); z-index: 3; height: 1.625rem; box-shadow: 0 1px 0 var(--line-strong);
+  position: sticky; top: var(--stick-h, 0px); z-index: var(--z-axis); height: 1.625rem; box-shadow: 0 1px 0 var(--line-strong);
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%);
 }
@@ -465,7 +478,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
   display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: 32px; padding: 4px var(--pad);
   background: var(--sunken); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 600; color: var(--muted);
 }
-#group-open > .band { position: sticky; top: calc(var(--stick-h, 0px) + 1.625rem); z-index: 2; } /* "이 시각에 열려 있는 곳 · 남은 시간 순" stays under the time axis */
+#group-open > .band { position: sticky; top: calc(var(--stick-h, 0px) + 1.625rem); z-index: var(--z-band); } /* "이 시각에 열려 있는 곳 · 남은 시간 순" stays under the time axis */
 summary.band { list-style: none; min-height: var(--tap); }
 summary.band::-webkit-details-marker { display: none; }
 summary.band > span:first-child::before { content: "▸"; display: inline-block; width: 1.1em; }
@@ -1150,14 +1163,14 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sheet form { display: grid; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
 .sheet form::before { content: ""; justify-self: center; width: 36px; height: 4px; border-radius: var(--r-xs); background: var(--line-strong); }
 .sh-head { display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
-/* the title row stays at the top while the sheet scrolls, with a 확인 ✓ at its right end (app.js adds it): no scrolling to the bottom to be done */
-.sheet:not(.board-page) .sh-head { position: sticky; top: 0; z-index: 2; background: var(--surface); box-shadow: 0 1px 0 var(--line); }
+/* the title row stays at the top while the sheet scrolls, with a 완료 ✓ at its right end (app.js adds it): no scrolling to the bottom to be done */
+.sheet:not(.board-page) .sh-head { position: sticky; top: 0; z-index: 2; background: var(--surface); box-shadow: var(--shadow-hair); }
 .sh-okw { display: flex; align-items: center; gap: var(--sp-6); margin-right: -8px; }
 .sh-count { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
-.sh-ok { flex: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer; }
-.sh-ok svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.sh-ok { flex: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--fg); cursor: pointer; } /* a plain ink line like the tab bar's icons: the sheet's own buttons (닉네임 저장 …) are the only saves */
+.sh-ok svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sh-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sh-ok:active { transform: scale(.95); }
+.sh-ok:active { background: var(--sunken); }
 .sh-head h2 { font-size: 1.125rem; }
 .sh-done { min-height: 44px; margin-right: -8px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--accent); font-weight: 600; white-space: nowrap; }
 /* every sheet ends with the same quiet 닫기 under its content (the header holds only the title) */
@@ -1466,11 +1479,19 @@ div.la-when { row-gap: 0; }
 .map-find-close { flex: none; width: var(--tap); height: var(--tap); border: 0; background: none; color: var(--muted); font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
 .map-find .la-picks { margin-top: var(--sp-4); background: var(--surface); box-shadow: var(--shadow-float); }
 /* the search shares the filter row: it takes what the 양달·응달 and 조건 buttons leave; its results open under the whole row */
-.find { flex: 1 1 0; min-width: 0; margin: 0; }
+.find { position: relative; flex: 1 1 0; min-width: 0; margin: 0; }
+/* the search field's 내 위치: a pin at its right end while the field is empty (typing brings the browser's own ✕ there); filled in the sun's colour while 가까운 순 runs on a known position */
+.find-loc { position: absolute; top: 0; right: 0; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-base); background: none; color: var(--muted); cursor: pointer; }
+.find-loc svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.find-loc[aria-pressed="true"] { color: var(--sun); }
+.find-loc[aria-pressed="true"] svg { fill: color-mix(in srgb, var(--sun) 28%, transparent); }
+.find-loc.busy { opacity: .5; }
+.find-loc:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.find:has(#findQ:not(:placeholder-shown)) .find-loc { display: none; }
 .find[hidden] { display: none; }
 .find .la-field { flex-basis: auto; }
-.find .la-picks { position: absolute; left: 0; right: 0; top: calc(100% + var(--sp-4)); z-index: 6; margin: 0; background: var(--surface); box-shadow: var(--shadow-float); }
-.find .la-field input { min-height: var(--tap); padding-block: var(--sp-4); text-overflow: ellipsis; } /* 글자 크기는 그대로(작으면 iOS 가 확대함) */
+.find .la-picks { position: absolute; left: 0; right: 0; top: calc(100% + var(--sp-4)); z-index: var(--z-picks); margin: 0; background: var(--surface); box-shadow: var(--shadow-float); }
+.find .la-field input { min-height: var(--tap); padding-block: var(--sp-4); padding-right: calc(var(--tap) - var(--sp-4)); text-overflow: ellipsis; } /* 글자 크기는 그대로(작으면 iOS 가 확대함) */
 .la-picks { list-style: none; margin: var(--sp-8) 0 0; padding: 0; max-height: calc(var(--tap) * 5); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--r-md); }
 .la-picks li + li { border-top: 1px solid var(--hair); }
 .la-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); width: 100%; min-height: var(--tap); padding: var(--sp-10) var(--sp-12); border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -1657,7 +1678,7 @@ p.setnew { margin-top: var(--sp-8); }
 .ms-share { color: var(--accent); }
 .ms-share:disabled { color: var(--muted); opacity: .45; cursor: default; }
 .ms-hint { text-align: center; }
-.ms-prev canvas { width: min(56vw, 240px); height: auto; aspect-ratio: 9 / 16; border-radius: var(--r-8); background: #17191c; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+.ms-prev canvas { width: min(56vw, 240px); height: auto; aspect-ratio: 9 / 16; border-radius: var(--r-8); background: #17191c; box-shadow: var(--shadow-pop); }
 .ms-say:empty { display: none; }
 .ms-say { margin-top: var(--sp-4); text-align: center; }
 .ps-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); margin-top: var(--sp-8); }
@@ -1667,7 +1688,7 @@ p.setnew { margin-top: var(--sp-8); }
 .ps-line { flex: 1 1 100%; min-height: var(--tap); padding: 0 var(--sp-12); border: 1px solid var(--line); border-radius: var(--r-8); background: var(--surface); color: var(--fg); font: inherit; }
 .ps-line:focus-visible, #ps-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* the card keeps its own shape (4:5 or 9:16): size it by what fits, never by a fixed ratio */
-#ps-canvas, #ps-img { width: auto; height: auto; max-width: min(72vw, 300px); max-height: 40vh; border-radius: var(--r-8); background: #17191c; box-shadow: 0 2px 12px rgba(0,0,0,.25); }
+#ps-canvas, #ps-img { width: auto; height: auto; max-width: min(72vw, 300px); max-height: 40vh; border-radius: var(--r-8); background: #17191c; box-shadow: var(--shadow-pop); }
 #ps-canvas.can-drag { touch-action: none; cursor: grab; } /* only with a photo: without one the sheet may scroll over the card */
 #ps-canvas.dragging { cursor: grabbing; }
 .ps-zoom { display: flex; align-items: center; gap: var(--sp-8); margin-bottom: var(--sp-8); }
@@ -1753,7 +1774,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 
 /* ---- toast: a line at the foot, above the home indicator; 실행 취소 inside ---- */
 .toast {
-  position: fixed; left: 16px; right: 16px; bottom: calc(16px + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: 1000; max-width: 560px; margin: 0 auto;
+  position: fixed; left: 16px; right: 16px; bottom: calc(16px + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: var(--z-toast); max-width: 560px; margin: 0 auto;
   display: flex; align-items: center; gap: var(--sp-8); padding: var(--sp-6) var(--sp-6) var(--sp-6) var(--sp-16); border-radius: var(--r-base); background: var(--fg); color: var(--bg);
   font-size: var(--fs-sm); font-weight: 600; box-shadow: var(--shadow-float);
   top: auto; width: auto; height: auto; border: 0; overflow: visible; /* it is a popover (log-view.js): drop the UA box */
@@ -1810,7 +1831,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .k-past { background: var(--open-past); }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
-.to-top { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: 6; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* centred, just above the tab bar */
+.to-top { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: var(--z-to-top); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* centred, just above the tab bar */
 .to-top[hidden] { display: none; }
 .to-top svg { width: 22px; height: 22px; }
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1832,7 +1853,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 @keyframes inv-spin { to { transform: rotate(360deg); } }
 
 /* loading screen: the vertical lockup (light or dark) on the app background until the first list is drawn */
-#boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--logo-paper); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
+#boot { position: fixed; inset: 0; z-index: var(--z-boot); display: grid; place-items: center; background: var(--logo-paper); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
 #boot img { width: min(32vw, 160px); height: auto; transform: translateY(21.4%); animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark, and shifted so the mark (not the whole lockup) sits at screen centre where the OS splash draws it; it fades in rather than appearing */
 #boot .dk { display: none; }
 :root[data-theme="dark"] #boot { background: var(--bg); }

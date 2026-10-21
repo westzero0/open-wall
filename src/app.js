@@ -1478,6 +1478,7 @@ function render() {
   if ($('time').value !== String(min)) $('time').value = String(min);
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
+  $('time').style.setProperty('--fill', String((min - 360) / (1380 - 360))); // the slider's passed stretch (style.css #time)
   if (Number.isNaN(+at)) return;
   if (loadFailed) { // never show "0 open" for a list that did not load
     $('summary').dataset.key = 'load-failed';
@@ -1543,12 +1544,11 @@ function render() {
 
   const n = open.length;
   liveOpenCount = isNow ? n : null;
-  // filters apply as they are ticked: the sheet's 확인 button says what they left
-  if ($('condDone')) $('condDone').textContent = `확인 · ${n}곳`;
+  // filters apply as they are ticked: the ✓ in the sheet's title row says what they left (setAttribute below)
+  const sc = $('conditions').querySelector('.sh-count'); // (the sheet's top ✓ says the same count)
+  if (sc) { sc.textContent = `${n}곳`; sc.nextElementSibling.setAttribute('aria-label', `완료, ${n}곳`); }
   // another day names the day (the live region is read without the date input)
   const lead = summaryLead(at, now, isNow);
-  const sc = $('conditions').querySelector('.sh-count'); // (the sheet's top ✓ says the same count)
-  if (sc) { sc.textContent = `${n}곳`; sc.nextElementSibling.setAttribute('aria-label', `확인, ${n}곳`); }
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
@@ -1584,6 +1584,7 @@ function render() {
   }
 
   const msg = vs.locateNote || (needOrigin ? '내 위치를 먼저 확인해 주세요.' : '');
+  $('findLoc').setAttribute('aria-pressed', String(ui.sortMode === 'distance' && !!vs.origin));
   $('locateMsg').textContent = msg;
   $('locateMsg').hidden = !msg;
 
@@ -1804,20 +1805,20 @@ for (const h of [6, 9, 12, 15, 18, 21, 24]) {
 }
 const nowTag = el('span', { class: 'nowtag' });
 $('axis').append(nowTag);
-
-const sheet = $('conditions');
 // the date field lies invisibly over the date text: on desktop a click lands on a field segment, so it opens the calendar itself
 $('date').addEventListener('click', () => { try { $('date').showPicker?.(); } catch { /* already open, or not allowed: the field still works */ } });
-const sheetForm = sheet.querySelector('form');
-// 확인 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
-// closing is one tap from anywhere in the sheet. The 조건 sheet also says how many walls its choices leave (updated in render).
+
+// 완료 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
+// the only way out besides the backdrop, Esc and the back button; what is changed there is saved as it is changed, so there is no second button to read. The 조건 sheet also says how many walls its choices leave (updated in render).
 for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
-  const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '확인' }, icon('check'));
+  const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('check'));
   ok.addEventListener('click', () => dlg.close());
   head.append(el('div', { class: 'sh-okw' }, id === 'conditions' ? el('small', { class: 'sh-count', 'aria-hidden': 'true' }) : null, ok));
 }
+const sheet = $('conditions');
+const sheetForm = sheet.querySelector('form');
 for (const k of ['minHours', 'sortMode', 'venue', 'ropeM', 'tempMin']) sheetForm.elements[k].value = ui[k];
 
 const setUi = (k, v) => {
@@ -1837,6 +1838,8 @@ $('nowBtn').addEventListener('click', () => go({ type: 'now' }));
 for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.dataset.sunkey)); // the key under the list
 $('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the rows
 $('shadeOnly').prepend(icon('shade'));
+$('findLoc').prepend(icon('pin')); // the search field's own 내 위치: one press = 가까운 순 (asks for the position the first time), a second = back to 남은 시간 순
+$('findLoc').addEventListener('click', () => chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'));
 $('sunOnly').addEventListener('click', () => setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'));
 $('shadeOnly').addEventListener('click', () => setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'));
 // 정렬 (the 조건 sheet): 가까운 순 needs a position; without one, don't keep it on (and saved) while the list stays as it was; the note stays
@@ -1971,8 +1974,10 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
 // sort: the list's 가까운 순 (sets ui.sortMode and the note under the list); no caller passes false now (the 기록 sheet
 // never asks for the position). → Promise<string>: '' once the position is in, else why not.
 function locate(sort = true) {
+  $('findLoc').classList.add('busy');
   return new Promise((done) => {
     const fail = (why) => {
+      $('findLoc').classList.remove('busy');
       go({ type: 'locateFailed', why, sort });
       done(why);
     };
@@ -1983,6 +1988,7 @@ function locate(sort = true) {
     }
     navigator.geolocation.getCurrentPosition(
       (p) => {
+        $('findLoc').classList.remove('busy');
         go({ type: 'located', origin: { lat: p.coords.latitude, lng: p.coords.longitude }, sort }); // sort: also 가까운 순, saved
         done('');
       },
@@ -2141,10 +2147,9 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     $('howto-kakao').hidden = !due?.kakao;
     $('howto-guide').hidden = !!due; // only the notice is due: just that
     if ($('tour-again')) $('tour-again').hidden = !!due;
-    $('howto-close').textContent = due ? '확인' : '닫기';
     $('howto-more').open = false; // 핵심만 먼저: 자세히 보기는 눌러야 펼쳐진다
     howto.showModal();
-    howto.scrollTop = 0; // the browser scrolls to the focused 확인 button at the foot: start from the title
+    howto.scrollTop = 0; // start from the title
   };
   howto.addEventListener('close', () => {
     if (auto?.kakao) closeInApp();
