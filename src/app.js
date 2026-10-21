@@ -35,6 +35,8 @@ import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, fore
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
+import { loadPartners, nearGear } from './gear.js';
+import { gearPane } from './gear-view.js';
 import { routeView } from './routes.js';
 import { loadMyGrade } from './my-grade.js';
 import { openGallery } from './gallery-view.js';
@@ -183,6 +185,7 @@ function go(ev) {
   for (const f of r.fx) FX[f]();
   return r.fx;
 }
+let partners = { info: [], sponsored: [] }; // data/partners.json (src/gear.js); the 근처 tab of a wall's sheet
 let allRows = []; // last built rows before any filter: the 내 암장 strip shows a favorite whatever the filters hide
 let shown = { rows: [], at: null }; // last rendered rows (all groups, with distance) for the map
 let mapApi = null; // created the first time the map tab opens
@@ -1225,13 +1228,16 @@ function buildWallSheet(wallName) {
   const blocks = { hours: hoursGrid(wall, at), fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d) };
   const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
   const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...(m.sizes.length ? [memoItem({ label: '벽 스펙', value: [...m.sizes.filter((x) => x.startsWith('폭')), ...m.sizes.filter((x) => !x.startsWith('폭'))].join(' · ') })] : []), ...m.info.folded.map(memoItem)) };
+  const pos = wallPosition(wall);
+  const nearInfo = nearGear(partners.info, pos), nearSponsored = nearGear(partners.sponsored, pos);
+  const gear = nearInfo.length || nearSponsored.length ? { key: 'near', label: '근처', icon: icon('pin'), pane: () => { document.dispatchEvent(new CustomEvent('stats:gear-view')); return gearPane(nearInfo, nearSponsored); } } : null; // only a wall with a partner within reach gets the tab
   return {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
-    tabs: sheet.tabs.map((t) => ({
+    tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
       pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
-    })),
+    })), ...(gear ? [gear] : [])],
   };
 }
 registerWallSheet(buildWallSheet);
@@ -2162,7 +2168,8 @@ $('mailCopy')?.addEventListener('click', async () => {
   }
 });
 
-const first = await loadList();
+const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]); // loaded together: a share link opens its sheet right after, and the 근처 tab is decided then (loadPartners never rejects; a failed load = no tab)
+partners = loadedPartners;
 state.walls = first ?? [];
 showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
