@@ -4,7 +4,7 @@
   --logo-paper: #f4f2ec; /* the logo's paper: manifest background_color, the app icons and the loading screen share it, so the OS start screen hands over without a seam */
   --sheet: #faf8f3;
   --panel: #e8e5dc;
-  --open-past: #c7dad5;
+  --open-past: #cddacd;
   --soon: #a8325a;
   --sun: #cc7a14;
   --off: #d0d4cb;
@@ -17,7 +17,7 @@
   --line: #d9d5ca;
   --line-strong: #bcb8ac;
   --wall: #2a2d32; /* the logo's wall: the slider's passed stretch (dark: the paper) */
-  --open: #1f5f55;        /* text on surface */
+  --open: #2e5e3e;        /* text on surface */
   --open-bar: var(--open); /* day bar fill */
   --warn: var(--soon);    /* text on surface */
   --sun-bar: var(--sun);
@@ -35,7 +35,7 @@
   --shade-ink: rgba(42, 45, 50, .22); /* the logo's slab as shade */
   --sticker: #fff; /* the sticker edge round the character */
   --on-photo: #fff; /* text and marks laid over a photo, in both themes */
-  --open-on-white: #1f5f55; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
+  --open-on-white: #2e5e3e; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
   --shadow-seg: 0 1px 2px rgb(0 0 0 / .12); /* the raised segment of a segmented control */
   --shadow-float: 0 4px 16px rgb(0 0 0 / .25); /* floating card, toast */
   --shadow-pop: 0 2px 12px rgb(0 0 0 / .25); /* a smaller floating piece (the share previews' picture) */
@@ -44,7 +44,7 @@
      Inside one component the numbers are local (0-3) and stay as they are. */
   --z-band: 2; --z-axis: 3; --z-tabbar-flow: 4; --z-controls: 5; --z-picks: 6; --z-to-top: 6; --z-tabbar: 7; --z-boot: 100; --z-toast: 1000;
   --now: var(--fg);
-  --pin-open: #1f5f55;
+  --pin-open: #2e5e3e;
   --pin-soon: #a8325a;
   --pin-closed: #9aa29c;
   --pin-unknown: #555c58;
@@ -99,7 +99,7 @@
     --sheet: #1e2125;
     --panel: #262a2f;
     --wall: #f4f2ec;
-    --open-past: #284039;
+    --open-past: #2b4231;
     --soon: #f08aa8;
     --sun: #f2b25c;
     --fav: #ffd34d;
@@ -110,7 +110,7 @@
     --muted: #a9aaa7;
     --line: #33373c;
     --line-strong: #4a4e54;
-    --open: #6cc4b0;
+    --open: #86c993;
     --scrim: rgb(0 0 0 / .6);
     --on-accent: #17191c;
     --plate: #1e2125;
@@ -129,9 +129,9 @@
   }
 }
 :root[data-theme="dark"] {
-  --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --open-past: #284039; --soon: #f08aa8; --sun: #f2b25c;
+  --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --open-past: #2b4231; --soon: #f08aa8; --sun: #f2b25c;
   --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
-  --line: #33373c; --line-strong: #4a4e54; --open: #6cc4b0; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
+  --line: #33373c; --line-strong: #4a4e54; --open: #86c993; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
     --plate: #1e2125;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);

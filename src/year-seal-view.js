@@ -10,7 +10,7 @@ const SIZE = 340, C = SIZE / 2, R0 = 44, R1 = 126, RIM = R1 + 14;
 const ARC_PX = 2.1;                                         // half the length of a mark's arc, along its ring
 const REACH_PX = 24;                                        // a press picks the nearest mark within this many screen pixels (a fingertip)
 const RING_R = 7;                                           // the ring around the picked or focused mark
-const FALLBACK = [[224, 138, 30], [31, 95, 85], [77, 106, 143]];
+const FALLBACK = [[224, 138, 30], [46, 94, 62], [77, 106, 143]];
 
 const s = (tag, attrs = {}, ...kids) => {
   const n = document.createElementNS(NS, tag);
