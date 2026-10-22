@@ -1299,7 +1299,6 @@ html[data-text] .segs label { flex: 1 1 auto; padding: 0 var(--sp-8); }
 .name { font-size: var(--fs-base); font-weight: 700; line-height: 1.3; min-width: 0; overflow-wrap: break-word; }
 .where { display: flex; flex-wrap: wrap; gap: 0 var(--sp-8); color: var(--muted); font-size: var(--fs-xs); }
 .where small { font-size: inherit; }
-.dist { font-weight: 600; color: var(--fg); }
 .status { font-weight: 700; font-size: var(--fs-md); margin-top: var(--sp-2); color: var(--muted); }
 .card.open .status { color: var(--open); }
 .card .status.soon, .card.open.short .status { color: var(--warn); }
@@ -1565,7 +1564,6 @@ html[data-text="xlarge"] .map-find-btn { top: calc(var(--tap) + var(--sp-8)); } 
 .la-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .la-picks .pn { font-weight: 500; }
 .la-picks .pr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); }
-.la-picks .pd { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; } /* 1.2km */
 .la-picks .none { padding: var(--sp-12); font-size: var(--fs-sm); color: var(--muted); }
 .la-err { flex-basis: 100%; margin-top: var(--sp-6); font-size: var(--fs-sm); font-weight: 600; color: var(--warn); }
 .la-err::before { content: "! "; }

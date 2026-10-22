@@ -5,7 +5,6 @@ import { saveBackupAt } from './backup.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
 import { axisFrac, formatRanges, pickChips, searchPicks } from './viewmodel.js';
-import { formatDistance } from './card-model.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
@@ -194,7 +193,6 @@ export function createLogView({
     picks.replaceChildren(...(hits.length ? hits.map(({ wall: w, km }) => {
       const b = el('button', { type: 'button', class: 'la-hit' },
         el('span', { class: 'pn' }, favs.includes(w.name) ? el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥ ') : null, w.name),
-        km != null ? el('span', { class: 'pd' }, formatDistance(km)) : null,
         w.region ? el('span', { class: 'pr' }, w.region) : null);
       b.addEventListener('click', () => {
         extraWall = w.name;

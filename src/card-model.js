@@ -456,9 +456,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = tags.find(isFee);
-  const dist = row.distanceKm != null ? formatDistance(row.distanceKm) : null;
   const basis = BASIS[wall.timeBasis] ?? null;
-  const distLine = dist ? `직선 ${dist}` : null;
   const text = statusText(status, at, wall);
   const bar = status.state === 'unknown' || status.suspended ? null : barOf(wall, status, at); // no day bar for a wall that is shut
   const old = staleness(wall, at);
@@ -474,8 +472,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const facts = memoFacts(wall, memo);
   // the 주소 row right below already starts with the region ("서울 광진구 자양동 …"): don't say it twice
   const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
-  const where = [regionShown, distLine, basis].filter(Boolean).join(' · ');
-  const place = [regionShown, distLine].filter(Boolean).join(' · '); // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
+  const where = [regionShown, basis].filter(Boolean).join(' · ');
+  const place = regionShown || null; // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
   const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote, key: true }].filter(Boolean); // a guessed position can send you to the wrong place: the face shows it
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
@@ -500,8 +498,6 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     fee: fee ? `입장 ${fee}` : null,
     tags: cardTags(tags),
     region: wall.region || null,
-    dist, // "850m" (list row)
-    distLine, // "직선 850m" (card)
     basis,
     meta: wall.region || null, // list row: the region only (no distance)
     where,

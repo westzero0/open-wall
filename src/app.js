@@ -13,7 +13,7 @@ import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, feeTable, feeWord, formatDistance, rowExtra, shortenDates } from './card-model.js';
+import { cardModel, feeTable, feeWord, rowExtra, shortenDates } from './card-model.js';
 import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -339,7 +339,6 @@ function card(row, at) {
         m.region ? el('small', {}, m.region) : null,
         !m.photo && secondary ? el('small', {}, secondary) : null,
         !m.photo && primary.endsWith('m') ? el('small', {}, `높이 ${primary}`) : null,
-        m.distLine ? el('span', { class: 'dist' }, m.distLine) : null,
         basisTag(m)),
       el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.statusText)),
     m.bar ? dayBarBlock(m.bar) : null,
@@ -1667,7 +1666,7 @@ function render() {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
   }
-  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
+  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
   $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순'}${wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : ''}`;
@@ -1858,7 +1857,6 @@ function wireFind(input, box, onPick) {
     box.replaceChildren(...(hits.length ? hits.map(({ wall: w, km }) => {
       const b = el('button', { type: 'button', class: 'la-hit' },
         el('span', { class: 'pn' }, w.name),
-        km != null ? el('span', { class: 'pd' }, formatDistance(km)) : null,
         w.region ? el('span', { class: 'pr' }, w.region) : null);
       b.addEventListener('click', () => {
         input.value = '';
