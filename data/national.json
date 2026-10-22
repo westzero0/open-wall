@@ -1316,7 +1316,7 @@
         "유료",
         "스피드월"
       ],
-      "memo": "정기휴무 월·화\n휴게 12시부터 1시간. 화장실은 걸어서 5분",
+      "memo": "정기휴무 월·화\n휴게 12시부터 1시간. 화장실은 걸어서 5분\n운영기간은 4월 1일~11월 29일(2026년 기준), 겨울에는 휴장\n현장 접수 후 신청서 작성. 준비물은 개인 등반 장비(암벽화·하네스·자일·빌레이 장비)와 편한 복장",
       "address": "경기 안양시 만안구 석천로 1",
       "sun": {
         "facing": "W",
@@ -1467,17 +1467,67 @@
         ]
       },
       "parking": {
-        "status": "unknown",
+        "status": "paid",
         "note": "주차장 1만 이용 가능",
-        "fee": "3시간 주차권 지급",
-        "nearby": [
+        "fee": "최초 1시간 무료, 이후 누진, 일 최대 25,000원(08~21시 운영, 신용카드만)",
+        "onsite": [
           "새물공원 주차장 1"
-        ]
+        ],
+        "checked_at": "2026-10-22",
+        "rate": {
+          "free_min": 60,
+          "tiers": [
+            {
+              "upto": 120,
+              "won": 900
+            },
+            {
+              "upto": 180,
+              "won": 2800
+            },
+            {
+              "upto": 300,
+              "won": 7600
+            },
+            {
+              "upto": 480,
+              "won": 14800
+            }
+          ],
+          "day_max": 25000,
+          "conditions": [
+            "08~21시 운영, 신용카드만"
+          ]
+        }
       },
-      "checked_at": "2026-07-10",
+      "checked_at": "2026-10-22",
       "contact": {
-        "notice_url": "https://www.auc.or.kr/smpark/board/list?boardManagementNo=8"
-      }
+        "notice_url": "https://www.auc.or.kr/smpark/board/list?boardManagementNo=8",
+        "phone": "031-389-5375"
+      },
+      "winter": {
+        "type": "closed",
+        "from_month": 12,
+        "to_month": 3
+      },
+      "holiday": "weekend",
+      "fees": [
+        {
+          "item": "일일 이용",
+          "adult": {
+            "weekday": 2000,
+            "weekend": 3000
+          },
+          "youth": {
+            "weekday": 1500,
+            "weekend": 2000
+          },
+          "child": {
+            "weekday": 1000,
+            "weekend": 1500
+          }
+        }
+      ]
     },
     {
       "name": "화랑유원지인공암벽등반장",
