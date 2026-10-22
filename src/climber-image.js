@@ -10,7 +10,7 @@ import { FONT, INK, image } from './share-image.js';
 const W = 1080;
 const PLATE = '#f4f2ec'; // the plate's paper (the logo's paper)
 const GREEN = '#2e5e3e'; // the app's accent
-const SOFT = '#555c58'; // secondary text: the app's muted ink (share-image's MUTED is made for a dark ground)
+const SOFT = '#55585b'; // secondary text: the app's muted ink (share-image's MUTED is made for a dark ground)
 const SUN = '#f4b942'; // the logo's sun
 const WALL_INK = '#2a2d32'; // the logo's slab
 const HAIR = 'rgba(27, 31, 30, 0.16)';

@@ -32,11 +32,11 @@
   --sun-disc: #f4b942; /* the logo's sun on the plate's wall */
   --hold-a: #f4b942; /* the question's two holds: the first statement is the sun's yellow, */
   --hold-b: #7cc47f; /* the second a green of the characters' holds */
-  --hold-edge: #1b1f1e; /* what a hold's outline is mixed with (white on the dark page) */
+  --hold-edge: #17191c; /* what a hold's outline is mixed with (white on the dark page) */
   --shade-ink: rgba(42, 45, 50, .22); /* the logo's slab as shade */
   --sticker: #fff; /* the sticker edge round the character */
   --on-photo: #fff; /* text and marks laid over a photo, in both themes */
-  --open-on-white: #2e5e3e; --soon-on-white: #a8325a; --muted-on-white: #555c58; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
+  --open-on-white: #2e5e3e; --soon-on-white: #a8325a; --muted-on-white: #55585b; --sun-on-white: #9a5b00; /* the light theme's text colours, for white pills that stay white in dark */
   --shadow-seg: 0 1px 2px rgb(0 0 0 / .12); /* the raised segment of a segmented control */
   --shadow-float: 0 4px 16px rgb(0 0 0 / .25); /* floating card, toast */
   --shadow-pop: 0 2px 12px rgb(0 0 0 / .25); /* a smaller floating piece (the share previews' picture) */
@@ -48,8 +48,8 @@
   --pin-open: #2e5e3e;
   --pin-soon: #a8325a;
   --pin-closed: #9aa29c;
-  --pin-unknown: #555c58;
-  --pin-edge: #1b1f1e;
+  --pin-unknown: #55585b;
+  --pin-edge: #17191c;
   --pin-me: #2563eb;
   --pin-sun: #e08a1e; /* 양달 ring; pins sit on light tiles in both themes */
   --fav: #f5c21b; /* the ♥ of a favorite: yellow fill with a darker edge, so it reads on the light page too */
@@ -119,13 +119,13 @@
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
-    --sticker: #e9ece9;
+    --sticker: #f4f2ec;
     --shade-bar: #86a3c9;
     /* pins sit on light OSM tiles in both themes; the legend sits on the dark page */
     --pin-open: #2f8f7c;
     --pin-soon: #d0587f;
     --pin-closed: #8d958f;
-    --pin-unknown: #a3aaa6;
+    --pin-unknown: #a9aaa7;
     --pin-edge: #0d100f;
     --pin-me: #3b82f6;
   }
@@ -138,9 +138,9 @@
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
     --hold-edge: #fff;
-    --sticker: #e9ece9;
+    --sticker: #f4f2ec;
     --shade-bar: #86a3c9;
-  --pin-open: #2f8f7c; --pin-soon: #d0587f; --pin-closed: #8d958f; --pin-unknown: #a3aaa6; --pin-edge: #0d100f; --pin-me: #3b82f6;
+  --pin-open: #2f8f7c; --pin-soon: #d0587f; --pin-closed: #8d958f; --pin-unknown: #a9aaa7; --pin-edge: #0d100f; --pin-me: #3b82f6;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; } /* form controls and scrollbars follow the picked theme */
@@ -303,7 +303,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
   #map { height: calc(100dvh - var(--stick-h, 0px) - 275px); } /* room for the strip under the controls and the legend below */
 }
 /* pin names (src/map.js) at street zoom; map.js hides the ones that would overlap */
-#map .pin-label { padding: 1px var(--sp-6); font: 600 .8125rem/1.3 var(--font); color: #1b1f1e; background: #fff; border-color: #b4baaf; white-space: nowrap; }
+#map .pin-label { padding: 1px var(--sp-6); font: 600 .8125rem/1.3 var(--font); color: #17191c; background: #fff; border-color: #bcb8ac; white-space: nowrap; }
 /* a crowd of walls: a hold with the count on it, soft halo in the same hue (size set per count in src/map.js); grey when none is open */
 #map .pin-cluster { --hue: var(--pin-open); position: relative; display: block; width: var(--size, 42px); height: var(--size, 42px); font-variant-numeric: tabular-nums; cursor: pointer; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .4)); transition: transform .15s; }
 #map .pin-cluster svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -340,15 +340,15 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .legend .pin-hold .h-unknown { fill: none; stroke: #fff; stroke-width: 5.5; }
 .legend .pin-hold .h-approx { fill: none; stroke: #fff; stroke-width: 4; stroke-dasharray: 6 4.5; }
 .legend .pin-hold .h-sun { fill: none; stroke: #f4b942; stroke-width: 5; }
-.legend .tape { display: inline-flex; align-items: center; gap: var(--sp-6); padding: 3px var(--sp-10) 3px var(--sp-6); background: #f4f2ec; color: #1b1f1e; font: 700 var(--fs-xs)/1.4 var(--font); box-shadow: 0 1px 2px rgb(0 0 0 / .4); border-radius: 1px; transform: rotate(-1.5deg); white-space: nowrap; }
+.legend .tape { display: inline-flex; align-items: center; gap: var(--sp-6); padding: 3px var(--sp-10) 3px var(--sp-6); background: #f4f2ec; color: #17191c; font: 700 var(--fs-xs)/1.4 var(--font); box-shadow: 0 1px 2px rgb(0 0 0 / .4); border-radius: 1px; transform: rotate(-1.5deg); white-space: nowrap; }
 .legend li:nth-child(even) .tape { transform: rotate(1.2deg); }
 /* the dots mirror the pin styles in src/map.js; the tape is paper in both themes, like the map tiles */
-.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #1b1f1e; flex: none; transform: scale(.85); }
+.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #17191c; flex: none; transform: scale(.85); }
 .dot.open { background: var(--pin-open); }
 .dot.soon { background: var(--pin-soon); border-width: 3px; }
 .dot.closed { background: var(--pin-closed); width: 11px; height: 11px; }
-.dot.unknown { border-color: #555c58; border-width: 2.5px; }
-.dot.approx { border: 2px dashed #555c58; }
+.dot.unknown { border-color: #55585b; border-width: 2.5px; }
+.dot.approx { border: 2px dashed #55585b; }
 .dot.sunring { outline: 3px solid var(--pin-sun); outline-offset: 2px; margin: 0 5px; }
 /* the selected card floats over the map's lower part, so the map and its pins stay in view */
 .mapbox { position: relative; }
@@ -2092,7 +2092,7 @@ html[data-text] .bd-body { flex: 1; }
 .cc-body { padding: var(--sp-14) var(--sp-16) var(--sp-16); }
 .cc-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.03em; text-wrap: balance; }
 .cc-sub { margin: var(--sp-4) 0 var(--sp-12); font-size: var(--fs-sm); color: var(--muted); text-wrap: balance; }
-.cc-go { display: block; width: 100%; min-height: var(--tap); padding: 0 var(--sp-16); border: 0; border-radius: var(--r-pill); background: var(--sun-disc); color: #1b1f1e; font: inherit; font-size: var(--fs-base); font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .16); }
+.cc-go { display: block; width: 100%; min-height: var(--tap); padding: 0 var(--sp-16); border: 0; border-radius: var(--r-pill); background: var(--sun-disc); color: #17191c; font: inherit; font-size: var(--fs-base); font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .16); }
 :is(.cc-go, .cc-x):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cr-btns button { min-height: var(--tap); padding: 0 var(--sp-14); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
 :is(.cc-go, .cc-x, .cr-btns button, .cq-hold) { transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out), border-color var(--dur-press) var(--ease-out); }
@@ -2133,7 +2133,7 @@ html[data-text] .bd-body { flex: 1; }
 .cq-hold.b { --hold: var(--hold-b); border-radius: 28px 60px 32px 56px / 32px 50px 36px 48px; }
 .cq-hold::before { content: ""; flex: none; width: 28px; height: 28px; background: #d8dbd4; box-shadow: inset 0 0 0 1.5px #43484a; }
 .cq-hold::after { content: ""; position: absolute; left: calc(var(--sp-16) + 7px); top: 50%; width: 14px; height: 14px; transform: translateY(-50%); clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background: #43484a; } /* the hexagon socket in the bolt's head */
-.cq-hold[aria-pressed="true"] { background: var(--hold); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: #1b1f1e; font-weight: 700; }
+.cq-hold[aria-pressed="true"] { background: var(--hold); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .18), inset 0 0 0 1.5px color-mix(in srgb, var(--hold) 60%, var(--hold-edge)); color: #17191c; font-weight: 700; }
 .cq-hold:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .cq-title { margin: 0 0 var(--sp-16); font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; letter-spacing: -.02em; text-wrap: balance; }
 .climber-res { display: grid; gap: var(--sp-16); padding: var(--sp-8) 0; }

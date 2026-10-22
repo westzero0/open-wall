@@ -12,7 +12,7 @@ export const TYPES = Object.freeze({
     safety: null, tip: 'plan',
   },
   spider: {
-    animal: '거미', tint: '#e0e3db', wall: { sun: { x: 56, lift: 0.15 }, shade: 'l' }, name: '동선 설계 장인형', nick: '계산은 끝났다, 이제 한 방',
+    animal: '거미', tint: '#e8e5dc', wall: { sun: { x: 56, lift: 0.15 }, shade: 'l' }, name: '동선 설계 장인형', nick: '계산은 끝났다, 이제 한 방',
     strengths: ['한 번의 시도에 계획을 몰아넣는다', '홀드를 가장 효율적으로 쓴다'],
     caution: '계획이 틀어지면 잠깐 멈칫해요', shine: '오래 붙잡던 문제를 마침내 풀 때',
     safety: '한 방 전에는 몸풀기와 장비 확인은 꼭.', tip: 'plan',
