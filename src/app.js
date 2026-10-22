@@ -1,3 +1,4 @@
+import './dialog-back.js';
 import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, ymd } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
