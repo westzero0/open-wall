@@ -1641,12 +1641,13 @@ p.setnew { margin-top: var(--sp-8); }
 .go-row .sheet-open { border-radius: 0; background: none; color: var(--fg); }
 .go-row .sheet-open:focus-visible, .expand-in .go-row .been-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
 /* under a sun picture the two buttons are the card's foot, the wall's base: only the card's own colours (--sc-*), so every sky (lit, low, shade, night, dark) carries them */
-.sunbox.sc .sc-actions { display: flex; gap: var(--sp-10); align-items: stretch; padding: var(--sp-12) var(--sp-14) var(--sp-14); background: var(--sc-wall); }
-.sunbox.sc .sc-actions .been-btn { min-width: 72px; border-color: var(--sc-halo); color: var(--sc-halo); background: none; }
-.sunbox.sc .sc-actions .been-btn.done { background: var(--sc-halo); color: var(--sc-wall); }
-.sunbox.sc .sc-actions .been-btn:focus-visible, .sunbox.sc .sc-actions .sheet-open:focus-visible { outline: 2px solid var(--sc-halo); outline-offset: 2px; }
-.sunbox.sc .sc-actions .sheet-open { background: var(--sc-gtext); color: var(--sc-wall); }
-.sunbox.sc .sc-actions .sheet-open i { color: var(--sc-ground); }
+.sunbox.sc .sc-actions { padding: var(--sp-12) var(--sp-14) var(--sp-14); background: var(--sc-wall); }
+.sunbox.sc .sc-frame { --sc-edge: color-mix(in srgb, var(--sc-gtext) 45%, transparent); display: flex; align-items: stretch; overflow: hidden; border-radius: var(--r-base); box-shadow: inset 0 0 0 1.5px var(--sc-edge); } /* one frame, the stamp and 자세히 split by a hairline */
+.sunbox.sc .sc-frame .been-btn { min-width: 76px; border: 0; border-radius: 0; border-right: 1.5px solid var(--sc-edge); color: var(--sc-halo); background: none; }
+.sunbox.sc .sc-frame .been-btn.done { background: color-mix(in srgb, var(--sc-halo) 20%, transparent); }
+.sunbox.sc .sc-frame .sheet-open { border-radius: 0; background: none; color: var(--sc-gtext); }
+.sunbox.sc .sc-frame .sheet-open i { color: var(--sc-halo); }
+.sunbox.sc .sc-frame :is(.been-btn, .sheet-open):focus-visible { outline: 2px solid var(--sc-halo); outline-offset: -4px; }
 .expand-in .been-btn {
   flex: none; min-width: 68px; min-height: 56px; padding: 0 var(--sp-8); display: grid; place-items: center; align-content: center; gap: var(--sp-2);
   border: 2px solid var(--accent); border-radius: var(--r-base); background: none; color: var(--accent); font-family: inherit; cursor: pointer;

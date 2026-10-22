@@ -1155,7 +1155,7 @@ function rowDetails(m, wall, at) {
   // own foot (sc-actions: the wall's base, painted with the card's colours); a wall with no picture (indoor, closed day) keeps them in a row of their own (go-row)
   const sunParts = withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // the sun box (the 날씨 is the top line of its sky), after the facts
   const sunCard = sunParts.find((x) => x.classList?.contains('sc'));
-  sunCard?.append(el('div', { class: 'sc-actions' }, beenBtn(m), sheetBtn));
+  sunCard?.append(el('div', { class: 'sc-actions' }, el('div', { class: 'sc-frame' }, beenBtn(m), sheetBtn)));
   const goRow = sunCard ? null : el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
   const pos = wallPosition(wall);
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
