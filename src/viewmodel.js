@@ -199,8 +199,8 @@ export function dayBar(wall, at) {
   return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
 }
 
-// 운영 중 양달: how a day's sun windows meet its open intervals (minutes). A sun that never comes into the open hours says when it does
-// come, if all of it is before opening or after closing. null without open hours or sun math.
+// 운영 중 양달: how a day's sun windows meet its open intervals (minutes). A sun that never comes into the open hours is just 운영 중 양달 없음 (one wording, so
+// the line never overflows). null without open hours or sun math.
 export function verdictOf(open, sun, format) {
   if (!open.length || !sun) return null;
   const on = sun.flatMap(([a, b]) => open.map(([s, e]) => [Math.max(a, s), Math.min(b, e)])).filter(([s, e]) => e > s);
@@ -208,10 +208,7 @@ export function verdictOf(open, sun, format) {
     const whole = sun.every(([a, b]) => open.some(([s, e]) => a >= s && b <= e)); // every sunny stretch lies inside the hours: the times above say it all
     return { kind: 'on', text: whole ? '양달 시간 전부 운영 중' : `운영 중 양달 ${format(on)}`, on }; // on: the sunny minutes inside the hours
   }
-  const first = open[0][0];
-  const last = open[open.length - 1][1];
-  const hint = !sun.length ? '' : sun.every(([, e]) => e <= first) ? ' · 운영 시작 전에만 들어요' : sun.every(([s]) => s >= last) ? ' · 운영 종료 후에만 들어요' : '';
-  return { kind: 'none', text: `운영 중 양달 없음${hint}`, on: [] };
+  return { kind: 'none', text: '운영 중 양달 없음', on: [] };
 }
 export function sunVerdict(wall, at) {
   const { open, sun } = dayBar(wall, at);
