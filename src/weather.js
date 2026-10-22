@@ -116,27 +116,27 @@ export function dayWeather(d) {
   return { rain, windy: d.g >= GUST_STRONG, rainText };
 }
 
-/** listForecastUrl([{lat, lng}, ...]) → one request for every outdoor wall: the hourly temperature and sky for 4 days (the list row's weather). Only coordinates (2 decimals) vary. */
+/** listForecastUrl([{lat, lng}, ...]) → one request for every outdoor wall: the hourly temperature, sky and gusts for 4 days (the list row's weather). Only coordinates (2 decimals) vary. */
 export const listForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
-  + '&hourly=temperature_2m,weather_code&timezone=Asia/Seoul&forecast_days=4';
+  + '&hourly=temperature_2m,weather_code,wind_gusts_10m&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=4';
 
-/** parseListForecast(json, n) → n Maps ('YYYY-MM-DDTHH:00' → {t °C, c WMO weather code}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
+/** parseListForecast(json, n) → n Maps ('YYYY-MM-DDTHH:00' → {t °C, c WMO weather code, g gust m/s}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
 export function parseListForecast(json, n) {
   const list = Array.isArray(json) ? json : [json];
   if (list.length !== n || n < 1) return null;
   const out = [];
   for (const item of list) {
     const h = item?.hourly;
-    if (!h || !Array.isArray(h.time) || !Array.isArray(h.temperature_2m) || !Array.isArray(h.weather_code)) return null;
-    const { time, temperature_2m: t, weather_code: c } = h;
+    if (!h || !Array.isArray(h.time) || !Array.isArray(h.temperature_2m) || !Array.isArray(h.weather_code) || !Array.isArray(h.wind_gusts_10m)) return null;
+    const { time, temperature_2m: t, weather_code: c, wind_gusts_10m: g } = h;
     const len = time.length;
-    if (!len || len > MAX_HOURS || t.length !== len || c.length !== len) return null;
+    if (!len || len > MAX_HOURS || t.length !== len || c.length !== len || g.length !== len) return null;
     const hours = new Map();
     for (let i = 0; i < len; i++) {
       if (typeof time[i] !== 'string' || !HOUR_RE.test(time[i])) return null;
-      if (!within(t[i], -80, 80) || !within(c[i], 0, 99)) return null;
-      hours.set(time[i], { t: t[i], c: c[i] });
+      if (!within(t[i], -80, 80) || !within(c[i], 0, 99) || !within(g[i], 0, 100)) return null;
+      hours.set(time[i], { t: t[i], c: c[i], g: g[i] });
     }
     out.push(hours);
   }

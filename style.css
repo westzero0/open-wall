@@ -491,7 +491,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .row { border-bottom: 1px solid var(--hair); }
 .row-btn {
-  display: block; width: 100%; min-height: 56px; padding: 13px var(--pad) 14px; text-align: left; line-height: 1.35;
+  display: block; width: 100%; min-height: 56px; padding: 13px var(--pad) 14px; text-align: left; line-height: 1.35; --rowbg: var(--surface);
   border: 0; background: none; scroll-margin-top: 2.125rem; /* html's scroll-padding-top already clears the sticky bars; the margin only leaves room for the axis below them */ transition: background-color var(--dur-press) var(--ease-out);
 }
 .row-btn:active { background: color-mix(in srgb, var(--fg) 6%, transparent); }
@@ -563,20 +563,29 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row:is(.cold, .wet):not(.is-open) .bar { opacity: .65; } /* a wall below the chosen 기온, or under rain without a roof, recedes (name and bar only: the hours and the temperature stay at full contrast) */
 /* a lit wall whose sun the sky hides: the chip turns to a soft tint and takes a small cloud (still the 양달 chip: no new verdict) */
 .row.veil:not(.is-open) .sunnow.sun.pic { position: relative; background: color-mix(in srgb, #a85f0a 18%, transparent); color: #96550a; }
-.row.veil .sunnow.sun.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355605a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E") center / 11px no-repeat; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .row.veil:not(.is-open) .sunnow.sun.pic { background: color-mix(in srgb, var(--sun-bar) 25%, transparent); color: var(--sun-bar); }
-  :root:not([data-theme="light"]) .row.veil .sunnow.sun.pic::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5cdc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E"); }
 }
 :root[data-theme="dark"] .row.veil:not(.is-open) .sunnow.sun.pic { background: color-mix(in srgb, var(--sun-bar) 25%, transparent); color: var(--sun-bar); }
-:root[data-theme="dark"] .row.veil .sunnow.sun.pic::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5cdc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18h11a4 4 0 0 0 .6-8 6 6 0 0 0-11.5 1.8A3.2 3.2 0 0 0 6 18z'/%3E%3C/svg%3E"); }
-/* rain at the arrival hour (a wall without a roof): the 양달/응달 chip takes a small umbrella, and wins over the cloud */
-.row.wet .sunnow.pic { position: relative; }
-.row.wet .sunnow.pic::after, .row.wet.veil .sunnow.sun.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f62b0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%232f62b0'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E") center / 11px no-repeat; }
+/* the weather badge on the chip: one 22px circle at the chip's corner; the most decisive weather wins (비 > 돌풍 > 구름). 비 and 돌풍 are a solid colour with a white mark,
+   구름 only a hollow ring, so the rows that matter stand out. The ring around it is the row's own background (--rowbg), so a pressed row stays clean */
+.row-btn:active { --rowbg: color-mix(in srgb, var(--fg) 6%, var(--surface)); }
+.row.is-open .row-btn { --rowbg: rgb(255 255 255 / .9); }
+.row:is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 22px; height: 22px; border-radius: 50%; background: var(--wg) center / 14px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
+.row.veil { --wbg: var(--surface); --wring: inset 0 0 0 1.5px #66706a; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366706a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+.row.windy { --wbg: #1f7a70; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 8a2.5 2.5 0 1 1 2 4H2'/%3E%3Cpath d='M12.8 19.6A2 2 0 1 0 14 16H2'/%3E%3C/svg%3E"); }
+.row.wet { --wbg: #2f62b0; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%23fff'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.row.wet .sunnow.pic, .row.wet.veil .sunnow.sun.pic)::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238db4ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%238db4ee'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
+  :root:not([data-theme="light"]) .row.veil { --wring: inset 0 0 0 1.5px #aab3ad; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+  :root:not([data-theme="light"]) .row.windy { --wbg: #2f9a8c; }
+  :root:not([data-theme="light"]) .row.wet { --wbg: #4f86d6; }
 }
-:root[data-theme="dark"] :is(.row.wet .sunnow.pic, .row.wet.veil .sunnow.sun.pic)::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238db4ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%238db4ee'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] .row.veil { --wring: inset 0 0 0 1.5px #aab3ad; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] .row.windy { --wbg: #2f9a8c; }
+:root[data-theme="dark"] .row.wet { --wbg: #4f86d6; }
+/* the list row's chip is a 34px square (the icon centred), so the badge and the name have room */
+.row .sunnow.pic { position: relative; width: 34px; height: 34px; padding: 0; justify-content: center; margin-right: var(--sp-4); }
+.row .sunnow.pic svg { width: 22px; height: 22px; }
 /* the sun chip weakens with the sky: 구름 조금 a little lighter, 흐림 lighter (cloud badge), 비 lightest (filled umbrella; wins over the cloud) */
 .row.part:not(.is-open) .sunnow.sun.pic { background: #bd7a2a; }
 .row.wet:not(.is-open) .sunnow.sun.pic { position: relative; background: color-mix(in srgb, #a85f0a 8%, transparent); color: #a07a4a; }

@@ -1476,7 +1476,7 @@ let rowSeq = 0;
 const FEW_MIN = 180; // 3 hours or less to stay: said bolder, so a short row stands out among the same-looking rest
 const leftParts = (left) => { const m = /^(\d+시간)( 가능)$/.exec(left); return m ? [m[1], el('span', { class: 'lf-pre' }, m[2])] : [left]; };
 // what the dimmed / veiled look says in words (a screen reader hears no opacity)
-const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
+const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.windy && '바람 셈 예보', row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
 function timeRow(row, at) {
   const m = modelOf(row, at);
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
@@ -1503,7 +1503,7 @@ function timeRow(row, at) {
     bar ? listBar(bar) : null);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
+  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
   li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -1638,6 +1638,7 @@ function render() {
     r.cold = away && tmin > 0 && Math.round(h.t) < tmin;
     r.wet = away && skyWet(h.c) && r.wall.venue !== 'both' && !r.wall.tags?.includes('지붕'); // a roof keeps the rain off, a wall with an indoor side has a dry way: they stay
     r.wetText = r.wet ? skyKind(h.c).text : null;
+    r.windy = away && r.wall.venue !== 'both' && windy(h); // a gust to be wary of at the arrival hour (a roof does not stop it); the chip's one badge shows the most decisive: 비 > 돌풍 > 구름
     coldN += Number(r.cold); wetN += Number(r.wet);
   }
   if (coldN || wetN) open.sort((a, b) => Number(a.cold || a.wet || false) - Number(b.cold || b.wet || false));
