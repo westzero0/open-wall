@@ -1223,6 +1223,9 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
 .sheet form { display: grid; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); }
 .sheet form::before { content: ""; justify-self: center; width: 36px; height: 4px; border-radius: var(--r-xs); background: var(--line-strong); }
+.sheet-grab { margin: calc(var(--sp-8) * -1) calc(var(--sp-16) * -1) 0; height: 32px; padding-top: var(--sp-8); display: grid; justify-items: center; align-content: start; touch-action: none; cursor: grab; } /* src/sheet-gestures.js: the bar is a pull-down handle, and a bigger target than its 4px */
+.sheet-grab::before { content: ""; width: 36px; height: 4px; border-radius: var(--r-xs); background: var(--line-strong); }
+.sheet form:has(> .sheet-grab)::before { display: none; }
 .sh-head { display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
 /* the title row stays at the top while the sheet scrolls, with a 완료 ✓ at its right end (app.js adds it): no scrolling to the bottom to be done */
 .sheet:not(.board-page) .sh-head { position: sticky; top: 0; z-index: 2; background: var(--surface); box-shadow: var(--shadow-hair); }

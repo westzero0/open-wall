@@ -622,13 +622,11 @@ export function createLogView({
   const yearDlg = $('year-info');
   let yearOpener = null;
   yearDlg.addEventListener('close', () => yearOpener?.focus());
-  yearDlg.addEventListener('click', (e) => e.target === yearDlg && yearDlg.close()); // the backdrop
 
   // 등급 안내 sheet: every tier this list can reach with the walls it takes (the tier now is marked, passed ones are ticked).
   const rankDlg = $('rank-info');
   let rankOpener = null;
   rankDlg.addEventListener('close', () => rankOpener?.focus());
-  rankDlg.addEventListener('click', (e) => e.target === rankDlg && rankDlg.close()); // the backdrop
   function openRankInfo(places, total, from) {
     rankOpener = from;
     const cur = rankOf(places, total);

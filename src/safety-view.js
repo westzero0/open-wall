@@ -26,7 +26,6 @@ export function createSafetyView() {
     dlg.showModal();
   });
   dlg.addEventListener('close', () => opener.focus());
-  dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
 
   $('sf-pledge').addEventListener('click', () => {
     const s = store();

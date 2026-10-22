@@ -776,7 +776,6 @@ function renderChanges() {
 if ($('changesLine') && $('changes')) {
   $('changesLine').addEventListener('click', () => { fillChanges(changesList()); $('changes').showModal(); });
   $('changes-all').addEventListener('click', () => dismissChanges(changesList().map((c) => c.key)));
-  $('changes').addEventListener('click', (e) => e.target === $('changes') && $('changes').close()); // the backdrop
 }
 function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
@@ -2054,7 +2053,6 @@ fitTabbar();
 new ResizeObserver(fitSticky).observe(controls);
 addEventListener('resize', fitSticky);
 fitSticky();
-sheet.addEventListener('click', (e) => e.target === sheet && sheet.close()); // the dialog has no padding: only the backdrop hits it
 sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours') setUi('minHours', e.target.value);
   if (e.target.name === 'sortMode') chooseSort(e.target.value);
@@ -2286,7 +2284,6 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     afterNotice = null;
     tour?.();
   });
-  howto.addEventListener('click', (e) => e.target === howto && howto.close()); // the backdrop
   $('helpBtn').addEventListener('click', (e) => show(e.currentTarget, null));
   $('tour-again')?.addEventListener('click', () => { howto.close(); startTour(); }); // a replay does not touch introDone
   $('inapp-open')?.addEventListener('click', () => { location.href = externalOpenUrl(entryHref); });

@@ -179,7 +179,6 @@ export function createClimberView({ getOpenCount = () => null, isCardDone = () =
   }
 
   dlg.addEventListener('close', () => { quiz = startQuiz(); opener?.focus(); });
-  dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
 
   $('pfClimberRow').hidden = false;
   if ($('ab-ai')) $('ab-ai').hidden = false; // 앱 정보: the characters are AI-made

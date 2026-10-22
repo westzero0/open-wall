@@ -147,7 +147,6 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   const about = $('about-sheet');
   let aboutOpener = null;
   about.addEventListener('close', () => aboutOpener?.focus());
-  about.addEventListener('click', (e) => e.target === about && about.close()); // the backdrop
   const openAbout = (from) => { aboutOpener = from; about.showModal(); };
   $('aboutOpen').addEventListener('click', (e) => openAbout(e.currentTarget));
   $('pfAbout').addEventListener('click', (e) => {

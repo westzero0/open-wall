@@ -1,6 +1,7 @@
 // src/dialog-back.js — 뒤로가기 closes the sheet that is open instead of leaving the page. Every dialog opened with showModal() gets one history
 // entry (same address) while it is open: 뒤로 / swipe-back pops that entry and closes the top dialog; closing it any other way pops the entry itself.
 // The wall sheet (class wall-sheet) keeps its own entry, which carries the ?wall= address; this module skips it. Import once, before the sheets are made.
+import { enhanceSheet } from './sheet-gestures.js';
 const stack = []; // open dialogs holding an entry, the newest last
 let selfBack = false; // our own history.back() is in flight: its popstate is not a user's 뒤로
 
@@ -9,6 +10,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   HTMLDialogElement.prototype.showModal = function showModal(...args) {
     const was = this.open;
     open.apply(this, args);
+    enhanceSheet(this); // backdrop tap and the pull-down grab bar on every bottom sheet
     if (was || this.classList.contains('wall-sheet') || stack.includes(this)) return;
     stack.push(this);
     history.pushState({ dialogBack: true }, '');
