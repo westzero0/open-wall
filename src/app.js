@@ -1122,8 +1122,12 @@ function rowDetails(m, wall, at) {
       el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name }, '정보 수정 요청'),
       m.hasChat ? null : el('button', { type: 'button', class: 'help-link', 'data-act': 'report', 'data-name': m.name, 'data-kind': '오픈채팅방' }, '오픈채팅 추가'))
     : null;
-  // 다녀왔어요 sits beside 자세히 at the card's foot (go-row); its sheet asks the visit time and the crowd
-  const goRow = el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
+  // 다녀왔어요 sits beside 자세히 at the card's foot; its sheet asks the visit time and the crowd. Under a sun picture the two are the picture card's
+  // own foot (sc-actions: the wall's base, painted with the card's colours); a wall with no picture (indoor, closed day) keeps them in a row of their own (go-row)
+  const sunParts = withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // the sun box (the 날씨 is the top line of its sky), after the facts
+  const sunCard = sunParts.find((x) => x.classList?.contains('sc'));
+  sunCard?.append(el('div', { class: 'sc-actions' }, beenBtn(m), sheetBtn));
+  const goRow = sunCard ? null : el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
   const pos = wallPosition(wall);
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
@@ -1146,7 +1150,7 @@ function rowDetails(m, wall, at) {
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         ...infoBlock(m),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
-      ...withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)), // the sun box (the 날씨 is the top line of its sky), after the facts (the right column when wide)
+      ...sunParts, // after the facts (the right column when wide)
       goRow),
     visitLog(m),
     helps,

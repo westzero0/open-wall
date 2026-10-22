@@ -1450,6 +1450,8 @@ dialog::backdrop { background: var(--scrim); }
 /* the foot of a card: 정보가 달라요 · 오픈채팅방 알려주기, quiet text links (the 44px height is the tap area) */
 .help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-16); margin-top: var(--sp-6); } /* right-aligned: out of the way of the card's content */
 .help-link { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* the two 제보 links under the card's buttons stay quiet: small, a pale underline (the tap area stays 44px) */
+.help-row .help-link { font-size: var(--fs-xs); text-decoration-color: var(--line-strong); }
 .rp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rp-status { min-height: 1.4em; margin: var(--sp-6) 0; font-size: var(--fs-sm); white-space: pre-line; }
 .rp-alt { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; white-space: nowrap; }
@@ -1607,13 +1609,20 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 p.setnew { margin-top: var(--sp-8); }
 /* 다녀왔어요: a 64px stamp square left of 자세히 (outlined; filled with the count once there is a record) */
 .go-row { display: flex; gap: var(--sp-10); align-items: stretch; margin-top: var(--sp-12); }
+/* under a sun picture the two buttons are the card's foot, the wall's base: only the card's own colours (--sc-*), so every sky (lit, low, shade, night, dark) carries them */
+.sunbox.sc .sc-actions { display: flex; gap: var(--sp-10); align-items: stretch; padding: var(--sp-12) var(--sp-14) var(--sp-14); background: var(--sc-wall); }
+.sunbox.sc .sc-actions .been-btn { min-width: 72px; border-color: var(--sc-halo); color: var(--sc-halo); background: none; }
+.sunbox.sc .sc-actions .been-btn.done { background: var(--sc-halo); color: var(--sc-wall); }
+.sunbox.sc .sc-actions .been-btn:focus-visible, .sunbox.sc .sc-actions .sheet-open:focus-visible { outline: 2px solid var(--sc-halo); outline-offset: 2px; }
+.sunbox.sc .sc-actions .sheet-open { background: var(--sc-gtext); color: var(--sc-wall); }
+.sunbox.sc .sc-actions .sheet-open i { color: var(--sc-ground); }
 .expand-in .been-btn {
   flex: none; min-width: 68px; min-height: 56px; padding: 0 var(--sp-8); display: grid; place-items: center; align-content: center; gap: var(--sp-2);
   border: 2px solid var(--accent); border-radius: var(--r-base); background: none; color: var(--accent); font-family: inherit; cursor: pointer;
 }
 .expand-in .been-btn.done { background: var(--accent); color: var(--on-accent); }
 .expand-in .been-btn svg { width: 22px; height: 22px; }
-.expand-in .been-btn small { font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.expand-in .been-btn small { font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; } /* the app's smallest text, 13px */
 .expand-in .been-btn:active { transform: scale(.97); }
 .been-stamp { flex: none; width: 22px; height: 22px; background: currentColor; }
 .been-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
