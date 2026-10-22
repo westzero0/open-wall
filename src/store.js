@@ -386,9 +386,11 @@ function cleanRouteWalls(v) {
     if (!isPlainObject(w) || typeof w.name !== 'string') continue;
     const name = [...w.name.normalize('NFC').replace(/\s+/g, ' ').trim()].slice(0, MAX_ROUTE_WALL_NAME).join('').trim(); // by characters, not UTF-16 halves
     const counts = cleanCounts(w.counts);
-    if (!name || seen.has(name) || !Object.keys(counts).length) continue;
-    seen.add(name);
-    out.push({ name, counts });
+    const venue = w.venue === 'indoor' || w.venue === 'outdoor' ? w.venue : null; // which kind of wall this section is; absent = not said
+    const id = `${venue ?? ''}|${name}`; // the same name may repeat across kinds (실내 리드벽 / 실외 리드벽)
+    if (!name || seen.has(id) || !Object.keys(counts).length) continue;
+    seen.add(id);
+    out.push({ name, counts, ...(venue ? { venue } : {}) });
     if (out.length === MAX_ROUTE_WALLS) break;
   }
   return out;

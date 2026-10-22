@@ -1174,7 +1174,7 @@ function sheetSection(m, s, content) {
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
 function routePane(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
-  const v = routeView(wall, new Date(), mine);
+  const v = routeView(wall, new Date(), mine, ui.venue); // ui.venue: the 구분 filter opens the indoor or outdoor section first
   const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포', kinds: TAB_KINDS.routes } })));
   const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? ask : null);
@@ -1198,7 +1198,7 @@ function routePane(m, wall) {
     b.addEventListener('click', () => show(x.key));
     return b;
   }));
-  show('all');
+  show(v.first);
   return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, setLine, el('p', { class: 'ws-chk' }, v.head), chips, bars, total,
     v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'));
 }
@@ -1546,7 +1546,7 @@ function render() {
   const { date, min, at } = clockView(vs, now);
   if ($('date').value !== date) $('date').value = date;
   if ($('time').value !== String(min)) $('time').value = String(min);
-  $('time').style.setProperty('--fill', String((min - 360) / (1380 - 360))); // the slider's passed stretch (style.css #time)
+  { const t = $('time'); t.style.setProperty('--fill', String((Number(t.value) - Number(t.min)) / (Number(t.max) - Number(t.min)))); } // the slider's passed stretch, from where its thumb really sits (the hour grid) (style.css #time)
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
   if (Number.isNaN(+at)) return;
@@ -1919,7 +1919,7 @@ for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.
 $('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the rows
 $('shadeOnly').prepend(icon('shade'));
 $('findLoc').prepend(icon('pin')); // the search field's own 내 위치: one press = 가까운 순 (asks for the position the first time), a second = back to 남은 시간 순
-$('findLoc').addEventListener('click', () => chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'));
+$('findLoc').addEventListener('click', () => { if ($('findLoc').classList.contains('busy')) return; chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'); }); // not while the position is being asked: the late answer would undo the press
 $('sunOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); }); // stats.js counts it (turning on only)
 $('shadeOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); });
 // 정렬 (the 조건 sheet): 가까운 순 needs a position; without one, don't keep it on (and saved) while the list stays as it was; the note stays
@@ -2060,9 +2060,11 @@ document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
 // never asks for the position). → Promise<string>: '' once the position is in, else why not.
 function locate(sort = true) {
   $('findLoc').classList.add('busy');
+  $('findLoc').setAttribute('aria-busy', 'true');
   return new Promise((done) => {
     const fail = (why) => {
       $('findLoc').classList.remove('busy');
+      $('findLoc').removeAttribute('aria-busy');
       go({ type: 'locateFailed', why, sort });
       done(why);
     };
@@ -2074,6 +2076,7 @@ function locate(sort = true) {
     navigator.geolocation.getCurrentPosition(
       (p) => {
         $('findLoc').classList.remove('busy');
+        $('findLoc').removeAttribute('aria-busy');
         go({ type: 'located', origin: { lat: p.coords.latitude, lng: p.coords.longitude }, sort }); // sort: also 가까운 순, saved
         done('');
       },

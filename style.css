@@ -17,6 +17,7 @@
   --line: #d9d5ca;
   --line-strong: #bcb8ac;
   --wall: #2a2d32; /* the logo's wall: the slider's passed stretch (dark: the paper) */
+  --sun-ui: #9a5b00; /* the sun as a mark that must read on the page (3:1): the slider's thumb, the lit 내 위치 pin; dark below */
   --open: #2e5e3e;        /* text on surface */
   --open-bar: var(--open); /* day bar fill */
   --warn: var(--soon);    /* text on surface */
@@ -99,6 +100,7 @@
     --sheet: #1e2125;
     --panel: #262a2f;
     --wall: #f4f2ec;
+    --sun-ui: #f2b25c;
     --open-past: #2b4231;
     --soon: #f08aa8;
     --sun: #f2b25c;
@@ -129,7 +131,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --open-past: #2b4231; --soon: #f08aa8; --sun: #f2b25c;
+  --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --sun-ui: #f2b25c; --open-past: #2b4231; --soon: #f08aa8; --sun: #f2b25c;
   --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
   --line: #33373c; --line-strong: #4a4e54; --open: #86c993; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
     --plate: #1e2125;
@@ -172,7 +174,7 @@ h1 { display: flex; align-items: center; gap: var(--sp-6); }
 h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .logo { flex: none; display: block; }
 #summary { font-size: min(var(--fs-xl), calc((100vw - 32px) / 15.4)); /* the headline fits one row whatever the system font size; a long lead may still wrap */
-   font-family: "Noto Sans KR", var(--font); font-weight: 900; /* the logo's lettering */ line-height: 1.15; letter-spacing: -.025em; margin-top: 0; }
+   font-family: "Noto Sans KR", var(--font); font-weight: 900; text-wrap: balance; /* the logo's lettering */ line-height: 1.15; letter-spacing: -.025em; margin-top: 0; }
 #summary b { color: var(--open); }
 #summary b.zero { color: var(--muted); }
 /* 내 지역 on: a small line under the summary; pressing it goes back to 전국 (the 44px tap area is padding pulled back by the margin) */
@@ -207,13 +209,13 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .scrub-label { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 #timeOut { color: var(--fg); font-weight: 700; font-size: var(--fs-base); margin-left: var(--sp-4); }
 .scrub-row { display: flex; align-items: center; gap: var(--sp-8); min-height: calc(var(--tap) - 4px); } /* same height with or without the button */
-#time { flex: 1 1 0; min-width: 0; height: calc(var(--tap) - 4px); margin: 0; accent-color: var(--fg); -webkit-appearance: none; appearance: none; background: transparent; }
+#time { flex: 1 1 0; min-width: 0; height: var(--tap); margin: 0; -webkit-appearance: none; appearance: none; background: transparent; }
 /* the logo's sun on its wall: the passed stretch is the wall's colour (app.js sets --fill), the thumb is the same sun as the current tab's dot */
 #time::-webkit-slider-runnable-track { height: 8px; border-radius: var(--r-sm); background: linear-gradient(to right, var(--wall) calc(var(--fill, 0) * 100%), var(--line-strong) 0); }
 #time::-moz-range-track { height: 8px; border-radius: var(--r-sm); background: var(--line-strong); }
 #time::-moz-range-progress { height: 8px; border-radius: var(--r-sm); background: var(--wall); }
-#time::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; margin-top: -1px; border: 0; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 35%, transparent); }
-#time::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 35%, transparent); }
+#time::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; margin-top: -1px; border: 0; border-radius: 50%; background: var(--sun-ui); box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px color-mix(in srgb, var(--sun-ui) 35%, transparent); }
+#time::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--sun-ui); box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px color-mix(in srgb, var(--sun-ui) 35%, transparent); }
 #nowBtn { flex: none; }
 .scrub-hd #nowBtn { position: relative; min-height: 32px; padding: 0 var(--sp-8); font-size: var(--fs-xs); } /* beside the arrival time, not at the slider's end: the slider keeps the full width, so its thumb stays above the same time on the axis */
 .scrub-hd #nowBtn::after { content: ""; position: absolute; inset: -6px -4px; } /* the tap area stays 44px */
@@ -1199,7 +1201,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sh-ok:active { background: var(--sunken); }
 .sh-head h2 { font-size: 1.125rem; }
 .sh-done { min-height: 44px; margin-right: -8px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--accent); font-weight: 600; white-space: nowrap; }
-/* every sheet ends with the same quiet 닫기 under its content (the header holds only the title) */
+/* the sheets that have their own save / send / quiz (기록 추가, 같이 가요, 클라이머 유형 테스트) end with a quiet 닫기; the others close with the title row's ✓ (app.js adds it) and have no button here */
 .sh-close { min-height: var(--tap); margin-top: var(--sp-8); padding: 0 var(--sp-16); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .sh-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sh-row { margin: 0; padding: var(--sp-14) 0; border: 0; border-top: 1px solid var(--hair); min-width: 0; }
@@ -1510,8 +1512,8 @@ html[data-text="xlarge"] .map-find-btn { top: calc(var(--tap) + var(--sp-8)); } 
 /* the search field's 내 위치: a pin at its right end while the field is empty (typing brings the browser's own ✕ there); filled in the sun's colour while 가까운 순 runs on a known position */
 .find-loc { position: absolute; top: 0; right: 0; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-base); background: none; color: var(--muted); cursor: pointer; }
 .find-loc svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.find-loc[aria-pressed="true"] { color: var(--sun); }
-.find-loc[aria-pressed="true"] svg { fill: color-mix(in srgb, var(--sun) 28%, transparent); }
+.find-loc[aria-pressed="true"] { color: var(--sun-ui); }
+.find-loc[aria-pressed="true"] svg { fill: color-mix(in srgb, var(--sun-ui) 28%, transparent); }
 .find-loc.busy { opacity: .5; }
 .find-loc:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .find:has(#findQ:not(:placeholder-shown)) .find-loc { display: none; }
@@ -1838,8 +1840,6 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-send, .inv-copy, .inv-image { min-height: var(--tap); border-radius: var(--r-base); font: inherit; font-weight: 700; }
 .inv-send { display: block; width: 100%; border: 0; background: var(--accent); color: var(--on-accent); }
 .inv-copy, .inv-image { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); white-space: nowrap; }
-.inv-save { display: block; width: 100%; min-height: var(--tap); margin-top: var(--sp-8); border: 0; border-radius: var(--r-base); background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 700; white-space: nowrap; }
-.inv-save:disabled { opacity: 0.6; }
 .inv-why { margin: var(--sp-6) 0 0; }
 .inv-why[hidden] { display: none; }
 .inv-why + .inv-actions { margin-top: var(--sp-8); }
@@ -1851,7 +1851,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-pic[hidden] { display: none; }
 .inv-pic img { display: block; width: min(540px, 100%); height: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
 .inv-pic figcaption { margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--muted); text-wrap: pretty; }
-:is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .inv-save, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .invite-banner { margin: var(--sp-10) 0 0; padding: var(--sp-12) var(--sp-14) var(--sp-4); border: 1px solid var(--accent); border-radius: var(--r-base); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
