@@ -55,7 +55,7 @@ export function pricedLots(parking) {
 
 export const NOTE_MAX = 14; // a 비고 longer than this (characters) is told on a line of its own under the lot's row, not squeezed into the cell
 
-/** → [{ name, walk_min, cells: [text × TABLE_HOURS, 하루], note }] one row per priced lot for the sheet's table (TABLE_HOURS columns, then 하루) (a missing amount is '–'). */
+/** → [{ name, walk_min, cells: [text × TABLE_HOURS, 하루], note, free, first, step }] one row per priced lot for the sheet's table (TABLE_HOURS columns, then 하루) (a missing amount is '–'). */
 export function lotFeeTable(parking) {
   const text = (n) => (n == null ? '–' : n === 0 ? '무료' : `${n.toLocaleString('en-US')}원`); // the same 3,000원 as the entry-fee table
   return pricedLots(parking).map((l) => ({
@@ -63,6 +63,9 @@ export function lotFeeTable(parking) {
     walk_min: l.walk_min ?? null,
     own: Boolean(l.own),
     free: l.rate?.free_min ? `${span(l.rate.free_min)} 무료` : '',
+    // the rule's own words, so the table says how the amounts come about: head ("최초 30분", "10분당") and amount ("1,000원") apart; null when the rule has no such part
+    first: l.rate?.first ? { head: `최초 ${span(l.rate.first.min)}`, cell: won(l.rate.first.won) } : null,
+    step: l.rate?.step ? { head: `${span(l.rate.step.min)}당`, cell: won(l.rate.step.won) } : null,
     cells: [...TABLE_HOURS.map((h) => text(feeAfter(l, h))), text(l.rate ? calcFee(l.rate, 24 * 60) : Number.isFinite(l.cost?.day) ? l.cost.day : null)],
     note: (l.rate?.conditions ?? []).join(' · '),
     flat: Number.isFinite(l.rate?.day_flat), // one price for any stay: the table merges its stay and 하루 cells

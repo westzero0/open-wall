@@ -1125,7 +1125,6 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .pfee .pf-cond { color: var(--muted); font-weight: 400; font-size: var(--fs-xs); }
 .pfee tr.pf-has-more > * { padding-bottom: var(--sp-2, 2px); }
 .pfee tr.pf-more td { border-top: 0; padding-top: 0; text-align: left; white-space: normal; color: var(--muted); font-size: var(--fs-xs); } /* a long 비고 under its lot's row, across every column */
-.pfee-src { margin: var(--sp-4) 0 0; color: var(--muted); font-size: var(--fs-xs); }
 .pf-walk { display: block; color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
 /* 근처 tab (src/gear-view.js): partner shops near the wall. The paid zone, when there is one, is set apart and always carries 광고·제휴. */
 .gear-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-8); }

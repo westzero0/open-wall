@@ -1206,23 +1206,28 @@ function sheetParking(m) {
   const { onsite } = m.parkingWhere;
   // the calculated amounts, the same table for one lot or several: a row per priced lot (name, walk, the stay the card is priced for, 하루, 비고 = free span + conditions)
   const f = m.parkingFees;
+  const solo = Boolean(f && f.rows.length === 1 && f.rows[0].own); // the wall's own lot is the only priced one: the line above already names it, so no name column
+  // columns: 주차장 (only with several lots) · 최초 · 이후 (the rule's own words, when a rule is there) · the stay the card is priced for · 하루 · 비고 (only when some lot has one)
+  const hasRule = Boolean(solo && (f.rows[0].first || f.rows[0].step)); // one lot: the rule's parts head their own columns ("최초 30분", "10분당"); several lots each have their own rule, which would not fit the width
+  const hasNote = Boolean(f && f.rows.some((r) => r.free || r.note));
+  const colCount = (solo ? 0 : 1) + (hasRule ? 2 : 0) + 2 + (hasNote ? 1 : 0);
   const fees = f ? el('div', { class: 'pfee-wrap', role: 'region', 'aria-label': '주차장별 계산한 요금', tabindex: '0' }, el('table', { class: 'pfee' },
     el('caption', {}, '계산한 주차 요금'),
-    el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, '주차장'), el('th', { scope: 'col' }, `${f.hours}시간`), el('th', { scope: 'col' }, '하루'), el('th', { scope: 'col', class: 'pf-note' }, '비고'))),
+    el('thead', {}, el('tr', {}, ...(solo ? [] : [el('th', { scope: 'col' }, '주차장')]), ...(hasRule ? [el('th', { scope: 'col' }, f.rows[0].first?.head ?? '최초'), el('th', { scope: 'col' }, f.rows[0].step?.head ?? '이후')] : []), el('th', { scope: 'col' }, `${f.hours}시간`), el('th', { scope: 'col' }, '하루'), ...(hasNote ? [el('th', { scope: 'col', class: 'pf-note' }, '비고')] : []))),
     el('tbody', {}, ...f.rows.flatMap((r) => {
       // 비고: free span + conditions. Short: in its cell. Long (NOTE_MAX): a line of its own under the row across every column.
       const note = [r.free, r.note].filter(Boolean).join(' · ');
       const long = note.length > NOTE_MAX;
       const name = el('th', { scope: 'row' }, r.name, r.walk_min ? el('span', { class: 'pf-walk' }, `도보 ${r.walk_min}분`) : null);
-      // one price for any stay: the stay, 하루 and 비고 cells become one (the amount, its short condition after it)
-      const cells = r.flat ? [el('td', { colspan: '3', class: 'pf-flat' }, r.cells.at(-1), note && !long ? el('span', { class: 'pf-cond' }, ` (${note})`) : null)]
-        : [el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), el('td', { class: 'pf-note' }, (long ? '' : note) || '–')];
-      return [el('tr', long ? { class: 'pf-has-more' } : {}, name, ...cells), ...(long ? [el('tr', { class: 'pf-more' }, el('td', { colspan: '4' }, note))] : [])];
+      // one price for any stay: everything after the name becomes one cell (the amount, its short condition after it)
+      const cells = r.flat ? [el('td', { colspan: String(colCount - (solo ? 0 : 1)), class: 'pf-flat' }, r.cells.at(-1), note && !long ? el('span', { class: 'pf-cond' }, ` (${note})`) : null)]
+        : [...(hasRule ? [el('td', {}, r.first?.cell ?? '–'), el('td', {}, r.step?.cell ?? '–')] : []), el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), ...(hasNote ? [el('td', { class: 'pf-note' }, (long ? '' : note) || '–')] : [])];
+      return [el('tr', long ? { class: 'pf-has-more' } : {}, ...(solo ? [] : [name]), ...cells), ...(long ? [el('tr', { class: 'pf-more' }, el('td', { colspan: String(colCount) }, note))] : [])];
     })))) : null;
   // status and the wall's own lot, then the amounts (the typed wording small under them), then the rest (주변 · 참고)
   const head = el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '');
   const rows = m.parkingMore.filter(({ k }) => !(f && k === '요금')).map(({ k, v }) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v));
-  return el('div', {}, head, ...(f ? [fees, m.parking.fee ? el('p', { class: 'pfee-src' }, `안내 원문: ${m.parking.fee}`) : null, ...rows] : rows));
+  return el('div', {}, head, ...(f ? [fees, ...rows] : rows));
 }
 // 게시판 tab: the wall's one-line board (every post, 더 보기, the form) and the 희노애Rock reviews; made when the tab is first shown
 function boardPane(m) {

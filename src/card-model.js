@@ -138,10 +138,12 @@ const ON_SITE = /^(?:(?:인공)?(?:외벽|암벽장)\s*앞|(?:건물|센터)\s*�
 // Lists kept in the data (parking.onsite / nearby) win; a wall without them (older storage, an import) falls back to the note's wording.
 // A fee counts too: a wall that has its price in the data has its note as advice, not as lot names.
 const hasLots = (parking) => Boolean(parking?.onsite?.length || parking?.nearby?.length || parking?.lots?.length || parking?.fee);
+const sameLot = (a, b) => a.replace(/\s+/g, '') === b.replace(/\s+/g, ''); // "뚝섬한강공원 뚝섬4주차장" is "뚝섬한강공원뚝섬4주차장"
 const parkingWhereOf = (parking) => {
   if (hasLots(parking)) {
-    const nearby = parking.nearby ?? [];
-    return { onsite: parking.onsite ?? [], nearby: [...nearby, ...(parking.lots ?? []).map((l) => l.name).filter((n) => !nearby.includes(n))] };
+    const onsite = parking.onsite ?? [];
+    const nearby = (parking.nearby ?? []).filter((n) => !onsite.some((o) => sameLot(o, n))); // a lot is told once: the wall's own lot is not also 주변
+    return { onsite, nearby: [...nearby, ...(parking.lots ?? []).map((l) => l.name).filter((n) => !nearby.includes(n) && !onsite.some((o) => sameLot(o, n)))] };
   }
   const names = parkingNames(parking);
   return { onsite: names.filter((n) => ON_SITE.test(n)), nearby: names.filter((n) => !ON_SITE.test(n)) };
