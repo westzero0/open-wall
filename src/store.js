@@ -176,8 +176,9 @@ function cleanParking(v) {
   const rate = cleanRate(v.rate);
   const cost = cleanCost(v.cost);
   const lots = cleanPricedLots(v.lots);
+  const photo = cleanPhoto(v.photo); // 주차 안내 사진 (어프로치의 첫 장)
   const checked_at = isDateStr(v.checked_at) ? v.checked_at : null; // the parking's own check date (the wall's checked_at is its hours')
-  return { status: v.status, ...(note ? { note } : {}), ...(fee ? { fee } : {}), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}), ...(rate ? { rate } : {}), ...(cost ? { cost } : {}), ...(lots.length ? { lots } : {}), ...(checked_at ? { checked_at } : {}) };
+  return { status: v.status, ...(PARKING_KINDS.includes(v.kind) ? { kind: v.kind } : {}), ...(note ? { note } : {}), ...(fee ? { fee } : {}), ...(onsite.length ? { onsite } : {}), ...(nearby.length ? { nearby } : {}), ...(rate ? { rate } : {}), ...(cost ? { cost } : {}), ...(lots.length ? { lots } : {}), ...(photo ? { photo } : {}), ...(checked_at ? { checked_at } : {}) };
 }
 
 // indoor/outdoor: absent means 'outdoor' (the app is about outdoor walls); anything else is dropped
@@ -256,6 +257,33 @@ function getWinter(v) {
 // Anything else is dropped (no rope_m → the card works it out from the wall height).
 export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
 const cleanRope = (v) => (ROPE_LENGTHS.includes(v) ? v : null);
+
+// 자연암장 전용 선택 필드 (docs/superpowers/specs/2026-10-21-crag-ui-design.md): 접근로·주의사항 글, 비 온 뒤 마르는 일수, 개념도의 최대 볼트 수.
+// 값이 없거나 잘못되면 키 자체가 없다. dry_days 0은 유효한 값이다(비 온 뒤 기다릴 필요 없음).
+export const MAX_APPROACH = 600;
+export const MAX_CAUTION = 400;
+const cleanNote = (v, max) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, '').trim().slice(0, max).trim() : '');
+const cleanIntIn = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
+
+// 접근 단계(사진·방향·헷갈리는 곳·소요 분)와 전체 접근 시간. 글이 빈 단계는 버리고, 단계 안의 잘못된 필드는 그 필드만 뺀다. min 0은 유효.
+export const MAX_STEPS = 16, MAX_STEP_TEXT = 80, MAX_STEP_WRONG = 40, MAX_APPROACH_MIN = 240;
+export const STEP_TURNS = ['left', 'right', 'straight', 'up', 'down'];
+export const PARKING_KINDS = ['paid', 'free', 'roadside'];
+function cleanSteps(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const s of v) {
+    if (!isPlainObject(s)) continue;
+    const text = cleanNote(s.text, MAX_STEP_TEXT);
+    if (!text) continue;
+    const photo = cleanPhoto(s.photo);
+    const wrong = cleanNote(s.wrong, MAX_STEP_WRONG);
+    const min = cleanIntIn(s.min, 0, MAX_APPROACH_MIN);
+    out.push({ text, ...(photo ? { photo } : {}), ...(STEP_TURNS.includes(s.turn) ? { turn: s.turn } : {}), ...(wrong ? { wrong } : {}), ...(min !== null ? { min } : {}) });
+    if (out.length >= MAX_STEPS) break;
+  }
+  return out;
+}
 
 // suspended: 임시 휴관 중 with no end date, { since?: 'YYYY-MM-DD', note?: short reason }. An object (even empty) means
 // suspended; anything else means not. Removing it brings the wall back to its timetable.
@@ -470,6 +498,12 @@ export function normalizeWall(raw) {
   const blog_posts = cleanBlogPosts(raw.blog_posts);
   const setting = cleanSetting(raw.setting);
   const route_sets = cleanRouteSets(raw.route_sets);
+  const approach = cleanNote(raw.approach, MAX_APPROACH);
+  const caution = cleanNote(raw.caution, MAX_CAUTION);
+  const dry_days = cleanIntIn(raw.dry_days, 0, 7);
+  const bolts_max = cleanIntIn(raw.bolts_max, 1, 30);
+  const approach_steps = cleanSteps(raw.approach_steps);
+  const approach_min = cleanIntIn(raw.approach_min, 1, MAX_APPROACH_MIN);
 
   return {
     region,
@@ -510,6 +544,12 @@ export function normalizeWall(raw) {
     ...(blog_posts.length ? { blog_posts } : {}),
     ...(setting ? { setting } : {}),
     ...(route_sets.length ? { route_sets } : {}),
+    ...(approach ? { approach } : {}),
+    ...(caution ? { caution } : {}),
+    ...(dry_days !== null ? { dry_days } : {}),
+    ...(bolts_max !== null ? { bolts_max } : {}),
+    ...(approach_steps.length ? { approach_steps } : {}),
+    ...(approach_min !== null ? { approach_min } : {}),
   };
 }
 
@@ -545,7 +585,8 @@ export function keepGeo(old, next) {
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
-  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  if (out.dry_days === undefined && old.dry_days !== undefined) out.dry_days = old.dry_days; // 0 is a real value, so not the truthy check above
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
   if (!out.exceptions?.nth_closed && old.exceptions?.nth_closed) out.exceptions = { ...out.exceptions, nth_closed: old.exceptions.nth_closed };
@@ -571,7 +612,8 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (w[k] && !old[k]) fill[k] = w[k];
+      if (w.dry_days !== undefined && old.dry_days === undefined) fill.dry_days = w.dry_days;
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;
       if (w.contact.reserve && !old.contact?.reserve) fill.contact = { ...old.contact, reserve: w.contact.reserve }; // an edited reserve stays
@@ -617,6 +659,13 @@ export async function fetchNational(fetchFn = fetch) {
   const list = parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
   if (!list.length) throw new Error('empty');
   return list;
+}
+
+// Single-pitch crags (data/single-pitch.json), a separate list from the walls. Unlike fetchNational an empty list is fine.
+export async function fetchCrags(fetchFn = fetch) {
+  const r = await fetchFn('data/single-pitch.json');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
 }
 
 export function loadWalls(storage) {

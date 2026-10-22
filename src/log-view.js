@@ -35,6 +35,8 @@ const msgEl = $('toast-msg');
 const act = $('toast-act');
 let toastTimer;
 let undoFn = null;
+let holdMs = 0; // 0: the plain lengths (2.5 s, 3 s with a button)
+let cameFrom = null; // where the focus was before it went into the toast (Esc gives it back)
 // Shown in the top layer, so it is seen above an open sheet too; each toast re-raises it over a sheet opened since.
 box.popover = 'manual';
 const raise = () => {
@@ -52,10 +54,11 @@ const hideToast = () => {
 };
 const armToast = () => {
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, undoFn ? 3000 : 2500);
+  toastTimer = setTimeout(hideToast, holdMs || (undoFn ? 3000 : 2500));
 };
-export function toast(msg, undo = null, label = '실행 취소') {
+export function toast(msg, undo = null, label = '실행 취소', ms = 0) {
   undoFn = undo;
+  holdMs = ms;
   msgEl.textContent = msg;
   act.textContent = label;
   act.hidden = !undo;
@@ -70,7 +73,21 @@ act.addEventListener('click', () => {
   hideToast();
   fn?.();
 });
-box.addEventListener('focusin', () => clearTimeout(toastTimer));
+box.addEventListener('focusin', (e) => {
+  clearTimeout(toastTimer);
+  if (!box.contains(e.relatedTarget)) cameFrom = e.relatedTarget;
+});
+// Esc: away with it, the focus back where it came from
+box.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  e.preventDefault();
+  if (cameFrom?.isConnected) cameFrom.focus(); else act.blur();
+  hideToast();
+});
+// dismissToast(fn): hide the toast only while it is still the one whose button runs fn (a newer toast is left alone)
+export function dismissToast(fn) {
+  if (fn && undoFn === fn) hideToast();
+}
 box.addEventListener('focusout', armToast);
 
 /**
@@ -148,6 +165,7 @@ export function createLogView({
   const saveBtn = dlg.querySelector('.la-save');
   const dateErr = $('la-date-err');
   let fixedWall = null;
+  let fixedPlace = null; // a fixed place that is not in getWalls() (a 싱글피치 crag): its object, for the time bar (no hours)
   let choice = null;
   let chipNames = []; // the ≤3 chips, fixed when the sheet opens so they don't shuffle under a finger
   let extraWall = null; // a wall picked by search: it joins the chips, selected
@@ -250,7 +268,7 @@ export function createLogView({
   const sheetWall = () => fixedWall ?? choice;
   // {wall, open}: open = openIntervals of the picked day (holidays, winter, breaks applied), null without a wall or date
   function dayOpen() {
-    const wall = getWalls().find((w) => w.name === sheetWall());
+    const wall = fixedPlace ?? getWalls().find((w) => w.name === sheetWall());
     const v = form.elements.date.value;
     if (!wall || !validDate(v)) return { wall, open: null };
     const p = dayParts(v);
@@ -415,12 +433,16 @@ export function createLogView({
   });
   dlg.querySelector('.la-wall').append(gradeWall.el);
 
-  /** openAdd({wall, date, from}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today. */
-  function openAdd({ wall = null, date = null, from = null } = {}) {
+  /**
+   * openAdd({wall, date, from, place}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today.
+   * place: the fixed wall's object when it is not in getWalls() (a crag card's 다녀왔어요; with no hours the time is free, 06:00–23:30).
+   */
+  function openAdd({ wall = null, date = null, from = null, place = null } = {}) {
     form.reset();
     gradeWall.clear();
     gradesBox.open = false;
     fixedWall = wall;
+    fixedPlace = wall ? place : null;
     choice = null;
     extraWall = null;
     opener = from;

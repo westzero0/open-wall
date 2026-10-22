@@ -4,7 +4,7 @@ import { el } from './dom.js';
 import { searchPicks } from './viewmodel.js';
 import { createGradeWall } from './grade-wall.js';
 import { totalOf } from './grades.js';
-import { MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
+import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { MAX_NOTE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
@@ -71,6 +71,9 @@ if (dlg) {
     주차: ['메모 (선택)', '예) 건물 뒤 공영주차장 2시간 무료'],
     세팅일: ['메모 (선택)', '예) 왼쪽 벽 새 루트 12개, 공지에서 확인'],
     '루트 분포': ['메모 (선택)', '예) 왼쪽 벽 6개 · 오른쪽 벽 4개 · 오버행 2개'],
+    어프로치: ['내용', '예) 입구 철문이 잠겨 옆길로 돌아가요 · 도보 20분쯤 걸려요'],
+    '루트·개념도': ['내용', '예) 3번 루트 볼트 하나가 흔들려요 · 개념도에 없는 새 루트가 있어요'],
+    컨디션: ['내용', '예) 비 온 지 이틀인데 아래쪽 벽이 아직 젖어 있어요'],
     시설: ['내용', '예) 샤워실이 생겼어요 · 대여 신발이 없어졌어요'],
     요금: ['내용', '예) 일일 이용 15,000원 · 학생 할인 생겼어요'],
     기타: ['내용', '무엇이 어떻게 달라졌는지 적어 주세요.'],
@@ -80,7 +83,8 @@ if (dlg) {
   };
   // One report per tab: each kind keeps its own memo/source draft, the send button lives only while the current kind has something to send,
   // and a sent report empties just its own tab.
-  const EVIDENCE_OK = (kind) => !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방' && kind !== NOTICE_KIND; // kinds that can carry a supporting picture
+  let crag = false; // opened from a 싱글피치 card: CRAG_KINDS only, no picture (the board Worker knows walls only)
+  const EVIDENCE_OK = (kind) => !crag && !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방' && kind !== NOTICE_KIND; // kinds that can carry a supporting picture
   let cur = '';
   let routeWall = null; // 루트 분포's wall of holds (made below; hasText may run before it exists)
   let drafts = {};
@@ -237,13 +241,15 @@ if (dlg) {
       f.elements.nick.readOnly = locked;
       nickBox.querySelector('.rp-nick-lock').hidden = !locked;
     }
-    const { name, kind, kinds, names } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
+    const { name, kind, kinds, names, crag: isCrag } = typeof e.detail === 'string' ? { name: e.detail } : e.detail; // a card can open the sheet on a kind; 내 정보 sends no wall, so the sheet shows a picker of `names`
     const picking = Array.isArray(names) && !name;
     pickBox.hidden = !picking;
     nameEl.parentElement.hidden = picking; // the whole "암장 이름" row, not just the empty value
     wallNames = picking ? names : [];
     picks.hidden = true; picks.replaceChildren();
-    for (const r of f.elements.kind) r.closest('label').hidden = !!kinds && !kinds.includes(r.value); // opened from a tab: only that tab's kinds
+    crag = isCrag === true && !!name;
+    const offer = crag ? CRAG_KINDS : kinds; // a crag gets its own list; a wall never sees the crag-only kinds
+    for (const r of f.elements.kind) r.closest('label').hidden = offer ? !offer.includes(r.value) : CRAG_TOPICS.includes(r.value); // opened from a tab: only that tab's kinds
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPicked(); clearEvidencePreview();
@@ -270,7 +276,7 @@ if (dlg) {
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value, insta: f.elements.insta.value, newUrl: f.elements.newUrl.value,
       setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.get('routes'),
       note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
-    }, new Date(), { nick: mode });
+    }, new Date(), { nick: mode, crag });
     if (!v.ok) return say(v.error);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);

@@ -429,6 +429,9 @@ export function settingText(setting, today) {
  * weather: the forecast hour {t, w, g} for the picked moment (weather.js pickHour); adds `weather` {line, windy, temp, wind, gust} (the chips of the line). Without it, no key.
  * settingNew: this ♥ wall's 세팅일 changed since last seen (setting.js); adds `settingBadge`. A wall whose 세팅일 is later than your newest 기록 says so instead ("방문 뒤 세팅이 바뀌었어요").
  */
+// The chip on a photo: '사진 · 이름 · 라이선스' (a crag's photo uses it too, crag-model.js). null for no credit.
+export const photoCredit = (c) => (c ? { text: `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`, url: c.url || null } : null);
+
 // ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
 // The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
 // Conservative on purpose; change it here and every card follows.
@@ -484,12 +487,11 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const hasChat = CHAT_URL_RE.test(c.chat_url ?? '');
   const photo = wall.photo ? `data/${wall.photo}` : null;
   const crowdModel = crowdOf(crowd, status.state);
-  const creditOf = (c) => c ? { text: `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`, url: c.url || null } : null;
-  const credit = photo ? creditOf(wall.photo_credit) : null;
+  const credit = photo ? photoCredit(wall.photo_credit) : null;
   // every picture of the wall, the main one first then the newest approved (the list is oldest first); the card swipes the first CARD_PHOTOS, the gallery shows all
   const list = Array.isArray(wall.photos) ? wall.photos : [];
   const photos = photo
-    ? list.length ? [...list.filter((p) => p.main), ...list.filter((p) => !p.main).reverse()].map((p) => ({ src: `data/${p.src}`, credit: creditOf(p.credit), date: p.date ?? null }))
+    ? list.length ? [...list.filter((p) => p.main), ...list.filter((p) => !p.main).reverse()].map((p) => ({ src: `data/${p.src}`, credit: photoCredit(p.credit), date: p.date ?? null }))
       : [{ src: photo, credit, date: null }]
     : [];
   return {

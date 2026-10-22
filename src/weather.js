@@ -105,6 +105,9 @@ export function parseDaily(json, n) {
   return out;
 }
 
+/** cragForecastUrl([{lat, lng}, ...]) → the weekend request plus the seven days before today: a crag's wet-or-dry state needs the rain that already fell. Only coordinates (2 decimals) vary. */
+export const cragForecastUrl = (points) => `${weekendForecastUrl(points)}&past_days=7`;
+
 /** local YYYY-MM-DD, the key of parseDaily's maps. */
 export const dayKey = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 

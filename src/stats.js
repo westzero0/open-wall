@@ -1,6 +1,6 @@
 // 방문 통계(GoatCounter, 쿠키 없음): 외부 스크립트 없이 이미지 요청 하나(GET /count)만 보낸다.
 // config.statsCode(사이트 코드)가 비어 있거나 localhost·Do Not Track이면 아무것도 보내지 않는다. 경로만 보내고 쿼리(한마디·인원 등)는 보내지 않는다.
-// 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만),
+// 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만; 근처 외벽 시트의 data-near-map 지도 링크는 세지 않는다),
 // climber-done(클라이머 유형 테스트를 끝냄: 횟수만, 유형·점수는 보내지 않는다),
 // card-open(목록에서 카드를 엶), log-add(방문 기록을 저장함), share-send(링크 복사로 공유함), weather-shown(날씨 상자를 처음 봄), fav-add(즐겨찾기를 켬),
 // sun-filter(양달·응달 칩을 켬), tab-map·tab-log(탭을 누름), region-set(내 지역을 고름), invite-make(초대 링크를 만듦·보냄), report-send(제보를 보냄), board-post(게시판 글을 씀), gear-view(근처 탭을 처음 봄: 횟수만), gear-<업체 id>(근처 탭의 업체 링크를 누름; id는 data/partners.json의 고정 이름): 모두 이름만 센다.
@@ -51,6 +51,7 @@ export function initStats(win = globalThis.window, code = config.statsCode) {
     const a = e.target.closest?.('a[href]');
     const gear = a && gearEventName(a.dataset?.gear); // a 근처 partner link: only the partner's id as an event name (a fixed list of ours, no wall or user data)
     if (gear) { send(gear, true); return; } // not also click-route/link: those count the wall's own links
+    if (a?.dataset?.nearMap) return; // the 근처 외벽 sheet's 지도 link: not the wall's own 길찾기, so not click-route (nothing sent)
     const kind = a && linkKind(a.href);
     if (kind) send(`click-${kind}`, true);
   }, true);

@@ -1,6 +1,7 @@
-// src/gear-view.js — the 근처 장비점 sheet (opened from the card's one line): partner shops near the wall (src/gear.js), DOM via el()/textContent only.
-// The free info zone is plain facts (a 약도 of the shop's direction from the wall, name, one line, 지도/스토어 links); the paid zone, when there is one,
-// is a separate zone with a 광고·제휴 mark. Every link carries data-gear=<id>: src/stats.js counts the click as gear-<id> (the name only).
+// src/gear-view.js — the 근처 sheets (#gear-sheet), DOM via el()/textContent only: 근처 장비점 (the wall card; partner shops, src/gear.js) and
+// 근처 외벽 (the crag card; src/near-walls.js) share nearSheetBody: one place per slide, swiped sideways. For the shops the free info zone is plain
+// facts (a 약도 of the shop's direction from the wall, name, one line, 지도/스토어 links); a paid shop's slide carries the 광고·제휴 mark on top and comes
+// after the free ones. Every shop link carries data-gear=<id>: src/stats.js counts the click as gear-<id> (the name only).
 import { el } from './dom.js';
 import { gearModel, sketchLayout, SKETCH } from './gear.js';
 import { formatDistance } from './card-model.js';
@@ -14,10 +15,6 @@ function markSvg() {
   svg.append(svgEl('circle', { cx: 120, cy: 96, r: 80, class: 'gsk-sun' }), svgEl('polygon', { points: '105,8 185,8 185,232 151,232', class: 'gsk-slab' }));
   return svg;
 }
-
-const link = (g, href, label, ic) => href
-  ? el('a', { class: 'gear-link', href, target: '_blank', rel: 'noopener noreferrer', 'data-gear': g.id }, ic, label, el('span', { class: 'gl-out', 'aria-hidden': 'true' }, '↗'))
-  : null;
 
 const DIRS = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
 const dirWord = (b) => (Number.isFinite(b) ? `${DIRS[Math.round(b / 45) % 8]}쪽` : '근처');
@@ -51,20 +48,57 @@ function sketch(g, icon) {
     el('small', { class: 'gsk-cap' }, '약도예요. 방향만 맞고 거리는 km로 보세요.'));
 }
 
-const card = (g, icon) => {
-  const links = [link(g, g.mapUrl, '지도', icon('map')), link(g, g.storeUrl, '스토어', icon('bag'))].filter(Boolean);
-  return el('li', { class: 'gear-item' },
-    sketch(g, icon),
-    el('h4', { class: 'gear-name' }, el('span', { class: 'gear-ic', 'aria-hidden': 'true' }, icon('gear')), g.name),
-    g.note ? el('p', { class: 'gear-note' }, g.note) : null,
-    el('div', { class: `gear-links n${links.length}` }, ...links));
+// One place per slide: the zone head (only a paid zone: its 광고·제휴 mark on top), the 약도, the name with its icon, one note line, one outlined frame
+// of links. A link is { label, href, icon, external: true, dataGear?, nearMap? (the 근처 외벽 map link: data-near-map, so stats.js skips it) } (a new tab, ↗) or { label, onClick, icon? } (a button, ›).
+const linkEl = (l, icon) => {
+  if (l.href) return el('a', { class: 'gear-link', href: l.href, target: '_blank', rel: 'noopener noreferrer', 'data-gear': l.dataGear ?? null, 'data-near-map': l.nearMap ? '1' : null }, l.icon ? icon(l.icon) : null, l.label, el('span', { class: 'gl-out', 'aria-hidden': 'true' }, '↗'));
+  const b = el('button', { type: 'button', class: 'gear-link' }, l.icon ? icon(l.icon) : null, l.label, el('span', { class: 'gl-out', 'aria-hidden': 'true' }, '›'));
+  b.addEventListener('click', l.onClick);
+  return b;
 };
+const slide = (g, icon) => el('section', { class: `gsw-slide gear-item${g.zone ? ' sponsored' : ''}`, 'aria-label': g.zone ? `${g.zone.mark} ${g.zone.title} · ${g.name}` : g.name },
+  g.zone ? el('div', { class: 'gear-zone-h' }, el('span', { class: 'gear-mark' }, g.zone.mark), el('span', {}, g.zone.title)) : null,
+  sketch(g, icon),
+  el('h4', { class: 'gear-name' }, el('span', { class: 'gear-ic', 'aria-hidden': 'true' }, icon(g.icon)), g.name),
+  g.note ? el('p', { class: 'gear-note' }, g.note) : null,
+  el('div', { class: `gear-links n${g.links.length}` }, ...g.links.map((l) => linkEl(l, icon))));
 
-/** The sheet's body from nearGear results (`icon` is the app's inline-icon maker); null when there is nothing to show. */
-export function gearBody(info, sponsored, icon) {
+/**
+ * The body of a 근처 sheet (근처 장비점, 근처 외벽): one place per slide, swiped sideways (scroll-snap, like the card's photos: ←/→ keys, an sr-only
+ * "i / N", reduced motion respected) with dots at the bottom; one place: no dots. items: [{ id, name, km, bearing, note, icon, zone: {title, mark}|null, links }]
+ * (a paid zone's items last). The returned node's start() brings startIndex into view: call it once the sheet is open (it has a width then).
+ */
+export function nearSheetBody(items, { startIndex = 0, icon, label = '근처' }) {
+  if (!items?.length) return null;
+  const n = items.length, many = n > 1;
+  const track = el('div', { class: 'gsw-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${label}, 좌우로 넘기기` } : {}) },
+    ...items.map((g) => slide(g, icon)));
+  const body = el('div', { class: 'gear-body' }, track);
+  const clamp = (i) => Math.max(0, Math.min(n - 1, i));
+  let cur = clamp(startIndex);
+  const goTo = (i, smooth) => track.scrollTo?.({ left: clamp(i) * track.clientWidth, behavior: smooth && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant' });
+  body.start = () => goTo(cur, false);
+  if (!many) return body;
+  const dots = el('div', { class: 'gsw-dots', 'aria-hidden': 'true' }, ...items.map(() => el('i')));
+  const count = el('span', { class: 'sr-only', 'aria-live': 'polite' });
+  const paint = () => {
+    [...dots.children].forEach((x, k) => x.classList.toggle('on', k === cur));
+    count.textContent = `${cur + 1} / ${n}`;
+  };
+  paint();
+  track.addEventListener('scroll', () => { const i = clamp(Math.round(track.scrollLeft / (track.clientWidth || 1))); if (i !== cur) { cur = i; paint(); } }, { passive: true });
+  track.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') goTo(cur + 1, true); else if (e.key === 'ArrowLeft') goTo(cur - 1, true); else return; e.preventDefault(); });
+  body.append(count, dots);
+  return body;
+}
+
+/** The 근처 장비점 sheet's body from nearGear results (`icon` is the app's inline-icon maker): the free zone first, then the 광고·제휴 zone; null when there is nothing. */
+export function gearBody(info, sponsored, icon, { startIndex = 0 } = {}) {
   const zones = gearModel(info, sponsored);
   if (!zones) return null;
-  return el('div', { class: 'gear-body' }, ...zones.map((z) => el('section', { class: `gear-zone${z.sponsored ? ' sponsored' : ''}`, 'aria-label': z.mark ? `${z.mark} ${z.title}` : z.title },
-    z.mark ? el('div', { class: 'gear-zone-h' }, el('span', { class: 'gear-mark' }, z.mark), el('span', {}, z.title)) : null,
-    el('ul', { class: 'gear-list' }, ...z.items.map((g) => card(g, icon))))));
+  const items = zones.flatMap((z) => z.items.map((g) => ({
+    id: g.id, name: g.name, km: g.km, bearing: g.bearing, note: g.note, icon: 'gear', zone: z.mark ? { title: z.title, mark: z.mark } : null,
+    links: [g.mapUrl && { label: '지도', href: g.mapUrl, icon: 'map', external: true, dataGear: g.id }, g.storeUrl && { label: '스토어', href: g.storeUrl, icon: 'bag', external: true, dataGear: g.id }].filter(Boolean),
+  })));
+  return nearSheetBody(items, { startIndex, icon, label: '근처 장비점' });
 }

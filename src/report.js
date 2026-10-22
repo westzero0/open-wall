@@ -48,6 +48,10 @@ const NOTICE_HEAD = '[공지 제보]';
 export const INSTA_RE = /^https:\/\/(www\.)?instagram\.com\/((p|reel|tv)\/[\w-]{5,40}|(?!(p|reel|reels|tv|explore|accounts|stories|direct)\/?(\?|$))[\w.]{1,30})\/?(\?[\w=&%.-]{0,100})?$/;
 // 암장 사진 is a choice in the sheet but not a Google Form kind: the photo goes to the board Worker (src/photo-upload.js), never through validateReport.
 export const PHOTO_KIND = '암장 사진';
+// 싱글피치(crag) card: its own short list, accepted only with opts.crag. 주차 and 기타 are form kinds (주차 keeps its pick line);
+// CRAG_TOPICS are sheet-only and go out as 기타 with `[kind]` on the first line, like TOPIC_KINDS. No photo: the board Worker knows walls only.
+export const CRAG_TOPICS = ['어프로치', '루트·개념도', '컨디션'];
+export const CRAG_KINDS = ['주차', ...CRAG_TOPICS, '기타'];
 
 const s = (v) => (typeof v === 'string' ? v.normalize('NFC').trim() : '');
 const oneLine = (v) => s(v).replace(/[\s]+/g, ' ');
@@ -62,6 +66,7 @@ const isDate = (v) => {
 // 루트 분포 sends one line of grade counts ("루트: 10a 4 · 10b 6", the wall's routes, not what a visitor climbed) and the memo after it.
 // 세팅일 sends one line ("마지막 세팅: … · 다음 예정: … · 메모: …"); the last setting within the 2 years up to today,
 // the next one from today to a year ahead (local dates; `now` is for tests).
+// opts: { nick: nickMode, crag: true → only CRAG_KINDS (a 싱글피치 report) }.
 // -> { ok: true, report } | { ok: false, error }. honeypot: a filled hidden field means a bot; caller skips the send.
 export function validateReport(input = {}, now = new Date(), opts = {}) {
   const name = oneLine(input.name);
@@ -70,7 +75,9 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
   const note = s(input.note);
   const fail = (error) => ({ ok: false, error });
   if (!name) return fail('암장 이름이 없어요.');
-  if (!KINDS.includes(kind) && kind !== CHAT_KIND && kind !== NOTICE_KIND && !TOPIC_KINDS.includes(kind)) return fail('무엇이 달라졌는지 골라 주세요.');
+  const known = opts.crag === true ? CRAG_KINDS.includes(kind) : KINDS.includes(kind) || kind === CHAT_KIND || kind === NOTICE_KIND || TOPIC_KINDS.includes(kind);
+  if (!known) return fail('무엇이 달라졌는지 골라 주세요.');
+  const topic = TOPIC_KINDS.includes(kind) || CRAG_TOPICS.includes(kind); // sheet-only: 기타 with the topic as the first line
   const mode = opts.nick ?? 'off'; // 'off' | 'optional' | 'required' (nickMode)
   const nick = mode === 'off' ? '' : cleanNick(input.nick);
   if (mode === 'required' && !nick) return fail('닉네임을 적어 주세요.');
@@ -114,10 +121,10 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     if (!line && !memo) return fail('루트 개수를 누르거나 메모를 적어 주세요.');
     if (line) lines.push(`루트: ${line}`);
   } else if (!memo) return fail('내용을 적어 주세요.');
-  else if (TOPIC_KINDS.includes(kind)) lines.push(`[${kind}]`);
+  else if (topic) lines.push(`[${kind}]`);
   if (memo && kind !== '세팅일') lines.push(lines.length ? `메모: ${memo}` : memo);
   if (note.length > MAX_NOTE) return fail(`날짜·출처는 ${MAX_NOTE}자까지 적을 수 있어요.`);
-  const report = { name, kind: kind === CHAT_KIND || kind === NOTICE_KIND || TOPIC_KINDS.includes(kind) ? '기타' : kind, body: lines.join('\n'), note };
+  const report = { name, kind: kind === CHAT_KIND || kind === NOTICE_KIND || topic ? '기타' : kind, body: lines.join('\n'), note };
   if (nick) report.nick = nick;
   return { ok: true, report, honeypot: s(input.hp) !== '' };
 }
