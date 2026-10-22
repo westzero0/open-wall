@@ -13,7 +13,7 @@ const ACTIONS = { 'stats:card-open': 'card-open', 'stats:log-add': 'log-add', 's
   'stats:invite-make': 'invite-make', 'stats:report-send': 'report-send', 'stats:board-post': 'board-post', 'stats:gear-view': 'gear-view' };
 const WX_SEEN = 'open-wall:wx-seen';
 
-// 근처 tab partner link: `gear-<id>` for a well-formed id (the id pattern is src/gear.js's ID_RE; kept here so counting never imports the wall code), else null
+// 근처 장비점 sheet partner link: `gear-<id>` for a well-formed id (the id pattern is src/gear.js's ID_RE; kept here so counting never imports the wall code), else null
 export const gearEventName = (id) => (typeof id === 'string' && /^[a-z0-9-]{1,24}$/.test(id) ? `gear-${id}` : null);
 
 export const countUrl = (code, { path, event = false, ref = '' }) =>

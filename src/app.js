@@ -37,8 +37,8 @@ import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, fore
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
-import { loadPartners, nearGear } from './gear.js';
-import { gearPane } from './gear-view.js';
+import { loadPartners, nearGear, gearLine } from './gear.js';
+import { gearBody } from './gear-view.js';
 import { routeView } from './routes.js';
 import { loadMyGrade } from './my-grade.js';
 import { openGallery } from './gallery-view.js';
@@ -75,6 +75,9 @@ const ICONS = {
   ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
   clock: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 7v5l3 2'], // the wall sheet's tabs: 시간 (this), 이용 (ticket), 루트 (route), 게시판 (chat)
   route: ['M3 19l6-10 4 6 3-4 5 8z'],
+  map: ['M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z', 'M15 5.764v15', 'M9 3.236v15'],
+  gear: ['m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7', 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8', 'M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4', 'M2 7h20', 'M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7'], // a shopfront with an awning: the kind 장비점 (the 스토어 link has the bag)
+  bag: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'], // 근처 장비점 sheet: 지도 / 스토어
   copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
   // 양달 / 응달: a sun with rays; the same sun struck through. Same pair as the invitation picture (src/share-image.js drawIcon).
   sun: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M2 12h2', 'M20 12h2', 'M4.9 19.1l1.4-1.4', 'M17.7 6.3l1.4-1.4'],
@@ -187,7 +190,7 @@ function go(ev) {
   for (const f of r.fx) FX[f]();
   return r.fx;
 }
-let partners = { info: [], sponsored: [] }; // data/partners.json (src/gear.js); the 근처 tab of a wall's sheet
+let partners = { info: [], sponsored: [] }; // data/partners.json (src/gear.js); the 근처 장비점 line of a card and its sheet
 let allRows = []; // last built rows before any filter: the 내 암장 strip shows a favorite whatever the filters hide
 let shown = { rows: [], at: null }; // last rendered rows (all groups, with distance) for the map
 let mapApi = null; // created the first time the map tab opens
@@ -1052,6 +1055,32 @@ function infoBlock(m) {
   return parts;
 }
 
+// 근처 장비점: one quiet line under 주차 when a registered shop is within the radius of the wall (data/partners.json, src/gear.js); the line opens the
+// shop sheet. A wall with no shop near it has no line.
+function nearGearOf(wall) {
+  const pos = wallPosition(wall);
+  return { info: nearGear(partners.info, pos), sponsored: nearGear(partners.sponsored, pos) };
+}
+function gearRow(wall) {
+  const near = nearGearOf(wall);
+  const line = gearLine(near.info, near.sponsored);
+  if (!line) return null;
+  const go = el('button', { type: 'button', class: 'pv pv-go' }, el('span', { class: 'pv-t' }, el('span', { class: 'gear-ic', 'aria-hidden': 'true' }, icon('gear')), line), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+  go.addEventListener('click', () => openGearSheet(wall, near, go));
+  return el('div', { class: 'irow' }, el('span', { class: 'mk' }, '근처'), go);
+}
+function openGearSheet(wall, near, opener) {
+  const body = gearBody(near.info, near.sponsored, icon);
+  if (!body) return;
+  $('gear-body').replaceChildren(body);
+  $('gear-title').textContent = '근처 장비점';
+  document.dispatchEvent(new CustomEvent('stats:gear-view'));
+  const dlg = $('gear-sheet');
+  dlg.addEventListener('close', () => opener?.focus(), { once: true });
+  dlg.showModal();
+  dlg.scrollTop = 0;
+}
+
 // The picture in the sun box (sun-scene.js): three scenes, only the sun moves; the open row is rebuilt on every slider move
 function dialFig(d, at) { return renderScene(d, at); }
 
@@ -1149,6 +1178,7 @@ function rowDetails(m, wall, at) {
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         ...infoBlock(m),
+        gearRow(wall),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
       ...sunParts, // after the facts (the right column when wide)
       goRow),
@@ -1248,15 +1278,13 @@ function buildWallSheet(wallName) {
   const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
   const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...(m.sizes.length ? [memoItem({ label: '벽 스펙', value: [...m.sizes.filter((x) => x.startsWith('폭')), ...m.sizes.filter((x) => !x.startsWith('폭'))].join(' · ') })] : []), ...m.info.folded.map(memoItem)) };
   const pos = wallPosition(wall);
-  const nearInfo = nearGear(partners.info, pos), nearSponsored = nearGear(partners.sponsored, pos);
-  const gear = nearInfo.length || nearSponsored.length ? { key: 'near', label: '근처', icon: icon('pin'), pane: () => { document.dispatchEvent(new CustomEvent('stats:gear-view')); return gearPane(nearInfo, nearSponsored); } } : null; // only a wall with a partner within reach gets the tab
   return {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
       pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
-    })), ...(gear ? [gear] : [])],
+    }))],
   };
 }
 registerWallSheet(buildWallSheet);
@@ -1898,7 +1926,7 @@ $('date').addEventListener('click', () => { try { $('date').showPicker?.(); } ca
 
 // 완료 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
 // the only way out besides the backdrop, Esc and the back button; what is changed there is saved as it is changed, so there is no second button to read. The 조건 sheet also says how many walls its choices leave (updated in render).
-for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info']) {
+for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
   const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('check'));
@@ -2190,7 +2218,7 @@ $('mailCopy')?.addEventListener('click', async () => {
   }
 });
 
-const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]); // loaded together: a share link opens its sheet right after, and the 근처 tab is decided then (loadPartners never rejects; a failed load = no tab)
+const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]); // loaded together: a share link opens its sheet right after, and the 근처 line is decided then (loadPartners never rejects; a failed load = no tab)
 partners = loadedPartners;
 state.walls = first ?? [];
 showLoadError(!first);

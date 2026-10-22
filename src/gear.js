@@ -35,11 +35,33 @@ export function normalizePartners(raw) {
   return { info: list(raw.info).filter((g) => !paid.has(g.id)), sponsored }; // a shop that pays is shown once, in the marked zone
 }
 
+/** The compass bearing from `from` to `to` ({lat, lng}), degrees clockwise from north, 0 ≤ b < 360 (flat-earth: fine for a few km). */
+export function bearingDeg(from, to) {
+  const dy = to.lat - from.lat;
+  const dx = (to.lng - from.lng) * Math.cos(((from.lat + to.lat) / 2) * Math.PI / 180);
+  return (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+}
+
+export const SKETCH = { w: 343, h: 168, cx: 171.5, cy: 84, rx: 112, ry: 38 }; // the 약도's box; the points stay inside rx/ry so a label never leaves it or meets the north mark
+/**
+ * The 약도 (a sketch, not a map): the wall and the shop on a line whose DIRECTION is the real bearing (north up) and whose length is fixed (the
+ * distance is told in km, not drawn). → { wall: {x, y}, shop: {x, y}, wallAbove, shopAbove }: points in the sketch's box; `Above` = the label goes
+ * above its point (the point is the upper end of the line), else below (a level line puts both labels below).
+ */
+export function sketchLayout(bearing) {
+  const t = bearing * Math.PI / 180, vx = Math.sin(t), vy = -Math.cos(t); // screen y grows downward: north is up
+  const k = Math.min(Math.abs(vx) > 1e-6 ? SKETCH.rx / Math.abs(vx) : Infinity, Math.abs(vy) > 1e-6 ? SKETCH.ry / Math.abs(vy) : Infinity);
+  const r1 = (n) => Math.round(n * 10) / 10;
+  const wall = { x: r1(SKETCH.cx - vx * k), y: r1(SKETCH.cy - vy * k) }, shop = { x: r1(SKETCH.cx + vx * k), y: r1(SKETCH.cy + vy * k) };
+  const level = Math.abs(vy) < 0.2;
+  return { wall, shop, wallAbove: !level && wall.y < shop.y, shopAbove: !level && shop.y < wall.y };
+}
+
 /** The entries within radiusKm of `position` ({lat, lng}, a wall's), nearest first; same distance → 가나다순. */
 export function nearGear(partners, position, radiusKm = GEAR_RADIUS_KM) {
   if (!position) return [];
   return partners
-    .map((g) => ({ ...g, km: distanceKm(position, g) }))
+    .map((g) => ({ ...g, km: distanceKm(position, g), bearing: bearingDeg(position, g) }))
     .filter((g) => g.km <= radiusKm)
     .sort((a, b) => a.km - b.km || a.name.localeCompare(b.name, 'ko'));
 }
@@ -68,4 +90,16 @@ export function gearModel(info = [], sponsored = []) {
     if (items.length) zones.push({ title: kind, sponsored: true, mark: '광고·제휴', items });
   }
   return zones.length ? zones : null;
+}
+
+/**
+ * The card's one line under 주차: the nearest shop and its distance, "클라임러버 · 5.1km"; with more than one, "클라임러버 외 1곳 · 5.1km부터".
+ * `info`/`sponsored` come from nearGear (nearest first). The nearest of both zones leads; null when there is none.
+ */
+export function gearLine(info = [], sponsored = []) {
+  const all = [...(info ?? []), ...(sponsored ?? [])].sort((a, b) => a.km - b.km || a.name.localeCompare(b.name, 'ko'));
+  if (!all.length) return null;
+  const km = (n) => (n < 1 ? `${Math.round(n * 1000)}m` : `${n.toFixed(1)}km`);
+  const [first] = all;
+  return all.length === 1 ? `${first.name} · ${km(first.km)}` : `${first.name} 외 ${all.length - 1}곳 · ${km(first.km)}부터`;
 }
