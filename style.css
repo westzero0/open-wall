@@ -1608,7 +1608,13 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 .setnew { flex: none; display: inline-block; width: fit-content; padding: 0 var(--sp-8); border: 1px solid currentColor; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; color: var(--accent); white-space: nowrap; }
 p.setnew { margin-top: var(--sp-8); }
 /* 다녀왔어요: a 64px stamp square left of 자세히 (outlined; filled with the count once there is a record) */
-.go-row { display: flex; gap: var(--sp-10); align-items: stretch; margin-top: var(--sp-12); }
+.go-row { display: flex; align-items: stretch; margin-top: var(--sp-12); overflow: hidden; border-radius: var(--r-base); box-shadow: inset 0 0 0 1.5px var(--go-edge); --go-edge: color-mix(in srgb, var(--fg) 50%, var(--paper)); } /* the edge keeps 3:1 against the page in both themes */
+/* a card with no sun picture (indoor, a closed day): the two actions share one outlined frame, no fill (the card above is already a grey panel); only the stamp carries the sun */
+.expand-in .go-row .been-btn { border: 0; border-radius: 0; border-right: 1.5px solid var(--go-edge); background: none; color: var(--fg); }
+.expand-in .go-row .been-btn :is(svg, .been-stamp) { color: var(--sun-ui); }
+.expand-in .go-row .been-btn.done { background: color-mix(in srgb, var(--sun-ui) 18%, transparent); }
+.go-row .sheet-open { border-radius: 0; background: none; color: var(--fg); }
+.go-row .sheet-open:focus-visible, .expand-in .go-row .been-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
 /* under a sun picture the two buttons are the card's foot, the wall's base: only the card's own colours (--sc-*), so every sky (lit, low, shade, night, dark) carries them */
 .sunbox.sc .sc-actions { display: flex; gap: var(--sp-10); align-items: stretch; padding: var(--sp-12) var(--sp-14) var(--sp-14); background: var(--sc-wall); }
 .sunbox.sc .sc-actions .been-btn { min-width: 72px; border-color: var(--sc-halo); color: var(--sc-halo); background: none; }
