@@ -14,7 +14,7 @@ import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, summaryParts, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, feeTable, feeWord, rowExtra, shortenDates } from './card-model.js';
+import { cardModel, feeTable, feeWord, shortenDates } from './card-model.js';
 import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -1543,7 +1543,6 @@ function timeRow(row, at) {
   const isOpen = vs.openName === m.name;
   // 양달/응달/방향 모름 in words, not only the orange band
   const { sun } = m;
-  const extra = rowExtra(m);
   const heart = favBtn(m.name); // ♥ left of the name: the list's own 즐겨찾기 button, beside the row button (style.css .row-fav)
   heart.classList.add('row-fav');
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
@@ -1551,13 +1550,9 @@ function timeRow(row, at) {
       sunChip(sun, row.veil), // first: the same column on every open row
       el('span', { class: 'rfav-gap', 'aria-hidden': 'true' }), // the room for the ♥ that sits over it (a button of its own: it cannot live inside the row's button)
       el('span', { class: 'rname', title: m.shortName }, m.shortName),
-      // the one extra chip (새 세팅 > 혼잡 > 무료, card-model rowExtra) and the region share what room is left; one that does not fit wraps
-      // out of sight whole (style.css .rsub), so the closing time never wraps and no region is cut to a stray letter (the rest is on the card)
+      // the row says the name and the region only: the extra chip card-model rowExtra offers (새 세팅 · 혼잡) is not drawn for now
+      // (it is still in the model; the region wraps out of sight whole when it does not fit, style.css .rsub)
       el('span', { class: 'rsub' },
-        extra?.kind === 'setnew' ? el('span', { class: 'setnew', 'data-setmark': m.name, title: m.settingBadge ?? extra.text }, el('span', { 'aria-hidden': 'true' }, '✦ '), extra.text) : null,
-        extra?.kind === 'crowd' ? el('span', { class: 'crowdnow', 'data-level': m.crowdTag.level, role: 'img', 'aria-label': m.crowdTag.aria },
-          el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), extra.text) : null,
-        extra?.kind === 'free' ? feeChip(m) : null,
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
       el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
