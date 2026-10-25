@@ -5,11 +5,11 @@
 // The panes sit side by side in one scroll-snapped row: swiping sideways or tapping a tab moves between them; each pane scrolls
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
 import { el } from './dom.js';
-import { nameBreak } from './wall-sheet-model.js';
+import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 
-let build = null; // (wallName) => { tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
+let build = null; // (wallName) => { head: { tone, sunT, region, chip, ok }, tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
 let onClose = null;
-let dlg = null, title = null, body = null, bar = null;
+let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, ok = null, rep = null;
 let opener = null; // the button that opened it: focus goes back there
 let wall = '';
 let pushed = false; // did we push a history entry that closing has to undo?
@@ -49,9 +49,14 @@ function goTo(n, { focus = false, instant = false } = {}) {
 }
 
 function make() {
-  title = el('h2', { id: 'ws-title', class: 'bp-title ws-title', tabindex: '-1' });
-  const back = el('button', { type: 'button', class: 'sh-done bp-back' }, '← 닫기');
-  back.addEventListener('click', () => dlg.close());
+  title = el('h2', { id: 'ws-title', class: 'sk-title ws-title', tabindex: '-1' });
+  sub = el('p', { class: 'sk-sub' });
+  ok = el('button', { type: 'button', class: 'sk-ok', 'aria-label': '닫기' });
+  ok.addEventListener('click', () => dlg.close());
+  rep = el('button', { type: 'button', class: 'sk-rep' }, '제보하기'); // on the name line: the report sheet opens on the kinds of the tab in view
+  rep.addEventListener('click', () => { const k = TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k } })); });
+  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub), el('div', { class: 'sk-act' }, rep, ok),
+    el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
     if (!body.clientWidth) return;
@@ -62,8 +67,8 @@ function make() {
   }, { passive: true });
   window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
-  dlg = el('dialog', { class: 'sheet board-page wall-sheet', 'aria-labelledby': 'ws-title' },
-    el('div', { class: 'ws-top' }, el('div', { class: 'sh-head' }, back, title)), bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
+  dlg = el('dialog', { class: 'sheet board-page wall-sheet is-wall', 'aria-labelledby': 'ws-title' },
+    sky, bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
   dlg.addEventListener('close', () => { // 뒤로, Esc or popstate
     if (pushed) { pushed = false; history.back(); }
     onClose?.();
@@ -78,6 +83,17 @@ function make() {
   document.body.append(dlg);
 }
 
+// the head: the sun card's sky for this wall at the viewed time, the name, one line (region + 양달/응달 chip) and the ✓; the sun climbs to its place once, unless motion is reduced
+function paintHead(h) {
+  sky.className = `sh-sky ${h?.tone ?? 'k-none'}`;
+  sky.style.setProperty('--sun-t', String(h?.sunT ?? 0.5));
+  sub.replaceChildren(...[h?.region, h?.chip && el('span', { class: 'sk-chip' }, h.chip)].filter(Boolean));
+  ok.replaceChildren(...(h?.ok ? [h.ok] : []));
+  rep.hidden = !h?.report;
+  sky.classList.remove('is-opening');
+  void sky.offsetWidth; // restart the rise on every open, even when another wall replaces the one in view
+  if (!reduced()) sky.classList.add('is-opening');
+}
 /** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `tab`: the key of the tab to start on (an unknown key = the first). `section`: a section key of that tab to scroll to and mark. */
 export function openWallSheet(wallName, from = null, { push = true, tab = null, section = null } = {}) {
   const built = build?.(wallName);
@@ -88,6 +104,7 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   const split = nameBreak(wallName); // a long name with no space breaks ahead of its kind of place (인공암벽장 …), not inside a word
   if (split) title.replaceChildren(split[0], document.createElement('wbr'), split[1]);
   else title.textContent = wallName;
+  paintHead(built.head);
   tabEls = built.tabs.map((t, i) => el('button', { type: 'button', role: 'tab', id: `ws-t${i}`, 'aria-controls': `ws-p${i}` },
     t.icon ? el('span', { class: 'ws-ic' }, t.icon) : null, el('span', { class: 'ws-tl' }, t.label)));
   tabKeys = built.tabs.map((t) => t.key);

@@ -8,6 +8,7 @@ import { featureOn } from './stage.js';
 import { labCrag, withoutLab, LAB_NOTE } from './lab.js'; // 시범 스위치(?lab=crag)
 import { createMap } from './map.js';
 import { dialModel, sunHeadOf } from './dial.js';
+import { dayWindow } from './sun.js';
 import { renderScene, sceneTone } from './sun-scene.js';
 import { getStatus } from './hours.js';
 import {
@@ -1237,13 +1238,13 @@ function rowDetails(m, wall, at) {
 // a section with nothing to show asks for a report instead. 양달 tab = the seasonal sun (no tab for a wall without sun math).
 function sheetSection(m, s, content) {
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
-  const ask = config.reportEndpoint && s.kind // (a computed section such as 계절별 양달 has no report kind)
-    ? el('button', { type: 'button', class: s.empty ? 'ws-ask' : 'help-link ws-fix' }, s.empty ? '알려 주기' : '수정 요청') : null;
+  const ask = config.reportEndpoint && s.kind && s.empty // (a computed section such as 계절별 양달 has no report kind); a filled section is reported from the tab's 제보하기
+    ? el('button', { type: 'button', class: 'ws-ask' }, '제보하기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind, kinds: TAB_KINDS[s.kind === '운영시간' ? 'time' : 'use'] } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title, 'data-sec': s.key },
-    el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title), s.empty ? null : ask),
-    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask) : content,
+    el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title)),
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '알고 계신 최신 정보가 있나요?'), ask) : content,
     ...(s.empty || s.dated === false ? [] : s.key === 'parking' // the parking has its own date (or none): the hours' date says nothing about it
       ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, shortenDates(m.parkingChecked, ymd(new Date()))) : null]
       : [el('p', { class: 'ws-chk end' }, shortenDates([m.checked, s.key === 'hours' ? m.noticeChecked : null].filter(Boolean).join(' · '), ymd(new Date())))]));
@@ -1253,11 +1254,11 @@ function sheetSection(m, s, content) {
 function routePane(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
   const v = routeView(wall, new Date(), mine, ui.venue); // ui.venue: the 구분 filter opens the indoor or outdoor section first
-  const ask = config.reportEndpoint ? el('button', { type: 'button', class: v ? 'help-link ws-fix' : 'ws-ask' }, v ? '수정 요청' : '알려 주기') : null;
+  const ask = config.reportEndpoint && !v ? el('button', { type: 'button', class: 'ws-ask' }, '제보하기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포', kinds: TAB_KINDS.routes } })));
-  const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'), v ? ask : null);
+  const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'));
   const setLine = m.setting ? el('p', { class: 'ws-chk' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
-  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, setLine, el('div', { class: 'ws-empty' }, el('p', {}, '아직 정보가 없어요'), ask));
+  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, setLine, el('div', { class: 'ws-empty' }, el('p', {}, '아직 제보된 루트가 없어요'), el('p', { class: 'ws-empty-sub' }, '가장 먼저 이 외벽의 루트 분포를 알려 주세요.'), ask));
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
   const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
   const chips = v.views.length > 1 ? el('div', { class: 'rt-chips', role: 'group', 'aria-label': '벽 고르기' }) : null;
@@ -1309,7 +1310,9 @@ function sheetParking(m) {
 }
 // 게시판 tab: the wall's one-line board (every post, 더 보기, the form) and the 희노애Rock reviews; made when the tab is first shown
 function boardPane(m) {
-  return [boardBox(m.name, { mode: 'full' }), blogBox(m.blog)].filter(Boolean);
+  const box = boardBox(m.name, { mode: 'full' });
+  // the title sits where the other tabs' section titles do (the banner inside the board is hidden under the sheet's sky)
+  return [box && el('section', { class: 'ws-sec', 'aria-label': '한 줄 타임라인' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '한 줄 타임라인')), el('p', { class: 'ws-chk' }, '오늘 이 벽에서 있었던 일, 한 줄로'), box), blogBox(m.blog)].filter(Boolean);
 }
 function buildWallSheet(wallName) {
   const row = allRows.find((r) => r.wall.name === wallName);
@@ -1330,7 +1333,14 @@ function buildWallSheet(wallName) {
     facility: el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
     amenity: el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)) };
   const pos = wallPosition(wall);
+  // the sheet's head is the sun card's sky: its tone (양달/응달/밤), the sun on its arc by the viewed time, and the chip saying which
+  const tone = sceneTone(d, at);
+  const day = tone ? dayWindow(wall, at) : null;
+  const sunT = day ? (at.getHours() * 60 + at.getMinutes() - day.sunrise) / (day.sunset - day.sunrise) : 0.5;
+  const head = { tone: tone || 'k-none', sunT, region: wall.region || '', ok: icon('check'), report: Boolean(config.reportEndpoint),
+    chip: !tone ? '' : tone.startsWith('k-night') ? '해 진 뒤' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}` };
   return {
+    head,
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
