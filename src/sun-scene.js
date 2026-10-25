@@ -4,7 +4,7 @@
 // across = cos(height)·cos(rel), up = sin(height), the same projection the old compass used.
 const W = 360, H = 200;
 const TOP = 20;                         // the empty strip of sky above is cropped: the picture is 360 x 180
-const CROP_Y = 34, CROP_H = 152;           // the empty sky above is cropped; 양달/응달 also lose the strip under the ground (night keeps the full arc)
+const CROP_Y = 34, CROP_H = H - CROP_Y;  // the empty sky above is cropped; every scene keeps the strip under the ground (the night arc needs it), so the picture is one size: 360 x 166
 const HY = 158;                         // ground line
 const WX0 = 258, WX1 = 280, WTOP = 76;  // wall: front face x, back face x, top y (a short wall: the empty sky above it holds the sun box's words)
 const WCX = (WX0 + WX1) / 2;
@@ -58,7 +58,7 @@ export function sceneLayout(m, at = null) {
   if (m.state === 'terrain' && m.horizonAtSun > 0) {
     const cx = clamp(sx, 50, W - 50), py = HY - Math.sin(rad(m.horizonAtSun)) * SH;
     L.hill = `M${r1(cx - 52)} ${HY} C${r1(cx - 26)} ${HY} ${r1(cx - 28)} ${r1(py)} ${r1(cx)} ${r1(py)} C${r1(cx + 28)} ${r1(py)} ${r1(cx + 26)} ${HY} ${r1(cx + 52)} ${HY} Z`;
-    L.hillLabel = { x: r1(cx), y: r1(py - 8), text: 'hill blocks sun', anchor: 'middle', cls: 'dim' };
+    L.hillLabel = { x: r1(clamp(sx, 70, 140)), y: r1(Math.max(sy - r - 10, CROP_Y + 12)), text: 'hill blocks sun', anchor: 'middle', cls: 'dim' }; // over the sun, clear of the climber
   }
   return L;
 }
@@ -120,7 +120,7 @@ export function renderScene(model, at = null) {
   const L = sceneLayout(model, at);
   if (!L) return null;
   const id = `sc${seq++}`;
-  const svg = s('svg', { viewBox: L.kind === 'night' ? `0 ${CROP_Y} ${L.w} ${L.h - CROP_Y}` : `0 ${CROP_Y} ${L.w} ${CROP_H}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
+  const svg = s('svg', { viewBox: `0 ${CROP_Y} ${L.w} ${CROP_H}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
   const halo = s('radialGradient', { id: `${id}h` });
   halo.append(s('stop', { offset: 0, class: 'sc-h0' }), s('stop', { offset: 1, class: 'sc-h1' }));
   const defs = s('defs');

@@ -47,14 +47,14 @@ function cleanHours(v) {
   return out;
 }
 
-// contact.reserve = { name?, url }: a reservation site (http/https only, no spaces); no usable url = no reserve.
+// contact.reserve = { name?, url, required? }: a reservation site (http/https only, no spaces); no usable url = no reserve. required: true = a reservation is a must (the card says 예약 필수); only a true is stored.
 export const HTTP_URL_RE = /^https?:\/\/\S+$/i;
 function cleanReserve(v) {
   const r = getPlainObject(v);
   const url = typeof r.url === 'string' ? r.url.trim() : '';
   if (!HTTP_URL_RE.test(url) || url.length > 500) return null;
   const name = typeof r.name === 'string' ? r.name.trim().slice(0, 20) : '';
-  return { ...(name ? { name } : {}), url };
+  return { ...(name ? { name } : {}), url, ...(r.required === true ? { required: true } : {}) };
 }
 
 function cleanContact(v) {
@@ -585,6 +585,7 @@ export function keepGeo(old, next) {
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
+  if (out.contact?.reserve && !out.contact.reserve.required && old.contact?.reserve?.required && out.contact.reserve.url === old.contact.reserve.url) out.contact = { ...out.contact, reserve: { ...out.contact.reserve, required: true } }; // the same link from a file with no 예약필수 keeps 필수
   for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   if (out.dry_days === undefined && old.dry_days !== undefined) out.dry_days = old.dry_days; // 0 is a real value, so not the truthy check above
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules

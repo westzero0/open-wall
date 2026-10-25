@@ -20,7 +20,7 @@ export const CSV_HEADERS = [
   '세팅일', '다음세팅', // same: absent or empty keeps the stored date (keepGeo)
   '주소', // same: absent or empty keeps the stored address (keepGeo)
   '폭(m)', // same: absent or empty keeps the stored width (keepGeo)
-  '예약이름', '예약주소', // same: absent or empty keeps the stored reserve (keepGeo)
+  '예약이름', '예약주소', '예약필수', // same: absent or empty keeps the stored reserve (keepGeo); 예약필수 = 예 when a reservation is a must
   '요금', '외벽앞주차', '주변주차', // parking.fee / onsite / nearby; the two lists are ;-separated names. Unlike the columns above, empty means empty: the editor can clear them, and an older CSV without them clears them like it does 주차 itself
   '실내종류', // absent or empty keeps the stored kinds (keepGeo); '리드+지구력' joined with +
   '실내높이(m)', // last of all; absent or empty keeps the stored indoor_height_m (keepGeo)
@@ -209,7 +209,7 @@ export function csvToWalls(rows, opts = {}) {
         exceptions: { closed_dates, rain_rule: get('우천규칙').toUpperCase() === 'O', ...(nth_closed.length ? { nth_closed } : {}) },
         contact: compact({
           phone: get('전화'), instagram: get('인스타'), naver_map: get('네이버지도'), notice_url: get('공지사이트'), chat_url: get('오픈채팅'),
-          ...(get('예약주소') || get('예약이름') ? { reserve: compact({ name: get('예약이름'), url: get('예약주소') }) } : {}),
+          ...(get('예약주소') || get('예약이름') ? { reserve: { ...compact({ name: get('예약이름'), url: get('예약주소') }), ...(get('예약필수') === '예' ? { required: true } : {}) } } : {}),
         }),
         sun: compact({ facing, lat, lng }),
         ...(parking ? { parking } : {}),
@@ -243,7 +243,7 @@ export function wallToRow(w) {
     우천규칙: w.exceptions?.rain_rule ? 'O' : '',
     전화: w.contact?.phone ?? '', 인스타: w.contact?.instagram ?? '',
     네이버지도: w.contact?.naver_map ?? '', 공지사이트: w.contact?.notice_url ?? '', 오픈채팅: w.contact?.chat_url ?? '',
-    예약이름: w.contact?.reserve?.name ?? '', 예약주소: w.contact?.reserve?.url ?? '',
+    예약이름: w.contact?.reserve?.name ?? '', 예약주소: w.contact?.reserve?.url ?? '', 예약필수: w.contact?.reserve?.required ? '예' : '',
     방향: w.sun?.facing ?? '', 위도: w.sun?.lat ?? '', 경도: w.sun?.lng ?? '',
     주차: w.parking ? PARKING_LABEL[w.parking.status] : '',
     주차메모: w.parking?.note ?? '', 주소: w.address ?? '', '폭(m)': w.width_m ?? '',

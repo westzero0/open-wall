@@ -37,7 +37,7 @@ import { openApproachSheet } from './approach-sheet.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { openRoutesSheet } from './routes-sheet.js';
 import { el } from './dom.js';
-import { actionBar, axisX, capCls, chipBar, gaugeBar, gaugeEnds, heroCap, remainPill, span } from './card-parts.js';
+import { axisX, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, remainPill, reserveBand, sheetLine, span } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -134,7 +134,10 @@ function sunChip(sun, veiled = false) { // veiled: the sky hides the sun (the li
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
 // the headline: strong pieces (time, count) are <b>; a count of 0 is muted (style.css #summary b.zero)
-const drawSummary = (parts) => $('summary').replaceChildren(...parts.map(([t, strong], i) => (strong ? el('b', { class: i === 2 && t.startsWith('0') ? 'zero' : null }, t) : t)));
+const drawSummary = (parts) => {
+  $('summary').classList.toggle('none', parts.every(([, strong]) => !strong)); // nothing to count (0곳): the whole headline is muted
+  $('summary').replaceChildren(...parts.map(([t, strong], i) => (strong ? el('b', { class: i === 2 && t.startsWith('0') ? 'zero' : null }, t) : t)));
+};
 let showHowtoAuto = () => {}; // set by the 화면 읽는 법 block below; render() calls it, so it must exist before the first render
 let theme; // what applyTheme last got: 자동 turns 'dark' from 23:00 to 08:00 (src/boot-theme.js does the same for the first paint)
 function syncTheme() {
@@ -236,12 +239,13 @@ function thumb(m) {
   return img;
 }
 
-// The same bar as the list row's (gaugeBar), with the hours under it: a closed wall opening on a later day shows that day, without a tick.
+// The same bar as the list row's (gaugeBar), and nothing under it, as in a folded list row: the open and close times show once a card is opened.
+// A closed wall opening on a later day shows that day without a tick; its bar keeps the 6 · 12 · 18 · 24 axis.
 function dayBarBlock(bar) {
   return el('div', { class: 'daybar-wrap' },
     gaugeBar(bar),
-    el('div', { class: 'ticks', 'aria-hidden': 'true' },
-      ...[360, 720, 1080, 1440].map((t) => { const x = el('span', {}, String(t / 60)); x.style.left = axisX(t); return x; })),
+    bar.ahead ? el('div', { class: 'ticks', 'aria-hidden': 'true' },
+      ...[360, 720, 1080, 1440].map((t) => { const x = el('span', {}, String(t / 60)); x.style.left = axisX(t); return x; })) : null,
     bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
 }
 
@@ -309,6 +313,13 @@ function openNavDialog(choices, copyText, geo) {
   document.body.append(dlg);
   dlg.showModal();
 }
+// 길찾기 as a dock button: the link strip's cell without the strip (the same map-app dialog, remembered app and address copy)
+function navButton(link, copyText, geo) {
+  const a = el('a', { class: 'dock-go', href: link.href, target: '_blank', rel: 'noopener noreferrer' }, icon('nav'), el('span', {}, '길찾기'));
+  if (link.choices) a.addEventListener('click', (e) => { e.preventDefault(); openNavDialog(link.choices, copyText, geo); });
+  return a;
+}
+// the card does not draw the strip for now (the sheet's 연락 section will); it stays for that
 function linkBar(links, copyText = null, edge = null, geo = null) { // copyText: 길찾기 also copies it (the link may open no app); the nav address wins. edge: {start, end} cells at the two ends (♥ and share)
   if (!links.length && !edge) return null;
   const ordered = [...links.filter((l) => l.primary), ...links.filter((l) => !l.primary)];
@@ -346,11 +357,7 @@ const rowButtons = (name, ...extra) => {
 // wall's card in the list, one tap away.
 function card(row, at) {
   const m = cardModel(row, at);
-  const more = el('button', { type: 'button', class: 'pin-more' }, '목록에서 자세히 보기 ›');
-  more.addEventListener('click', () => {
-    showTab('list');
-    revealRow(m.name);
-  });
+  const sheetRow = sheetRowOf(m); // the one way on: the list card's own line into the wall sheet
   // no photo: no grey placeholder block; its type and height ride on the place line instead
   const { primary, secondary } = m.placeholder;
   return el('li', { class: `card ${m.state}${m.short ? ' short' : ''}${m.stale ? ' stale' : ''}${m.photo ? '' : ' no-photo'}` },
@@ -362,9 +369,10 @@ function card(row, at) {
         !m.photo && secondary ? el('small', {}, secondary) : null,
         !m.photo && primary.endsWith('m') ? el('small', {}, `높이 ${primary}`) : null,
         basisTag(m)),
-      el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.statusText)),
+      // an open wall tells how long you can stay in the list row's words (remainPill: 11시간 · 곧 마감 · 3시간 뒤 휴게); a shut one keeps its next opening
+      el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.leftCard ? remainPill(m.leftCard) : m.statusText)),
     m.bar ? dayBarBlock(m.bar) : null,
-    more);
+    sheetRow);
 }
 
 function safeCard(row, at) {
@@ -414,7 +422,7 @@ function photoLink(m) {
 // A crag row wears it too (crag-view.js deps.rowPhoto): canAdd false (no camera: the 제보 sheet takes wall names), noun '암장', onFail draws its hero block back.
 const CARD_PHOTOS = 5; // the card swipes the main photo and the newest four; the gallery has them all (at most 10)
 const CARD_DOTS = 5;
-function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null } = {}) {
+function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner = null } = {}) { // corner: ♥ / share buttons for the top-right of the photo (a wall; a crag has its own)
   const list = m.photos.slice(0, CARD_PHOTOS), many = m.photos.length > 1;
   const imgs = list.map((p, i) => el('img', { src: p.src, decoding: 'async', loading: 'lazy', alt: `${m.name} ${noun} 사진${many ? ` ${i + 1}/${list.length}` : ''}` }));
   const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
@@ -430,6 +438,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null } = {})
   };
   setCredit(list[0].credit ?? m.credit);
   const wrap = el('div', { class: 'herowrap rhero' }, track, el('div', { class: 'rhero-foot' }, line));
+  const withCorner = (w) => (corner ? (w.append(corner), w) : w); // share comes after the camera in the tab order (the corner is appended last)
   // the photo sits in a hidden box until the row opens (lazy never loads it): fetch the first when the row nears the screen, so opening shows it at once
   const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { imgs[0].loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
   near.observe(li);
@@ -437,7 +446,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null } = {})
   imgs.slice(1).forEach((img, k) => img.addEventListener('error', () => img.closest('.rhero-slide')?.remove(), { once: true }));
   const add = canAdd && config.boardUrl ? el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 사진 더 보내기`, title: '사진 더 보내기' }, icon('camera-plus')) : null;
   add?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
-  if (!many && !add) return wrap;
+  if (!many && !add) return withCorner(wrap);
   // right-bottom: faint dots say where we are (the current one stretches out when it changes), the camera sends one more
   const dots = el('span', { class: 'rhero-dots', 'aria-hidden': 'true' });
   const count = el('span', { class: 'sr-only', 'aria-live': 'polite' });
@@ -459,7 +468,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null } = {})
   }
   wrap.classList.add('has-tools');
   wrap.append(el('div', { class: 'rhero-tools' }, many ? dots : null, many ? count : null, add));
-  return wrap;
+  return withCorner(wrap);
 }
 
 // ---- '더 보기' pictures (mockup 2026-10-08): hours grid, seasonal sun, month strip, memo, parking ----
@@ -782,7 +791,7 @@ function syncFavs() {
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
 }
 function favBtn(name, label = null) { // label: a word under the heart (the link strip's cell)
-  const btn = el('button', { type: 'button', class: label ? 'lb-item fav-btn' : 'icon-btn fav-btn', 'data-fav': name, 'aria-label': '즐겨찾기', title: '즐겨찾기', ...(label ? { 'data-label': label } : {}) });
+  const btn = el('button', { type: 'button', class: label ? 'lb-item fav-btn' : 'icon-btn fav-btn', 'data-fav': name, 'aria-label': `${name} 즐겨찾기`, title: '즐겨찾기', ...(label ? { 'data-label': label } : {}) });
   btn.addEventListener('click', () => {
     favs = toggleFav(favs, name);
     saveFavs(storage, favs);
@@ -988,7 +997,7 @@ function renderPick() {
 // the live note says so), and the toast offers 같이 가요 초대 for that wall.
 function shareBtn(name, label = null, kind = 'wall') { // label: a word under the icon (the link strip's cell). kind 'crag': a ?crag= link, no 같이 가요 (that is for walls)
   const face = () => [icon('share'), ...(label ? [el('span', { class: 'sr-only' }, label)] : [])];
-  const btn = el('button', { type: 'button', class: label ? 'lb-item' : 'icon-btn', 'aria-label': '공유하기', title: '공유하기' }, ...face());
+  const btn = el('button', { type: 'button', class: label ? 'lb-item' : 'icon-btn', 'aria-label': `${name} 공유하기`, title: '공유하기' }, ...face());
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
   let timer;
   btn.addEventListener('click', async () => {
@@ -1166,12 +1175,21 @@ function veilText(m, wall, at) {
   const h = m.sun?.tone === 'sun' && wall.venue !== 'indoor' ? wxEntry(wall, at) : null;
   return h && skyVeils(h.c) && forecastTrusted(at, new Date()) ? `흐려서 해가 거의 안 나요 (${String(at.getHours()).padStart(2, '0')}시 예보)` : null;
 }
+// The three pieces under a wall's photo on the list card: the dock (길찾기 · 다녀왔어요), the chips, the line into the wall sheet. (The map card is the simple one: it takes only the line, sheetRowOf.)
+const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b));
+function cardActions(m, wall) {
+  const pos = wallPosition(wall);
+  const nav = m.links.find((l) => l.primary); // 길찾기: the same map-app dialog as the link strip's cell (the strip itself is not drawn on the card for now)
+  const go = nav ? navButton(nav, m.navAddress ?? m.address, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null) : null;
+  return {
+    dock: dock(go, beenBtn(m)),
+    reserve: reserveBand(m.reserve, { icon }),
+    chips: chipBar(m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }),
+    sheetRow: sheetRowOf(m),
+  };
+}
 function rowDetails(m, wall, at) {
   const dial = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
-  // the way into the wall sheet (hours table, seasonal sun, fees, parking details): one button at the end of the facts
-  const sheetBtn = el('button', { type: 'button', class: 'sheet-open', 'data-sheet-open': '', 'data-name': m.name },
-    el('span', { class: 'so-t' }, el('b', {}, '암장 정보 자세히'), el('small', {}, '운영시간 · 요금 · 주차 · 루트')), el('i', { 'aria-hidden': 'true' }, '›'));
-  sheetBtn.addEventListener('click', () => openWallSheet(m.name, sheetBtn));
   // 제보 stays at the foot as quiet text links: a correction is rare, and the card's job is the hours above
   const photoAsk = photoLink(m); // (this one is on the name row: a photo is what the card lacks most)
   const helps = config.reportEndpoint
@@ -1182,16 +1200,15 @@ function rowDetails(m, wall, at) {
   // 다녀왔어요 sits beside 자세히 at the card's foot; its sheet asks the visit time and the crowd. Under a sun picture the two are the picture card's
   // own foot (sc-actions: the wall's base, painted with the card's colours); a wall with no picture (indoor, closed day) keeps them in a row of their own (go-row)
   const sunParts = wall.venue === 'indoor' ? [] : withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // an indoor wall has no sun: no card at all. The sun box (the 날씨 is the top line of its sky), after the facts
-  const actions = actionBar(beenBtn(m), sheetBtn); // under the photo, above the facts and the sun card (card-parts.js)
-  const chips = chipBar(m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }); // parking · closing day · size: one line, the detail is in the sheet
-  const pos = wallPosition(wall);
-  const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
+  const { dock: actions, reserve, chips, sheetRow } = cardActions(m, wall); // floating over the photo's foot, then the chips, then the line into the sheet
+  // (linkBar and m.links stay for the wall sheet's 연락 section; until then the phone / 공지 / 오픈채팅 links are not on the card)
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
-    m.photo ? null : el('div', { class: 'ph-hero' }, heroCap(m), photoAsk),
-    links, // the link strip hangs under the photo (or its place) across both columns of the wide layout
+    m.photo ? null : el('div', { class: 'ph-hero' }, heroCap(m), photoAsk, photoTools(shareBtn(m.name))),
     actions,
+    reserve,
     chips,
+    sheetRow,
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
@@ -1527,10 +1544,12 @@ function timeRow(row, at) {
   // 양달/응달/방향 모름 in words, not only the orange band
   const { sun } = m;
   const extra = rowExtra(m);
+  const heart = favBtn(m.name); // ♥ left of the name: the list's own 즐겨찾기 button, beside the row button (style.css .row-fav)
+  heart.classList.add('row-fav');
   const btn = el('button', { type: 'button', class: 'row-btn', 'aria-expanded': String(isOpen), 'aria-controls': id },
     el('span', { class: 'l1' },
       sunChip(sun, row.veil), // first: the same column on every open row
-      el('span', { class: 'rfav', 'data-favmark': m.name, role: 'img', 'aria-label': '즐겨찾기', hidden: favs.includes(m.name) ? null : '' }, '♥'),
+      el('span', { class: 'rfav-gap', 'aria-hidden': 'true' }), // the room for the ♥ that sits over it (a button of its own: it cannot live inside the row's button)
       el('span', { class: 'rname', title: m.shortName }, m.shortName),
       // the one extra chip (새 세팅 > 혼잡 > 무료, card-model rowExtra) and the region share what room is left; one that does not fit wraps
       // out of sight whole (style.css .rsub), so the closing time never wraps and no region is cut to a stray letter (the rest is on the card)
@@ -1540,14 +1559,14 @@ function timeRow(row, at) {
           el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), extra.text) : null,
         extra?.kind === 'free' ? feeChip(m) : null,
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
-      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.leftCard ? [el('span', { class: 'lf-list' }, ...leftParts(m.left)), remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
+      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
     bar ? gaugeBar(bar) : null,
-    bar ? gaugeEnds(bar) : null); // shown while the card is open (style.css .gauge-ends)
+    bar ? gaugeEnds(bar) : null); // drawn on every row, shown by css only while the card is open (style.css .gauge-ends)
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
   const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
-  li.append(...(m.photo ? [rowPhoto(m, li)] : []), btn, el('div', { class: 'expand', id }, inner));
+  li.append(btn, heart, ...(m.photo ? [rowPhoto(m, li, { corner: photoTools(shareBtn(m.name)) })] : []), el('div', { class: 'expand', id }, inner)); // DOM order = tab order: the row, its ♥, the photo's camera and share, then the card (the grid places them by area, not by order)
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
   li.wallName = m.name;

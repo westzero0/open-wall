@@ -8,6 +8,7 @@
   --soon: #a8325a;
   --sun: #cc7a14;
   --off: #d0d4cb;
+  --gone: #868b84; /* the part of a bar that has passed: a mid grey (3:1 on the page), apart from the open colour; dark below */
   --hair: #e9e7e0;
   --bg: var(--paper);
   --surface: var(--sheet);
@@ -107,6 +108,7 @@
     --fav: #ffd34d;
     --fav-edge: #ffd34d;
     --off: #343a37;
+    --gone: #666d72;
     --hair: #24282c;
     --fg: #f4f2ec;
     --muted: #a9aaa7;
@@ -132,7 +134,7 @@
 }
 :root[data-theme="dark"] {
   --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --sun-ui: #f2b25c; --open-past: #2b4231; --soon: #f08aa8; --sun: #f2b25c;
-  --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
+  --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --gone: #666d72; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
   --line: #33373c; --line-strong: #4a4e54; --open: #86c993; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
     --plate: #1e2125;
     --sun-disc: #f4b942;
@@ -177,7 +179,7 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
    font-weight: 500; text-wrap: balance; line-height: 1.15; letter-spacing: -.025em; margin-top: 0; } /* plain weight: only the time and the count are strong */
 #summary b { color: var(--open); font-weight: 700; }
 @media (max-width: 520px) { #summary { line-height: 1.05; } } /* two rows (a long day lead on a narrow phone): tighter lines, the header does not grow by a full line */
-#summary b.zero { color: var(--muted); }
+#summary b.zero, #summary.none { color: var(--muted); }
 /* 내 지역 on: a small line under the summary; pressing it goes back to 전국 (the 44px tap area is padding pulled back by the margin) */
 .region-line { display: inline-flex; align-items: center; gap: var(--sp-4); min-height: var(--tap); margin: -6px 0 0; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); white-space: nowrap; }
 .region-line > span:first-child { color: var(--fg); font-weight: 600; }
@@ -490,10 +492,10 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 #countOpen { color: var(--open); }
 :is(.tgroup, .crag-board) .empty { position: relative; margin: 10px var(--pad); background: var(--sheet); } /* covers the grid lines */
 .rows { list-style: none; margin: 0; padding: 0; }
-.row { border-bottom: 1px solid var(--hair); }
+.row { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); } /* isolate: the ♥, the dock and the photo's tools stack inside the row, never over the sticky time axis and group band */
 :is(.row-btn, .crag-head) {
   display: block; width: 100%; min-height: 56px; padding: 13px var(--pad) 14px; text-align: left; line-height: 1.35; --rowbg: var(--surface);
-  border: 0; background: none; scroll-margin-top: 2.125rem; /* html's scroll-padding-top already clears the sticky bars; the margin only leaves room for the axis below them */ transition: background-color var(--dur-press) var(--ease-out);
+  border: 0; background: none; scroll-margin-top: calc(2.125rem + 2rem); /* html's scroll-padding-top already clears the sticky bars; the margin only leaves room for the axis below them */ transition: background-color var(--dur-press) var(--ease-out);
 }
 :is(.row-btn, .crag-head):active { background: color-mix(in srgb, var(--fg) 6%, transparent); }
 :is(.row-btn, .crag-head):focus-visible { outline-offset: -2px; }
@@ -594,23 +596,23 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .row.closed .left, .row.unknown .left { color: var(--muted); font-weight: 400; }
 .bar { position: relative; display: block; height: 15px; margin-top: var(--sp-8); }
 .bar .seg { position: absolute; top: 0; height: 8px; border-radius: var(--r-sm); background: var(--open); }
-.bar .seg.past { background: var(--open-past); } /* the part already gone is lighter: the dark part is the time you have if you arrive at the tick */
+.bar .seg.past { background: var(--gone); }
+:is(.row, .card) .bar .seg.past { top: 2px; height: 4px; } /* thinner than the time you have: the split reads by shape, not only by colour */ /* the part already gone is grey: the coloured part is the time you have if you arrive at the pin */
 /* the two halves of a split interval meet square (no rounded notch where the tone changes) */
 .bar .seg.j-end { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .bar .seg.j-start { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-/* light bars (past, closed) get an edge with 3:1 against the sheet, so their length stays readable */
-.bar .seg.past, .k-past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
-.row.soon .bar .seg.past { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--soon) 70%, transparent); }
+/* light bars (closed, the legend's past swatch) get an edge with 3:1 against the sheet, so their length stays readable */
 .row.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .row.soon .bar .seg { background: var(--soon); }
-.row.soon .bar .seg.past { background: color-mix(in srgb, var(--soon) 28%, transparent); }
+.row.soon .bar .seg.past, .card.soon .bar .seg.past { background: var(--gone); } /* gone is grey on a closing-soon bar too: only the time left is pink */
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
 .sunband.cap-l, .g-sunon.cap-l { border-top-left-radius: var(--r-sm); border-bottom-left-radius: var(--r-sm); } /* the orange that starts at the bar's start keeps its round end */
 .sunband.cap-r, .g-sunon.cap-r { border-top-right-radius: var(--r-sm); border-bottom-right-radius: var(--r-sm); }
 .sunband { position: absolute; top: 0; height: 8px; border-radius: 0; background: var(--sun); } /* the open bar itself turns orange where the wall is sunny (only inside the open hours); square ends, so no rounded orange shows inside the green */
 .sunband.past { opacity: .45; }
+:is(.row, .card) .bar .sunband.past { display: none; } /* gone is one grey, never a paler orange (a crag row keeps its split sun) */
 .row.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only */
-.tick { position: absolute; top: -4px; height: 19px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
+.tick { position: absolute; top: -3px; height: 14px; width: 2px; margin-left: -1px; background: var(--fg); border-radius: 1px; }
 .row.broken { padding: 10px var(--pad); }
 
 /* expanded row: opens in --dur-ui, closes faster in --dur-exit; hidden content leaves the a11y tree */
@@ -675,7 +677,7 @@ dialog.gal[open] { display: flex; }
 .gal-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gal-foot { padding: var(--sp-6) var(--sp-16) var(--sp-16); } .gal-foot[hidden] { display: none; }
 .gal-send { width: 100%; min-height: 48px; border: 1px solid rgb(255 255 255 / .55); border-radius: var(--r-pill); background: none; color: #fff; font: inherit; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .55) 0%, rgb(0 0 0 / 0) 38%, rgb(0 0 0 / 0) 48%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
+.rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .6) 0%, rgb(0 0 0 / .35) 42%, rgb(0 0 0 / 0) 58%, rgb(0 0 0 / 0) 64%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
 .row.is-open > .expand .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* as wide as the photo and right under it: the photo's own toolbar */
 /* the wide two-column card: a photo card has no head line, so the info starts in the first row (the strip above spans both columns) */
 @media (min-width: 560px) and (max-width: 1023px) { .row.has-photo .m-cols { margin-top: 0; } .row.has-photo .m-cols:not(:has(> .m-head :is(.x-sub, .susp-note, .addr-btn))) > .m-info { grid-row: 1; } } /* the info rises beside the sun box only when the (otherwise empty) head holds nothing: a 휴게 line or note in it keeps its own row above */
@@ -700,20 +702,18 @@ dialog.gal[open] { display: flex; }
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) .sunnow { text-shadow: none; } /* on the photo the sun mark is a white pill like the time left: a tinted chip washes out over a picture */
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) .sunnow.pic { background: rgb(255 255 255 / .95); color: var(--sun-on-white); }
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) :is(.sunnow.shade, .sunnow.unknown, .sunnow.indoor).pic { color: var(--muted-on-white); }
-.row.has-photo.is-open .bar .seg, .row.has-photo.is-open.soon .bar .seg { background: var(--on-photo); box-shadow: none; }
-.row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .45); box-shadow: 0 0 0 1px rgb(0 0 0 / .3); } /* gone: still visible over a bright sky, edged like the sun band */
-/* open card gauge: the time already gone is grey, the time you have keeps the open colour (the pin and the pill say it too: not by colour alone) */
-.row.is-open:not(.has-photo) .bar .seg.past { background: var(--off); box-shadow: none; }
+.row.has-photo.is-open .bar .seg { background: var(--on-photo); box-shadow: none; }
+.row.has-photo.is-open.soon .bar .seg { background: var(--soon-on-white); box-shadow: 0 0 0 1px #fff; } /* closing soon over a photo: pink with a white edge */
+.row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .55); box-shadow: 0 0 0 1px rgb(0 0 0 / .3); } /* gone: still visible over a bright sky, edged like the sun band */
+/* the pin (thicker on an open card) and the time-left chip say where now is: the grey/colour split is not the only cue */
 .row.is-open .tick, .card .tick { width: 3px; margin-left: -1.5px; }
-.gauge-ends { display: none; }
-.row.is-open .gauge-ends { display: flex; justify-content: space-between; gap: var(--sp-8); margin-top: var(--sp-2); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+/* open and close time under the bar's ends, on every row: pulled up into the bar box's empty lower half, so a row grows by little more than the text */
+.gauge-ends { display: none; } /* a folded row and the map card keep the bar clean: the times show once a list card is open */
+.row.is-open .gauge-ends { display: flex; justify-content: space-between; gap: var(--sp-8); margin-top: calc(var(--sp-4) * -1); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
 .row.has-photo.is-open .gauge-ends { color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
-/* time-left pill: "~22:00 (10h)" on a narrow phone, "~22:00 (10시간 남음)" with room; the list row keeps its own short word */
-.row.is-open .left .lf-list { display: none; }
-.left .lf-card { display: none; }
-.row.is-open .left .lf-card { display: inline; }
-.lf-card .lf-l { display: none; }
-@media (min-width: 421px) { .lf-card .lf-s { display: none; } .lf-card .lf-l { display: inline; } }
+/* time-left chip on every open row, folded or open: "10h" on a narrow phone, "10시간 가능" with room (a shut row keeps its rowLeft words) */
+.lf-card .lf-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* narrow: clipped, not display:none, so a screen reader still hears the long wording */
+@media (min-width: 421px) { .lf-card .lf-s { display: none; } .lf-card .lf-l { position: static; width: auto; height: auto; overflow: visible; clip: auto; } }
 :is(.row, .crag-row).has-photo.is-open .tick { background: var(--on-photo); box-shadow: 0 0 0 1px rgb(0 0 0 / .4); }
 :is(.row, .crag-row).has-photo.is-open .sunband { box-shadow: 0 0 0 1px rgb(0 0 0 / .35); }
 .x-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -731,7 +731,8 @@ dialog.gal[open] { display: flex; }
 .ph-hero > * { position: relative; }
 html[data-text="xlarge"] .ph-hero::before { display: none; } /* the watermark would sit under the big hours */
 .ph-hero .rhero-cap { color: var(--fg); text-shadow: none; }
-.ph-hero .rhero-add { color: var(--accent); margin-right: -6px; }
+.ph-hero .rhero-add { color: var(--accent); width: 44px; height: 44px; margin: 0 0 0 -10px; }
+.ph-hero .rhero-add svg { width: 24px; height: 24px; }
 .photo-ask { flex: none; display: inline-flex; align-items: center; gap: var(--sp-6); min-height: var(--tap); margin: calc(var(--sp-4) * -1) 0 calc(var(--sp-12) * -1); padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; } /* no photo yet: a quiet link at the right end of the name row */
 .photo-ask svg { width: 16px; height: 16px; }
 .x-name { margin: var(--sp-12) 0 var(--sp-2); font-size: var(--fs-lg); line-height: 1.25; font-weight: 700; letter-spacing: -.02em; min-width: 0; overflow-wrap: break-word; }
@@ -861,9 +862,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sb-chip.lit::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .sb-chip.na { color: var(--muted); }
 .sb-fig { width: 100%; max-width: 360px; margin: 0 auto; }
-.sundial-slot:has(.k-lit, .k-shade) { aspect-ratio: 360 / 152; }
-.sundial-slot:has(.k-night) { aspect-ratio: 360 / 166; }
-.sundial-slot { aspect-ratio: 360 / 180; border-radius: var(--r); overflow: hidden; line-height: 0; }
+.sundial-slot { aspect-ratio: 360 / 166; border-radius: var(--r); overflow: hidden; line-height: 0; }
 /* the picture sits above the words in every layout */
 .sunbox:not(.solo) {
   display: grid; grid-template-columns: minmax(0, 1fr);
@@ -901,13 +900,13 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sunbox.sc { display: block; padding: 0; overflow: hidden; background: none; }
 .sunbox.sc .sb-sky { padding: var(--sp-14) var(--sp-14) 0; background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
 .sunbox.sc .sb-sky :is(.dwhen, .dw-k, .dw-r) { color: var(--sc-text); }
-/* the chip and the sun's window sit ON the picture's empty sky (one grid cell), so the card is only as tall as the picture */
+/* the chip and the sun's window sit in a row of their own above the picture (rows 2 and 3): the numerals never cover the sun */
 .sunbox.sc .sb-sky { display: grid; }
 .sunbox.sc .sb-sky > .wx-box { grid-row: 1; }
-.sunbox.sc .sb-sky > :is(.sb-head, .sb-fig) { grid-row: 2; grid-column: 1; min-width: 0; }
-.sunbox.sc .sb-sky > .sb-head { align-self: start; z-index: 1; margin-top: var(--sp-12); }
-.sunbox.sc .sb-sky > .sb-fig { align-self: end; }
-.sunbox.sc .sb-head { flex-direction: column; align-items: flex-start; gap: var(--sp-6); } /* the state chip, the sun's window under it */
+.sunbox.sc .sb-sky > :is(.sb-head, .sb-fig) { grid-column: 1; min-width: 0; }
+.sunbox.sc .sb-sky > .sb-head { grid-row: 2; margin-top: var(--sp-12); }
+.sunbox.sc .sb-sky > .sb-fig { grid-row: 3; align-self: end; }
+.sunbox.sc .sb-head { flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); } /* the state chip, the sun's window beside it (under it on a narrow phone): above the picture, never on it */
 .sunbox.sc .sb-head .dwhen { flex: 0 1 auto; display: grid; justify-items: start; gap: 0; text-align: left; }
 .sunbox.sc .sb-fig { width: calc(100% + 2 * var(--sp-14)); max-width: none; margin: var(--sp-8) calc(-1 * var(--sp-14)) 0; }
 .sunbox.sc .sun-scene { background: none; }
@@ -1315,7 +1314,6 @@ html[data-text] .segs label { flex: 1 1 auto; padding: 0 var(--sp-8); }
 .daybar-wrap { padding-top: var(--sp-2); }
 .daybar-wrap .bar { margin-top: 0; }
 .card.soon .bar .seg { background: var(--soon); }
-.card .bar .seg.past, .card.soon .bar .seg.past { background: var(--off); box-shadow: none; } /* gone = grey, to come = the open colour */
 .card.closed .bar .seg, .card.unknown .bar .seg { background: var(--off); }
 .card.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .card.closed .sunband { opacity: .25; } /* a closed wall's sun is reference only, as in the list */
@@ -1657,28 +1655,45 @@ p.setnew { margin-top: var(--sp-8); }
 /* a frame holding only 다녀왔어요 (a crag card with no sun picture, until 암장 정보 자세히 joins it) hugs the button: no empty frame, no divider */
 .go-row:has(> .been-btn:only-child) { width: fit-content; }
 .go-row > .been-btn:only-child { border-right: 0; }
-/* the wall card's pair under the photo (card-parts.js actionBar): two equal halves in the .go-row frame, the stamp and its word side by side */
-.go-row.action-bar { margin-top: var(--sp-16); }
-:is(.expand-in, .crag-body) .action-bar > :is(.been-btn, .sheet-open) { flex: 1 1 0; min-width: 0; font-size: var(--fs-sm); font-weight: 700; } /* halves: this beats the stamp's flex:none below (same weight, later wins) */
-:is(.expand-in) .action-bar > .been-btn { grid-auto-flow: column; justify-content: center; gap: var(--sp-8); }
-.action-bar .been-btn small { font-size: inherit; } /* both halves the same 15px / 700, centred */
-.action-bar .sheet-open { justify-content: center; gap: var(--sp-6); }
-.action-bar .sheet-open i { font-size: var(--fs-md); }
-.action-bar .sheet-open small { display: none; } /* half the width: the title alone; what the sheet holds is in its tabs */
-/* the one line of chips (card-parts.js chipBar): 36px pills, parking · closing day · size; each opens the sheet where its detail is */
-.chip-bar { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-10) 0 var(--sp-12); }
-.cchip-cell { display: inline-flex; }
-.cchip { display: inline-flex; align-items: center; gap: var(--sp-4); min-height: 36px; padding: 0 var(--sp-8); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; max-width: 100%; min-width: 0; }
+/* share (card-parts.js photoTools): an icon on the photo's foot, bottom-right, no circle; the camera is its twin at bottom-left: both 24px icons with a 44px tap, one row above the dock */
+.photo-tools { position: absolute; z-index: 2; right: calc(var(--pad) - 10px); bottom: calc(var(--sp-8) + 34px); display: flex; align-items: center; color: var(--on-photo); filter: drop-shadow(0 1px 2px rgb(0 0 0 / .65)); }
+.ph-hero > .photo-tools { bottom: calc(var(--sp-12) + 30px); color: var(--accent); filter: none; } /* on the placeholder block: the camera's colour */
+.photo-tools .share-wrap { display: flex; margin: 0; }
+.photo-tools .icon-btn { width: 44px; height: 44px; background: none; color: inherit; }
+.photo-tools .icon-btn svg { width: 24px; height: 24px; }
+.photo-tools .icon-btn:is(:hover, .done) { color: inherit; }
+.photo-tools .icon-btn:focus-visible { outline: 2px solid currentColor; outline-offset: -6px; }
+/* the two actions under the photo (card-parts.js dock): 길찾기 in ink, 다녀왔어요 in the panel tone, 48px, no outline */
+.dock { display: flex; gap: var(--sp-6); margin-top: var(--sp-12); padding: var(--sp-6); border: 1px solid var(--hair); border-radius: 18px; background: var(--surface); box-shadow: 0 6px 18px rgb(0 0 0 / .14); }
+:is(.expand-in, .crag-body) .dock > :is(.dock-go, .been-btn) { flex: 1 1 0; min-width: 0; } /* halves (beats the stamp's flex:none) */
+.dock-go, :is(.expand-in, .crag-body) .dock .been-btn { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: 48px; padding: 0 var(--sp-12); border: 0; border-radius: 12px; font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.dock-go { background: var(--fg); color: var(--bg); }
+:is(.expand-in, .crag-body) .dock .been-btn { background: var(--panel); color: var(--fg); }
+:is(.expand-in, .crag-body) .dock .been-btn.done { background: color-mix(in srgb, var(--sun-ui) 18%, var(--panel)); color: var(--fg); }
+:is(.expand-in, .crag-body) .dock .been-btn :is(svg, .been-stamp) { color: var(--sun-ui); }
+.dock :is(svg, .been-stamp) { width: 20px; height: 20px; flex: none; }
+.dock .been-btn small { font-size: inherit; }
+.dock > :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dock > :active { transform: scale(.98); }
+/* the one line of chips (card-parts.js chipBar): pale pills, 30px to look at and 44px to tap; each opens the sheet where its detail is */
+.chip-bar { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-12) 0 var(--sp-4); }
+.cchip-cell { display: inline-flex; max-width: 100%; }
+.cchip { display: inline-flex; align-items: center; gap: var(--sp-4); min-height: 30px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--sunken); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; max-width: 100%; min-width: 0; }
 .cchip > span:not(.sr-only) { overflow: hidden; text-overflow: ellipsis; }
 .cchip svg { width: 16px; height: 16px; flex: none; }
-@media (max-width: 400px) { .cchip { font-size: var(--fs-xs); padding: 0 var(--sp-6); } } /* three chips stay on one line on a phone */
+@media (max-width: 400px) { .cchip { font-size: var(--fs-xs); padding: 0 var(--sp-8); } } /* three chips stay on one line on a phone */
 button.cchip { position: relative; cursor: pointer; }
-button.cchip::after { content: ""; position: absolute; inset: -4px -3px; } /* looks 36px, taps like 44px */
-button.cchip:focus-visible { outline: 2.5px solid var(--fg); outline-offset: 3px; }
-button.cchip:active { transform: scale(.97); }
-.cchip.good { color: var(--open); border-color: currentColor; }
-.cchip.warn { color: var(--warn); border-color: currentColor; }
+:is(button, a).cchip::after { content: ""; position: absolute; inset: -7px -2px; } /* looks 30px, taps like 44px */
+:is(button, a).cchip:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+:is(button, a).cchip:active { transform: scale(.97); }
+.cchip.good { color: var(--open); }
+.cchip.warn { color: var(--warn); }
 .cchip.muted { color: var(--muted); }
+/* the line into the sheet (card-parts.js sheetLine): a hairline above, 48px */
+.sheet-line { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: 48px; margin-top: var(--sp-8); padding: 0; border: 0; border-top: 1px solid var(--hair); background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.sheet-line b { flex: none; font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
+.sheet-line i { margin-left: auto; flex: none; font-style: normal; font-size: 1.375rem; line-height: 1; }
+.sheet-line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* under a sun picture the two buttons are the card's foot, the wall's base: only the card's own colours (--sc-*), so every sky (lit, low, shade, night, dark) carries them */
 .sunbox.sc .sc-actions { padding: var(--sp-12) var(--sp-14) var(--sp-14); background: var(--sc-wall); }
 .sunbox.sc .sc-frame { --sc-edge: color-mix(in srgb, var(--sc-gtext) 45%, transparent); display: flex; align-items: stretch; overflow: hidden; border-radius: var(--r-base); box-shadow: inset 0 0 0 1.5px var(--sc-edge); } /* one frame, the stamp and 자세히 split by a hairline */
@@ -1938,7 +1953,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
-.k-past { background: var(--open-past); }
+.k-past { background: var(--gone); box-shadow: none; }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
 .to-top { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: var(--z-to-top); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* centred, just above the tab bar */
 .to-top[hidden] { display: none; }
@@ -2461,3 +2476,35 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 /* 눌림: 외벽 버튼과 같은 scale(.97) + --dur-press */
 :is(.mode-switch button, button.ap-chip, .ap-clear, .ap-nav button) { transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out), border-color var(--dur-press) var(--ease-out); }
 :is(.mode-switch button, button.ap-chip, .ap-clear, .ap-nav button):active { transform: scale(.97); }
+/* ♥ in the list row, left of the name (app.js timeRow): a button beside the row's own button, over the room .rfav-gap leaves; 32 × 44 to tap */
+.rfav-gap { flex: none; width: 22px; margin-right: -4px; }
+.row-fav { position: absolute; z-index: 3; left: calc(var(--pad) + 41px); top: 8px; width: 32px; height: 44px; color: var(--muted); opacity: .6; }
+.row-fav svg { width: 20px; height: 20px; }
+.row-fav.on { opacity: 1; }
+.row:not(:has(.l1 .sunnow)) .row-fav { left: calc(var(--pad) - 5px); top: 6px; } /* a row with no sun chip starts its name at the edge */
+.row.has-photo.is-open .row-fav { color: var(--on-photo); opacity: 1; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .55)); }
+.row.has-photo.is-open .row-fav.on { color: var(--fav); }
+/* the dock floats over the photo's foot: the card's opening part rises 30px over the photo (its top 30px is clear, so the photo shows through), and the photo's own foot lifts to stay above it */
+.row.has-photo.is-open > .expand { position: relative; z-index: 2; margin-top: -30px; background: linear-gradient(to bottom, transparent 30px, var(--sheet) 30px); }
+.row.has-photo.is-open .expand-in > .dock:first-child { margin-top: 0; }
+.row.has-photo:not(.is-open) > .expand { transition-duration: 0s; transition-delay: 0s; } /* closing: the photo leaves first, so the dock and chips must not linger for the exit time */
+.row.has-photo > .expand { opacity: 1; } /* the dock lies over the photo: a fading card would show the photo through it. The card opens by its height alone (the closed one is hidden by visibility) */
+.row.has-photo.is-open .rhero-foot { bottom: calc(var(--sp-12) + 34px + 44px); } /* the credit sits above the camera / share row */
+.row.has-photo.is-open .rhero-tools { left: calc(var(--pad) - 10px); right: calc(var(--pad) - 10px); bottom: calc(var(--sp-8) + 34px); height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; pointer-events: none; }
+.row.has-photo.is-open .rhero-tools > * { pointer-events: auto; }
+.row.has-photo.is-open .rhero-tools .rhero-add { grid-column: 1; grid-row: 1; justify-self: start; width: 44px; height: 44px; }
+.row.has-photo.is-open .rhero-tools .rhero-add svg { width: 24px; height: 24px; }
+.row.has-photo.is-open .rhero-tools .rhero-dots { grid-column: 2; grid-row: 1; }
+.ph-hero { padding-bottom: calc(var(--sp-12) + 30px); }
+.ph-hero + .dock { position: relative; z-index: 2; margin-top: -30px; }
+/* focus over a photo: a white ring (the photo tokens), the group's dark drop-shadow lifts it off a bright sky */
+.row.has-photo.is-open :is(.row-fav, .rhero-add, .photo-tools .icon-btn):focus-visible { outline: 2px solid var(--on-photo); outline-offset: -4px; border-radius: 50%; }
+/* the 예약하기 band under the dock (card-parts.js reserveBand): 44px, a sun tint; a must-reserve wall (.required) gets a yellow ! badge and a deeper tint */
+.reserve-band { display: flex; align-items: center; gap: var(--sp-8); min-height: 44px; margin-top: var(--sp-8); padding: 0 var(--sp-12); border-radius: var(--r-base); background: color-mix(in srgb, var(--sun-ui) 13%, var(--surface)); color: var(--fg); text-decoration: none; font-size: var(--fs-sm); }
+.reserve-band.required { background: color-mix(in srgb, var(--sun-ui) 20%, var(--surface)); }
+.reserve-band svg { width: 18px; height: 18px; flex: none; }
+.rb-badge { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--sun-disc); color: #17191c; font-style: normal; font-size: var(--fs-xs); font-weight: 800; line-height: 1; }
+.reserve-band b { flex: none; font-weight: 700; white-space: nowrap; }
+.reserve-band span { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reserve-band:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.reserve-band:active { transform: scale(.99); }

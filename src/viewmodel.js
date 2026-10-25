@@ -23,6 +23,7 @@ export const summaryLead = (at, now, isNow) =>
 // the app draws strong pieces in the accent colour (a count of 0 muted). noun: '외벽' / '싱글피치'.
 export const summaryParts = (at, now, isNow, n, noun = '외벽') => {
   const time = isNow ? '지금' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}`;
+  if (n === 0 && noun === '외벽') return [[`${time}${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} 없어요`, false]]; // nothing to count: no strong pieces, the headline is muted (#summary.none)
   return [[time, true], [`${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} `, false], [`${n}곳`, true], [' 있어요', false]];
 };
 

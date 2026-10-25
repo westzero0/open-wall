@@ -50,17 +50,16 @@ function rowLeft(status, at, wall) {
   return brk ? `${h}시간 뒤 휴게` : `${h}시간 가능`; // the slider is the arrival time, so it is how long you can stay from then
 }
 
-// The open card's pill: close time + time left, in a short and a long wording (css picks by width): "~22:00 (10h)" / "~22:00 (10시간 남음)".
-// null unless the wall is open. A break ahead says 뒤 휴게 instead of 남음.
-function leftCard(status, at) {
+// The chip on every open row: how long you can stay, in a short and a long wording (css picks by width): "10시간" / "10시간 가능".
+// The status word survives the short form: closing within the hour says 곧 마감 / 40분 뒤 마감 (never 가능), a break ahead says 3시간 뒤 휴게 / 곧 휴게.
+// null unless the wall is open. The closing time itself is the gauge's right end.
+function leftCard(status) {
   if (status.state !== 'open') return null;
-  const h = Math.floor(status.remainingMin / 60), m = status.remainingMin % 60;
+  const r = status.remainingMin, h = Math.floor(r / 60), m = r % 60;
   const dur = `${h ? `${h}시간 ` : ''}${m || !h ? `${m}분` : ''}`.trim();
-  return {
-    close: `~${whenText(status.closeAt, at)}`,
-    short: h ? `${h}h` : `${m}m`, // whole hours, like the list row; the long wording has the minutes
-    long: `${dur} ${status.endKind === 'break' ? '뒤 휴게' : '남음'}`,
-  };
+  const soon = r <= 60;
+  if (status.endKind === 'break') return { short: soon ? '곧 휴게' : `${h}시간 뒤 휴게`, long: `${dur} 뒤 휴게` };
+  return soon ? { short: '곧 마감', long: `${dur} 뒤 마감` } : { short: `${h}시간`, long: `${dur} 가능` }; // whole hours, like the list row; the long wording has the minutes
 }
 
 // ---- sun ----
@@ -486,7 +485,7 @@ const closedDays = (wall, line) => {
   if (words.length) return words;
   return line.value.split(/\s*·\s*/).filter((t) => /^[월화수목금토일]$/.test(t));
 };
-const chipsOf = ({ wall, rope, parking, info, rental }) => {
+const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
   const size = rope // the height is told in the sheet (시설) only
     ? { kind: 'size', icon: 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
       note: rope?.basis ?? null,
@@ -496,10 +495,12 @@ const chipsOf = ({ wall, rope, parking, info, rental }) => {
   const days = closure ? closedDays(wall, closure) : [];
   return {
     closure, // the line the chip says: the card's list leaves it out
+    // the order the visit is decided in: the rope, the price, the closing day, parking, the rental (the 예약 band sits above them); they wrap onto a second line when they must
     chips: [
       size,
-      { kind: 'parking', icon: 'car', tone: parking.tone, text: parking.text, to: { tab: 'use', section: 'parking' } },
+      fee && { kind: 'fee', icon: 'ticket', tone: fee === '무료' ? 'good' : 'plain', text: fee, to: { tab: 'use', section: 'fees' } },
       days.length > 0 && { kind: 'closed', icon: 'calendar', tone: 'warn', text: `정기휴무 ${days.join('·')}`, note: `${closure.label} ${closure.value}`, to: { tab: 'time', section: 'hours' } },
+      { kind: 'parking', icon: 'car', tone: parking.tone, text: parking.text, to: { tab: 'use', section: 'parking' } },
       rental && { kind: 'rental', icon: 'bag', tone: 'plain', text: '장비 대여', to: { tab: 'use', section: 'fees' } },
     ].filter(Boolean),
   };
@@ -555,7 +556,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   // the folded memo lines split in two: 편의시설 (restroom, shower, lounge … the amenity words) and the rest, which stays under 시설
   const amenities = info.folded.filter((l) => AMENITY.test(`${l.label ?? ''} ${l.value}`)).map((l) => ({ ...l, value: l.value.replace(/^시설\s*[:：]?\s*/, '') }));
   const facilityRest = info.folded.filter((l) => !AMENITY.test(`${l.label ?? ''} ${l.value}`));
-  const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall) });
+  const reserve = safeUrl(wall.contact?.reserve?.url) ? { name: wall.contact.reserve.name || null, url: wall.contact.reserve.url, required: wall.contact.reserve.required === true } : null; // the 예약 band (links keeps the same link for the sheet)
+  const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall), fee });
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
@@ -587,7 +589,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     short: Boolean(row.short),
     statusText: text,
     left: rowLeft(status, at, wall),
-    leftCard: leftCard(status, at),
+    leftCard: leftCard(status),
     hoursOnGauge: Boolean(bar && !bar.ahead && bar.open.length), // the gauge's ends say the hours: the photo does not repeat them
     sub: [where, plain ? text : statusText(status, at, wall, { dropClose: true })].filter(Boolean).join(' · '),
     sun: sunTag(row),
@@ -629,6 +631,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     dayLabel,
     route,
     hasChat, // the card offers 오픈채팅 추가 only while there is none
+    reserve,
     links: [
       // the order a visitor reaches for them: the notice (the evidence for the hours), the chat room, then the phone
       noticeLink(c),
