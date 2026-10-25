@@ -7,12 +7,12 @@ import { config } from './config.js';
 import { featureOn } from './stage.js';
 import { labCrag, withoutLab, LAB_NOTE } from './lab.js'; // 시범 스위치(?lab=crag)
 import { createMap } from './map.js';
-import { dialModel } from './dial.js';
+import { dialModel, sunHeadOf } from './dial.js';
 import { renderScene, sceneTone } from './sun-scene.js';
 import { getStatus } from './hours.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, summaryParts, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, feeTable, feeWord, rowExtra, shortenDates } from './card-model.js';
 import { NOTE_MAX } from './parking-rate.js';
@@ -37,6 +37,7 @@ import { openApproachSheet } from './approach-sheet.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { openRoutesSheet } from './routes-sheet.js';
 import { el } from './dom.js';
+import { actionBar, axisX, capCls, chipBar, gaugeBar, gaugeEnds, heroCap, remainPill, span } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -88,6 +89,7 @@ const ICONS = {
   'sky-snow': ['M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242', 'M8 15h.01', 'M8 19h.01', 'M12 17h.01', 'M12 21h.01', 'M16 15h.01', 'M16 19h.01'],
   'sky-storm': ['M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973', 'm13 12-3 5h4l-3 5'],
   heart: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
+  car: ['M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2', 'M9 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z', 'M9 17h6', 'M19 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z'], // the 주차 chip
   info: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 16v-4', 'M12 8h.01'],
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
   ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
@@ -131,6 +133,8 @@ function sunChip(sun, veiled = false) { // veiled: the sky hides the sun (the li
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
 const saveUi = () => storeUi(storage, ui);
+// the headline: strong pieces (time, count) are <b>; a count of 0 is muted (style.css #summary b.zero)
+const drawSummary = (parts) => $('summary').replaceChildren(...parts.map(([t, strong], i) => (strong ? el('b', { class: i === 2 && t.startsWith('0') ? 'zero' : null }, t) : t)));
 let showHowtoAuto = () => {}; // set by the 화면 읽는 법 block below; render() calls it, so it must exist before the first render
 let theme; // what applyTheme last got: 자동 turns 'dark' from 23:00 to 08:00 (src/boot-theme.js does the same for the first paint)
 function syncTheme() {
@@ -232,10 +236,10 @@ function thumb(m) {
   return img;
 }
 
-// The same bar as the list row's (listBar), with the hours under it: a closed wall opening on a later day shows that day, without a tick.
+// The same bar as the list row's (gaugeBar), with the hours under it: a closed wall opening on a later day shows that day, without a tick.
 function dayBarBlock(bar) {
   return el('div', { class: 'daybar-wrap' },
-    listBar(bar),
+    gaugeBar(bar),
     el('div', { class: 'ticks', 'aria-hidden': 'true' },
       ...[360, 720, 1080, 1440].map((t) => { const x = el('span', {}, String(t / 60)); x.style.left = axisX(t); return x; })),
     bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
@@ -376,29 +380,7 @@ function safeCard(row, at) {
 }
 
 // ---- timetable row ----
-const axisX = (min) => `${axisFrac(min) * 100}%`;
-const span = (cls, a, b) => {
-  const s = el('span', { class: cls });
-  s.style.left = axisX(a);
-  s.style.width = `${(axisFrac(b) - axisFrac(a)) * 100}%`;
-  return s;
-};
-// An orange sun band that starts or ends where the open bar does takes the bar's round end (the list's bar and the sheet's alike);
-// inside the bar it stays square so two colours meet cleanly.
-const capCls = (a, b, open) => `${open.some(([x]) => x === a) ? ' cap-l' : ''}${open.some(([, y]) => y === b) ? ' cap-r' : ''}`;
-// The one bar of a wall's day, drawn the same in the list row and on the map card: green where open (paler once gone), orange where it is
-// sunny inside those hours, the tick at the picked time. `ahead` (a later day) has no tick.
-function listBar(bar) {
-  const tick = bar.ahead ? null : el('span', { class: 'tick' });
-  tick?.style.setProperty('left', axisX(bar.nowMin));
-  return el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
-    // past and to-come are one tone: the tick says "now"; the two halves of a split interval meet square
-    ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
-    // the part before the tick is already gone: its orange is paler, like the green under it
-    ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
-      .map(([a, b, past]) => span(`${past ? 'sunband past' : 'sunband'}${capCls(a, b, bar.open)}`, a, b)),
-    tick);
-}
+// (the bar itself — axisX, span, capCls, gaugeBar — lives in card-parts.js, shared by every kind of card)
 // 13:30 → "13:30", 9:00 → "9": an hour told the short way, for a day with too many stretches to label each bar
 const hourWord = (m) => (m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : String(m / 60));
 // The hours of one open stretch, on one line over its bar: "10:00–14:00". A stretch that a break follows ends its label at the break's start
@@ -438,7 +420,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null } = {})
   const track = el('div', { class: 'rhero-track', ...(many ? { tabindex: '0', role: 'group', 'aria-roledescription': 'carousel', 'aria-label': `${m.name} 사진, 좌우로 넘기기` } : {}) },
     ...imgs.map((img) => el('div', { class: 'rhero-slide' }, img)));
   let credit = null;
-  const line = el('div', { class: 'rhero-line' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m))); // a suspended wall: just the small 임시 휴관 중 pill on the photo
+  const line = el('div', { class: 'rhero-line' }, heroCap(m)); // a suspended wall: just the small 임시 휴관 중 pill on the photo; an open day's hours are on the gauge
   const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
     const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
     if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
@@ -1043,37 +1025,11 @@ function closedItem(l, m) {
   go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'time', section: 'hours' }));
   return el('li', { class: l.key ? 'key' : null }, el('span', { class: 'mk' }, l.label), go);
 }
-// one row under the 다녀왔어요 line: the rope chip(s) first, then the facts (tags, indoor side) as one muted line; the wall size is in the wall sheet's 시설
-function metaRow(m) {
-  // 외벽 facilities (스피드월, 지붕) are chips that only inform; the indoor side (실내벽, 실내 종류, 실내 높이) stays a muted line
-  const wallTags = m.tags.filter((t) => t !== '실내벽');
-  const facts = [...m.tags.filter((t) => t === '실내벽'), ...(m.indoorKinds ? [`실내 ${m.indoorKinds}`] : []), ...(m.indoorHeight ? [m.indoorHeight] : [])];
-  const tagChips = wallTags.map((t) => el('span', { class: 'chip fact' }, t));
-  const chips = m.rope ? [el('span', { class: 'chip rope' }, m.rope.ask), ...(m.rope.own ? [el('span', { class: `chip rope ${m.rope.own.tone}` }, m.rope.own.text)] : []), el('span', { class: 'sr-only' }, ` (${m.rope.basis})`)] : [];
-  // 장비 대여 가능: a chip beside the rope chip; it opens the wall sheet at the fees (where the prices are)
-  const rent = m.rental ? el('button', { type: 'button', class: 'chip rental', 'aria-label': `장비 대여 가능${m.rental.text ? `, ${m.rental.text}` : ''}, 요금 보기` }, '장비 대여') : null;
-  rent?.addEventListener('click', () => openWallSheet(m.name, rent, { tab: 'use', section: 'fees' }));
-  if (!chips.length && !facts.length && !rent && !tagChips.length) return [];
-  const factsEl = facts.length ? el('span', { class: 'tags-line' }, facts.join(' · ')) : null;
-  if (!m.info.folded.length && !m.sizes.length) return [el('p', { class: 'meta-row', title: m.rope?.basis }, ...chips, rent, ...tagChips, factsEl)]; // no 시설 section to go to
-  // the rope chip opens the wall sheet at 시설 (the wall size and the memo lines); with no rope chip the facts line does. No arrow: the chip is the button
-  const toFacility = (b) => { b.addEventListener('click', () => openWallSheet(m.name, b, { tab: 'use', section: 'facility' })); return b; };
-  return [el('div', { class: 'meta-row meta-go' },
-    chips.length ? toFacility(el('button', { type: 'button', class: 'meta-part', title: m.rope?.basis }, ...chips)) : null,
-    rent, ...tagChips,
-    factsEl ? (chips.length ? factsEl : toFacility(el('button', { type: 'button', class: 'meta-part' }, factsEl))) : null)];
-}
 function infoBlock(m) {
   const parts = [];
   // only what can stop a visit (closures, warnings, "!" lines); the other memo lines are the wall sheet's 시설 section
-  if (m.info.shown.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.info.shown.map((l) => (CLOSED_LABEL.test(l.label ?? '') ? closedItem(l, m) : !l.label && l.key && CLOSED_WORD.test(l.value) ? closedItem({ ...l, label: '지정휴무' }, m) : memoItem(l)))));
-  // one line: the status, then the wall's own lot (요금 · 주변 · 참고 are in the wall sheet's 주차 section)
-  // status → cost for the stay → lot; the whole line opens the sheet at its 주차 section
-  const { cost, where } = m.parkingLine;
-  const go = el('button', { type: 'button', class: 'pv pv-go' }, // no aria-label: the visible words (status, cost, lot) are its name
-    el('span', { class: 'pv-t' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), cost ? ` · ${cost}` : '', where ? el('span', { class: 'pv-sub' }, where) : null), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
-  go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'use', section: 'parking' }));
-  parts.push(el('div', { class: 'irow' }, el('span', { class: 'mk' }, '주차'), go));
+  if (m.infoFace.length) parts.push(el('ul', { class: 'memo-list info', 'aria-label': '안내' }, ...m.infoFace.map((l) => (CLOSED_LABEL.test(l.label ?? '') ? closedItem(l, m) : !l.label && l.key && CLOSED_WORD.test(l.value) ? closedItem({ ...l, label: '지정휴무' }, m) : memoItem(l)))));
+  // (the parking and the closing day are chips under the photo: their detail is in the wall sheet)
   return parts;
 }
 
@@ -1167,44 +1123,36 @@ function dialFig(d, at) { return renderScene(d, at); }
 // The sun's now: compass + sentence + today's sunny hours. On a day the wall is closed the compass
 // would describe a visit that can't happen, so a short note stands in for it (sunny hours stay for reference).
 // The one-line limit under every estimated sun time (the same words in the sun box and the 계절별 양달 tab)
-const sunLimit = () => el('p', { class: 'sun-limit' }, '벽 방향과 지형으로 계산한 예상이에요. 건물·나무, 날씨·구름, 오버행·벽 경사는 반영하지 않아요.');
+const sunLimit = () => el('p', { class: 'sun-limit' }, '벽 방향·지형으로 계산한 예상이에요. 건물·나무·구름·오버행은 반영하지 않아요.');
 const noSunMath = (d) => d.state === 'unknown' || d.state === 'override';
 // 접힌 계산 기준 (양달 카드 안: 한 줄 접힘, 기본 닫힘)
 const sunWhy = () => el('details', { class: 'sun-why' }, el('summary', {}, '계산 기준'), sunLimit());
 // 맨 위 한 줄: 상태 칩 + 핵심 값 (구간이 여러 개면 구간마다 한 덩어리)
-function sunHead(d, verdict) {
-  const chip = d.state === 'unknown' ? '계산 불가' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}`; // the chip is the moment's state; the line under it is the day's window
-  const cls = d.state === 'unknown' ? 'na' : d.lit ? 'lit' : 'dark';
-  // an open day with hours: only the sun inside them ("운영 중 예상 양달 10:10–17:30", or 없음); no hours: the day's whole window
-  const key = d.state === 'unknown' ? null : verdict
-    ? (verdict.on.length
-      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 운영 중 예상 양달`), ...verdict.on.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
-      : el('p', { class: 'dwhen' }, el('b', {}, verdict.text)))
-    : d.windows.length
-      ? el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, `${d.dayLabel} 예상 양달`), ...d.windows.map((w) => el('b', { class: 'dw-r' }, formatRanges([w]))))
-      : el('p', { class: 'dwhen' }, el('b', {}, `${d.dayLabel === '오늘' ? '오늘은' : d.dayLabel} 하루 종일 응달로 예상돼요`));
-  return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${cls}` }, chip), d.state === 'override' ? null : key);
+function sunHead(d, verdict, at) {
+  const h = sunHeadOf(d, verdict, at, vs.live); // the words are dial.js's: the chip is the moment's state, the line under it is the day's sun
+  const key = !h.key ? null : h.key.text
+    ? el('p', { class: 'dwhen' }, el('b', {}, h.key.text))
+    : el('p', { class: 'dwhen' }, el('span', { class: 'dw-k' }, h.key.k), ...h.key.ranges.map((r) => el('b', { class: 'dw-r' }, r)));
+  return el('div', { class: 'sb-head' }, el('span', { class: `sb-chip ${h.tone}` }, h.chip), d.state === 'override' ? null : key);
 }
 function sunBox(d, name, closedDay, verdict, veilText = null, at = null) {
-  // the dial says why ("해가 벽 뒤에 있어요" under it, 해·벽 색), so a facing/sun reason keeps only the first sentence (where the sun is); a terrain/night reason is not in the picture and stays
-  const words = d.sentence.length > 3 && /^ 해가 (벽|등) 뒤쪽/.test(d.sentence[3].text) ? d.sentence.slice(0, 3) : d.sentence;
-  const sentence = el('p', { class: 'dsent' }, ...words.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
+  const sentence = el('p', { class: 'dsent' }, ...d.sentence.map((p) => (p.bold ? el('b', {}, p.text) : p.text)));
   const sunNoteText = state.walls.find((w) => w.name === name)?.sun_note; // walls that face different ways: the verdict is for the main one
   const sunNote = sunNoteText ? el('p', { class: 'sun-note' }, sunNoteText) : null;
   const veil = veilText ? el('p', { class: 'sun-veil' }, icon('sky-cloud'), veilText) : null; // the sky hides the sun: the verdict above stays
   const extra = sunNote || veil ? el('div', { class: 'sun-extra' }, sunNote, veil) : null; // one grid track for both quiet lines
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
-      el('p', { class: 'dsent off' }, '이 날은 운영하지 않아서 해 나침반은 접어 두었어요.'),
-      noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 시간 ${formatRanges(d.windows)}` : '참고 · 예상으로는 하루 종일 응달'), sunWhy()));
+      el('p', { class: 'dsent off' }, '운영하지 않는 날이라 해 나침반은 접어 뒀어요.'),
+      noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 ${formatRanges(d.windows)}` : '참고 · 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
-    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null), sentence, extra, d.state === 'override' ? sunWhy() : null));
+    return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' }, sunHead(d, null, at), sentence, extra, d.state === 'override' ? sunWhy() : null));
   }
   // the card is the sky (colour by the sun's state and height), the picture stands in it, the words ride on the ground colour
   return el('section', { class: `sunbox sc ${sceneTone(d, at)}`, 'aria-label': '해' },
     el('div', { class: 'sb-sky' },
-      sunHead(d, verdict), // the head already tells the sun inside the open hours
+      sunHead(d, verdict, at), // the head already tells the sun inside the open hours
       el('div', { class: 'sb-fig' }, el('div', { class: 'sundial-slot' }, dialFig(d, at)))),
     el('div', { class: 'sb-ground' }, sentence, extra, sunWhy()));
 }
@@ -1233,16 +1181,17 @@ function rowDetails(m, wall, at) {
     : null;
   // 다녀왔어요 sits beside 자세히 at the card's foot; its sheet asks the visit time and the crowd. Under a sun picture the two are the picture card's
   // own foot (sc-actions: the wall's base, painted with the card's colours); a wall with no picture (indoor, closed day) keeps them in a row of their own (go-row)
-  const sunParts = withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // the sun box (the 날씨 is the top line of its sky), after the facts
-  const sunCard = sunParts.find((x) => x.classList?.contains('sc'));
-  sunCard?.append(el('div', { class: 'sc-actions' }, el('div', { class: 'sc-frame' }, beenBtn(m), sheetBtn)));
-  const goRow = sunCard ? null : el('div', { class: 'go-row' }, beenBtn(m), sheetBtn);
+  const sunParts = wall.venue === 'indoor' ? [] : withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // an indoor wall has no sun: no card at all. The sun box (the 날씨 is the top line of its sky), after the facts
+  const actions = actionBar(beenBtn(m), sheetBtn); // under the photo, above the facts and the sun card (card-parts.js)
+  const chips = chipBar(m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }); // parking · closing day · size: one line, the detail is in the sheet
   const pos = wallPosition(wall);
   const links = linkBar(m.links, m.navAddress ?? m.address, { start: favBtn(m.name, '즐겨찾기'), end: shareBtn(m.name, '공유') }, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null); // 즐겨찾기 · 길찾기 · 공지사항 · 오픈채팅 · 전화 · 네이버지도
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
-    m.photo ? null : el('div', { class: 'ph-hero' }, el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), todayText(m)), photoAsk),
+    m.photo ? null : el('div', { class: 'ph-hero' }, heroCap(m), photoAsk),
     links, // the link strip hangs under the photo (or its place) across both columns of the wide layout
+    actions,
+    chips,
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
@@ -1254,14 +1203,12 @@ function rowDetails(m, wall, at) {
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
         ...crowdBox(m), // before the visit (길찾기 · 전화), then 다녀왔어요
-        ...metaRow(m),
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         ...infoBlock(m),
         gearRow(wall),
         m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
-      ...sunParts, // after the facts (the right column when wide)
-      goRow),
+      ...sunParts), // after the facts (the right column when wide)
     visitLog(m),
     helps,
     rowButtons(m.name),
@@ -1356,7 +1303,15 @@ function buildWallSheet(wallName) {
   const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   const blocks = { hours: hoursGrid(wall, at), fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d) };
   const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
-  const content = { ...blocks, parking: sheetParking(m), facility: el('ul', { class: 'memo-list info' }, ...(m.sizes.length ? [memoItem({ label: '벽 스펙', value: [...m.sizes.filter((x) => x.startsWith('폭')), ...m.sizes.filter((x) => !x.startsWith('폭'))].join(' · ') })] : []), ...m.info.folded.map(memoItem)) };
+  // what the card's chips cut or only name, told whole here: the closing rule under the hours, the rental under the fee table
+  const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v);
+  const content = { ...blocks,
+    hours: blocks.hours && m.closureFull ? el('div', {}, blocks.hours, kv(m.closureFull.k, m.closureFull.v)) : blocks.hours,
+    fees: blocks.fees && m.rental?.text ? el('div', {}, kv('장비 대여', m.rental.text), blocks.fees) : blocks.fees,
+    parking: sheetParking(m),
+    specs: el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, s.v, s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
+    facility: el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
+    amenity: el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)) };
   const pos = wallPosition(wall);
   return {
     onClose: () => { const cur = weeklyHours(wall, at).season; go({ type: 'season', name: wall.name, pick: cur, current: cur }); }, // picking the day's own season ends a 하계/동계 preview: it does not outlive the sheet
@@ -1397,8 +1352,6 @@ function blogBox(blog, withList = true) {
     restList, more);
 }
 
-// the hours text of 오늘 운영; while the wall is 임시 휴관 중 it is a pill instead
-const todayText = (m) => el('b', { class: m.suspended ? 'susp-pill' : null }, m.today.text);
 // 다녀왔어요 (the open card only): a stamp square left of 자세히; opens the 기록 추가 sheet with this wall fixed.
 // Outlined until there is a record, then filled with the count; just after a save the stamp icon gives way to the 해벽 stamp, pressed once.
 // place: the crag object when m is a 싱글피치 crag (not in state.walls; the sheet's time bar reads it, no hours).
@@ -1587,9 +1540,10 @@ function timeRow(row, at) {
           el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')), extra.text) : null,
         extra?.kind === 'free' ? feeChip(m) : null,
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
-      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...leftParts(m.left), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
+      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.leftCard ? [el('span', { class: 'lf-list' }, ...leftParts(m.left)), remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
-    bar ? listBar(bar) : null);
+    bar ? gaugeBar(bar) : null,
+    bar ? gaugeEnds(bar) : null); // shown while the card is open (style.css .gauge-ends)
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
   const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
@@ -1975,7 +1929,7 @@ function render() {
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
-    $('summary').replaceChildren(`${lead}갈 수 있는 외벽이 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요');
+    drawSummary(summaryParts(at, now, isNow, n));
   }
   $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 

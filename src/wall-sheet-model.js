@@ -10,7 +10,9 @@ const TIME = [
   { key: 'sun', title: '계절별 양달', kind: null, dated: false }, // computed from the wall's direction and terrain: no check date, nothing to report
 ];
 const USE = [
-  { key: 'facility', title: '시설', kind: '시설' }, // the memo lines the card face does not show; only with such lines
+  { key: 'specs', title: '외벽 제원', kind: '시설', dated: false }, // 높이 · 폭 · 권장 로프 · 루트 수 · 난이도 (card-model specs); only with a row
+  { key: 'facility', title: '시설', kind: '시설', dated: false }, // the wall's own features (스피드월, 실내 지구력 …) and the memo lines the card face does not show
+  { key: 'amenity', title: '편의시설', kind: '시설', dated: false }, // 화장실 · 샤워실 · 휴게실 …
   { key: 'fees', title: '입장 요금', kind: '요금' }, // 입장, so it is not taken for the parking fee below
   { key: 'parking', title: '주차', kind: '주차' },
 ];
@@ -28,7 +30,9 @@ export function sheetModel(m, avail) {
   const empty = {
     hours: !avail.hours,
     sun: false,
+    specs: false,
     facility: false,
+    amenity: false,
     fees: !avail.fees,
     // 주차 is an answer unless it is 확인 필요 with nothing else known (no fee, nearby lots, advice or own lot)
     parking: m.parking.word === '확인 필요' && !m.parkingMore.length && !m.parkingWhere.onsite.length,
@@ -37,7 +41,7 @@ export function sheetModel(m, avail) {
   return {
     tabs: [{ key: 'time', label: '시간' }, { key: 'use', label: '이용' }, { key: 'routes', label: '루트' }, ...(avail.board ? [{ key: 'board', label: '게시판' }] : [])],
     time: TIME.filter((s) => s.key !== 'sun' || avail.sun).map(withEmpty),
-    use: USE.filter((s) => s.key !== 'facility' || m.info.folded.length || m.sizes.length).map(withEmpty),
+    use: USE.filter((s) => ({ specs: m.specs?.length, facility: m.facilityFacts?.length || m.facilityRest?.length, amenity: m.amenities?.length })[s.key] ?? true).map(withEmpty),
     checked: m.checked,
   };
 }

@@ -3,6 +3,7 @@
 import { hasHours, openIntervals } from './hours.js';
 import { hhmm, ymd } from './time.js';
 import { CHAT_URL_RE, ROPE_LENGTHS } from './store.js';
+import { routeView } from './routes.js';
 export { ROPE_LENGTHS }; // (the list lives in store.js: normalizeWall cleans rope_m against it)
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
@@ -47,6 +48,19 @@ function rowLeft(status, at, wall) {
   // whole hours only ("3시간 45분" rounds down): the list says roughly how long, the card has the exact minutes
   const h = Math.floor(r / 60);
   return brk ? `${h}시간 뒤 휴게` : `${h}시간 가능`; // the slider is the arrival time, so it is how long you can stay from then
+}
+
+// The open card's pill: close time + time left, in a short and a long wording (css picks by width): "~22:00 (10h)" / "~22:00 (10시간 남음)".
+// null unless the wall is open. A break ahead says 뒤 휴게 instead of 남음.
+function leftCard(status, at) {
+  if (status.state !== 'open') return null;
+  const h = Math.floor(status.remainingMin / 60), m = status.remainingMin % 60;
+  const dur = `${h ? `${h}시간 ` : ''}${m || !h ? `${m}분` : ''}`.trim();
+  return {
+    close: `~${whenText(status.closeAt, at)}`,
+    short: h ? `${h}h` : `${m}m`, // whole hours, like the list row; the long wording has the minutes
+    long: `${dur} ${status.endKind === 'break' ? '뒤 휴게' : '남음'}`,
+  };
 }
 
 // ---- sun ----
@@ -455,6 +469,61 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
+// ---- chips: the card's one line under the photo ----
+// chips: [{ kind, text, icon, tone, to }] — flat on purpose: a 싱글피치 or 실내 model only fills the same array (its own kinds, its own icons) and the
+// card draws it. tone: plain | good | warn | muted. to: where the sheet opens ({tab, section}), null = nothing more to read.
+// Everything else (루트 수, 난이도, 주차 요금, the wall's other facts) is in the sheet the chips open.
+const AMENITY = /화장실|샤워|휴게실|탈의|락커|라커|매점|자판기|정수기|수유실|편의시설/; // memo lines about the building's conveniences (the wall's own features — 스피드월, 지붕 — are tags, not memo lines)
+const CLOSURE_LABEL =/^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
+// The closing chip says the weekly closing days only (월·화, 둘째·넷째 일): from the hours (a weekday with none) and the nth closures, else from the day words of the memo line.
+// Public holidays, 명절, 임시휴무 are not a chip: the sheet's 시간 tab says the whole line (closureFull), and a holiday on the picked day shows on the card (day.holiday).
+const WEEK = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
+const NTH = ['첫째', '둘째', '셋째', '넷째', '다섯째'];
+const closedDays = (wall, line) => {
+  const days = WEEK.filter(([k]) => wall.hours?.[k] === null).map(([, d]) => d);
+  const nth = (wall.exceptions?.nth_closed ?? []).map((n) => `${n.nth.map((i) => NTH[i - 1]).join('·')} ${WEEK.find(([k]) => k === n.day)?.[1]}`);
+  const words = [...days, ...nth];
+  if (words.length) return words;
+  return line.value.split(/\s*·\s*/).filter((t) => /^[월화수목금토일]$/.test(t));
+};
+const chipsOf = ({ wall, rope, parking, info, rental }) => {
+  const size = rope // the height is told in the sheet (시설) only
+    ? { kind: 'size', icon: 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
+      note: rope?.basis ?? null,
+      text: rope.ask.replace(/ 이상$/, '+') } // 로프 40m+
+    : null;
+  const closure = info.shown.find((l) => CLOSURE_LABEL.test(l.label ?? ''));
+  const days = closure ? closedDays(wall, closure) : [];
+  return {
+    closure, // the line the chip says: the card's list leaves it out
+    chips: [
+      size,
+      { kind: 'parking', icon: 'car', tone: parking.tone, text: parking.text, to: { tab: 'use', section: 'parking' } },
+      days.length > 0 && { kind: 'closed', icon: 'calendar', tone: 'warn', text: `정기휴무 ${days.join('·')}`, note: `${closure.label} ${closure.value}`, to: { tab: 'time', section: 'hours' } },
+      rental && { kind: 'rental', icon: 'bag', tone: 'plain', text: '장비 대여', to: { tab: 'use', section: 'fees' } },
+    ].filter(Boolean),
+  };
+};
+
+// ---- specs: the wall sheet's 시설 list (the card keeps one chip, 로프 only; the height is a row here) ----
+// [{k, v, note?}] — a row only when its value is known. 로프 is the chip's own ropeLine (same wording, basis as note); 루트 수 and 난이도 read the newest
+// route snapshot (routes.js, the 루트 tab's data): a wall counted by indoor + outdoor sections has no sum, so it has neither row (the tab tells each side).
+const grade5 = (l) => (/^1\d[a-d]$/.test(l) ? `5.${l}` : l); // '10a' → '5.10a'; '5.9' and '5.8 이하' already say it
+function specsOf(wall, rope, sizes, now) {
+  const width = sizes.find((s) => s.startsWith('폭 '))?.slice(2);
+  const rv = routeView(wall, now);
+  const all = rv?.total ? rv.views.find((x) => x.key === 'all') : null;
+  const rows = all?.rows ?? [];
+  const old = rv?.stale ? '세팅 이전 집계' : null;
+  return [
+    wall.height_m && { k: '높이', v: `${wall.height_m}m` },
+    width && { k: '폭', v: width },
+    rope && { k: '권장 로프', v: rope.ask.replace(/^로프 /, ''), note: rope.basis },
+    all && { k: '루트 수', v: `${rv.total}개`, note: old },
+    rows.length && { k: '난이도', v: rows.length > 1 ? `${grade5(rows[0].label)}–${grade5(rows.at(-1).label)}` : grade5(rows[0].label), note: old },
+  ].filter(Boolean);
+}
+
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
@@ -478,6 +547,15 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const where = [regionShown, basis].filter(Boolean).join(' · ');
   const place = regionShown || null; // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
   const notes = [winterNote && { value: winterNote, key: true }, rainNote && { value: rainNote, key: true }, approxNote && { value: approxNote, key: true }].filter(Boolean); // a guessed position can send you to the wrong place: the face shows it
+  const info = splitInfo([...notes, ...facts.rest]);
+  const rope = ropeLine(wall.height_m, ropeM, wall.rope_m);
+  const parkingModel = parkingView(wall.parking, stayHours);
+  // the wall's other facts (스피드월, 지붕, the indoor side) are no longer on the card face: the sheet's 시설 section tells them
+  const facilityFacts = [...cardTags(tags).filter((t) => t !== '실내벽'), ...tags.filter((t) => t === '실내벽'), ...(wall.indoor_kinds?.length ? [`실내 ${wall.indoor_kinds.join('+')}`] : []), ...(wall.venue === 'both' && wall.indoor_height_m ? [`실내 높이 ${wall.indoor_height_m}m`] : [])];
+  // the folded memo lines split in two: 편의시설 (restroom, shower, lounge … the amenity words) and the rest, which stays under 시설
+  const amenities = info.folded.filter((l) => AMENITY.test(`${l.label ?? ''} ${l.value}`)).map((l) => ({ ...l, value: l.value.replace(/^시설\s*[:：]?\s*/, '') }));
+  const facilityRest = info.folded.filter((l) => !AMENITY.test(`${l.label ?? ''} ${l.value}`));
+  const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall) });
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
@@ -509,13 +587,15 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     short: Boolean(row.short),
     statusText: text,
     left: rowLeft(status, at, wall),
+    leftCard: leftCard(status, at),
+    hoursOnGauge: Boolean(bar && !bar.ahead && bar.open.length), // the gauge's ends say the hours: the photo does not repeat them
     sub: [where, plain ? text : statusText(status, at, wall, { dropClose: true })].filter(Boolean).join(' · '),
     sun: sunTag(row),
     sunNote: sunNote(row),
     bar,
     barBreaks: breakTags(wall, bar?.ahead ?? at), // the card's chips follow its bar's day
     breaks: breakTags(wall, at), // the expanded row's: the picked day
-    ...parkingView(wall.parking, stayHours),
+    ...parkingModel,
     ...parkingFresh(wall.parking, now),
     ...noticeFresh(wall, now),
     stale: old.stale,
@@ -525,9 +605,16 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     settingBadge: settingAfterVisit(wall.setting, visits) ? '방문 뒤 새 세팅' : settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
     settingBadgeShort: settingAfterVisit(wall.setting, visits) ? '새 세팅' : null, // the list row has little room: the short word (the full one is its title)
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
-    info: splitInfo([...notes, ...facts.rest]), // expanded row's 안내 (face) and 시설 (wall sheet)
+    info, // expanded row's 안내 (face) and 시설 (wall sheet)
+    infoFace: info.shown.filter((l) => l !== chipLine.closure), // the 안내 lines under the chips: the closing day is a chip
+    chips: chipLine.chips,
+    specs: specsOf(wall, rope, facts.sizes, now), // the sheet's 시설 list
+    closureFull: chipLine.closure && /[^월화수목금토일\s·,]/.test(chipLine.closure.value) ? { k: chipLine.closure.label, v: chipLine.closure.value } : null, // the 시간 tab says the whole line, but only when it says more than the hours table's weekday rows (명절, 공휴일, n째 주 …)
+    facilityFacts,
+    amenities,
+    facilityRest,
     sizes: facts.sizes,
-    rope: ropeLine(wall.height_m, ropeM, wall.rope_m),
+    rope,
     indoorKinds: (wall.indoor_kinds ?? []).join('+'), // '리드+지구력+볼더링' ('' when unknown); app.js draws it on the tags line as 실내 …
     indoorHeight: wall.venue === 'both' && wall.indoor_height_m ? `실내 높이 ${wall.indoor_height_m}m` : '', // only for 실내+실외 walls (for 'indoor' the plain height is the indoor wall); app.js adds it to the tags line
     address: facts.address,

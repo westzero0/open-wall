@@ -19,6 +19,13 @@ export const dayText = (d) => `${d.getMonth() + 1}/${d.getDate()}(${DAY_KO[d.get
 export const summaryLead = (at, now, isNow) =>
   (isNow ? '지금 ' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}에 `);
 
+// The headline as pieces [text, strong]: "07:00에 갈 수 있는 외벽이 7곳 있어요". Only the time ("지금", "10/9(금) 14:00") and the count ("7곳") are strong;
+// the app draws strong pieces in the accent colour (a count of 0 muted). noun: '외벽' / '싱글피치'.
+export const summaryParts = (at, now, isNow, n, noun = '외벽') => {
+  const time = isNow ? '지금' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}`;
+  return [[time, true], [`${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} `, false], [`${n}곳`, true], [' 있어요', false]];
+};
+
 // ---- slider ----
 const SLIDER = { min: 360, max: 1410, step: 10 };
 const round10 = (m) => Math.round(m / 10) * 10;
@@ -314,12 +321,12 @@ export function dayLine(wall, date) {
   const season = rule.winter ? '동절기' : '';
   const intervals = openIntervals(wall, date);
   const holiday = rule.holiday && hasHours(wall)
-    ? `${rule.holiday} · ${rule.key === 'hol' || wall.holiday === 'weekday' ? HOL_RULE_TEXT[wall.holiday] : wall.holiday ? '정기휴무일과 겹침' : '공휴일 운영 미확인'}`
+    ? `${rule.holiday} · ${rule.why === 'closed_date' ? '이 암장의 휴무일' : rule.key === 'hol' || wall.holiday === 'weekday' ? HOL_RULE_TEXT[wall.holiday] : wall.holiday ? '정기휴무일과 겹침' : '공휴일 운영 미확인'}`
     : null;
   if (intervals.length) return { season, closed: false, text: formatRanges(intervals), holiday };
   if (!hasHours(wall)) return { season, closed: false, text: unknownText(wall), holiday };
   let text = '휴무';
-  if (rule.why === 'closed_date') text = '임시 휴장 · 휴무';
+  if (rule.why === 'closed_date') text = rule.holiday ? '휴무' : '임시 휴장 · 휴무'; // a closed date on a public holiday is the wall's own holiday closing (설·추석 …), not a sudden one
   else if (rule.why === 'nth') text = `${NTH_KO[nthHit(wall, date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
   else if (season && wall.winter.type === 'closed') text = '외벽 휴장';
   else if (rule.key === 'hol' && wall.holiday === 'closed') text = '공휴일 휴무';

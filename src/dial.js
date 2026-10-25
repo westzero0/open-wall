@@ -1,7 +1,7 @@
 // Sun compass model (no DOM): the view of someone standing in front of the wall, wall = up.
 import { isSunlit, sunPosition } from './sun.js';
 import { horizonAt } from './shadow.js';
-import { sunIntervals } from './viewmodel.js';
+import { fmtMin, formatRanges, sunIntervals } from './viewmodel.js';
 
 const FACING = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
 const DIR8 = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
@@ -18,22 +18,37 @@ const dayAt = (at, min) => new Date(at.getFullYear(), at.getMonth(), at.getDate(
 
 const windowsOf = sunIntervals;
 
-function sentenceOf(lit, sp, rel, wall, isNow) {
+function sentenceOf(lit, sp, isNow) {
   const b = (text) => ({ text, bold: true });
   const t = (text) => ({ text });
-  if (lit.reason === 'indoor') return [t('실내암벽이라 양달·응달을 계산하지 않아요.')];
-  if (lit.lit === null) return [t('이 암장은 벽이 어느 쪽을 보는지 몰라서 양달인지 응달인지 계산할 수 없어요.')];
+  if (lit.reason === 'indoor') return [t('실내암벽이라 양달·응달이 없어요.')];
+  if (lit.lit === null) return [t('벽 방향을 몰라서 양달·응달을 계산할 수 없어요.')];
   if (lit.reason === 'override') return [t('직접 입력한 시간 기준으로 '), b(lit.lit ? '양달' : '응달'), t('이에요.')];
   if (!sp || sp.altitude <= 0) return [t(`${isNow ? '지금은' : '이 시각에는'} 해가 지평선 아래에 있어요. 응달이에요.`)];
-  const head = [t('벽을 마주 보고 서면 해는 '), b(relName(rel)), t(` 하늘에 있어요(${dirName(sp.azimuth)}쪽).`)];
-  // plain words only: no degrees in the sentence (the picture shows the height)
+  // one short line: why, then the word (where the sun is stands in the picture; no degrees)
   switch (lit.reason) {
-    case 'sun': return [...head, t(' 해가 등 뒤쪽에서 벽을 비추니 '), b('양달'), t('이에요.')];
-    case 'facing': return [...head, t(' 해가 벽 뒤쪽이라 벽은 '), b('응달'), t('이에요.')];
-    case 'terrain': return [...head, t(' 그런데 해가 낮아서 그쪽 '), b('산'), t('에 가려져요. '), b('응달'), t('이에요.')];
-    case 'night': return [...head, t(' 해가 낮아서 '), b('응달'), t('이에요.')];
+    case 'sun': return [t('해가 등 뒤에서 벽을 비춰요. '), b('양달'), t('이에요.')];
+    case 'facing': return [t('해가 벽 뒤쪽이라 '), b('응달'), t('이에요.')];
+    case 'terrain': return [t('해가 낮아서 '), b('산'), t('에 가려져요. '), b('응달'), t('이에요.')];
+    case 'night': return [t('해가 낮아서 '), b('응달'), t('이에요.')];
     default: return [];
   }
+}
+
+/**
+ * sunHeadOf(d, verdict, at, isNow) → the sun card's top line as plain data: { chip, tone, key }.
+ * chip "19:00 현재 응달" (a picked time: "19:00 기준 응달"); tone lit | dark | na; key (null when there is nothing to say):
+ * { k, ranges } = a label and the sunny ranges ("운영 중 양달" 10:10–17:30), or { text } = one short line ("하루 종일 응달").
+ * verdict: sunVerdict() of the open day (sun only inside the open hours), null for a day with no hours.
+ */
+export function sunHeadOf(d, verdict, at, isNow) {
+  if (d.state === 'unknown') return { chip: '계산 불가', tone: 'na', key: null };
+  const day = d.dayLabel === '오늘' ? '' : `${d.dayLabel} `;
+  const time = fmtMin(at.getHours() * 60 + at.getMinutes());
+  const key = verdict
+    ? (verdict.on.length ? { k: `${day}운영 중 양달`, ranges: verdict.on.map((w) => formatRanges([w])) } : { text: `${day}${verdict.text}` })
+    : d.windows.length ? { k: `${day}양달`, ranges: d.windows.map((w) => formatRanges([w])) } : { text: `${day}하루 종일 응달` };
+  return { chip: `${time} ${isNow ? '현재' : '기준'} ${d.lit ? '양달' : '응달'}`, tone: d.lit ? 'lit' : 'dark', key };
 }
 
 // pick: { isNow, dayLabel } describes the picked moment for wording ('지금/오늘' only when it really is).
@@ -74,7 +89,7 @@ export function dialModel(wall, at, { isNow = true, dayLabel = '오늘' } = {}) 
     windows,
     why,
     dayLabel,
-    sentence: sentenceOf(lit, sp, up ? relOf(sp.azimuth) : 0, wall, isNow),
+    sentence: sentenceOf(lit, sp, isNow),
   };
 }
 
