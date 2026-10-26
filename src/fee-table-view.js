@@ -1,4 +1,4 @@
-import { el } from './dom.js';
+import { el, tightParens } from './dom.js';
 
 // The 요금 table of a wall (feeTable() in card-model.js made the rows): 구분 / 대상 / 평일 / 휴일. Same price on both days: one cell
 // over the two columns; an item with only a note: its name and the note over the others. An item priced per 거주지 (관외 | 관내):
@@ -10,7 +10,7 @@ export function feeTableEl(t) {
   const body = el('tbody', {});
   for (const it of t.items) {
     if (it.noteOnly) {
-      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', it.note, { colspan: span, class: 'f-note' })));
+      body.append(el('tr', {}, cell('th', it.item, { scope: 'row' }), cell('td', tightParens(it.note), { colspan: span, class: 'f-note' })));
       continue;
     }
     const head = it.groupCols ? 1 : 0; // the small header row of the group names
@@ -37,7 +37,7 @@ export function feeTableEl(t) {
       else tr.append(val(r.weekday, { class: 'f-won' }), val(r.weekend, { class: 'f-won' }));
       body.append(tr);
     }
-    if (it.note) body.append(el('tr', {}, cell('td', it.note, { colspan: String(Number(span) + 1), class: 'f-note' }))); // the note runs under the whole row, 구분 column too
+    if (it.note) body.append(el('tr', {}, cell('td', tightParens(it.note), { colspan: String(Number(span) + 1), class: 'f-note' }))); // the note runs under the whole row, 구분 column too
   }
   return el('section', { class: 'fees', 'aria-label': '요금' },
     el('table', {}, el('thead', {}, el('tr', {}, cell('th', '구분'), cell('th', '대상'),

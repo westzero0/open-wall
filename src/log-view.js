@@ -697,9 +697,18 @@ export function createLogView({
     add.addEventListener('click', () => openAdd({ from: add }));
     const home = el('button', { type: 'button', class: 'sh-toggle' }, '홈에서 암장 보기');
     home.addEventListener('click', showList);
+    // the month as it will fill up: the real grid, dimmed, nothing pressable and no made-up records
+    const p = dayParts(today());
+    const ghost = el('div', { class: 'lg-ghost', 'aria-hidden': 'true' },
+      el('p', { class: 'lg-ghost-t' }, `${p.year}년 ${p.month}월`),
+      el('table', { class: 'cal-grid' },
+        el('thead', {}, el('tr', {}, ...['일', '월', '화', '수', '목', '금', '토'].map((d) => el('th', {}, d)))),
+        el('tbody', {}, ...monthGrid(p.year, p.month).weeks.map((week) => el('tr', {}, ...week.map((c) => el('td', {},
+          c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day)) : null)))))));
     return el('div', { class: 'lg-empty' },
+      ghost,
       el('h3', {}, '아직 기록이 없어요'),
-      el('p', {}, '다녀온 암장을 남기면 몇 곳을 다녀왔는지 모아 보여 드려요. 이 기기에만 저장돼요.'),
+      el('p', { class: 'lg-empty-say' }, el('span', {}, '다녀온 암장을 남기면 몇 곳을 다녀왔는지'), el('span', {}, '모아서 보여드려요. 이 기기에만 저장돼요.')), // two centred lines, each a phrase of its own
       el('div', { class: 'lg-empty-btns' }, add, home));
   }
 

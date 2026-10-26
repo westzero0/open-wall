@@ -37,7 +37,12 @@ import { saveRoute, routeState, clearRoute } from './crag-photos.js';
 import { openApproachSheet } from './approach-sheet.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { openRoutesSheet } from './routes-sheet.js';
-import { el } from './dom.js';
+import { el, tightParens } from './dom.js';
+
+// "10월 27일 화요일" above the slider; the weekday is its own span so the largest text size can drop it (style.css .dow) and keep the line to one row
+function setSub(at, extra = '') {
+  $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
+}
 import { axisX, cameraBtn, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
@@ -1026,7 +1031,7 @@ function shareBtn(name, label = null, kind = 'wall') { // label: a word under th
 // Weekly closures are a 안내 line and the hatched grid rows.
 const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
   l.label ? el('span', { class: 'mk' }, l.label) : null,
-  el('span', { class: l.label ? 'mv' : 'mv free' }, l.value));
+  el('span', { class: l.label ? 'mv' : 'mv free' }, tightParens(l.value)));
 
 // the regular closing day (정기휴무 월): the row carries a › and opens the wall sheet at 운영시간, the way the 주차 row opens its section
 const CLOSED_LABEL = /^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
@@ -1310,7 +1315,7 @@ function sheetParking(m) {
     })))) : null;
   // status and the wall's own lot, then the amounts (the typed wording small under them), then the rest (주변 · 참고)
   const head = el('p', { class: 'pv' }, el('b', { class: `pk-word ${m.parking.tone}` }, m.parking.word), onsite.length ? ` · ${onsite.join(' · ')}` : '');
-  const rows = m.parkingMore.filter(({ k }) => !(f && k === '요금')).map(({ k, v }) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v));
+  const rows = m.parkingMore.filter(({ k }) => !(f && k === '요금')).map(({ k, v }) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v)));
   return el('div', {}, head, ...(f ? [fees, ...rows] : rows));
 }
 // 게시판 tab: the wall's one-line board (every post, 더 보기, the form) and the 희노애Rock reviews; made when the tab is first shown
@@ -1328,14 +1333,14 @@ function buildWallSheet(wallName) {
   const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   const blocks = { hours: hoursGrid(wall, at), fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d) };
   const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
-  // what the card's chips cut or only name, told whole here: the closing rule under the hours, the rental under the fee table
-  const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), v);
+  // what the card's chips cut or only name, told whole here: the closing rule under the hours
+  const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
     hours: blocks.hours && m.closureFull ? el('div', {}, blocks.hours, kv(m.closureFull.k, m.closureFull.v)) : blocks.hours,
-    fees: blocks.fees && m.rental?.text ? el('div', {}, kv('장비 대여', m.rental.text), blocks.fees) : blocks.fees,
+    fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
     specs: el('div', { class: 'ws-info' }, ...[
-      m.specs.length && el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, s.v, s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
+      m.specs.length && el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, tightParens(s.v), s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
       (m.facilityFacts.length || m.facilityRest.length) && el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
       m.amenities.length && el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)),
     ].filter(Boolean)) };
@@ -1810,7 +1815,7 @@ function renderCrags(at, now, isNow) {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 싱글피치가 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요'); // the wall title's sentence
   }
-  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일${vs.origin ? ' · 직선거리' : ''}`; // the wall's line: the order is the band's
+  setSub(at, vs.origin ? ' · 직선거리' : ''); // the wall's line: the order is the band's
   const msg = vs.locateNote || (labOn && !config.singlePitch ? LAB_NOTE : ''); // 시범 기기는 한 줄로 알린다
   $('locateMsg').textContent = msg;
   $('locateMsg').hidden = !msg;
@@ -1869,7 +1874,7 @@ function render() {
   // live: the inputs follow the clock (the slider rests at its end before 06:00 / after 23:30, the time used stays real)
   const { date, min, at } = clockView(vs, now);
   if ($('date').value !== date) $('date').value = date;
-  if ($('time').value !== String(min)) $('time').value = String(min);
+  if ($('time').value !== String(Math.min(min, 1380))) $('time').value = String(Math.min(min, 1380)); // the slider scale is the axis (06–24) so the thumb sits on the axis; the last pick is 23:00
   { const t = $('time'); t.style.setProperty('--fill', String((Number(t.value) - Number(t.min)) / (Number(t.max) - Number(t.min)))); } // the slider's passed stretch, from where its thumb really sits (the hour grid) (style.css #time)
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
@@ -1962,16 +1967,19 @@ function render() {
     $('summary').dataset.key = key;
     drawSummary(summaryParts(at, now, isNow, n));
   }
-  $('sub').textContent = `${at.getMonth() + 1}월 ${at.getDate()}일 ${DAY_KO[at.getDay()]}요일`; // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
+  setSub(at); // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
-  $('label-open').textContent = `${isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳'} · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순'}${wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : ''}`;
+  $('label-open').replaceChildren( // the sort phrase is its own span: the largest text size drops it (style.css .sortnote) so the band stays one line
+    isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳',
+    el('span', { class: 'sortnote' }, ` · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순'}`),
+    wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : '');
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
   // the filters hid every open wall: offer the way back right here
   // replaceChildren(null) would print "null": only real nodes go in
-  emptyMsg.replaceChildren(...[fv.emptyText,
+  emptyMsg.replaceChildren(...[...fv.emptyText.split(/(?<=\.) /).flatMap((s, i) => (i ? [' ', el('span', { class: 'sent' }, s)] : [el('span', { class: 'sent' }, s)])), // a sentence per line: a break never falls inside one
     fv.national ? el('button', { type: 'button', class: 'clear-filters to-national' }, '전국으로 보기') : null,
     fv.clear ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null].filter(Boolean));
   rowSeq = 0;
@@ -2059,7 +2067,7 @@ function openMap() {
     });
   } catch {
     $('map').hidden = true;
-    document.querySelector('.legend').hidden = true;
+    $('mapLegendBtn').hidden = true;
     return mapError();
   }
   mapApi.setRows(shown.rows, shown.at);
@@ -2186,6 +2194,11 @@ wireFind($('findQ'), $('findHits'), (w) => {
   if (wide.matches && wallPosition(w)) mapApi?.select(w.name, true);
 }, cragMode);
 $('findQ').addEventListener('input', () => { if (cragMode()) render(); });
+// a 320px phone leaves the field about 78px for its hint: "암장·지역 찾기" would be cut to "암장·…"
+const narrowPhone = matchMedia('(max-width: 330px)');
+const fitFindHint = () => { $('findQ').placeholder = narrowPhone.matches ? '찾기' : '암장·지역 찾기'; };
+fitFindHint();
+narrowPhone.addEventListener('change', fitFindHint);
 
 // the map's floating magnifier: opens a search bar over the map; a pick selects that pin (filters cleared if they hid it)
 function setMapFind(open) {
@@ -2199,7 +2212,17 @@ const drawMapFind = wireFind($('mapFindQ'), $('mapFindHits'), (w) => {
   setMapFind(false);
   pickOnMap(w);
 });
-$('mapFindBtn').addEventListener('click', () => setMapFind(true));
+$('mapFindBtn').addEventListener('click', () => { setMapLegend(false, false); setMapFind(true); });
+// 핀 설명: a popover over the map, opened by the ⓘ button (it used to sit under the map, off screen)
+function setMapLegend(open, focus = true) {
+  $('mapLegend').hidden = !open;
+  $('mapLegendBtn').hidden = open;
+  $('mapLegendBtn').setAttribute('aria-expanded', String(open));
+  if (focus) (open ? $('mapLegendClose') : $('mapLegendBtn')).focus();
+}
+$('mapLegendBtn').addEventListener('click', () => setMapLegend(true));
+$('mapLegendClose').addEventListener('click', () => setMapLegend(false));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('mapLegend').hidden) setMapLegend(false); });
 $('mapFindClose').addEventListener('click', () => { $('mapFindQ').value = ''; drawMapFind(); setMapFind(false); });
 $('mapFindQ').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('mapFindClose').click(); });
 
@@ -2244,6 +2267,8 @@ const setUi = (k, v) => {
 $('search').addEventListener('submit', (e) => e.preventDefault());
 $('search').addEventListener('input', (e) => {
   if (e.target.id !== 'date' && e.target.id !== 'time') return;
+  if (!$('date').value) { render(); return; } // a cleared date (the picker's 삭제): the field goes back to the picked day instead of freezing the slider
+  if (Number($('time').value) > 1380) $('time').value = '1380';
   go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
 $('nowBtn').addEventListener('click', () => go({ type: 'now' }));
