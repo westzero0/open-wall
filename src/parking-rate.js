@@ -56,9 +56,12 @@ export function pricedLots(parking) {
 export const NOTE_MAX = 14; // a 비고 longer than this (characters) is told on a line of its own under the lot's row, not squeezed into the cell
 
 /** → [{ name, walk_min, cells: [text × TABLE_HOURS, 하루], note, free, first, step }] one row per priced lot for the sheet's table (TABLE_HOURS columns, then 하루) (a missing amount is '–'). */
-export function lotFeeTable(parking) {
+export function lotFeeTable(parking, hours = DEFAULT_STAY_H) {
   const text = (n) => (n == null ? '–' : n === 0 ? '무료' : `${n.toLocaleString('en-US')}원`); // the same 3,000원 as the entry-fee table
-  return pricedLots(parking).map((l) => ({
+  const price = (l) => feeAfter(l, hours) ?? Infinity;
+  const lots = pricedLots(parking);
+  const sorted = [...lots.filter((l) => l.own), ...lots.filter((l) => !l.own).sort((a, b) => price(a) - price(b))]; // the wall's own lot, then the nearby ones cheapest first for this stay (a lot with no amount last)
+  return sorted.map((l) => ({
     name: l.name,
     walk_min: l.walk_min ?? null,
     own: Boolean(l.own),

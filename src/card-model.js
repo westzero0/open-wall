@@ -185,7 +185,7 @@ export function parkingView(parking, stayHours = DEFAULT_STAY_H) {
   return {
     parking: parkingLabel(parking),
     parkingLine: { cost, where },
-    parkingFees: priced ? { rows: lotFeeTable(parking), cols: TABLE_HOURS, hours: stayHours } : null,
+    parkingFees: priced ? { rows: lotFeeTable(parking, stayHours), cols: TABLE_HOURS, hours: stayHours } : null,
     parkingNames: parkingNames(parking),
     parkingWhere,
     parkingTip,
@@ -403,9 +403,13 @@ function crowdOf(crowd, state) {
 
 // The list row's 혼잡 pill: only when a level is settled (fewer than 3 reports → nothing on the row).
 // text is the word alone; aria adds where it comes from.
-/** shortDate('2026-10-15', today) → '10-15' within this year; another year (or text that is no date) is left as it is. */
-export const shortDate = (ymdStr, today) => (typeof ymdStr === 'string' && typeof today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ymdStr) && ymdStr.slice(0, 4) === today.slice(0, 4) ? ymdStr.slice(5) : ymdStr);
-/** shortenDates(text, today) → text with every YYYY-MM-DD of this year cut to MM-DD (the sheet's check-date lines). */
+/** shortDate('2026-10-15', today) → '10/15' within this year, '2025.4.1' for another year; text that is no date is left as it is. */
+export const shortDate = (ymdStr, today) => {
+  if (typeof ymdStr !== 'string' || typeof today !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ymdStr)) return ymdStr;
+  const [y, m, d] = ymdStr.split('-').map(Number);
+  return ymdStr.slice(0, 4) === today.slice(0, 4) ? `${m}/${d}` : `${y}.${m}.${d}`;
+};
+/** shortenDates(text, today) → text with every YYYY-MM-DD cut to M/D (this year) or Y.M.D (the sheet's check-date lines). */
 export const shortenDates = (text, today) => (typeof text === 'string' ? text.replace(/\d{4}-\d{2}-\d{2}/g, (d) => shortDate(d, today)) : text);
 
 /** rowExtra(m) → the one chip beside the wall's name on a list row, or null: 새 세팅 > 혼잡 > 무료 (the rest is on the card). */
@@ -510,7 +514,6 @@ const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
 // ---- specs: the wall sheet's 시설 list (the card keeps one chip, 로프 only; the height is a row here) ----
 // [{k, v, note?}] — a row only when its value is known. 로프 is the chip's own ropeLine (same wording, basis as note); 루트 수 and 난이도 read the newest
 // route snapshot (routes.js, the 루트 tab's data): a wall counted by indoor + outdoor sections has no sum, so it has neither row (the tab tells each side).
-const grade5 = (l) => (/^1\d[a-d]$/.test(l) ? `5.${l}` : l); // '10a' → '5.10a'; '5.9' and '5.8 이하' already say it
 function specsOf(wall, rope, sizes, now) {
   const width = sizes.find((s) => s.startsWith('폭 '))?.slice(2);
   const rv = routeView(wall, now);
@@ -522,7 +525,7 @@ function specsOf(wall, rope, sizes, now) {
     width && { k: '폭', v: width },
     rope && { k: '권장 로프', v: rope.ask.replace(/^로프 /, ''), note: rope.basis },
     all && { k: '루트 수', v: `${rv.total}개`, note: old },
-    rows.length && { k: '난이도', v: rows.length > 1 ? `${grade5(rows[0].label)}–${grade5(rows.at(-1).label)}` : grade5(rows[0].label), note: old },
+    rows.length && { k: '난이도', v: rows.length > 1 ? `${rows[0].label}–${rows.at(-1).label}` : rows[0].label, note: old },
   ].filter(Boolean);
 }
 

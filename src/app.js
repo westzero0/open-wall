@@ -690,7 +690,7 @@ function feesBlock(wall) {
   const t = feeTable(wall);
   if (t) return feeTableEl(t);
   if (!wall.tags?.includes('무료')) return null; // the chip says 무료: the 입장 요금 card must not stay empty
-  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · ${wall.checked_at} 확인`) : null));
+  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · ${shortenDates(wall.checked_at, ymd(new Date()))} 확인`) : null));
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -1259,16 +1259,30 @@ function sheetSection(m, s, content) {
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
 // 루트 tab = 전경 (the whole-wall picture, src/overview-view.js) above the route count
 function routePane(m, wall) {
+  // nothing known about the routes or the picture: one dotted box asking for both, not two in a row
+  if (!wall.overview?.length && config.boardUrl && !routeView(wall)) return el('div', { class: 'ws-use' }, routeEmpty(m, wall, true));
   return el('div', { class: 'ws-use' }, overviewSection(m.name, wall.overview, TAB_KINDS.routes), routeBars(m, wall));
+}
+// the 루트 section with nothing counted: the dotted box asks for the count (and, `withPhoto`, for the whole-wall picture too)
+function routeEmpty(m, wall, withPhoto = false) {
+  const report = (kind, label) => {
+    if (!config.reportEndpoint && kind === '루트 분포') return null;
+    const b = el('button', { type: 'button', class: 'ws-ask' }, label);
+    b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind, kinds: TAB_KINDS.routes } })));
+    return b;
+  };
+  const setLine = m.setting ? el('p', { class: 'ws-chk end' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
+  return el('section', { class: 'ws-sec empty', 'aria-label': '루트', 'data-sec': 'routes' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트')),
+    el('div', { class: 'ws-empty' }, el('p', {}, '아직 제보된 루트가 없어요'),
+      el('p', { class: 'ws-empty-sub' }, withPhoto ? '루트 분포나 벽 전체가 보이는 사진을 알려 주세요.' : '가장 먼저 이 외벽의 루트 분포를 알려 주세요.'),
+      report('루트 분포', '루트 분포 제보하기'), withPhoto ? report('전경 사진', '전경 사진 보내기') : null), setLine);
 }
 function routeBars(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
   const v = routeView(wall, new Date(), mine, ui.venue); // ui.venue: the 구분 filter opens the indoor or outdoor section first
-  const ask = config.reportEndpoint && !v ? el('button', { type: 'button', class: 'ws-ask' }, '제보하기') : null;
-  ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '루트 분포', kinds: TAB_KINDS.routes } })));
+  if (!v) return routeEmpty(m, wall);
   const head = el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트'));
-  const setLine = m.setting ? el('p', { class: 'ws-chk' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
-  if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, setLine, el('div', { class: 'ws-empty' }, el('p', {}, '아직 제보된 루트가 없어요'), el('p', { class: 'ws-empty-sub' }, '가장 먼저 이 외벽의 루트 분포를 알려 주세요.'), ask));
+  const setLine = m.setting ? el('p', { class: 'ws-chk end' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
   const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
   const chips = v.views.length > 1 ? el('div', { class: 'rt-chips rt-scroll', role: 'group', 'aria-label': '벽 고르기' }) : null;
@@ -1288,8 +1302,9 @@ function routeBars(m, wall) {
     return b;
   }));
   show(v.first);
-  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, setLine, el('p', { class: 'ws-chk' }, v.head), chips, bars, total,
-    v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'));
+  return el('section', { class: 'ws-sec', 'aria-label': '루트' }, head, chips, bars, total,
+    v.mine ? null : el('p', { class: 'sh-hint' }, '내 정보에서 내 그레이드를 정하면 그 구간이 진하게 보여요.'),
+    setLine, el('p', { class: 'ws-chk end' }, v.head)); // the check date at the card's foot, as in 시간 · 이용
 }
 function sheetParking(m) {
   const { onsite } = m.parkingWhere;

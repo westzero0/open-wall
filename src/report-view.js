@@ -1,7 +1,6 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
 import { config } from './config.js';
 import { el } from './dom.js';
-import { buildLabel } from './build-label.js';
 import { searchPicks } from './viewmodel.js';
 import { createSectionWall } from './route-sections.js';
 import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, OVERVIEW_KIND, PHOTO_KIND, isPhotoKind, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
@@ -289,7 +288,7 @@ if (dlg) {
       try {
         await fetch(config.reportEndpoint, {
           method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report, config.reportNickEntry, buildLabel()),
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report, config.reportNickEntry),
         });
       } catch {
         busy = false; refresh();
