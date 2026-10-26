@@ -1,6 +1,7 @@
 // src/profile-view.js — the 내 정보 sheet: 닉네임, 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
 // 내 지역 sits in this sheet too, but app.js draws and handles it (it is a list filter).
 import { config } from './config.js';
+import { buildLabel } from './build-label.js';
 import { backupLine, loadBackupAt } from './backup.js';
 import { currentInstallMode, promptInstall } from './install.js';
 import { entryHref, externalOpenUrl } from './inapp.js';
@@ -147,6 +148,8 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   const about = $('about-sheet');
   let aboutOpener = null;
   about.addEventListener('close', () => aboutOpener?.focus());
+  const build = buildLabel(); // stamped by the deploy; a dev copy has none
+  if (build && config.stage === 'beta') { $('foot-build-id').textContent = build; $('foot-build').hidden = false; } // so a feedback says which version it saw; gone when the stage opens
   const openAbout = (from) => { aboutOpener = from; about.showModal(); };
   $('aboutOpen').addEventListener('click', (e) => openAbout(e.currentTarget));
   $('pfAbout').addEventListener('click', (e) => {

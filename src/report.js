@@ -140,11 +140,13 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
 }
 
 // nickEntry: the form's 닉네임 entry id (config.reportNickEntry); without it, or without a nickname, nothing extra goes out.
-export function buildPayload({ name, kind, body, note, nick }, nickEntry = '') {
+// build: the deployed version (buildLabel(): "10/27-3", else the commit hash); it ends the 내용 as "앱 버전: …" so a report says which version it was made on.
+export const BUILD_RE = /^(\d{1,2}\/\d{1,2}-\d{1,3}|[0-9a-f]{7,40})$/; // "10/27-3" (deploy date-sequence) or a commit hash
+export function buildPayload({ name, kind, body, note, nick }, nickEntry = '', build = '') {
   const p = new URLSearchParams();
   p.set(ENTRY.name, name);
   p.set(ENTRY.kind, kind);
-  p.set(ENTRY.body, body);
+  p.set(ENTRY.body, BUILD_RE.test(build) ? `${body}\n앱 버전: ${build}` : body);
   if (note) p.set(ENTRY.note, note);
   if (nick && nickEntry) p.set(nickEntry, nick);
   return p.toString();
