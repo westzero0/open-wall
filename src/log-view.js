@@ -1,6 +1,8 @@
 // src/log-view.js — the 기록 tab (progress, month calendar, the picked day's records), the 기록 추가 sheet and the
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
+import { config } from './config.js';
+import { shareNick, shareToBoard } from './board-view.js';
 import { saveBackupAt } from './backup.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
@@ -20,8 +22,8 @@ import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
-  firstVisits, normalizeLog, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades, recentVisits,
+  firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -132,6 +134,7 @@ export function createLogView({
   const now = new Date();
   let view = { year: now.getFullYear(), month: now.getMonth() + 1 };
   let picked = today();
+  let dayShown = false; // the picked day's records show only after a date was pressed (or a record was just added)
   let focusDay = picked;
   let yearView = now.getFullYear(); // the year the 올해 heatmap shows
   let yearOpen = false; // the heatmap is folded until opened; it stays as the tab redraws
@@ -170,6 +173,22 @@ export function createLogView({
   let chipNames = []; // the ≤3 chips, fixed when the sheet opens so they don't shuffle under a finger
   let extraWall = null; // a wall picked by search: it joins the chips, selected
   let opener = null;
+  // 한 줄 타임라인에도 공유: off by default, only with the board on. Only the nickname and the memo are posted; the record stays here.
+  const shareRow = dlg.querySelector('.la-share');
+  const shareOn = $('la-share');
+  const shareBody = dlg.querySelector('.la-share-body');
+  const shareNickIn = $('la-share-nick');
+  shareRow.hidden = !config.boardUrl;
+  shareOn.addEventListener('change', () => {
+    shareBody.hidden = !shareOn.checked;
+    $('la-memo-hint').textContent = shareOn.checked ? '체크하면 이 메모가 공개돼요' : '100자까지. 이 기기에만 저장돼요.';
+    if (shareOn.checked) {
+      moreBox.open = true; // the memo is what gets posted: show it
+      const n = shareNick();
+      shareNickIn.value = n.nick;
+      shareNickIn.readOnly = n.locked;
+    }
+  });
 
   // chips: ♥ first, then the most recently logged (viewmodel.pickChips). Opened for a fixed wall: that wall, selected, not pressable.
   function drawChips() {
@@ -460,6 +479,7 @@ export function createLogView({
     crowdLevel = null;
     setTimeOpen(false);
     moreBox.open = false;
+    shareBody.hidden = true; // form.reset() cleared the box
     drawChips();
     drawSave();
     drawDay();
@@ -487,6 +507,7 @@ export function createLogView({
       return form.elements.date.focus();
     }
     // asked again at save time: the question's conditions (a week back, not later than now, not sent yet) may have moved
+    const share = config.boardUrl && shareOn.checked ? { wall, nick: shareNickIn.value, memo: res.record.memo ?? '' } : null;
     const level = crowdLevel && crowdAsk(wall, res.record.date, time) === 'ask' ? crowdLevel : null;
     const before = rankNow();
     log = res.log;
@@ -496,6 +517,7 @@ export function createLogView({
     document.dispatchEvent(new CustomEvent('stats:log-add')); // stats.js counts it (no wall name or memo in it)
     if (!panel.hidden) { // added from the 기록 tab: show the day it went on
       picked = focusDay = res.record.date;
+      dayShown = true;
       const p = dayParts(picked);
       view = { year: p.year, month: p.month };
     }
@@ -519,6 +541,8 @@ export function createLogView({
         toast(`${wall} ♥ 즐겨찾기에 추가했어요`);
       }, '♥ 추가');
     } else toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽');
+    // a failed share never undoes the record: it is already saved
+    if (share) shareToBoard(share).then((r) => toast(r.ok ? '한 줄 타임라인에도 올렸어요' : `기록은 저장했어요. 타임라인에는 올리지 못했어요 — ${r.error}.`, null, '', 4000));
     if (level) {
       sendCrowd(wall, level, res.record.date, time).then((ok) => (ok ? panel.contains(document.activeElement) || render() : toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'))); // render: 혼잡도 제보 count
     }
@@ -785,6 +809,7 @@ export function createLogView({
       const b = e.target.closest('.cal-day');
       if (!b) return;
       picked = focusDay = b.dataset.date;
+      dayShown = true;
       render();
       panel.querySelector(`.cal-day[data-date="${picked}"]`)?.focus();
     });
@@ -830,6 +855,7 @@ export function createLogView({
 
   // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)
   function dayList(byDay) {
+    if (!dayShown) return null;
     const t = today();
     const p = dayParts(picked);
     const recs = byDay.get(picked) ?? [];
@@ -865,7 +891,7 @@ export function createLogView({
             : el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': label }, '카드'); // made, but no thumbnail (imported)
         } else if (r.id === ctaId) {
           cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 해벽 만들기` },
-            el('span', { class: 'lg-cta-dot', 'aria-hidden': 'true' }), '오늘의 해벽 만들기', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
+            '오늘의 해벽 만들기', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
         } else {
           card = el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': `${r.wall} ${day} 카드 만들기` }, '+ 카드'); // short on purpose: "카드 만들기" would leave a 320px phone too little room for the wall's name
         }
@@ -875,21 +901,25 @@ export function createLogView({
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
   }
 
-  // until a person has 3 records the 기록 tab shows only this plain list of where you went (the rest opens by tiersFor, src/stage.js)
-  function visitList() {
-    return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-visits-title' },
-      el('h3', { id: 'lg-visits-title', tabindex: '-1' }, '다녀온 곳', el('span', {}, ` · ${log.length}번`)),
-      el('ul', { class: 'lg-recs' }, ...recentVisits(log).map((r) => {
-        const p = dayParts(r.date);
-        const open = el('button', { type: 'button', class: 'lg-open' },
-          el('span', { class: 'lg-name' }, r.wall),
-          el('span', { class: 'lg-region' }, [`${p.month}월 ${p.day}일`, regionOf(r.wall)].filter(Boolean).join(' · ')),
-          recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null);
-        open.addEventListener('click', () => reveal(r.wall));
-        const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
-        del.addEventListener('click', () => remove(r));
-        return el('li', {}, open, del);
-      })));
+  // 한 줄 요약: 실내 N회 (야외 M회 only while config.showOutdoorCount is on)
+  function summary() {
+    const { indoor, outdoor } = visitSplit(log, (n) => getWalls().find((w) => w.name === n)?.kind === 'crag');
+    return el('p', { class: 'lg-oneline' }, `인공암벽 ${indoor}회${config.showOutdoorCount ? ` · 야외 ${outdoor}회` : ''}`);
+  }
+
+  // 암장별: the month in view, one row per wall (tap → the wall's card)
+  function wallTable() {
+    const rows = wallsInMonth(log, view.year, view.month);
+    if (!rows.length) return null;
+    return el('section', { class: 'lg-walls', 'aria-label': `${view.month}월 암장별` },
+      el('h3', {}, `${view.month}월 암장별`),
+      el('ul', {}, ...rows.map((r) => {
+        const p = dayParts(r.last);
+        const b = el('button', { type: 'button', class: 'lg-wrow' }, el('span', { class: 'lg-name' }, r.wall), el('span', { class: 'lg-wsub' }, `${r.count}회 · 마지막 ${p.month}/${p.day}`));
+        b.addEventListener('click', () => reveal(r.wall));
+        return el('li', {}, b);
+      })),
+      !dayShown ? el('p', { class: 'sh-hint' }, '날짜를 누르면 그날 기록이 아래에 열려요') : null);
   }
 
   // a thumbnail of the strip opens its card; a card whose record is gone (a backup restored elsewhere) still opens, from what the thumbnail row knows
@@ -904,7 +934,7 @@ export function createLogView({
     const byDay = recordsByDay(log);
     firsts = firstVisits(log);
     const parts = {
-      empty, visitList, activity, yearMap, gradeYear, backup: backupNote,
+      empty, summary, wallTable, activity, yearMap, gradeYear, backup: backupNote,
       calendar: () => calendar(byDay), dayList: () => dayList(byDay),
       strip: () => renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }),
     };

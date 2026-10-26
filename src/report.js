@@ -5,7 +5,7 @@ export const MAX_NOTE = 300;
 export const COOLDOWN_MS = 10_000;
 const ENTRY = { name: 'entry.188461628', kind: 'entry.803930553', body: 'entry.2089578077', note: 'entry.750589902' };
 
-import { CHAT_URL_RE } from './store.js';
+import { CHAT_URL_RE, MAX_ROUTE_WALLS, MAX_ROUTE_WALL_NAME } from './store.js';
 import { cleanNote } from './invite.js';
 import { ymd } from './time.js';
 import { routeLine } from './grades.js';
@@ -36,6 +36,9 @@ export const nickConfirmText = (nick) => `‘${nick}’ 닉네임은 이벤트 �
 // 'off' without an entry id (no field, nothing sent); 'optional' once the event is over (nickRequired: false); else 'required'.
 export const nickMode = (cfg = {}) => (!cfg.reportNickEntry ? 'off' : cfg.nickRequired === false ? 'optional' : 'required');
 
+// 벽 이름 of a 루트 분포 section: the markup/link/phone cleaning of a note, no brackets (the line is `루트[이름]: …`), cut at the stored name's length.
+export const cleanSectionName = (v) => [...cleanNote(v).replace(/[[\]]/g, '')].slice(0, MAX_ROUTE_WALL_NAME).join('').trim();
+
 export const PARKING = ['무료', '유료', '주차 불가', '모름'];
 // A choice in the sheet, not a kind of the Google Form (whose options are fixed): it goes out as 기타 with the link on the first line.
 // 시설 and 요금 are tabs of the sheet only: the form still gets 기타, with the topic as the first line
@@ -48,6 +51,8 @@ const NOTICE_HEAD = '[공지 제보]';
 export const INSTA_RE = /^https:\/\/(www\.)?instagram\.com\/((p|reel|tv)\/[\w-]{5,40}|(?!(p|reel|reels|tv|explore|accounts|stories|direct)\/?(\?|$))[\w.]{1,30})\/?(\?[\w=&%.-]{0,100})?$/;
 // 암장 사진 is a choice in the sheet but not a Google Form kind: the photo goes to the board Worker (src/photo-upload.js), never through validateReport.
 export const PHOTO_KIND = '암장 사진';
+export const OVERVIEW_KIND = '전경 사진'; // the same photo flow, for the whole-wall picture used to find routes: the memo carries `[전경]`, and the picture keeps more pixels
+export const isPhotoKind = (k) => k === PHOTO_KIND || k === OVERVIEW_KIND;
 // 싱글피치(crag) card: its own short list, accepted only with opts.crag. 주차 and 기타 are form kinds (주차 keeps its pick line);
 // CRAG_TOPICS are sheet-only and go out as 기타 with `[kind]` on the first line, like TOPIC_KINDS. No photo: the board Worker knows walls only.
 export const CRAG_TOPICS = ['어프로치', '루트·개념도', '컨디션'];
@@ -117,8 +122,13 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
     const parts = [last && `마지막 세팅: ${last}`, next && `다음 예정: ${next}`, memo && `메모: ${oneLine(memo)}`].filter(Boolean);
     lines.push(parts.join(' · '));
   } else if (kind === '루트 분포') {
-    const line = routeLine(input.routes);
-    if (!line && !memo) return fail('루트 개수를 누르거나 메모를 적어 주세요.');
+    // sections ([{ name, counts }], the wall told apart by section) go one per line as `루트[좌측벽]: 10a 4`; without them, the one `루트:` line
+    const seen = new Set();
+    const secs = (Array.isArray(input.sections) ? input.sections : []).map((x) => ({ name: cleanSectionName(x?.name), line: routeLine(x?.counts) }))
+      .filter((x) => x.name && x.line && !seen.has(x.name) && seen.add(x.name)).slice(0, MAX_ROUTE_WALLS);
+    const line = secs.length ? '' : routeLine(input.routes);
+    if (!secs.length && !line && !memo) return fail('루트 개수를 누르거나 메모를 적어 주세요.');
+    for (const x of secs) lines.push(`루트[${x.name}]: ${x.line}`);
     if (line) lines.push(`루트: ${line}`);
   } else if (!memo) return fail('내용을 적어 주세요.');
   else if (topic) lines.push(`[${kind}]`);

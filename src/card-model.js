@@ -485,8 +485,9 @@ const closedDays = (wall, line) => {
   if (words.length) return words;
   return line.value.split(/\s*·\s*/).filter((t) => /^[월화수목금토일]$/.test(t));
 };
+const ROPE_CHIP_MIN_M = 17; // the card's rope chip shows from this wall height up
 const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
-  const size = rope // the height is told in the sheet (시설) only
+  const size = rope && wall.height_m >= ROPE_CHIP_MIN_M // the height is told in the sheet (시설) only; a low wall needs no rope talk on the card (the sheet's 권장 로프 row stays)
     ? { kind: 'size', icon: 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
       note: rope?.basis ?? null,
       text: rope.ask.replace(/ 이상$/, '+') } // 로프 40m+
@@ -560,7 +561,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall), fee });
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
-  const plain = day.closed || /시간 미입력$/.test(day.text); // not "오늘 운영 운영시간 미입력"
+  const plain = day.closed || /(시간 미입력|아직 몰라요)$/.test(day.text); // not "오늘 운영 운영시간 미입력"
   const route = pos ? `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}` : null;
   const routeNaver = pos ? `https://map.naver.com/p/directions/-/${pos.lng},${pos.lat},${encodeURIComponent(wall.name)}/-/transit` : null;
   const c = wall.contact ?? {};
@@ -590,7 +591,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     statusText: text,
     left: rowLeft(status, at, wall),
     leftCard: leftCard(status),
-    hoursOnGauge: Boolean(bar && !bar.ahead && bar.open.length), // the gauge's ends say the hours: the photo does not repeat them
+    hoursOnGauge: Boolean(bar?.open.length), // the gauge's ends say the hours: the photo does not repeat them
     sub: [where, plain ? text : statusText(status, at, wall, { dropClose: true })].filter(Boolean).join(' · '),
     sun: sunTag(row),
     sunNote: sunNote(row),

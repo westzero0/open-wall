@@ -41,7 +41,7 @@ export function openApproachSheet(crag, { saved = null, saveState = null, onSave
   let st = saveState?.(crag.name) ?? saved;
   let busy = false;
 
-  const done = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, pic('check') ?? '✓'); // the sheets' ✓ (app.js .sh-ok)
+  const done = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, pic('close') ?? '✕'); // the sheets' ✓ (app.js .sh-ok)
   done.addEventListener('click', () => dlg.close());
   const chipBox = el('span', { class: 'ap-chipbox', 'aria-live': 'polite' });
   const fill = el('span', { class: 'ap-fill', 'aria-hidden': 'true' });

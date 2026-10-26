@@ -38,7 +38,7 @@ import { openApproachSheet } from './approach-sheet.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { openRoutesSheet } from './routes-sheet.js';
 import { el } from './dom.js';
-import { axisX, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, remainPill, reserveBand, sheetLine, span } from './card-parts.js';
+import { axisX, cameraBtn, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -49,6 +49,7 @@ import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, fore
 import { boardBox } from './board-view.js';
 import { openWallSheet, registerWallSheet } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
+import { overviewSection } from './overview-view.js';
 import { loadPartners, nearGear, gearLine } from './gear.js';
 import { gearBody, nearSheetBody } from './gear-view.js';
 import { nearWalls, nearWallsLine, routeUrl, VENUE_WORD } from './near-walls.js';
@@ -68,6 +69,7 @@ const ICONS = {
   share: ['M12 3v12', 'M8 7l4-4 4 4', 'M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'],
   nav: ['M3 11L22 2l-9 19-2-8-8-2z'],
   check: ['M5 12l5 5 9-10'],
+  close: ['M6 6l12 12', 'M18 6L6 18'], // the sheets' close
   stamp: ['M5 22h14', 'M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77', 'M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-3-3c-1.66 0-3 1-3 3s1 2 1 3.5V13'],
   download: ['M12 4v11', 'M7 11l5 5 5-5', 'M5 20h14'], // 싱글피치 카드: 길 사진을 기기에 저장
   // 싱글피치 어프로치 시트의 방향(approach_steps[].turn): 왼쪽·오른쪽 꺾기, 직진, 오르막, 내리막
@@ -412,10 +414,7 @@ function creditChip(c) {
 
 // no photo yet: a quiet link at the right end of the name row opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
 function photoLink(m) {
-  if (m.photo || !config.boardUrl) return null;
-  const b = el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 외벽 사진 보내기`, title: '사진 보내기' }, icon('camera-plus'));
-  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
-  return b;
+  return m.photo || !config.boardUrl ? null : cameraBtn(m.name, { icon });
 }
 
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
@@ -431,22 +430,22 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner
   let credit = null;
   const line = el('div', { class: 'rhero-line' }, heroCap(m)); // a suspended wall: just the small 임시 휴관 중 pill on the photo; an open day's hours are on the gauge
   const setCredit = (c) => { // our own photos need no credit; a licensed one or a nickname keeps its line
-    const next = creditChip(c?.text === '사진 · 직접 촬영' ? null : c);
+    const nameless = !c?.text || ['사진 · 직접 촬영', '사진 출처', '사진 · 사진 출처'].includes(c.text.trim()); // no name to show: no line
+    const next = creditChip(nameless ? null : c);
     if (next && c.text.length > 16) next.textContent = '사진 출처'; // a long credit (a licence line) shrinks to a link; the whole text is in the tooltip and the gallery
     next?.setAttribute('title', c.text);
-    if (credit) credit.replaceWith(...(next ? [next] : [])); else if (next) line.append(next);
+    if (credit) credit.replaceWith(...(next ? [next] : [])); else if (next) (canAdd ? wrap : line).append(next); // a wall's credit stands under the camera (style.css), a crag's stays on the hours line
     credit = next;
   };
-  setCredit(list[0].credit ?? m.credit);
   const wrap = el('div', { class: 'herowrap rhero' }, track, el('div', { class: 'rhero-foot' }, line));
+  setCredit(list[0].credit ?? m.credit);
   const withCorner = (w) => (corner ? (w.append(corner), w) : w); // share comes after the camera in the tab order (the corner is appended last)
   // the photo sits in a hidden box until the row opens (lazy never loads it): fetch the first when the row nears the screen, so opening shows it at once
   const near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { imgs[0].loading = 'eager'; near.disconnect(); } }, { rootMargin: '300px' });
   near.observe(li);
   imgs[0].addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); onFail?.(); }, { once: true });
   imgs.slice(1).forEach((img, k) => img.addEventListener('error', () => img.closest('.rhero-slide')?.remove(), { once: true }));
-  const add = canAdd && config.boardUrl ? el('button', { type: 'button', class: 'rhero-add', 'aria-label': `${m.name} 사진 더 보내기`, title: '사진 더 보내기' }, icon('camera-plus')) : null;
-  add?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '암장 사진', kinds: ['암장 사진'] } })));
+  const add = canAdd && config.boardUrl ? cameraBtn(m.name, { more: true, icon }) : null;
   if (!many && !add) return withCorner(wrap);
   // right-bottom: faint dots say where we are (the current one stretches out when it changes), the camera sends one more
   const dots = el('span', { class: 'rhero-dots', 'aria-hidden': 'true' });
@@ -684,7 +683,9 @@ function timeLegend(blocks) {
 // 요금 tab: the table is drawn by fee-table-view.js (구분 / 대상 / 평일 / 휴일, or one column per 거주지); the 관리자 preview uses the same
 function feesBlock(wall) {
   const t = feeTable(wall);
-  return t ? feeTableEl(t) : null;
+  if (t) return feeTableEl(t);
+  if (!wall.tags?.includes('무료')) return null; // the chip says 무료: the 입장 요금 card must not stay empty
+  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · ${wall.checked_at} 확인`) : null));
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -1205,7 +1206,7 @@ function rowDetails(m, wall, at) {
   // (linkBar and m.links stay for the wall sheet's 연락 section; until then the phone / 공지 / 오픈채팅 links are not on the card)
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
-    m.photo ? null : el('div', { class: 'ph-hero' }, heroCap(m), photoAsk, photoTools(shareBtn(m.name))),
+    m.photo ? null : placeholderHero(m, photoAsk, shareBtn(m.name)),
     actions,
     reserve,
     chips,
@@ -1214,7 +1215,7 @@ function rowDetails(m, wall, at) {
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
-        (m.state === 'open' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.suspended ? m.place : m.sub) : null, // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
+        (m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place : m.sub) : null, // a wall with no hours says so once, in the hero (not again here, nor in the row's chip: style.css hides it while open) // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
         m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
         // (no 휴게 chips on the card: the hours already split around the break, the list bar and the wall sheet's table show it)
         addrLine(m)), // the address right under 오늘 운영
@@ -1251,7 +1252,11 @@ function sheetSection(m, s, content) {
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
+// 루트 tab = 전경 (the whole-wall picture, src/overview-view.js) above the route count
 function routePane(m, wall) {
+  return el('div', { class: 'ws-use' }, overviewSection(m.name, wall.overview, TAB_KINDS.routes), routeBars(m, wall));
+}
+function routeBars(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted
   const v = routeView(wall, new Date(), mine, ui.venue); // ui.venue: the 구분 filter opens the indoor or outdoor section first
   const ask = config.reportEndpoint && !v ? el('button', { type: 'button', class: 'ws-ask' }, '제보하기') : null;
@@ -1261,7 +1266,7 @@ function routePane(m, wall) {
   if (!v) return el('section', { class: 'ws-sec empty', 'aria-label': '루트' }, head, setLine, el('div', { class: 'ws-empty' }, el('p', {}, '아직 제보된 루트가 없어요'), el('p', { class: 'ws-empty-sub' }, '가장 먼저 이 외벽의 루트 분포를 알려 주세요.'), ask));
   const bars = el('div', { class: `rt-bars${v.stale ? ' stale' : ''}` });
   const total = el('p', { class: 'rt-total', 'aria-live': 'polite' });
-  const chips = v.views.length > 1 ? el('div', { class: 'rt-chips', role: 'group', 'aria-label': '벽 고르기' }) : null;
+  const chips = v.views.length > 1 ? el('div', { class: 'rt-chips rt-scroll', role: 'group', 'aria-label': '벽 고르기' }) : null;
   const show = (key) => {
     const x = v.views.find((a) => a.key === key);
     bars.replaceChildren(el('ul', { class: 'gy-list' }, ...x.rows.map((r) => {
@@ -1329,15 +1334,17 @@ function buildWallSheet(wallName) {
     hours: blocks.hours && m.closureFull ? el('div', {}, blocks.hours, kv(m.closureFull.k, m.closureFull.v)) : blocks.hours,
     fees: blocks.fees && m.rental?.text ? el('div', {}, kv('장비 대여', m.rental.text), blocks.fees) : blocks.fees,
     parking: sheetParking(m),
-    specs: el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, s.v, s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
-    facility: el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
-    amenity: el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)) };
+    specs: el('div', { class: 'ws-info' }, ...[
+      m.specs.length && el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, s.v, s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
+      (m.facilityFacts.length || m.facilityRest.length) && el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
+      m.amenities.length && el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)),
+    ].filter(Boolean)) };
   const pos = wallPosition(wall);
   // the sheet's head is the sun card's sky: its tone (양달/응달/밤), the sun on its arc by the viewed time, and the chip saying which
   const tone = sceneTone(d, at);
   const day = tone ? dayWindow(wall, at) : null;
   const sunT = day ? (at.getHours() * 60 + at.getMinutes() - day.sunrise) / (day.sunset - day.sunrise) : 0.5;
-  const head = { tone: tone || 'k-none', sunT, region: wall.region || '', ok: icon('check'), report: Boolean(config.reportEndpoint),
+  const head = { tone: tone || 'k-none', sunT, region: wall.region || '', ok: icon('close'), report: Boolean(config.reportEndpoint),
     chip: !tone ? '' : tone.startsWith('k-night') ? '해 진 뒤' : `${vs.live ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}` };
   return {
     head,
@@ -1880,7 +1887,7 @@ function render() {
   nowTag.textContent = t;
   nowTag.style.setProperty('--x', axisFrac(minuteOf(at)));
   // an hour tick under the time tag would show half a number ("14:00" over "15"): hide the near ones
-  for (const tk of $('axis').querySelectorAll('.t')) tk.classList.toggle('under', Math.abs(tk.min - minuteOf(at)) < 110);
+  for (const tk of $('axis').querySelectorAll('.t')) tk.classList.toggle('under', Math.abs(tk.min - minuteOf(at)) < (tk.min === 1440 ? 160 : 110));
 
   const crag = cragMode(); // 싱글피치 모드: 외벽 목록 대신 싱글피치 목록
   if (wallBoard) wallBoard.hidden = crag;
@@ -2217,7 +2224,7 @@ $('date').addEventListener('click', () => { try { $('date').showPicker?.(); } ca
 for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
-  const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('check'));
+  const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('close'));
   ok.addEventListener('click', () => dlg.close());
   head.append(el('div', { class: 'sh-okw' }, id === 'conditions' ? el('small', { class: 'sh-count', 'aria-hidden': 'true' }) : null, ok));
 }

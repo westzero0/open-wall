@@ -204,6 +204,25 @@ export function monthSummary(log, year, month) {
   return { visits: inMonth.length, walls: new Set(inMonth.map((r) => r.wall)).size };
 }
 
+/** wallsInMonth(log, year, month) → [{wall, count, last}]: the month's walls, most visits first, then the latest visit. */
+export function wallsInMonth(log, year, month) {
+  const by = new Map();
+  for (const r of log) {
+    if (!r.date.startsWith(`${year}-${p2(month)}-`)) continue;
+    const e = by.get(r.wall) ?? { wall: r.wall, count: 0, last: '' };
+    e.count += 1;
+    if (r.date > e.last) e.last = r.date;
+    by.set(r.wall, e);
+  }
+  return [...by.values()].sort((a, b) => b.count - a.count || (a.last < b.last ? 1 : -1));
+}
+
+/** visitSplit(log, isOutdoor) → {indoor, outdoor}: records by kind of place. */
+export function visitSplit(log, isOutdoor) {
+  const outdoor = log.filter((r) => isOutdoor(r.wall)).length;
+  return { indoor: log.length - outdoor, outdoor };
+}
+
 /**
  * yearGrid(year) → {year, weeks}: Sunday-first weeks of 7 cells (null before Jan 1 / after Dec 31, else 'YYYY-MM-DD');
  * a week's `month` is the month whose 1st falls in it (the column label), else null.

@@ -205,6 +205,9 @@ function cleanPhotos(v) {
   }
   return out;
 }
+// 전경 사진 (루트를 찾을 때 보는 암장 전체 모습): at most MAX_OVERVIEW of { src, credit?, date? }, oldest first. A separate list, never the card's cover.
+export const MAX_OVERVIEW = 3;
+export const cleanOverview = (v) => cleanPhotos(v).map(({ main: _m, ...p }) => p).slice(-MAX_OVERVIEW); // the newest ones when more come in
 /** coverOf(photos) → the item the card shows first: the main one, else the newest; undefined for none. */
 export const coverOf = (photos) => photos.find((p) => p.main) ?? photos[photos.length - 1];
 
@@ -484,6 +487,7 @@ export function normalizeWall(raw) {
   const location = cleanLocation(raw.location);
   const parking = cleanParking(raw.parking);
   const photos = cleanPhotos(raw.photos);
+  const overview = cleanOverview(raw.overview);
   const cover = coverOf(photos); // with a photos list, photo and photo_credit follow its cover and never disagree with it
   const photo = cover ? cover.src : cleanPhoto(raw.photo);
   const stamp = cleanStamp(raw.stamp);
@@ -533,6 +537,7 @@ export function normalizeWall(raw) {
     ...(parking ? { parking } : {}),
     ...(photo ? { photo } : {}),
     ...(photos.length ? { photos } : {}),
+    ...(overview.length ? { overview } : {}),
     ...(stamp ? { stamp } : {}),
     ...(photo_credit ? { photo_credit } : {}),
     ...(short_name && short_name.length <= 20 ? { short_name } : {}),
@@ -586,7 +591,7 @@ export function keepGeo(old, next) {
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
   if (out.contact?.reserve && !out.contact.reserve.required && old.contact?.reserve?.required && out.contact.reserve.url === old.contact.reserve.url) out.contact = { ...out.contact, reserve: { ...out.contact.reserve, required: true } }; // the same link from a file with no 예약필수 keeps 필수
-  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'overview', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
   if (out.dry_days === undefined && old.dry_days !== undefined) out.dry_days = old.dry_days; // 0 is a real value, so not the truthy check above
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
@@ -613,7 +618,7 @@ export function mergeWalls(existing, incoming, mode) {
     } else {
       const old = byName.get(w.name);
       const fill = {};
-      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (w[k] && !old[k]) fill[k] = w[k];
+      for (const k of ['sun_note', 'location', 'parking', 'photo', 'short_name', 'venue', 'indoor_kinds', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'overview', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (w[k] && !old[k]) fill[k] = w[k];
       if (w.dry_days !== undefined && old.dry_days === undefined) fill.dry_days = w.dry_days;
       if (fill.photo && w.photo_credit) fill.photo_credit = w.photo_credit;
       if (fill.photo && w.photos) fill.photos = w.photos;

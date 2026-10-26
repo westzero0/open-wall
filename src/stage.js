@@ -12,7 +12,7 @@ export function featureOn(name, cfg = config) {
 
 // 기록 단계 (docs/superpowers/specs/2026-10-21-staged-opening.md): what a person's own records unlock, in order. need: visits (records), months (distinct YYYY-MM), walls (distinct walls).
 export const TIERS = [
-  { id: 'summary', need: { visits: 3 }, say: '기록이 3번 쌓여서 달력과 이번 달 요약이 열렸어요.' },
+  { id: 'summary', need: { visits: 3 } }, // the calendar itself is open from the first record; no `say`
   { id: 'poster', need: { visits: 5 }, say: '기록이 5번 쌓여서 카드 모아보기가 열렸어요.' },
   { id: 'seal', need: { visits: 10, months: 2 }, say: '두 달에 걸쳐 10번 다녀와서 올해 도장이 열렸어요.' },
   { id: 'passport', need: { walls: 5 } }, // no screen and no `say` yet (roadmap `passport`); give it a `say` the day it ships, or the note would announce nothing
@@ -31,10 +31,10 @@ export function newTier(unlocked, seen) {
   return TIERS.find((t) => t.say && unlocked.has(t.id) && !seen.has(t.id)) ?? null;
 }
 
-/** logSections({ tiers, hasRecords }) → the 기록 tab's sections, in order. Records are saved either way; before 'summary' only the plain visit list shows. */
+/** logSections({ tiers, hasRecords }) → the 기록 tab's sections, in order. The calendar is open from the first record; the poster strip and seal still open by tier. */
 export function logSections({ tiers, hasRecords }) {
   if (!hasRecords) return ['empty'];
-  const out = tiers.has('summary') ? ['activity', 'calendar', 'dayList'] : ['visitList'];
+  const out = ['summary', 'activity', 'calendar', 'dayList', 'wallTable']; // 달력은 처음부터 펼침(2026-10-26); 날짜를 누르면 dayList가 열린다
   if (tiers.has('poster')) out.push('strip');
   if (tiers.has('seal')) out.push('yearMap', 'gradeYear');
   return [...out, 'backup'];

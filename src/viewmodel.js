@@ -57,7 +57,7 @@ export function viewOf(wall, venue = 'any') {
     timeBasis: has ? 'indoor' : 'indoor-missing',
   };
 }
-export const unknownText = (wall) => (wall?.timeBasis === 'indoor-missing' ? '실내 시간 미입력' : '운영시간 미입력');
+export const unknownText = (wall) => (wall?.timeBasis === 'indoor-missing' ? '실내 시간 미입력' : '운영시간을 아직 몰라요');
 
 // ---- list: scope, filters, groups, order ----
 export const hasParking = (wall) => wall.parking?.status === 'free' || wall.parking?.status === 'paid';
@@ -331,7 +331,7 @@ export function dayLine(wall, date) {
   else if (rule.why === 'nth') text = `${NTH_KO[nthHit(wall, date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
   else if (season && wall.winter.type === 'closed') text = '외벽 휴장';
   else if (rule.key === 'hol' && wall.holiday === 'closed') text = '공휴일 휴무';
-  else if (rule.slot === undefined) text = '운영시간 미입력';
+  else if (rule.slot === undefined) text = '운영시간을 아직 몰라요';
   return { season, closed: true, text, holiday };
 }
 

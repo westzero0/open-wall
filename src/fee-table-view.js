@@ -31,7 +31,7 @@ export function feeTableEl(t) {
       // a 대상 priced per 거주지: the 대상 once (the rows after it keep it for a screen reader only), then the 거주지 name at the right edge (the 대상 stays at the left)
       tr.append(r.group ? el('td', { class: 'f-who' }, el('div', { class: 'f-pg' }, el('span', { class: r.dup ? 'f-dup' : 'f-w' }, r.who), el('span', {}, r.group))) : cell('td', r.who, { class: 'f-who' }));
       // session times ("1부 13~17시 · 2부 18~22시") stack one session per line
-      const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, p))) : cell('td', text, attrs));
+      const val = (text, attrs) => (r.times ? el('td', { ...attrs, class: `${attrs.class} f-times` }, ...text.split(' · ').map((p) => el('span', {}, ...p.split(' ').flatMap((w, i) => [i ? ' ' : '', ...w.split(/(?<=~)/).map((h) => el('span', { class: 'f-nb' }, h))])))) : cell('td', text, attrs));
       if (r.cells) tr.append(...r.cells.map((c) => cell('td', c, { class: 'f-won' })));
       else if (r.all !== undefined) tr.append(val(r.all, t.wide ? { colspan: '2', class: 'f-all' } : { class: 'f-won' }));
       else tr.append(val(r.weekday, { class: 'f-won' }), val(r.weekend, { class: 'f-won' }));

@@ -14,7 +14,9 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 공지 제보 (docs/prd/notice-links-spec.md 3번, 중단): noticeReport — 켜면 제보 시트에 '공지' 선택이 생긴다. 기본은 꺼 둠(이용자 제보를 기대하지 않기로 함).
 // 공개 단계 (docs/superpowers/specs/2026-10-21-home-simplify-design.md): stage — 'beta'는 클라이머 유형 테스트와 이번 주말 추천을 숨기고, 'open'이면 연다.
 // 기록 탭(달력·카드·도장)은 stage와 무관하게 사람마다 기록 수로 열린다(docs/superpowers/specs/2026-10-21-staged-opening.md). src/stage.js가 읽는다.
+// 기록 탭 한 줄 요약의 야외 횟수: 야외가 열리기 전에는 false(코드에만 두고 화면에는 안 보인다).
 export const config = {
+  showOutdoorCount: false,
   stage: 'beta',
   noticeReport: false,
   climberTest: true,

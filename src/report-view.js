@@ -2,10 +2,9 @@
 import { config } from './config.js';
 import { el } from './dom.js';
 import { searchPicks } from './viewmodel.js';
-import { createGradeWall } from './grade-wall.js';
-import { totalOf } from './grades.js';
-import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, PHOTO_KIND, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
-import { MAX_NOTE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
+import { createSectionWall } from './route-sections.js';
+import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, OVERVIEW_KIND, PHOTO_KIND, isPhotoKind, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
+import { FIT_BYTES, MAX_NOTE, OVERVIEW_EDGE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -80,11 +79,12 @@ if (dlg) {
     공지: ['메모 (선택)', '예) 10/20 휴관 공지가 올라왔어요 · 공지 주소가 바뀌었어요 · 링크가 안 열려요'],
     오픈채팅방: ['메모 (선택)', '예) 매주 토요일 저녁 모임, 초보 환영'],
     '암장 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 입구 쪽 벽, 오늘 오후에 찍었어요'],
+    '전경 사진': [`메모 (선택 · ${MAX_NOTE}자까지)`, '예) 주차장 쪽에서 찍은 전체 모습, 왼쪽이 슬랩 벽'],
   };
   // One report per tab: each kind keeps its own memo/source draft, the send button lives only while the current kind has something to send,
   // and a sent report empties just its own tab.
   let crag = false; // opened from a 싱글피치 card: CRAG_KINDS only, no picture (the board Worker knows walls only)
-  const EVIDENCE_OK = (kind) => !crag && !!kind && kind !== PHOTO_KIND && kind !== '오픈채팅방' && kind !== NOTICE_KIND; // kinds that can carry a supporting picture
+  const EVIDENCE_OK = (kind) => !crag && !!kind && !isPhotoKind(kind) && kind !== '오픈채팅방' && kind !== NOTICE_KIND; // kinds that can carry a supporting picture
   let cur = '';
   let routeWall = null; // 루트 분포's wall of holds (made below; hasText may run before it exists)
   let drafts = {};
@@ -107,14 +107,14 @@ if (dlg) {
       case '오픈채팅방': return !!v('chat');
       case NOTICE_KIND: return true; // every field is optional
       case '세팅일': return !!(v('setLast') || v('setNext') || v('body'));
-      case '루트 분포': return (routeWall ? totalOf(routeWall.get('routes')) : 0) > 0 || !!v('body');
-      case PHOTO_KIND: return picked.length > 0;
+      case '루트 분포': return (routeWall?.hasCounts() ?? false) || !!v('body');
+      case PHOTO_KIND: case OVERVIEW_KIND: return picked.length > 0;
       default: return !!v('body'); // 운영시간, 기타
     }
   };
   const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); f.elements.photo.disabled = busy; for (const b of thumbs.querySelectorAll('button')) b.disabled = busy; };
-  // 루트 분포: the shared wall of holds counts the wall's own routes (one kind: 루트); refresh runs on every tap
-  routeWall = createGradeWall({ kinds: [{ key: 'routes', word: '루트', unit: '개' }], onChange: () => refresh(), label: '루트 고르기' });
+  // 루트 분포: pick the wall (좌측벽 …, or 벽 구분 없이), then the shared wall of holds counts that wall's routes; refresh runs on every tap
+  routeWall = createSectionWall({ onChange: () => refresh() });
   dlg.querySelector('.rp-wall').append(routeWall.el);
   const clearTab = (kind) => {
     for (const x of [...f.querySelectorAll('.rp-extra')].filter((e) => e.dataset.kind.split('|').includes(kind))) {
@@ -123,7 +123,7 @@ if (dlg) {
     f.elements.body.value = ''; f.elements.note.value = '';
     delete drafts[kind];
     if (kind === '루트 분포') routeWall.clear();
-    if (kind === PHOTO_KIND) clearPicked();
+    if (isPhotoKind(kind)) clearPicked();
     else { f.elements.evidence.value = ''; clearEvidencePreview(); }
   };
   const onKind = () => {
@@ -143,7 +143,7 @@ if (dlg) {
     const [label, hint] = MEMO[kind] ?? ['내용', ''];
     f.querySelector('.rp-label').textContent = label;
     f.elements.body.placeholder = hint;
-    const photo = kind === PHOTO_KIND; // no source-link line for a photo; the nickname stays (it is the photo's credit and counts for the ranking)
+    const photo = isPhotoKind(kind); // no source-link line for a photo; the nickname stays (it is the photo's credit and counts for the ranking)
     f.querySelector('.rp-note').hidden = photo;
     nickBox.hidden = mode === 'off';
     evidenceBox.hidden = !EVIDENCE_OK(kind);
@@ -186,17 +186,17 @@ if (dlg) {
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
   // Shrink + upload one picked file. Returns '' on success, else the message to show.
   // Returns '' on success, else the reason key of PHOTO_SAY.
-  async function postPhotoWhy(file, note, nick) {
+  async function postPhotoWhy(file, note, nick, big = false) {
     if (!config.boardUrl) return 'network';
     let blob;
-    try { blob = await shrinkToJpeg(file); } catch (e) { return e.message === 'too_big' ? 'too_big' : 'bad_image'; }
+    try { blob = await shrinkToJpeg(file, big ? { edge: OVERVIEW_EDGE, maxBytes: FIT_BYTES } : {}); } catch (e) { return e.message === 'too_big' ? 'too_big' : 'bad_image'; }
     const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick });
     return r.ok ? '' : r.why;
   }
   const postPhoto = async (file, note, nick) => { const why = await postPhotoWhy(file, note, nick); return why ? PHOTO_SAY[why] : ''; }; // the message to show, or ''
   // Photo-only send: the 암장 사진 tab (up to 5 pictures, one by one), or any other kind that has one picture but no text.
   async function sendPhoto(kind) {
-    const files = kind === PHOTO_KIND ? picked.slice() : [f.elements.evidence.files?.[0]].filter(Boolean);
+    const files = isPhotoKind(kind) ? picked.slice() : [f.elements.evidence.files?.[0]].filter(Boolean);
     if (!wallName) return say('암장을 먼저 골라 주세요.');
     if (!files.length) return say('보낼 사진을 골라 주세요.');
     if (mode === 'required' && !nickCommit(mode, readNick(), f.elements.nick.value).nick) return say('닉네임을 적어 주세요.');
@@ -211,18 +211,18 @@ if (dlg) {
     busy = true; sending = true; refresh();
     const done = () => { sending = false; if (mine === gen) { busy = false; refresh(); } };
     if (f.elements.website.value !== '') { set(); clearTab(kind); done(); return say(PHOTO_SAY.ok); } // the hidden honeypot field: look successful, send nothing
-    const note = kind === PHOTO_KIND ? memo : evidenceNote(kind, memo);
+    const note = kind === PHOTO_KIND ? memo : kind === OVERVIEW_KIND ? [...`[전경] ${memo}`.trim()].slice(0, MAX_NOTE).join('') : evidenceNote(kind, memo);
     const say2 = (m) => { if (mine === gen) say(m); };
     say(files.length > 1 ? `1/${files.length} 보내는 중…` : '사진을 줄여서 보내는 중…');
     const res = await sendPhotos({
       files,
-      send: (file) => postPhotoWhy(file, note, nick),
+      send: (file) => postPhotoWhy(file, note, nick, kind === OVERVIEW_KIND),
       onProgress: (n, total) => { if (total > 1) say2(`${n}/${total} 보내는 중…`); },
     });
     if (res.sent.length) { if (c.save) saveNick(c.nick); set(); document.dispatchEvent(new CustomEvent('stats:report-send')); }
     if (mine === gen) {
       if (res.sent.length === res.total) clearTab(kind); // all sent: empty this tab, so the same photos are not sent twice
-      else if (kind === PHOTO_KIND && res.sent.length) { picked = picked.filter((_, i) => !res.sent.includes(i)); drawPicked(); } // keep only what is left to send
+      else if (isPhotoKind(kind) && res.sent.length) { picked = picked.filter((_, i) => !res.sent.includes(i)); drawPicked(); } // keep only what is left to send
     }
     done();
     say2(photosMessage(res));
@@ -270,11 +270,11 @@ if (dlg) {
     e.preventDefault();
     if (f.elements.send.disabled) return;
     const kind = f.elements.kind.value;
-    if (kind === PHOTO_KIND || (hasEvidence(kind) && !hasText(kind))) return sendPhoto(kind);
+    if (isPhotoKind(kind) || (hasEvidence(kind) && !hasText(kind))) return sendPhoto(kind);
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
       from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value, insta: f.elements.insta.value, newUrl: f.elements.newUrl.value,
-      setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.get('routes'),
+      setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.routes(), sections: routeWall.sections(),
       note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
     }, new Date(), { nick: mode, crag });
     if (!v.ok) return say(v.error);

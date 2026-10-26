@@ -45,7 +45,7 @@ export function openRoutesSheet(name, entry, { onClose = () => {}, icon = null, 
   let cur = 0;
   let zoom = false;
 
-  const done = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, (icon && icon('check')) ?? '✓'); // the sheets' ✓ (app.js .sh-ok)
+  const done = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, (icon && icon('close')) ?? '✕'); // the sheets' ✓ (app.js .sh-ok)
   done.addEventListener('click', () => dlg.close());
   const view = el('div', { class: 'rs-topo' });
   const credit = el('p', { class: 'rs-credit' });

@@ -140,7 +140,10 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   title.focus();
   const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
   if (sec) {
-    sec.scrollIntoView({ block: 'start', behavior: 'instant' });
+    const p = panels[first]; // only the panel scrolls: scrollIntoView would also move the overflow:hidden dialog and body, pushing the head off screen
+    p.scrollTop = sec.offsetTop - p.offsetTop - 8;
+    dlg.scrollTop = 0;
+    body.scrollTop = 0;
     sec.classList.add('flash');
     clearTimeout(flashTimer); // a reopen within the 1.6 s must not have its mark wiped by the earlier timer
     flashTimer = setTimeout(() => sec.classList.remove('flash'), 1600);

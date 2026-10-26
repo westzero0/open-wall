@@ -3,6 +3,10 @@
 // fitSize, photoPath and uploadPhoto are pure (tested); shrinkToJpeg needs a canvas and takes its pieces as arguments.
 export const MAX_EDGE = 1280; // longest side after shrinking
 export const QUALITY = 0.82;
+export const OVERVIEW_EDGE = 2048; // a 전경 picture is looked at zoomed in, so it keeps more pixels
+export const FIT_BYTES = 680 * 1024; // under the Worker's 700 KB limit (worker/index.js MAX_PHOTO_BYTES)
+const FALLBACK_QUALITY = [0.74, 0.66]; // tried in turn at each size when the picture is still too big
+const FALLBACK_EDGES = [1, 0.875, 0.75]; // × the edge
 export const MAX_NOTE = 100;
 export const MAX_PICK_BYTES = 30 * 1024 * 1024; // refuse a pick this large before decoding it
 
@@ -28,22 +32,35 @@ export const PHOTO_SAY = {
 const whyOf = (status) => (status === 429 ? 'rate_limited' : status === 413 ? 'too_big' : status === 400 ? 'bad_image' : status === 503 ? 'full' : 'network');
 
 /**
- * shrinkToJpeg(file, { bitmap, canvas }) → Promise<Blob> (image/jpeg). bitmap(file) decodes with the camera's rotation applied
+ * shrinkToJpeg(file, { bitmap, canvas, edge, maxBytes }) → Promise<Blob> (image/jpeg). bitmap(file) decodes with the camera's rotation applied
  * (createImageBitmap … 'from-image'); canvas(w, h) makes a canvas. Throws when the file is not a picture the browser can decode.
+ * maxBytes (optional): when the JPEG is bigger, lower the quality and then the size step by step until it fits; the last try is returned
+ * even if it still does not (the Worker then says 413).
  */
 export async function shrinkToJpeg(file, {
   bitmap = (f) => createImageBitmap(f, { imageOrientation: 'from-image' }),
   canvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }),
+  edge = MAX_EDGE,
+  maxBytes = 0,
 } = {}) {
   if (!file || file.size > MAX_PICK_BYTES) throw new Error('too_big');
   const bmp = await bitmap(file);
-  const [w, h] = fitSize(bmp.width, bmp.height);
-  const c = canvas(w, h);
-  c.getContext('2d').drawImage(bmp, 0, 0, w, h);
-  bmp.close?.();
-  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', QUALITY));
-  if (!blob) throw new Error('bad_image');
-  return blob;
+  let blob = null;
+  try {
+    for (const k of maxBytes ? FALLBACK_EDGES : [1]) {
+      const [w, h] = fitSize(bmp.width, bmp.height, Math.round(edge * k));
+      const c = canvas(w, h);
+      c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      for (const q of maxBytes ? [QUALITY, ...FALLBACK_QUALITY] : [QUALITY]) {
+        blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', q));
+        if (!blob) throw new Error('bad_image');
+        if (!maxBytes || blob.size <= maxBytes) return blob;
+      }
+    }
+    return blob;
+  } finally {
+    bmp.close?.();
+  }
 }
 
 /** uploadPhoto({ url, wall, blob, note, nick, fetchFn }) → { ok: true } | { ok: false, why }. Empty url = feature off: nothing is sent. */

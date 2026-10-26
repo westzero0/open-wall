@@ -7,6 +7,8 @@
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
 //   dock(go, been)     the two actions under the photo: 길찾기 and 다녀왔어요
 //   photoTools(…)      round buttons (share) in the photo's corner
+//   cameraBtn(…)       the camera that sends a photo (on a photo: one more; on the placeholder: the first)
+//   placeholderHero(…) the block that stands where a photo would: hours cap, camera (left), share (right), laid out as a photo card's foot (style.css --icon-row)
 //   sheetLine(name, f) the 48px line into the wall sheet
 //   reserveBand(r, …)  the 예약하기 band (예약 필수 when required), only with a reservation link
 //   chipBar(chips, …)  one line of chips from card-model `chips` [{kind, text, icon, tone, to}]
@@ -38,11 +40,13 @@ export function gaugeBar(bar) {
     tick);
 }
 
-// Open time under the first stretch's start, close time under the last stretch's end (a lunch break in between stays in the bar's gap).
+// Open and close time under the ends of the stretch the viewed time is in (with a lunch break: that stretch's own start and end).
 // Hidden from screen readers: the bar's own label already reads the hours. Drawn on every row; css shows it once a list card is open (not in a folded row, not on the map card).
 export function gaugeEnds(bar) {
-  if (!bar?.open?.length || bar.ahead) return null; // a later day's bar: the chip and the status line already say when it opens
-  const a = bar.open[0][0], b = bar.open.at(-1)[1];
+  if (!bar?.open?.length) return null; // (a later day's bar says that day's hours too: the card keeps its hours in one place, under the bar)
+  // a lunch break splits the day: the labels belong to the stretch of the viewed time (else the next one, else the last)
+  const seg = bar.open.find(([x, y]) => bar.nowMin >= x && bar.nowMin < y) ?? bar.open.find(([x]) => x > bar.nowMin) ?? bar.open.at(-1);
+  const a = seg[0], b = seg[1];
   const short = b - a < 240; // under 4 hours the two labels would touch: one label over the stretch
   const box = el('span', { class: 'gauge-ends', 'aria-hidden': 'true' }, ...(short ? [el('span', {}, `${fmtMin(a)}–${fmtMin(b)}`)] : [el('span', {}, fmtMin(a)), el('span', {}, fmtMin(b))]));
   box.style.paddingLeft = axisX(a);
@@ -63,6 +67,18 @@ export const dock = (go, been) => el('div', { class: 'dock' }, go, been);
 
 // ♥ and share as round buttons in the photo's top-right corner (or the placeholder block's); the app passes its own buttons.
 export const photoTools = (...buttons) => el('div', { class: 'photo-tools' }, ...buttons);
+
+// The camera: opens the 제보 sheet on 암장 사진 for this wall. `more`: the card already has a photo ("one more"), else it is the first one.
+// The caller decides whether to draw it at all (it needs the board Worker); `icon` is the app's own icon helper.
+export function cameraBtn(name, { more = false, icon }) {
+  const b = el('button', { type: 'button', class: 'rhero-add', 'aria-label': more ? `${name} 사진 더 보내기` : `${name} 외벽 사진 보내기`, title: more ? '사진 더 보내기' : '사진 보내기' }, icon('camera-plus'));
+  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: '암장 사진', kinds: ['암장 사진'] } })));
+  return b;
+}
+
+// The block that takes a photo's place on a card with none. Same foot as a photo card (hours cap above, camera at the left and share at the right on one
+// line, the dock over its foot), so the two cards read as one frame; only the height differs (style.css .ph-hero). camera / share may be null.
+export const placeholderHero = (m, camera, share) => el('div', { class: 'ph-hero' }, heroCap(m), camera, photoTools(share));
 
 // The line into the sheet: 암장 정보 자세히 and a ›, a hairline above, 48px (what is in the sheet is its tabs' business). onOpen(button) opens the wall sheet.
 export function sheetLine(name, onOpen) {
@@ -100,5 +116,5 @@ export function chipBar(chips, { icon, pick }) {
 // a suspended or closed day has no gauge ends and keeps its words.
 export function heroCap(m) {
   if (m.hoursOnGauge) return null;
-  return el('div', { class: 'rhero-cap' }, m.suspended ? null : el('small', {}, m.today.lead), el('b', { class: m.suspended ? 'susp-pill' : null }, m.today.text));
+  return el('div', { class: 'rhero-cap' }, m.suspended || m.state === 'unknown' ? null : el('small', {}, m.today.lead), el('b', { class: m.suspended ? 'susp-pill' : m.state === 'unknown' ? 'hero-note hero-unk' : 'hero-note' }, m.today.text));
 }

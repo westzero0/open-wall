@@ -67,6 +67,40 @@ const saveMine = () => { mine = cleanMine(mine); store.set(K_MINE, JSON.stringif
 const rememberMine = (id, token) => { if (token) { getMine()[id] = token; saveMine(); } };
 const forgetMine = (id) => { delete getMine()[id]; saveMine(); };
 
+/**
+ * 기록 저장 시트의 "한 줄 타임라인에도 공유": planShare({wall, nick, memo, lastTs, now}) → { ok, post } | { ok:false, error }.
+ * Only the cleaned nickname and memo go out (validatePost); the record itself never does. Same 20 s cooldown as the board form.
+ */
+export function planShare({ wall, nick, memo, lastTs, now }) {
+  if (!String(memo ?? '').trim()) return { ok: false, error: '메모가 비어 있어요' };
+  const v = validatePost({ wall, nick, body: memo });
+  if (!v.ok) return v;
+  return cooldownLeft(lastTs, now) > 0 ? { ok: false, error: '잠시 뒤에 다시 올려 주세요' } : v;
+}
+/** the nickname the share row starts with (the ranking one, else the board's draft) and whether it is locked (ranking running). */
+export function shareNick() {
+  const saved = loadNick(store.get(NICK_KEY));
+  return { nick: saved || loadNick(store.get(K_NICK_DRAFT) || ''), locked: nickLocked(nickMode(config), saved) };
+}
+/** posts the memo as a one-line timeline post → { ok, error? }. Never throws: the caller's record is already saved. */
+export async function shareToBoard({ wall, nick, memo }) {
+  if (!config.boardUrl) return { ok: false, error: '게시판이 꺼져 있어요' };
+  const { nick: have, locked } = shareNick();
+  const v = planShare({ wall, nick: locked ? have : nick, memo, lastTs: Number(store.get(K_TS)), now: Date.now() });
+  if (!v.ok) return v;
+  try {
+    const made = await boardState(wall).submit(v.post);
+    rememberMine(made.post.id, made.token);
+    document.dispatchEvent(new CustomEvent('stats:board-post'));
+    store.set(K_NICK_DRAFT, v.post.nick);
+    store.set(K_TS, String(Date.now()));
+    boardState(wall).notify();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.code === 'bad_request' ? '타임라인이 받지 않았어요' : '연결을 확인해 주세요' };
+  }
+}
+
 /** replies are read oldest first, like a conversation (mergePosts sorts newest first). */
 export function mergeReplies(existing, incoming) {
   const seen = new Set(existing.map((p) => p.id));
