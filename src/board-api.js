@@ -27,6 +27,10 @@ export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs
       const raw = await call(`/v1/posts?${q}`);
       return { posts: parseBoard(raw, wall, Date.now()), total: parseTotal(raw) };
     },
+    async summary() { // the raw answer of GET /v1/summary (board-summary.js parses it); off without a url
+      if (!base) return null;
+      return call('/v1/summary');
+    },
     async replies(wall, id) {
       if (!base) return [];
       return parseReplies(await call(`/v1/posts/${encodeURIComponent(id)}/replies`), wall, Date.now());

@@ -35,8 +35,10 @@ const newId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(
 const box = $('toast');
 const msgEl = $('toast-msg');
 const act = $('toast-act');
+const act2 = $('toast-act2'); // a second, plainer action (타임라인에도 한 줄 남기기 after a record)
 let toastTimer;
 let undoFn = null;
+let extraFn = null;
 let holdMs = 0; // 0: the plain lengths (2.5 s, 3 s with a button)
 let cameFrom = null; // where the focus was before it went into the toast (Esc gives it back)
 // Shown in the top layer, so it is seen above an open sheet too; each toast re-raises it over a sheet opened since.
@@ -52,18 +54,23 @@ const hideToast = () => {
   box.classList.remove('on');
   msgEl.textContent = '';
   act.hidden = true;
+  act2.hidden = true;
   undoFn = null;
+  extraFn = null;
 };
 const armToast = () => {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hideToast, holdMs || (undoFn ? 3000 : 2500));
 };
-export function toast(msg, undo = null, label = '실행 취소', ms = 0) {
+export function toast(msg, undo = null, label = '실행 취소', ms = 0, extra = null) {
   undoFn = undo;
+  extraFn = extra?.fn ?? null;
   holdMs = ms;
   msgEl.textContent = msg;
   act.textContent = label;
   act.hidden = !undo;
+  act2.textContent = extra?.label ?? '';
+  act2.hidden = !extra;
   raise();
   box.classList.add('on');
   armToast();
@@ -72,6 +79,13 @@ act.addEventListener('click', () => {
   const fn = undoFn;
   undoFn = null;
   act.blur();
+  hideToast();
+  fn?.();
+});
+act2.addEventListener('click', () => {
+  const fn = extraFn;
+  extraFn = null;
+  act2.blur();
   hideToast();
   fn?.();
 });
@@ -166,6 +180,7 @@ export function createLogView({
   const picks = dlg.querySelector('.la-picks');
   const needHint = $('la-pick-err');
   const saveBtn = dlg.querySelector('.la-save');
+  $('la-ok').addEventListener('click', () => saveBtn.click());
   const dateErr = $('la-date-err');
   let fixedWall = null;
   let fixedPlace = null; // a fixed place that is not in getWalls() (a 싱글피치 crag): its object, for the time bar (no hours)
@@ -209,6 +224,7 @@ export function createLogView({
   function drawSave() {
     const wall = sheetWall();
     saveBtn.disabled = !wall;
+    $('la-ok').disabled = !wall; // the ✓ in the title row is the same 저장
     saveBtn.textContent = wall ? `${wall} 저장` : '저장';
     needHint.hidden = Boolean(wall);
   }
@@ -540,7 +556,11 @@ export function createLogView({
         addFav(wall);
         toast(`${wall} ♥ 즐겨찾기에 추가했어요`);
       }, '♥ 추가');
-    } else toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽');
+    } else {
+      // the 공유 box was left off (the default): the record is on this device only. With the board on, one tap more can put a line on the wall's 타임라인 too (its form asks for the nickname when there is none)
+      const toBoard = config.boardUrl && !share ? { label: '타임라인에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
+      toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽', toBoard ? 5000 : 0, toBoard);
+    }
     // a failed share never undoes the record: it is already saved
     if (share) shareToBoard(share).then((r) => toast(r.ok ? '한 줄 타임라인에도 올렸어요' : `기록은 저장했어요. 타임라인에는 올리지 못했어요 — ${r.error}.`, null, '', 4000));
     if (level) {

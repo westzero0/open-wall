@@ -31,7 +31,7 @@ export function sceneLayout(m, at = null) {
       const t = (((at.getHours() + at.getMinutes() / 60 - 18) % 24) + 24) % 24 / 12;
       if (t <= 1) L.now = { x: r1(40 + 276 * t), y: r1(HY + 40 - 17 * Math.sin(Math.PI * t)) };
     }
-    L.labels.push({ x: 12, y: HY + 14, text: '해는 지평선 아래', anchor: 'start', cls: 'dim' });
+    L.labels.push({ x: 12, y: HY - 8, text: '해는 지평선 아래', anchor: 'start', cls: 'dim' }); // on the sky above the horizon line: under it the hour marks run and the two lines of text used to touch
     return L;
   }
   const h = m.sun.altitude ?? 90 * (1 - m.sun.radius);

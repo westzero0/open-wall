@@ -13,7 +13,7 @@ export function overviewSection(name, overview, kinds) {
   const list = (overview ?? []).map((p) => ({ src: `data/${p.src}`, credit: p.credit, date: p.date }));
   const canSend = Boolean(config.boardUrl);
   if (!list.length && !canSend) return null;
-  const send = (label, cls = 'ws-ask') => {
+  const send = (label, cls = 'ws-ask sub') => {
     const b = el('button', { type: 'button', class: cls }, label);
     b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: KIND, kinds } })));
     return b;

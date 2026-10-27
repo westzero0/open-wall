@@ -113,7 +113,7 @@ if (dlg) {
       default: return !!v('body'); // 운영시간, 기타
     }
   };
-  const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); f.elements.photo.disabled = busy; for (const b of thumbs.querySelectorAll('button')) b.disabled = busy; };
+  const refresh = () => { f.elements.send.disabled = busy || !hasContent(f.elements.kind.value); dlg.querySelector('#rp-ok').disabled = f.elements.send.disabled; /* the ✓ in the title row is the same 제보하기 */ f.elements.photo.disabled = busy; for (const b of thumbs.querySelectorAll('button')) b.disabled = busy; };
   // 루트 분포: pick the wall (좌측벽 …, or 벽 구분 없이), then the shared wall of holds counts that wall's routes; refresh runs on every tap
   routeWall = createSectionWall({ onChange: () => refresh() });
   dlg.querySelector('.rp-wall').append(routeWall.el);
@@ -183,6 +183,7 @@ if (dlg) {
   });
   dlg.addEventListener('close', () => { clearPicked(); clearEvidencePreview(); });
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close()); // no inline onclick: the CSP blocks it
+  dlg.querySelector('#rp-ok').addEventListener('click', () => f.elements.send.click());
 
   // 암장 사진: shrink in the browser (drops EXIF/GPS), then POST to the board Worker. No Google Form, no name or email.
   // Shrink + upload one picked file. Returns '' on success, else the message to show.

@@ -484,7 +484,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 @media (prefers-reduced-transparency: reduce) { .axis { background: var(--panel); backdrop-filter: none; -webkit-backdrop-filter: none; } }
 /* frosted chip over a photo (the time left, the sun mark): translucent white + blur where supported, the old opaque white elsewhere; only on a photo card */
 :root { --glass: rgb(255 255 255 / .95); --glass-blur: none; --glass-edge: none; }
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root { --glass: rgb(255 255 255 / .6); --glass-blur: blur(16px) saturate(180%); --glass-edge: inset 0 0 0 1px rgb(255 255 255 / .55), 0 2px 10px rgb(0 0 0 / .16); } }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root { --glass: rgb(255 255 255 / .84); --glass-blur: blur(8px) saturate(140%); --glass-edge: inset 0 0 0 1px rgb(255 255 255 / .3), 0 1px 4px rgb(0 0 0 / .12); } }
 @media (prefers-reduced-transparency: reduce) { :root { --glass: rgb(255 255 255 / .95); --glass-blur: none; --glass-edge: none; } }
 .axis .t, .axis .nowtag { position: absolute; transform: translateX(-50%); font-size: var(--fs-xs); }
 .axis .t { top: 3px; color: var(--fg); font-weight: 600; left: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)); }
@@ -500,7 +500,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
   display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: 32px; padding: 4px var(--pad);
   background: var(--sunken); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 600; color: var(--muted);
 }
-#group-open > .band { background: var(--surface); border-bottom: 0; /* opaque (it is sticky) but the board's own colour: one hairline under the axis, not a third band */ position: sticky; top: calc(var(--stick-h, 0px) + 1.625rem); z-index: var(--z-band); } /* "이 시각에 열려 있는 곳 · 남은 시간 순" stays under the time axis */
+#group-open > .band { min-height: 28px; padding-block: var(--sp-2); background: var(--surface); border-bottom: 0; /* opaque (it is sticky) but the board's own colour: one hairline under the axis, not a third band */ position: sticky; top: calc(var(--stick-h, 0px) + 1.625rem); z-index: var(--z-band); } /* "이 시각에 열려 있는 곳 · 남은 시간 순" stays under the time axis */
 summary.band { list-style: none; min-height: var(--tap); }
 summary.band::-webkit-details-marker { display: none; }
 summary.band > span:first-child::before { content: "▸"; display: inline-block; width: 1.1em; }
@@ -570,7 +570,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
    구름 only a hollow ring, so the rows that matter stand out. The ring around it is the row's own background (--rowbg), so a pressed row stays clean */
 :is(.row-btn, .crag-head):active { --rowbg: color-mix(in srgb, var(--fg) 6%, var(--surface)); }
 :is(.row, .crag-row).is-open :is(.row-btn, .crag-head) { --rowbg: rgb(255 255 255 / .9); }
-:is(.row, .crag-row):is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 22px; height: 22px; border-radius: 50%; background: var(--wg) center / 14px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
+:is(.row, .crag-row):is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--wg) center / 10px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
 :is(.row, .crag-row).veil { --wbg: var(--surface); --wring: inset 0 0 0 1.5px #66706a; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366706a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
 .row.windy { --wbg: #1f7a70; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 8a2.5 2.5 0 1 1 2 4H2'/%3E%3Cpath d='M12.8 19.6A2 2 0 1 0 14 16H2'/%3E%3C/svg%3E"); }
 :is(.row, .crag-row).wet { --wbg: #2f62b0; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%23fff'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
@@ -651,7 +651,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 :is(.row, .crag-row).has-photo.is-open { display: grid; grid-template-columns: minmax(0, 1fr); }
 :is(.row, .crag-row).has-photo.is-open > :is(.rhero, .row-btn, .crag-head) { grid-area: 1 / 1; }
 :is(.row, .crag-row).has-photo.is-open > :is(.expand, .crag-body) { grid-area: 2 / 1; }
-:is(.row, .crag-row).has-photo.is-open > .rhero { display: block; min-height: 230px; background: var(--off); }
+:is(.row, .crag-row).has-photo.is-open > .rhero { display: block; min-height: 280px; background: var(--off); }
 .rhero-track { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .rhero-track::-webkit-scrollbar { display: none; }
 .rhero-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; }
@@ -935,9 +935,26 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sunbox.sc .sb-head .dwhen { flex: 0 1 auto; display: grid; justify-items: start; gap: 0; text-align: left; }
 .sunbox.sc .sb-fig { width: calc(100% + 2 * var(--sp-14)); max-width: none; margin: var(--sp-8) calc(-1 * var(--sp-14)) 0; }
 .sunbox.sc .sun-scene { background: none; }
+/* the words above the picture (the weather row, the state chip, the sun's window): no box, the sky itself is slightly veiled behind them and the veil fades out into the picture, so the text reads and nothing has an edge. Light skies get a white veil, deep skies a dark one */
+.sunbox.sc { --sc-panel: rgb(255 255 255 / .55); }
+.sunbox.sc.k-night { --sc-panel: rgb(0 0 0 / .32); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sunbox.sc { --sc-panel: rgb(0 0 0 / .32); } }
+:root[data-theme="dark"] .sunbox.sc { --sc-panel: rgb(0 0 0 / .32); }
+.sunbox.sc .sb-sky { position: relative; isolation: isolate; }
+.sunbox.sc .sb-sky::before { content: ""; position: absolute; inset: 0 0 auto 0; height: calc(100% - 150px); min-height: 150px; z-index: -1; pointer-events: none; background: linear-gradient(to bottom, var(--sc-panel) 0, var(--sc-panel) 62%, transparent 100%); }
+.sunbox.sc .wx-box :is(.wxb-d, .wxb-obs, .wxb-hrs li) { opacity: 1; }
 .sunbox.sc .sb-ground { font-family: var(--font-serif); display: grid; gap: var(--sp-6); padding: var(--sp-8) var(--sp-14) var(--sp-12); background: var(--sc-ground); color: var(--sc-gtext); }
 .sunbox.sc .sb-ground :is(.dsent, .sun-veil, .sun-note, .sun-limit, summary) { color: inherit; }
 .sunbox.sc .sb-ground .sun-note { border-left-color: currentColor; }
+/* 계산 기준: a small ! beside the conclusion line instead of a row of its own (the words stay for screen readers; the body opens under the line) */
+.sunbox.sc .sb-ground { position: relative; }
+.sunbox.sc .sb-ground .dsent { padding-right: var(--sp-24); font-size: var(--fs-sm); line-height: 1.55; }
+.sunbox.sc .sun-why > summary { position: absolute; top: -4px; right: var(--sp-2); width: var(--tap); min-height: var(--tap); height: var(--tap); justify-content: center; gap: 0; font-size: 0; }
+.sunbox.sc .sun-why > summary::after, .sunbox.sc .sun-why[open] > summary::after { content: "!"; display: grid; place-items: center; width: 13px; height: 13px; border: 1.25px solid currentColor; border-radius: 50%; font: 700 .6875rem/1 var(--font); opacity: .85; }
+.sunbox.sc .sun-why[open] > summary::after { background: color-mix(in srgb, currentColor 22%, transparent); }
+/* 계산 기준 is a bubble over the picture, not a row: the card keeps its height and the rows below do not move */
+.sunbox.sc .sun-why .sun-limit { position: absolute; right: var(--sp-8); bottom: calc(100% + var(--sp-8)); z-index: 3; width: min(17rem, calc(100% - var(--sp-16))); padding: var(--sp-8) var(--sp-12); border-radius: var(--r-base); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); font-size: var(--fs-xs); line-height: 1.55; }
+.sunbox.sc .sun-why .sun-limit::after { content: ""; position: absolute; right: var(--sp-16); bottom: -5px; width: 10px; height: 10px; background: var(--surface); transform: rotate(45deg); } /* the bubble's tip points down at the ! */
 .sc-h0 { stop-color: var(--sc-halo); stop-opacity: .55; } .sc-h1 { stop-color: var(--sc-halo); stop-opacity: 0; }
 .sc-sun, .sc-moon { fill: var(--sc-sun); }
 .sc-ground { fill: var(--sc-ground); } .sc-band.a { fill: #000; opacity: .18; } .sc-band.b { fill: #fff; opacity: .14; }
@@ -1001,12 +1018,16 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .blog-row { display: flex; flex-wrap: wrap; gap: var(--sp-8); }
 .blog .btn { min-height: var(--tap); padding: 0 var(--sp-14); justify-content: center; font-size: var(--fs-md); font-weight: 500; white-space: nowrap; color: var(--fg); border: 1px solid var(--line-strong); background: transparent; border-radius: var(--r-base); }
 .blog-h { font-size: var(--fs-xs); color: var(--muted); }
-.blog-h b { color: var(--fg); font-weight: 600; margin-right: var(--sp-4); }
+.blog-h b { display: block; color: var(--fg); font-weight: 600; } /* the title, and under it the one-line note */
 .blog-list { list-style: none; margin: var(--sp-4) 0 0; padding: 0; }
 .blog-list[hidden] { display: none; }
 .blog-list a { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); min-height: var(--tap); padding: 0 var(--sp-2); color: var(--fg); text-decoration: none; border-top: 1px solid var(--hair); font-size: var(--fs-sm); }
 .blog-list .bt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .blog-list .bd { flex: none; font-size: var(--fs-xs); color: var(--muted); }
+.pf-go { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: var(--sp-4); color: var(--accent); vertical-align: -4px; }
+.pf-go::after { content: ""; position: absolute; inset: -12px; } /* taps like 44px */
+.pf-go svg { width: 16px; height: 16px; }
+.blog-list a svg { flex: none; width: 14px; height: 14px; margin-left: calc(var(--sp-4) * -1); color: var(--muted); } /* ↗: the link leaves the app */
 .blog-more { display: flex; align-items: center; min-height: var(--tap); width: 100%; padding: 0 var(--sp-2); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; }
 /* every "더 보기" fold ends in the same chevron: down when folded, up when open */
 .blog-more { justify-content: space-between; gap: var(--sp-8); }
@@ -1148,6 +1169,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .pfee caption { padding-bottom: var(--sp-4); color: var(--muted); font-weight: 600; text-align: left; caption-side: top; }
 .pfee th, .pfee td { padding: var(--sp-6); border-top: 1px solid var(--hair); font-weight: 400; text-align: center; font-variant-numeric: tabular-nums; }
 .pfee thead th, .pfee thead th.pf-note { color: var(--muted); font-size: var(--fs-xs); text-align: center; }
+.pfee thead th.pf-note { text-align: left; } /* the head sits over its left-aligned notes */
 .pfee tbody th { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 600; white-space: normal; min-width: 5.5em; max-width: 8.5em; }
 .pfee .pf-note { text-align: left; white-space: normal; min-width: 6em; color: var(--muted); font-size: var(--fs-xs); }
 .pfee .pf-flat { font-weight: 600; }
@@ -1265,6 +1287,7 @@ button.gear-link { width: 100%; border: 0; background: none; font: inherit; curs
 .sh-ok svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sh-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sh-ok:active { background: var(--sunken); }
+.sh-ok:disabled { opacity: .35; cursor: default; }
 .sh-head h2 { font-size: 1.125rem; }
 .sh-done { min-height: 44px; margin-right: -8px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--accent); font-weight: 600; white-space: nowrap; }
 /* the sheets that have their own save / send / quiz (기록 추가, 같이 가요, 클라이머 유형 테스트) end with a quiet 닫기; the others close with the title row's ✓ (app.js adds it) and have no button here */
@@ -1521,7 +1544,8 @@ dialog::backdrop { background: var(--scrim); }
 .help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-16); margin-top: var(--sp-12); } /* right-aligned and apart from the sun card above: the card's last, quiet line */
 .help-link { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 /* the two 제보 links under the card's buttons stay quiet: small, a pale underline (the tap area stays 44px) */
-.help-row .help-link { font-size: var(--fs-xs); text-decoration-color: var(--line-strong); }
+.help-row .help-link { display: inline-flex; align-items: center; gap: var(--sp-4); font-size: var(--fs-xs); text-decoration: none; } /* a small icon and the words, no underline: quiet, not a web link */
+.help-row .help-link svg { width: 14px; height: 14px; flex: none; }
 .rp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rp-status { min-height: 1.4em; margin: var(--sp-6) 0; font-size: var(--fs-sm); white-space: pre-line; }
 .rp-alt { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; white-space: nowrap; }
@@ -1709,11 +1733,11 @@ p.setnew { margin-top: var(--sp-8); }
 .photo-tools .icon-btn:is(:hover, .done) { color: inherit; }
 .photo-tools .icon-btn:focus-visible { outline: 2px solid currentColor; outline-offset: -6px; }
 /* the two actions under the photo (card-parts.js dock): 길찾기 in ink, 다녀왔어요 in the panel tone, 48px, no outline */
-.dock { display: flex; gap: var(--sp-6); margin-top: var(--sp-12); padding: var(--sp-4); border: 1px solid var(--hair); border-radius: calc(var(--r-base) + var(--sp-4)); background: var(--surface); box-shadow: var(--shadow-seg); } /* the pill hugs its buttons: padding 4 + the buttons' radius, a seg-level shadow */
+.dock { display: flex; gap: var(--sp-8); margin-top: var(--sp-12); padding: 0 var(--sp-12); } /* no pill around the two buttons (it was a card inside the card): they stand on their own, each with its own seg-level shadow */
 :is(.expand-in, .crag-body) .dock > :is(.dock-go, .been-btn) { flex: 1 1 0; min-width: 0; } /* halves (beats the stamp's flex:none) */
 .dock-go, :is(.expand-in, .crag-body) .dock .been-btn { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: 48px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-base); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; }
-.dock-go { background: var(--fg); color: var(--bg); }
-:is(.expand-in, .crag-body) .dock .been-btn { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg); } /* a quiet outline beside the one filled 길찾기 (the two used to be a black block next to a beige one) */
+.dock-go { background: var(--fg); color: var(--bg); box-shadow: var(--shadow-seg); }
+:is(.expand-in, .crag-body) .dock .been-btn { background: var(--surface); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); color: var(--fg); } /* a white button beside the one dark 길찾기; it covers the photo's foot it overlaps */
 :is(.expand-in, .crag-body) .dock .been-btn.done { background: var(--sunken); color: var(--fg); }
 :is(.expand-in, .crag-body) .dock .been-btn :is(svg, .been-stamp) { color: currentColor; }
 .dock :is(svg, .been-stamp) { width: 20px; height: 20px; flex: none; }
@@ -1735,8 +1759,21 @@ button.cchip { position: relative; cursor: pointer; }
 .cchip.warn { color: var(--warn); }
 .cchip.muted { color: var(--muted); }
 /* the line into the sheet (card-parts.js sheetLine): a hairline above, 48px */
-.sheet-line { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: 48px; margin-top: var(--sp-8); padding: 0; border: 0; border-top: 1px solid var(--hair); background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.sheet-line { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: 48px; margin-top: var(--sp-4); padding: 0; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .sheet-line b { flex: none; font-size: var(--fs-md); font-weight: 700; white-space: nowrap; }
+/* the line into the sheet is a row of two: the words with their › beside them, and the 한 줄 타임라인 pill at the right end (card-parts.js sheetLine / setBoardPill) */
+.sheet-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-8); margin-top: var(--sp-4); }
+.sheet-row .sheet-line { flex: 0 1 auto; width: auto; margin-top: 0; }
+.sheet-row .sheet-line i { margin-left: 0; }
+.board-pill { position: relative; flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-6); min-height: 36px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-pill); background: var(--sunken); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; }
+.board-pill::after { content: ""; position: absolute; inset: -4px 0; } /* looks 36px, taps like 44px */
+.board-pill svg { width: 16px; height: 16px; flex: none; }
+.board-pill i { font-style: normal; color: var(--muted); }
+.board-pill.new { color: var(--open); }
+.board-pill.new b { font-weight: 700; }
+.board-pill.none { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--muted); }
+.board-pill:active { transform: scale(.97); }
+.board-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sheet-line i { margin-left: auto; flex: none; font-style: normal; font-size: 1.375rem; line-height: 1; }
 .sheet-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; } /* the line has no side padding: the ring stands off the words */
 /* under a sun picture the two buttons are the card's foot, the wall's base: only the card's own colours (--sc-*), so every sky (lit, low, shade, night, dark) carries them */
@@ -1966,7 +2003,12 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .toast.on { opacity: 1; transform: none; pointer-events: auto; }
 .toast p { flex: 1; min-height: var(--tap); display: flex; align-items: center; }
 #toast-act { flex: none; min-height: var(--tap); padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--bg); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
-#toast-act:focus-visible { outline: 2px solid var(--bg); outline-offset: -2px; }
+/* two actions do not fit beside the words on a phone: the words take the first row, the two buttons the second, at the right */
+.toast:has(#toast-act2:not([hidden])) { flex-wrap: wrap; }
+.toast:has(#toast-act2:not([hidden])) p { flex: 1 1 100%; min-height: 0; padding: var(--sp-8) var(--sp-10) 0 0; }
+.toast:has(#toast-act2:not([hidden])) #toast-act { margin-left: auto; }
+#toast-act2 { flex: none; min-height: var(--tap); padding: 0 var(--sp-12); border: 0; border-radius: var(--r-md); background: none; color: var(--bg); font-weight: 600; white-space: nowrap; }
+#toast-act:focus-visible, #toast-act2:focus-visible { outline: 2px solid var(--bg); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; transform: none; } }
 @media (hover: hover) and (pointer: fine) { .lg-open:hover, .cal-day:hover, .cal-nav:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); } }
 
@@ -2148,10 +2190,14 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-sec-h { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); min-height: var(--tap); }
 .ws-sec-h h3 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
 .ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-10); color: var(--muted); font-size: var(--fs-xs); }
+.ws-chk-ask { position: relative; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; } /* a word in the check-date line, not a button of its own */
+.ws-chk-ask::after { content: ""; position: absolute; inset: -14px -8px; } /* taps like 44px */
 .ws-chk.end { margin: var(--sp-10) 0 0; text-align: right; } /* a section's check date: bottom right of its card */
 .ws-stale { margin: var(--sp-8) 0 0; color: var(--warn); font-size: var(--fs-xs); }
 .ws-empty { margin-top: var(--sp-6); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
 .ws-empty p { margin: 0; }
+.ws-ask.pri { background: var(--accent); color: var(--on-accent); }
+.ws-ask.sub { border-color: transparent; text-decoration: underline; text-underline-offset: 3px; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-info { display: grid; gap: var(--sp-8); } /* 외벽 제원 · 시설: its lists in one card */
 .ws-empty-sub { color: var(--muted); font-size: var(--fs-sm); }

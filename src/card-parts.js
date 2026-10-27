@@ -13,7 +13,8 @@
 //   reserveBand(r, …)  the 예약하기 band (예약 필수 when required), only with a reservation link
 //   chipBar(chips, …)  one line of chips from card-model `chips` [{kind, text, icon, tone, to}]
 import { el } from './dom.js';
-import { axisFrac, fmtMin } from './viewmodel.js';
+import { AXIS, axisFrac, fmtMin } from './viewmodel.js';
+import { countLabel } from './board-summary.js';
 
 export const axisX = (min) => `${axisFrac(min) * 100}%`;
 export const span = (cls, a, b) => {
@@ -29,7 +30,8 @@ export const capCls = (a, b, open) => `${open.some(([x]) => x === a) ? ' cap-l' 
 // The one bar of a wall's day, drawn the same in the list row and on the map card: green where open (grey once gone in the open card),
 // orange where it is sunny inside those hours, the pin at the picked time. `ahead` (a later day) has no pin.
 export function gaugeBar(bar) {
-  const tick = bar.ahead ? null : el('span', { class: 'tick' });
+  const onAxis = bar.nowMin >= AXIS[0] && bar.nowMin <= AXIS[1]; // before 06:00 the pin would stand on the axis' left end like a stray mark: no pin
+  const tick = bar.ahead || !onAxis ? null : el('span', { class: 'tick' });
   tick?.style.setProperty('left', axisX(bar.nowMin));
   return el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
     // past and to-come are one tone in the list: the pin says "now"; the two halves of a split interval meet square
@@ -49,7 +51,7 @@ export function gaugeEnds(bar) {
   const a = seg[0], b = seg[1];
   const short = b - a < 240; // under 4 hours the two labels would touch: one label over the stretch
   const box = el('span', { class: 'gauge-ends', 'aria-hidden': 'true' }, ...(short ? [el('span', {}, `${fmtMin(a)}–${fmtMin(b)}`)] : [el('span', {}, fmtMin(a)), el('span', {}, fmtMin(b))]));
-  box.style.paddingLeft = axisX(a);
+  box.style.paddingLeft = short ? `min(${axisX(a)}, calc(100% - 6.6em))` : axisX(a); // one label over the stretch: never past the bar's right end, even in big type
   box.style.paddingRight = `${(1 - axisFrac(b)) * 100}%`;
   return box;
 }
@@ -80,12 +82,30 @@ export function cameraBtn(name, { more = false, icon }) {
 // line, the dock over its foot), so the two cards read as one frame; only the height differs (style.css .ph-hero). camera / share may be null.
 export const placeholderHero = (m, camera, share) => el('div', { class: 'ph-hero' }, heroCap(m), camera, photoTools(share));
 
-// The line into the sheet: 암장 정보 자세히 and a ›, a hairline above, 48px (what is in the sheet is its tabs' business). onOpen(button) opens the wall sheet.
-export function sheetLine(name, onOpen) {
+// The line into the sheet, two parts: 암장 정보 자세히 › (the › right beside the words) and, at the right end, the wall's 한 줄 타임라인 as a pill (boardPill:
+// how many posts, whether one is new, or an invitation to write the first). 48px; what is in the sheet is its tabs' business. onOpen(button) opens the wall
+// sheet. board: { kind: 'has' | 'new' | 'none', n } or null (no pill: the board is off or the summary has not come); onBoard(button) opens it on its tab.
+// setBoardPill repaints the pill when the summary arrives or the board was read; `icon` draws the chat glyph.
+export function sheetLine(name, onOpen, { board = null, onBoard = null, icon = null } = {}) {
   const b = el('button', { type: 'button', class: 'sheet-line', 'data-sheet-open': '', 'data-name': name },
     el('b', {}, '암장 정보 자세히'), el('i', { 'aria-hidden': 'true' }, '›'));
   b.addEventListener('click', () => onOpen(b));
-  return b;
+  const row = el('div', { class: 'sheet-row', 'data-wall': name }, b);
+  setBoardPill(row, board, onBoard, icon);
+  return row;
+}
+export function setBoardPill(row, board, onBoard, icon) {
+  row.querySelector('.board-pill')?.remove();
+  if (!board || !onBoard) return;
+  const name = row.dataset.wall;
+  const text = board.kind === 'none' ? '첫 소식 남기기'
+    : board.kind === 'new' ? [`타임라인 ${countLabel(board.n)} · `, el('b', {}, '새 글')] : `타임라인 ${countLabel(board.n)}`;
+  const label = board.kind === 'none' ? `${name} 한 줄 타임라인, 첫 소식 남기기`
+    : `${name} 한 줄 타임라인 ${countLabel(board.n)}개${board.kind === 'new' ? ', 새 글 있음' : ''}`;
+  const pill = el('button', { type: 'button', class: `board-pill ${board.kind}`, 'aria-label': label },
+    icon ? icon('chat') : null, el('span', {}, ...(Array.isArray(text) ? text : [text])), el('i', { 'aria-hidden': 'true' }, '›'));
+  pill.addEventListener('click', () => onBoard(pill));
+  row.append(pill);
 }
 
 // The 예약 band under the dock: one full-width line, only for a place that takes reservations (card-model `reserve` {name, url, required}), nothing otherwise.

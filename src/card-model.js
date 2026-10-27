@@ -130,7 +130,7 @@ export function parkingFresh(parking, now) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(parking?.checked_at ?? '');
   if (!m) return { parkingChecked: null, parkingStale: false };
   const days = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
-  return { parkingChecked: `주차 확인일 ${parking.checked_at}`, parkingStale: days > PARKING_STALE_DAYS };
+  return { parkingChecked: `확인 ${parking.checked_at}`, parkingStale: days > PARKING_STALE_DAYS };
 }
 
 // ---- facts ----
@@ -297,7 +297,7 @@ export function feeTable(wall) {
       // anything else (3–4 groups, a weekday / weekend price in a group, a plain price beside them) keeps one row per group and who, ordered by who (성인 of every group first)
       const groupCols = f.groups?.length === 2 && !WHO.some(([k]) => f[k]) && f.groups.every((g) => WHO.every(([k]) => !g[k] || g[k].all !== undefined)) ? f.groups.map((g) => g.label) : null;
       const rows = groupCols
-        ? WHO.filter(([k]) => f.groups.some((g) => g[k])).map(([k, who]) => ({ who, cells: f.groups.map((g) => (g[k] ? won(g[k].all) : '-')) }))
+        ? WHO.filter(([k]) => f.groups.some((g) => g[k])).map(([k, who]) => ({ who, cells: f.groups.map((g) => (g[k] ? won(g[k].all) : '–')) }))
         // 대상 by 대상: 성인 (plain, then one row per 거주지: group = 관외, 관내), then 청소년 …; the who is written once, `dup` on the rows after it
         : WHO.flatMap(([k, who]) => {
           const list = [...whoRows({ [k]: f[k] }), ...(f.groups ?? []).flatMap((g) => whoRows({ [k]: g[k] }, '').map((r) => ({ ...r, who, group: g.label })))];
@@ -606,7 +606,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     ...noticeFresh(wall, now),
     stale: old.stale,
     staleNote: old.stale ? `⚠ 마지막 확인 ${old.label} · 운영시간이 바뀌었을 수 있어요` : null,
-    checked: wall.checked_at ? `정보 확인일 ${wall.checked_at}` : '정보 확인일 없음',
+    checked: wall.checked_at ? `확인 ${wall.checked_at}` : '확인일 없음',
     setting: settingText(wall.setting, ymd(now)),
     settingBadge: settingAfterVisit(wall.setting, visits) ? '방문 뒤 새 세팅' : settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
     settingBadgeShort: settingAfterVisit(wall.setting, visits) ? '새 세팅' : null, // the list row has little room: the short word (the full one is its title)

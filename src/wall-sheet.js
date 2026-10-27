@@ -137,6 +137,8 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   show(first);
   paint(first);
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
+  rep.textContent = '제보하기'; // measured with the full word first
+  rep.textContent = title.offsetHeight > parseFloat(getComputedStyle(title).lineHeight) * 1.5 ? '제보' : '제보하기'; // a name on two lines leaves the button less room: the short word
   title.focus();
   const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
   if (sec) {

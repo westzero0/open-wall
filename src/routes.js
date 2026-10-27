@@ -11,8 +11,10 @@ const totalOf = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 const VENUE_KO = { indoor: '실내', outdoor: '실외' };
 // a section's chip: its own name, with 실내/실외 in front unless the name already says it
 const sectionLabel = (w) => (w.venue && !w.name.includes(VENUE_KO[w.venue]) ? `${VENUE_KO[w.venue]} ${w.name}` : w.name);
+// '10a' → '5.10a' like the 5.8 이하 and 5.9 rows beside it (the other grade lists keep the short form)
+const fiveLabel = (g) => (/^1\d[a-d]$/.test(g) ? `5.${g}` : gradeLabel(g));
 const view = (key, label, counts, mine, venue = null) => {
-  const rows = barRows(counts).map((r) => ({ ...r, label: gradeLabel(r.grade), mine: inMyGrade(mine, r.grade) }));
+  const rows = barRows(counts).map((r) => ({ ...r, label: fiveLabel(r.grade), mine: inMyGrade(mine, r.grade) }));
   return { key, label, venue, total: totalOf(counts), mineTotal: rows.filter((r) => r.mine).reduce((a, r) => a + r.n, 0), rows };
 };
 

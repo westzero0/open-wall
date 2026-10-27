@@ -224,7 +224,7 @@ export function sunVerdict(wall, at) {
 }
 
 // The timetable axis runs 06:00–24:00.
-const AXIS = [360, 1440];
+export const AXIS = [360, 1440];
 export const axisFrac = (m) => (Math.min(Math.max(m, AXIS[0]), AXIS[1]) - AXIS[0]) / (AXIS[1] - AXIS[0]);
 
 // Open intervals cut at `nowMin` into [a, b, past] pieces on the axis; zero-width pieces are dropped.
