@@ -26,7 +26,7 @@ export function overviewSection(name, overview, kinds) {
     return el('section', { class: 'ws-sec empty ov-sec', 'aria-label': '전경', 'data-sec': 'overview' }, head,
       el('div', { class: 'ws-empty' },
         el('p', {}, '사진 한 장이면 루트 찾기가 쉬워져요'),
-        el('p', { class: 'ws-empty-sub' }, '벽 전체가 보이는 사진을 보내 주시면 다음에 오는\u00a0분이 루트를 더 빨리 찾아요.'),
+        el('p', { class: 'ws-empty-sub' }, '벽 전체가 나온 사진 한 장이면 다음에 오는\u00a0분이 루트를 더 빨리 찾아요.'),
         send('전경 사진 보내기')));
   }
   const open = el('button', { type: 'button', class: 'ov-photo', 'aria-label': `${name} 전경 사진 크게 보기` },

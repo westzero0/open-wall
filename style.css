@@ -850,6 +850,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .chip.rope { border: 1px solid var(--line-strong); background: transparent; font-weight: 600; white-space: nowrap; }
 .chip.rope.ok { color: var(--open); border-color: currentColor; }
 .chip.rope.short { color: var(--soon); border-color: currentColor; }
+.chip.rope svg { width: 12px; height: 12px; vertical-align: -2px; margin-right: var(--sp-4); } /* the ! of a rope too short */
 /* 길찾기 · 공지사항 · 전화 …: a flat strip like the list rows (hairlines, icon over word); 44px+ tall, a cell is the tap area */
 .linkbar { display: flex; flex-wrap: wrap; margin-top: var(--sp-12); border-block: 1px solid var(--hair); }
 .lb-item { flex: 1 1 0; min-width: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 48px; padding: var(--sp-8) var(--sp-4); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; text-decoration: none; text-align: center; transition: background-color var(--dur-press) var(--ease-out); }
@@ -996,7 +997,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .rfav { margin-right: -4px; color: var(--fav); text-shadow: 0 0 1px var(--fav-edge), 0 0 1px var(--fav-edge); font-size: var(--fs-xs); } /* the mark after a favorite's name in the list; [hidden] hides it */
 .m-info, .m-head { min-width: 0; }
 @media (min-width: 560px) and (max-width: 1023px) { /* wide: name/hours left, sun box right (compass above words), the rest under the name. Stops at 1023px: from 1024px the open card sits in the 460px list column and stacks like on a phone */
-  .m-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-24); align-items: start; margin-top: var(--sp-14); }
+  .m-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--sp-24); align-items: start; margin-top: var(--sp-20); }
   .m-cols .x-head { margin-top: 0; } /* top of the name = top of the sun box */
   .m-cols > .m-head { grid-column: 1; grid-row: 1; }
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
@@ -1056,11 +1057,13 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .fees table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
 .fees th, .fees td { padding: var(--sp-6) var(--sp-4); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .fees thead th { color: var(--muted); font-weight: 500; font-size: var(--fs-xs); }
-.fees thead th:first-child { width: 31%; }
-.fees tbody th { font-weight: 700; width: 31%; } /* wide enough that "일일이용권" and "(볼더링 +리드)" take two lines, not three */
+.fees thead th:first-child { width: 25%; }
+.fees thead th:nth-child(2) { width: 30%; } /* 대상 + 관외/관내 stay on one line, level with the prices */
+.fees tbody th { font-weight: 700; width: 25%; } /* wide enough that "일일이용권" and "(볼더링 +리드)" take two lines, not three */
 .fees .f-who { color: var(--muted); white-space: nowrap; }
-.fees .f-pg { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-4); } /* 대상 left, 거주지 (관외 / 관내) right-aligned */
-.fees .f-dup { color: transparent; user-select: none; } /* the 대상 repeated on the 2nd… 거주지 row: kept for a screen reader, not drawn */
+.fees .f-pg { position: relative; display: flex; flex-wrap: nowrap; justify-content: space-between; gap: var(--sp-4); } /* 대상 left, 거주지 (관외 / 관내) right-aligned */
+.fees .f-dup { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* screen-reader only */
+.fees .f-pg > :last-child { margin-left: auto; } /* 거주지 stays right even when the repeated 대상 (.f-dup, on the 2nd… row) is not drawn */
 .fees .f-won, .fees .f-all { text-align: center; white-space: nowrap; }
 .fees .f-all { text-align: center; }
 .fees thead th:nth-child(n+3) { text-align: center; }
@@ -1099,7 +1102,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
 .g-wrap { display: contents; }
 .g-trk { position: relative; display: block; flex: 1; min-width: 0; }
-.g-row.g-today { box-shadow: inset 2px 0 0 var(--accent); } /* today: a 2px edge and a bold label, no tinted box inside the card */
+.g-row.g-today { box-shadow: inset 2px 0 0 var(--accent); background: color-mix(in srgb, var(--open-past) 45%, transparent); } /* today: a 2px edge, a bold label and the same pale tint as the current season row under it */
 .g-row.g-today .g-lab { font-weight: 700; padding-left: var(--sp-8); } /* clear of the 2px edge */
 /* the week's bars are the list's bar (.bar .seg): 8px, the same radius and tones, the part before the time line paler with a 1px edge */
 .g-bar { position: absolute; bottom: 10px; height: 8px; border-radius: var(--r-sm); background: var(--open); z-index: 2; }
@@ -1115,7 +1118,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-closed.none { left: 0; font-weight: 400; color: var(--muted); background: none; }
 .g-txt { position: absolute; bottom: 20px; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface); font-size: var(--fs-xs); line-height: 1.25; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 4; } /* one line over its bar */
 .g-note { position: absolute; left: 0; max-width: 100%; bottom: 20px; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface); color: var(--muted); font-size: var(--fs-xs); line-height: 1.25; font-variant-numeric: tabular-nums; z-index: 4; } /* a quiet word or a short line over the bar, above the time line; it may wrap on large text */
-.s-row.cur .g-txt, .s-row.cur .g-note { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
+.s-row.cur .g-txt, .s-row.cur .g-note, .g-row.g-today .g-txt, .g-row.g-today .g-note { background: color-mix(in srgb, var(--open-past) 45%, var(--surface)); }
 .g-row.shut .g-bar, .g-row.shut .g-txt, .g-row.shut .g-sunon { opacity: .35; }
 /* 운영 중 양달: the open bar itself is orange there (the same as the list row: same place and height as .g-bar, square ends) */
 .g-sunon { position: absolute; bottom: 10px; height: 8px; border-radius: 0; background: var(--sun-bar); z-index: 3; }
@@ -1745,9 +1748,9 @@ p.setnew { margin-top: var(--sp-8); }
 .dock { display: flex; gap: var(--sp-8); margin-top: var(--sp-12); padding: 0 var(--sp-12); } /* no pill around the two buttons (it was a card inside the card): they stand on their own, each with its own seg-level shadow */
 :is(.expand-in, .crag-body) .dock > :is(.dock-go, .been-btn) { flex: 1 1 0; min-width: 0; } /* halves (beats the stamp's flex:none) */
 .dock-go, :is(.expand-in, .crag-body) .dock .been-btn { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: 48px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-base); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; }
-.dock-go { background: var(--fg); color: var(--bg); box-shadow: var(--shadow-seg); }
-:is(.expand-in, .crag-body) .dock .been-btn { background: var(--surface); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); color: var(--fg); } /* a white button beside the one dark 길찾기; it covers the photo's foot it overlaps */
-:is(.expand-in, .crag-body) .dock .been-btn.done { background: var(--sunken); color: var(--fg); }
+.dock-go { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-seg), inset 0 0 0 1.5px var(--fg); } /* the way there: white with a dark outline, below 다녀왔어요 in the order of the two */
+:is(.expand-in, .crag-body) .dock .been-btn { background: var(--accent); box-shadow: var(--shadow-seg); color: var(--on-accent); font-weight: 800; } /* the app's own action, the card's first: accent fill (the one coloured fill in the dock) */
+:is(.expand-in, .crag-body) .dock .been-btn.done { background: var(--sunken); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); color: var(--fg); font-weight: 700; } /* done: quiet again, the card has what it asked for */
 :is(.expand-in, .crag-body) .dock .been-btn :is(svg, .been-stamp) { color: currentColor; }
 .dock :is(svg, .been-stamp) { width: 20px; height: 20px; flex: none; }
 .dock .been-btn small { font-size: inherit; }
@@ -2700,8 +2703,13 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--muted); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat; cursor: pointer; } /* the browser's blue clear ✕ → a muted one */
 .fees .f-free { margin: 0; padding: var(--sp-6) 0; font-size: var(--fs-sm); }
 .fees .f-nb { white-space: nowrap; } /* a session's label and its hours each stay whole; the line breaks between them */
-html[data-text="xlarge"] .fees .f-won, html[data-text="xlarge"] .fees .f-all { white-space: normal; overflow-wrap: anywhere; } /* big type: let the amounts wrap instead of overflowing the fixed table */
-html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th:first-child { width: 30%; }
+html[data-text="xlarge"] .fees .f-all { white-space: normal; overflow-wrap: anywhere; } /* big type: a text cell wraps instead of overflowing the fixed table; an amount never breaks inside its digits */
+html[data-text="xlarge"] .fees thead th:nth-child(2) { width: 23%; }
+html[data-text="xlarge"] .fees td, html[data-text="xlarge"] .fees th { padding-left: var(--sp-2); padding-right: var(--sp-2); }
+html[data-text="xlarge"] .fees .f-won { font-size: var(--fs-xs); } /* the prices are the widest cells: one step down so 4,000원 fits two columns at 320px */
+html[data-text="xlarge"] .fees .f-pg { flex-direction: column; gap: 0; align-items: flex-start; } /* 대상 over 거주지 */
+html[data-text="xlarge"] .fees .f-pg > :last-child { margin-left: 0; }
+html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th:first-child { width: 20%; }
 .cal-share-sub { margin: 0 0 var(--sp-8); text-align: center; }
 .ms-nav { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); font-weight: 600; }
 .ms-nav .cal-nav:disabled { opacity: .3; }

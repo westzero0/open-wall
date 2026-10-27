@@ -280,7 +280,7 @@ function memoLines(memo) {
 const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g, ',')}원`);
 // A note is free text, so its prices may come without the unit ("1일 500 · 월 5,000"): add 원 to a comma-grouped number or one of 3+ digits,
 // unless a unit already follows (원 명 % 년 시 분 cm 개월 세 타임) or it is part of a time or range (15:00, 09~13).
-export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
+export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|-\d{2}-\d{2}|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
 // only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '-' when only one is known.

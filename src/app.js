@@ -1274,15 +1274,17 @@ function rowDetails(m, wall, at) {
 // The wall sheet (src/wall-sheet.js) is drawn from here: the hours grid, seasonal sun and fee table read the view state.
 // 이용 tab = 운영시간 · 요금 · 주차, each with its date and a 수정 요청 that opens the report sheet with the matching 종류;
 // a section with nothing to show asks for a report instead. 양달 tab = the seasonal sun (no tab for a wall without sun math).
+// an empty section's invitation: what is missing, and how little is enough (a low bar to answer)
+const EMPTY_ASK = { hours: ['운영시간을 아직 몰라요', '전화나 공지에서 본 시간 한 줄이면 충분해요.'], fees: ['입장 요금이 아직 비어 있어요', '아는 금액 하나만 알려 주셔도 돼요.'], parking: ['주차 정보가 아직 비어 있어요', '주차장 이름이나 요금 한 줄이면 충분해요.'] };
 function sheetSection(m, s, content) {
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
   const ask = config.reportEndpoint && s.kind && s.empty // (a computed section such as 계절별 양달 has no report kind); a filled section is reported from the tab's 제보하기
-    ? el('button', { type: 'button', class: 'ws-ask' }, '제보하기') : null;
+    ? el('button', { type: 'button', class: 'ws-ask', 'aria-label': `${s.title} 알려 주기` }, '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind, kinds: TAB_KINDS[s.kind === '운영시간' ? 'time' : 'use'] } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return el('section', { class: `ws-sec${s.empty ? ' empty' : ''}`, 'aria-label': s.title, 'data-sec': s.key },
     el('div', { class: 'ws-sec-h' }, el('h3', {}, s.title)),
-    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, '알고 계신 최신 정보가 있나요?'), ask) : content,
+    s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, EMPTY_ASK[s.key]?.[0] ?? '아직 정보가 없어요'), el('p', { class: 'ws-empty-sub' }, EMPTY_ASK[s.key]?.[1] ?? '아는 것 한 줄이면 충분해요.'), ask) : content,
     ...(s.empty || s.dated === false ? [] : s.key === 'parking' // the parking has its own date (or none): the hours' date says nothing about it
       ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, shortenDates(m.parkingChecked, ymd(new Date()))) : null]
       : [el('p', { class: 'ws-chk end' }, shortenDates(m.checked, ymd(new Date())), ...(s.key === 'hours' ? holidayAsk(m, content?.querySelector?.('.hgrid')?.dataset.holNone === '1') : []))]));
@@ -1314,9 +1316,9 @@ function routeEmpty(m, wall, withPhoto = false) {
   };
   const setLine = m.setting ? el('p', { class: 'ws-chk end' }, shortenDates(m.setting, ymd(new Date()))) : null; // 마지막 세팅 · 다음 예정
   return el('section', { class: 'ws-sec empty', 'aria-label': '루트', 'data-sec': 'routes' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '루트')),
-    el('div', { class: 'ws-empty' }, el('p', {}, '아직 제보된 루트가 없어요'),
-      el('p', { class: 'ws-empty-sub' }, withPhoto ? '루트 분포나 벽 전체가 보이는 사진을 알려 주세요.' : '가장 먼저 이 외벽의 루트 분포를 알려 주세요.'),
-      report('루트 분포', '루트 분포 제보하기'), withPhoto ? report('전경 사진', '전경 사진 보내기') : null), setLine);
+    el('div', { class: 'ws-empty' }, el('p', {}, '이 외벽의 루트는 아직 비어 있어요'),
+      el('p', { class: 'ws-empty-sub' }, withPhoto ? '루트 분포든 벽 전체 사진이든, 하나만 보내 주셔도 돼요.' : '대략 몇 개인지만 알려 주셔도 돼요.'),
+      report('루트 분포', '루트 분포 알려 주기'), withPhoto ? report('전경 사진', '전경 사진 보내기') : null), setLine);
 }
 function routeBars(m, wall) {
   const mine = loadMyGrade(storage); // 내 그레이드 (내 정보): its rows are drawn stronger and counted

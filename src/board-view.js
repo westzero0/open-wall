@@ -383,7 +383,7 @@ function build(wallName, mode, onOpenAll) {
     allBtn.textContent = allLabel(s.total);
     retryBtn.hidden = !(s.failed && !s.posts.length);
     if (s.failed) say('지금은 불러올 수 없어요');
-    else if (s.loaded && !s.posts.length) say('아직 글이 없어요. 첫 줄을 남겨 보세요.');
+    else if (s.loaded && !s.posts.length) say('아직 글이 없어요. 오늘 본 한 줄만 남겨 보세요.');
     else say('');
     if (s.refused) say('이 암장은 게시판이 없어요.');
     if (keep) list.querySelector(`[data-toggle="${keep}"]`)?.focus();
