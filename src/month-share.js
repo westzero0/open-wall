@@ -48,9 +48,9 @@ export function createMonthShare({ getWalls, icon = null, storage = safeStorage(
     }
   }
 
-  // the months with a record that have ended (this month's picture is not final), oldest first; the arrows step between them
+  // the months with a record, oldest first (this month's is a preview only: sharing waits for its end); the arrows step between them
   const months = () => [...new Set(ctx.log.map((r) => r.date.slice(0, 7)))].sort()
-    .map((k) => ({ year: +k.slice(0, 4), month: +k.slice(5, 7) })).filter((m) => canSaveMonth(m.year, m.month));
+    .map((k) => ({ year: +k.slice(0, 4), month: +k.slice(5, 7) }));
   const key = (m) => m.year * 12 + m.month;
   function show() {
     const ms = months();

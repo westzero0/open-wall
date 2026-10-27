@@ -867,15 +867,14 @@ export function createLogView({
       }
       panel.querySelector(`.cal-day[data-date="${focusDay}"]`)?.focus();
     });
-    // opens once last month has a record (the user has used the app for a month): the picture of the viewed month when it has ended and has
-    // records, else of last month. This month's picture is not final, so it is never offered.
+    // the picture of the viewed month when it has records (this month's is a preview only), else of last month when that has some
     const now = new Date();
     const last = shiftMonth(now.getFullYear(), now.getMonth() + 1, -1);
     const has = (m) => monthSummary(log, m.year, m.month).visits > 0;
-    const pic = canSaveMonth(view.year, view.month) && sum.visits ? view : last;
-    const ended = has(last);
-    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, `${pic.month}월 기록 그림 ›`);
-    shareBtn.addEventListener('click', () => monthShare.open({ log, year: pic.year, month: pic.month, from: shareBtn }));
+    const pic = sum.visits ? view : has(last) ? last : null;
+    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, pic ? `${pic.month}월 기록 그림${canSaveMonth(pic.year, pic.month) ? '' : ' 미리보기'} ›` : '');
+    if (pic) shareBtn.addEventListener('click', () => monthShare.open({ log, year: pic.year, month: pic.month, from: shareBtn }));
+    const ended = !!pic;
     const say = el('p', { class: 'sr-only', 'aria-live': 'polite' });
     if (monthSay) setTimeout(() => { say.textContent = monthSay; monthSay = ''; }, 50); // after the new region is in the page
     return el('section', { class: 'cal', 'aria-label': '기록 달력' },
