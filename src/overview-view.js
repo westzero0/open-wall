@@ -9,8 +9,11 @@ const KIND = '전경 사진';
 const mmdd = (d) => (/^\d{4}-\d\d-\d\d$/.test(d ?? '') ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '');
 
 /** overviewSection(name, overview, kinds) → a <section> or null. overview: the wall's `overview` list ([{ src, credit?, date? }]); kinds: the report sheet's tabs for this tab. */
+const listOf = (overview) => (overview ?? []).map((p) => ({ src: `data/${p.src}`, credit: p.credit, date: p.date }));
+const openAll = (name, list, canSend) => openGallery({ name, photos: list, index: 0, canSend, sendKind: KIND, sendLabel: '전경 사진 더 보내기', what: '전경 사진' });
+
 export function overviewSection(name, overview, kinds) {
-  const list = (overview ?? []).map((p) => ({ src: `data/${p.src}`, credit: p.credit, date: p.date }));
+  const list = listOf(overview);
   const canSend = Boolean(config.boardUrl);
   if (!list.length && !canSend) return null;
   const send = (label, cls = 'ws-ask sub') => {
@@ -29,7 +32,7 @@ export function overviewSection(name, overview, kinds) {
   const open = el('button', { type: 'button', class: 'ov-photo', 'aria-label': `${name} 전경 사진 크게 보기` },
     el('img', { src: list[0].src, alt: `${name} 전경`, decoding: 'async', loading: 'lazy' }),
     list.length > 1 ? el('span', { class: 'ov-n', 'aria-hidden': 'true' }, `1/${list.length}`) : null);
-  open.addEventListener('click', () => openGallery({ name, photos: list, index: 0, canSend, sendKind: KIND, sendLabel: '전경 사진 더 보내기', what: '전경 사진' }));
+  open.addEventListener('click', () => openAll(name, list, canSend));
   const c = list[0].credit;
   const who = c ? c.text.replace(/^사진 · /, '') : '';
   const credit = ['사진', who, mmdd(list[0].date)].filter(Boolean).join(' · ');

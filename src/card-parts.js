@@ -138,3 +138,10 @@ export function heroCap(m) {
   if (m.hoursOnGauge) return null;
   return el('div', { class: 'rhero-cap' }, m.suspended || m.state === 'unknown' ? null : el('small', {}, m.today.lead), el('b', { class: m.suspended ? 'susp-pill' : m.state === 'unknown' ? 'hero-note hero-unk' : 'hero-note' }, m.today.text));
 }
+
+// the card's ! (13px ring) with its bubble, the same .sun-why / .sun-limit as the sun box; `.inl` sits in a line of text instead of the picture's corner.
+// A tap elsewhere or Esc closes it (app.js). `label` names the button for screen readers.
+export function whyBubble(label, ...content) {
+  const d = el('details', { class: 'sun-why inl' }, el('summary', { 'aria-label': label }), el('div', { class: 'sun-limit' }, ...content));
+  return d;
+}

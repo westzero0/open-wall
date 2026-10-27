@@ -195,14 +195,15 @@ export function createLogView({
   const shareNickIn = $('la-share-nick');
   shareRow.hidden = !config.boardUrl;
   shareOn.addEventListener('change', () => {
-    shareBody.hidden = !shareOn.checked;
     $('la-memo-hint').textContent = shareOn.checked ? '체크하면 이 메모가 공개돼요' : '100자까지. 이 기기에만 저장돼요.';
     if (shareOn.checked) {
       moreBox.open = true; // the memo is what gets posted: show it
       const n = shareNick();
       shareNickIn.value = n.nick;
       shareNickIn.readOnly = n.locked;
-    }
+      shareBody.hidden = Boolean(n.nick); // a nickname already known fills in by itself: the field shows only without one
+      toast('게시판에 닉네임과 함께 공개돼요');
+    } else shareBody.hidden = true;
   });
 
   // chips: ♥ first, then the most recently logged (viewmodel.pickChips). Opened for a fixed wall: that wall, selected, not pressable.
@@ -657,7 +658,7 @@ export function createLogView({
     const names = getWalls().map((w) => w.name);
     const seal = (level) => rankStamp(level, rankUp);
     if (!log.length) return el('p', { class: 'lg-act-none' }, seal(-1), '다녀오면 도장이 찍혀요');
-    const { places, visits } = activityStats(log, names, today());
+    const { places } = activityStats(log, names, today());
     const { total, outside } = visitedCount(log, names);
     const rank = rankOf(places, total);
     const nextSay = rank.next ? `${rank.next.name}까지 ${rank.next.need}곳 더` : '모든 암장에 도장을 찍었어요';
@@ -678,7 +679,7 @@ export function createLogView({
         add),
       bar,
       el('p', { class: 'lg-bar-end', 'aria-hidden': 'true' }, el('span', {}, `${places}곳`), el('span', {}, rank.next ? `${rank.next.name} ${rank.next.at}곳` : rank.name)),
-      el('p', { class: 'lg-act-meta' }, `방문 ${visits}번${crowd ? ` · 혼잡도 제보 ${crowd}번` : ''}`),
+      crowd ? el('p', { class: 'lg-act-meta' }, `혼잡도 제보 ${crowd}번`) : null,
       outside ? el('small', {}, `지금 목록에 없는 ${outside}곳은 빠져요`) : null);
   }
 
@@ -876,10 +877,10 @@ export function createLogView({
         el('h3', { id: 'cal-title' }, grid.label),
         navBtn('다음 달', '›', 1, 'cal-next'),
         todayBtn),
-      el('p', { class: 'cal-sum' }, `${view.month}월 기록 ${sum.visits}번 · ${sum.walls}곳`),
       say, table,
       el('p', { class: 'cal-legend' }, '도장의 점은 그날 해의 위치 · ● 양달 ○ 응달'),
-      sum.visits ? shareBtn : null);
+      sum.visits ? shareBtn : null,
+      !dayShown ? el('p', { class: 'sh-hint cal-hint' }, '날짜를 누르면 그날 기록이 아래에 열려요') : null);
   }
 
   // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)
@@ -930,10 +931,14 @@ export function createLogView({
       future ? el('p', { class: 'sh-hint' }, '오늘 이후 날짜는 기록할 수 없어요.') : null);
   }
 
-  // 한 줄 요약: 실내 N회 (야외 M회 only while config.showOutdoorCount is on)
+  // 상단 요약 띠: 인공암벽 방문 · 이번 달 · 다녀온 곳 (야외 칸은 config.showOutdoorCount가 켜졌을 때만)
   function summary() {
     const { indoor, outdoor } = visitSplit(log, (n) => getWalls().find((w) => w.name === n)?.kind === 'crag');
-    return el('p', { class: 'lg-oneline' }, `인공암벽 ${indoor}회${config.showOutdoorCount ? ` · 야외 ${outdoor}회` : ''}`);
+    const month = monthSummary(log, now.getFullYear(), now.getMonth() + 1).visits;
+    const cells = [['인공암벽 방문', `${indoor}회`], ...(config.showOutdoorCount ? [['야외 방문', `${outdoor}회`]] : []), ['이번 달', `${month}회`], ['다녀온 곳', `${new Set(log.map((r) => r.wall)).size}곳`]];
+    const band = el('dl', { class: 'lg-band', 'aria-label': '기록 요약' }, ...cells.map(([k, v], i) => el('div', { class: i ? null : 'lead' }, el('dt', {}, k), el('dd', {}, v))));
+    band.style.setProperty('--n', String(cells.length));
+    return band;
   }
 
   // 암장별: the month in view, one row per wall (tap → the wall's card)
@@ -947,8 +952,7 @@ export function createLogView({
         const b = el('button', { type: 'button', class: 'lg-wrow' }, el('span', { class: 'lg-name' }, r.wall), el('span', { class: 'lg-wsub' }, `${r.count}회 · 마지막 ${p.month}/${p.day}`));
         b.addEventListener('click', () => reveal(r.wall));
         return el('li', {}, b);
-      })),
-      !dayShown ? el('p', { class: 'sh-hint' }, '날짜를 누르면 그날 기록이 아래에 열려요') : null);
+      })));
   }
 
   // a thumbnail of the strip opens its card; a card whose record is gone (a backup restored elsewhere) still opens, from what the thumbnail row knows

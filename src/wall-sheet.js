@@ -83,11 +83,21 @@ function make() {
   document.body.append(dlg);
 }
 
-// the head: the sun card's sky for this wall at the viewed time, the name, one line (region + 양달/응달 chip) and the ✓; the sun climbs to its place once, unless motion is reduced
-function paintHead(h) {
+const setSky = (h) => {
   sky.className = `sh-sky ${h?.tone ?? 'k-none'}`;
   sky.style.setProperty('--sun-t', String(h?.sunT ?? 0.5));
   sub.replaceChildren(...[h?.region, h?.chip && el('span', { class: 'sk-chip' }, h.chip)].filter(Boolean));
+};
+/** The time axis is being dragged: the sky, the sun and the chip follow it (the sun glides by CSS; no rise replay, no button changes). */
+export function updateWallHead(h) {
+  if (!dlg?.open) return;
+  const opening = sky.classList.contains('is-opening');
+  setSky(h);
+  if (opening) sky.classList.add('is-opening');
+}
+// the head: the sun card's sky for this wall at the viewed time, the name, one line (region + 양달/응달 chip) and the ✓; the sun climbs to its place once, unless motion is reduced
+function paintHead(h) {
+  setSky(h);
   ok.replaceChildren(...(h?.ok ? [h.ok] : []));
   rep.hidden = !h?.report;
   sky.classList.remove('is-opening');
