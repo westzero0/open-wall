@@ -5,7 +5,7 @@ import { fetchNational, fetchCrags, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
 import { config, boardOn } from './config.js';
 import { idByName, wallPageId } from './share-id.js';
-import { safeStorage } from './storage.js';
+import { safeStorage, getStr, setStr } from './storage.js';
 import { getJson, getText, postForm } from './remote.js';
 import { featureOn } from './stage.js';
 import { labCrag, withoutLab, LAB_NOTE } from './lab.js'; // 시범 스위치(?lab=crag)
@@ -18,7 +18,7 @@ import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, summaryParts, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
-import { cardModel, feeTable, feeWord, shortenDates } from './card-model.js';
+import { cardModel, entryFee, feeTable, feeWord, shortenDates } from './card-model.js';
 import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
@@ -46,7 +46,7 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 function setSub(at, extra = '') {
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
-import { axisX, cameraBtn, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, setBoardPill, sheetLine, span, whyBubble } from './card-parts.js';
+import { axisX, cameraBtn, goRow, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, setBoardPill, sheetLine, span, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -209,7 +209,7 @@ if (featureOn('climber')) {
     if (!ui.climberFirstDay) { ui.climberFirstDay = today; saveUi(); } // the first visit only notes the day; the intro card waits for a later one
     climberView = view.createClimberView({
       getOpenCount: () => liveOpenCount,
-      isCardDone: () => { try { return !climberCardDue(ui, today, !!test.loadClimber(localStorage).latest); } catch { return true; } }, // a blocked store: no card
+      isCardDone: () => { try { return !climberCardDue(ui, today, !!test.loadClimber(safeStorage()).latest); } catch { return true; } }, // a blocked store: no card
       setCardDone: () => { ui.climberCardDone = true; saveUi(); },
     });
   } catch { /* an older cached module or no network: the test stays off */ }
@@ -272,9 +272,9 @@ const LINK_ICON = { 길찾기: 'nav', '공지 보기': 'megaphone', 예약: 'cal
 const LINK_WORD = { '공지 보기': '공지' }; // the cell says the short word (the link's own label keeps the long one for the model and the picker)
 // 길찾기: the first tap asks which map app (the web cannot see what is installed); the pick is remembered, later taps open it directly.
 const NAV_KEY = 'open-wall:nav-app';
-const navPref = () => { try { return localStorage.getItem(NAV_KEY); } catch { return null; } };
+const navPref = () => getStr(NAV_KEY);
 function openNav(choice, copyText, nav, choices) {
-  try { localStorage.setItem(NAV_KEY, choice.id); } catch { /* private mode: asks again next time */ }
+  setStr(NAV_KEY, choice.id); // private mode: asks again next time
   window.open(choice.href, '_blank', 'noopener,noreferrer');
   if (copyText) navigator.clipboard?.writeText(copyText).catch(() => {});
   toast(`${choice.label} 열었어요${copyText ? ' · 주소도 복사했어요' : ''}`, nav ? () => pickNav(nav, choices, copyText) : null, nav ? '바꾸기' : null);
@@ -716,9 +716,14 @@ function timeLegend(blocks) {
 // 요금 tab: the table is drawn by fee-table-view.js (구분 / 대상 / 평일 / 휴일, or one column per 거주지); the 관리자 preview uses the same
 function feesBlock(wall) {
   const t = feeTable(wall);
-  if (t) return feeTableEl(t);
-  if (!wall.tags?.includes('무료')) return null; // the chip says 무료: the 입장 요금 card must not stay empty
-  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · 확인 ${shortenDates(wall.checked_at, ymd(new Date()))}`) : null));
+  const free = entryFee(wall) === '무료';
+  if (t) { // a free entrance that ends: the line above the table says until when, the table is what follows
+    const box = feeTableEl(t);
+    if (free && wall.free_until) box.prepend(el('p', { class: 'f-free' }, el('b', {}, '무료'), el('span', { class: 'f-note' }, ` · ${shortenDates(wall.free_until, ymd(new Date()))}까지`)));
+    return box;
+  }
+  if (!free) return null; // the chip says 무료: the 입장 요금 card must not stay empty
+  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.free_until ? el('span', { class: 'f-note' }, ` · ${shortenDates(wall.free_until, ymd(new Date()))}까지`) : wall.checked_at ? el('span', { class: 'f-note' }, ` · 확인 ${shortenDates(wall.checked_at, ymd(new Date()))}`) : null));
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -1087,9 +1092,8 @@ function gearRow(wall) {
   const near = nearGearOf(wall);
   const line = gearLine(near.info, near.sponsored);
   if (!line) return null;
-  const go = el('button', { type: 'button', class: 'pv pv-go' }, el('span', { class: 'pv-t' }, el('span', { class: 'gear-ic', 'aria-hidden': 'true' }, icon('gear')), line), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
-  go.addEventListener('click', () => openGearSheet(wall, near, go));
-  return el('div', { class: 'irow' }, el('span', { class: 'mk' }, '근처'), go);
+  const row = goRow('근처', [el('span', { class: 'gear-ic', 'aria-hidden': 'true' }, icon('gear')), line], null, () => openGearSheet(wall, near, row.querySelector('.pv-go')));
+  return row;
 }
 function openGearSheet(wall, near, opener) {
   const body = gearBody(near.info, near.sponsored, icon);
@@ -1488,7 +1492,7 @@ function visitLog(m) {
 const CROWD_SEND = crowdReady(config.crowdEndpoint, config.crowdFields);
 const CROWD_KEY = 'open-wall:crowd-sent';
 const crowd = { byWall: null, at: 0, busy: false };
-const readSent = () => { try { return JSON.parse(localStorage.getItem(CROWD_KEY) ?? 'null'); } catch { return null; } };
+const readSent = () => { try { return JSON.parse(getStr(CROWD_KEY) ?? 'null'); } catch { return null; } };
 // the sheet's question: null (not set up, no time, too old or in the future), canReport's {ok: false, reason, waitMin} (limit reached), 'ask'
 function crowdAsk(wall, date, time) {
   if (!CROWD_SEND || !time || !askable(date, time)) return null;
@@ -1590,7 +1594,7 @@ function weatherBox(m, wall, at) {
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
 async function sendCrowd(name, level, date, time) {
   const before = readSent();
-  const store = (v) => { try { localStorage.setItem(CROWD_KEY, JSON.stringify(v)); } catch { /* private mode: no limit */ } };
+  const store = (v) => { setStr(CROWD_KEY, JSON.stringify(v)); }; // private mode: no limit
   store(markSent(before, name, Date.now(), `${date} ${time}`));
   try {
     await postForm(config.crowdEndpoint, crowdPayload(config.crowdFields, name, level, `${date} ${time}`));

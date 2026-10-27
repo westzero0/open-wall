@@ -3,12 +3,13 @@ import { config } from './config.js';
 import { parseContributors } from './contrib.js';
 import { ymd } from './time.js';
 import { el } from './dom.js';
+import { getJson } from './remote.js';
 
 const box = document.getElementById('pfRank');
 if (box) {
   try {
-    const r = await fetch(config.data.contributors);
-    const c = r.ok ? parseContributors(await r.json(), ymd(new Date())) : null;
+    const j = await getJson(config.data.contributors);
+    const c = j ? parseContributors(j, ymd(new Date())) : null;
     if (c && c.rows.length) {
       const [, m, d] = c.until.split('-').map(Number);
       box.querySelector('.pf-rank-title').textContent = `이벤트 랭킹 · ${m}/${d}까지`;

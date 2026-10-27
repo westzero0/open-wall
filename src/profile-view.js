@@ -8,6 +8,7 @@ import { entryHref, externalOpenUrl } from './inapp.js';
 import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from './report.js';
 import { GRADES, gradeLabel } from './grades.js';
 import { loadMyGrade, saveMyGrade } from './my-grade.js';
+import { safeStorage, getStr, setStr, removeStr } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -36,7 +37,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   // 닉네임: the same open-wall:nick the report sheet uses; shown only while the report form has a nickname question.
   const mode = nickMode(config);
   const nickIn = $('pfNick');
-  const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  const readNick = () => { try { return loadNick(getStr(NICK_KEY)); } catch { return ''; } };
   let showNick = () => {}; // set below when the nickname row exists
   if (mode !== 'off') {
     $('pfNickRow').hidden = false;
@@ -47,7 +48,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     const commitNick = () => {
       const v = cleanNick(nickIn.value);
       nickIn.value = v;
-      try { v ? localStorage.setItem(NICK_KEY, v) : localStorage.removeItem(NICK_KEY); } catch { /* private mode: not remembered */ }
+      if (v) setStr(NICK_KEY, v); else removeStr(NICK_KEY); // private mode: not remembered
     };
     // While the ranking runs the nickname is saved by the button alone (a second press confirms: it cannot be changed afterwards),
     // never as a side effect of closing the sheet. Outside the ranking it is still saved on change / close.
@@ -94,7 +95,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   options(gFrom, '정하지 않음');
   options(gTo, '');
   const showGrade = () => {
-    let st = null; try { st = localStorage; } catch { /* blocked: nothing saved */ }
+    const st = safeStorage(); // blocked: nothing saved
     const r = st ? loadMyGrade(st) : null;
     gFrom.value = r?.from ?? '';
     gTo.value = r?.to ?? gTo.options[0].value;
@@ -102,7 +103,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
   };
   const commitGrade = () => {
     const from = gFrom.value;
-    try { saveMyGrade(localStorage, from ? { from, to: gTo.disabled ? from : gTo.value } : null); } catch { /* blocked: not remembered */ }
+    try { saveMyGrade(safeStorage(), from ? { from, to: gTo.disabled ? from : gTo.value } : null); } catch { /* blocked: not remembered */ }
     showGrade();
   };
 
@@ -111,7 +112,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     showGrade();
     form.elements.theme.value = getTheme();
     form.elements.textSize.value = getTextSize();
-    let store = null; try { store = localStorage; } catch { /* blocked: no backup date */ }
+    const store = safeStorage(); // blocked: no backup date
     status.textContent = backupLine(getLogCount(), loadBackupAt(store)); // the next export or import replaces it with its own message
     const how = currentInstallMode();
     $('pfInstallRow').hidden = how === 'none';

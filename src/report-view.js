@@ -7,6 +7,7 @@ import { searchPicks } from './viewmodel.js';
 import { createSectionWall } from './route-sections.js';
 import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, OVERVIEW_KIND, PHOTO_KIND, isPhotoKind, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { FIT_BYTES, MAX_NOTE, OVERVIEW_EDGE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
+import { getStr, setStr } from './storage.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -14,12 +15,12 @@ if (dlg) {
   const status = dlg.querySelector('.rp-status');
   const alt = dlg.querySelector('.rp-alt');
   const KEY = 'open-wall:report-ts';
-  const get = () => { try { return Number(localStorage.getItem(KEY)); } catch { return NaN; } };
-  const set = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode: no cooldown */ } };
+  const get = () => Number(getStr(KEY));
+  const set = () => { setStr(KEY, String(Date.now())); }; // private mode: no cooldown
   // 닉네임 field: shown only while config.reportNickEntry is set; the last nickname is kept on this device (open-wall:nick, cleaned on read).
   const mode = nickMode(config);
   const nickBox = dlg.querySelector('.rp-nick');
-  const readNick = () => { try { return loadNick(localStorage.getItem(NICK_KEY)); } catch { return ''; } };
+  const readNick = () => { try { return loadNick(getStr(NICK_KEY)); } catch { return ''; } };
   // A first nickname while the ranking runs cannot be changed afterwards: the first press says so, the second sends and saves it.
   let confirmedNick = '';
   const commitNick = (typed) => {
@@ -27,7 +28,7 @@ if (dlg) {
     if (c.confirm && confirmedNick !== c.nick) { confirmedNick = c.nick; say(nickConfirmText(c.nick)); return null; }
     return c;
   };
-  const saveNick = (v) => { try { localStorage.setItem(NICK_KEY, v); } catch { /* private mode: not remembered */ } };
+  const saveNick = (v) => { setStr(NICK_KEY, v); }; // private mode: not remembered
   if (mode !== 'off') {
     nickBox.hidden = false;
     nickBox.querySelector('.rp-nick-label').textContent = `닉네임 (${mode === 'required' ? '필수' : '선택'} · ${MAX_NICK}자까지)`;

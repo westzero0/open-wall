@@ -6,6 +6,7 @@
 //   remainPill(left)   "10시간" / "10시간 가능", "곧 마감", "3시간 뒤 휴게" (the closing time is the gauge's right end): the wording is picked by css width (.lf-s / .lf-l)
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
 //   dock(go, been)     the two actions under the photo: 길찾기 and 다녀왔어요
+//   goRow(mk, kids, …) a tappable info line (이름 칸 · 내용 · ›) that opens a sheet
 //   photoTools(…)      round buttons (share) in the photo's corner
 //   cameraBtn(…)       the camera that sends a photo (on a photo: one more; on the placeholder: the first)
 //   placeholderHero(…) the block that stands where a photo would: hours cap, camera (left), share (right), laid out as a photo card's foot (style.css --icon-row)
@@ -61,6 +62,14 @@ export function remainPill(left) {
   if (!left) return null;
   // the short wording is hidden from screen readers; the long one is always read (css only clips it on a narrow screen)
   return el('span', { class: 'lf-card' }, el('span', { class: 'lf-s', 'aria-hidden': 'true' }, left.short), el('span', { class: 'lf-l' }, left.long));
+}
+
+// 누르는 .irow (주차·근처·어프로치 줄): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳
+export function goRow(mk, kids, opens, onClick, label = null) {
+  const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
+    el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+  b.addEventListener('click', onClick);
+  return el('div', { class: 'irow' }, el('span', { class: 'mk' }, mk), b);
 }
 
 // The two actions under the photo, the same for every kind of place: [길찾기 | 다녀왔어요], side by side. Both buttons come ready-made (they belong to the

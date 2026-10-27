@@ -6,6 +6,7 @@ import { config, boardOn } from './config.js';
 import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
 import { MAX_BODY, MAX_NICK, PREVIEW, ageText, cleanBoardNick, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
+import { getStr, setStr } from './storage.js';
 
 export const COOLDOWN_MS = 20_000;
 const MAX_REPORTED = 200;
@@ -55,8 +56,8 @@ const sendIcon = () => {
 };
 
 const store = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage may be blocked */ } },
+  get: getStr,
+  set: (k, v) => { setStr(k, v); }, // storage may be blocked
 };
 const loadReported = () => { try { return cleanReported(JSON.parse(store.get(K_REP) || '[]')); } catch { return []; } };
 

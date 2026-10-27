@@ -3,6 +3,7 @@ import { MAX_MEMO, MAX_NAME, MAX_REGION, exportJson, keepGeo, mergeWalls, normal
 import { CSV_HEADERS, csvToWalls, parseCsv, wallToRow } from './csv.js';
 import { config } from './config.js';
 import { state, setWalls } from './state.js';
+import { getText } from './remote.js';
 
 const $ = (id) => document.getElementById(id);
 const DAY_HINT = '09:00-18:00 / 휴무 / 비움';
@@ -98,7 +99,7 @@ $('importFile').addEventListener('change', async (e) => {
 
 $('loadNational').addEventListener('click', async () => {
   try {
-    const list = parseJson(await (await fetch(config.data.walls)).text());
+    const list = parseJson(await getText(config.data.walls));
     const res = mergeWalls(state.walls, list, 'skip');
     setWalls(res.walls);
     report(res, [], '새 정보 보강'); // skip mode only fills what an existing wall lacks

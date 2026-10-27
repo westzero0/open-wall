@@ -20,6 +20,7 @@ import { createThumbCache, pickCta, renderStrip } from './poster-strip.js';
 import { canSaveMonth } from './record-image.js';
 import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
+import { getStr, setStr } from './storage.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, reconcileLog, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
@@ -1029,7 +1030,7 @@ export function createLogView({
 
   // one quiet line when a new step of the 기록 tab has opened for this person; 확인 remembers it (this browser only)
   const SEEN_KEY = 'open-wall:tiers-seen';
-  const seenTiers = () => { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY)) ?? []); } catch { return new Set(); } };
+  const seenTiers = () => { try { return new Set(JSON.parse(getStr(SEEN_KEY)) ?? []); } catch { return new Set(); } };
   function tierNote(tiers) {
     const seen = seenTiers();
     const t = log.length ? newTier(tiers, seen) : null;
@@ -1037,7 +1038,7 @@ export function createLogView({
     const ok = el('button', { type: 'button', class: 'lg-card-link' }, '확인');
     ok.addEventListener('click', () => {
       seen.add(t.id);
-      try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch { /* private mode: the note shows again next time */ }
+      setStr(SEEN_KEY, JSON.stringify([...seen])); // private mode: the note shows again next time
       render();
     });
     return el('p', { class: 'sh-hint', role: 'status' }, t.say, ' ', ok);

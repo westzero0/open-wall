@@ -283,14 +283,14 @@ const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g
 export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|-\d{2}-\d{2}|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
-// only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '-' when only one is known.
+// only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '–' when only one is known.
 // An item with only a note is one row (noteOnly). `split` false: every price is the same on weekdays and holidays. null without fees.
 export function feeTable(wall) {
   const fees = wall.fees ?? [];
   if (!fees.length) return null;
   const whoRows = (o, prefix = '') => WHO.filter(([k]) => o[k]).map(([k, who]) => (
     o[k].all !== undefined ? { who: prefix + who, all: won(o[k].all) }
-      : { who: prefix + who, weekday: o[k].weekday !== undefined ? won(o[k].weekday) : '-', weekend: o[k].weekend !== undefined ? won(o[k].weekend) : '-' }));
+      : { who: prefix + who, weekday: o[k].weekday !== undefined ? won(o[k].weekday) : '–', weekend: o[k].weekend !== undefined ? won(o[k].weekend) : '–' }));
   const items = fees.map((f) => {
       // groups (관외 / 관내 …): the same who rows with the group's label in front, under the one item
       // two groups priced the same way for every day (관외 | 관내): one row per who with a price under each group name (groupCols);
@@ -305,7 +305,7 @@ export function feeTable(wall) {
         });
       const noteOnly = !rows.length && !f.times;
       // the 부제 times as a row of their own under the prices, in the same weekday / weekend columns
-      if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '-', weekend: f.times.weekend ?? '-', times: true });
+      if (f.times) rows.push(f.times.all !== undefined ? { who: '시간', all: f.times.all, times: true } : { who: '시간', weekday: f.times.weekday ?? '–', weekend: f.times.weekend ?? '–', times: true });
       return { item: f.item, rows, note: withWon(f.note ?? null), noteOnly, groupCols };
   });
   // split: some price differs between weekday and weekend; without one the 휴일 column is dropped (one 요금 column)
@@ -313,16 +313,22 @@ export function feeTable(wall) {
   return { items, split, wide: split || items.some((it) => it.groupCols), discount: wall.discount || null };
 }
 
+/** The entrance fee as of `now`: '무료' | '유료' | null. A 무료 tag with a free_until date stops being 무료 the day after it (the fee table then speaks). */
+export function entryFee(wall, now = new Date()) {
+  const tag = (wall.tags ?? []).find(isFee) ?? null;
+  return tag === '무료' && wall.free_until && ymd(now) > wall.free_until ? '유료' : tag;
+}
+
 // One word of price for a pick on a weekend day: 무료, 성인 1,500원 (the first priced 성인 item: weekend, then all, then
 // weekday; a 0 won item such as a free lesson is skipped), 유료 when only the tag says so, else null.
-export function feeWord(wall) {
-  if (wall.tags?.includes('무료')) return '무료';
+export function feeWord(wall, now = new Date()) {
+  if (entryFee(wall, now) === '무료') return '무료';
   for (const f of wall.fees ?? []) {
     const adult = f.adult ?? f.groups?.[0]?.adult; // an item priced only per 거주지 (groups): its first group (the visitor's: 관외, 타시민) speaks
     const p = [adult?.weekend, adult?.all, adult?.weekday].find((n) => n > 0);
     if (p) return `성인 ${won(p)}`;
   }
-  return wall.tags?.includes('유료') ? '유료' : null;
+  return entryFee(wall, now) === '유료' ? '유료' : null;
 }
 
 // The memo sorted into what the expanded row draws. address: the 주소 line; sizes: 폭 (from "폭 30m") and
@@ -532,7 +538,7 @@ function specsOf(wall, rope, sizes, now) {
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
-  const fee = tags.find(isFee);
+  const fee = entryFee(wall, now);
   const basis = BASIS[wall.timeBasis] ?? null;
   const text = statusText(status, at, wall);
   const bar = status.state === 'unknown' || status.suspended ? null : barOf(wall, status, at); // no day bar for a wall that is shut

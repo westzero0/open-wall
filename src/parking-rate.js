@@ -53,6 +53,9 @@ export function pricedLots(parking) {
   return [...own, ...(parking?.lots ?? []).filter((l) => l.rate)];
 }
 
+// 하루 is a price only when the rule caps the day (day_max, day_flat, or tiers that reach 24h): else a 24h sum is no ceiling, '–'
+const hasDayCap = (r) => Number.isFinite(r.day_max) || Number.isFinite(r.day_flat) || (r.tiers ?? []).some((t) => t.upto >= 24 * 60);
+
 export const NOTE_MAX = 14; // a 비고 longer than this (characters) is told on a line of its own under the lot's row, not squeezed into the cell
 
 /** → [{ name, walk_min, cells: [text × TABLE_HOURS, 하루], note, free, first, step }] one row per priced lot for the sheet's table (TABLE_HOURS columns, then 하루) (a missing amount is '–'). */
@@ -69,7 +72,7 @@ export function lotFeeTable(parking, hours = DEFAULT_STAY_H) {
     // the rule's own words, so the table says how the amounts come about: head ("최초 30분", "10분당") and amount ("1,000원") apart; null when the rule has no such part
     first: l.rate?.first ? { head: `최초 ${span(l.rate.first.min)}`, cell: won(l.rate.first.won) } : null,
     step: l.rate?.step ? { head: `${span(l.rate.step.min)}당`, cell: won(l.rate.step.won) } : null,
-    cells: [...TABLE_HOURS.map((h) => text(feeAfter(l, h))), text(l.rate ? calcFee(l.rate, 24 * 60) : Number.isFinite(l.cost?.day) ? l.cost.day : null)],
+    cells: [...TABLE_HOURS.map((h) => text(feeAfter(l, h))), text(l.rate ? (hasDayCap(l.rate) ? calcFee(l.rate, 24 * 60) : null) : Number.isFinite(l.cost?.day) ? l.cost.day : null)],
     note: (l.rate?.conditions ?? []).join(' · '),
     flat: Number.isFinite(l.rate?.day_flat), // one price for any stay: the table merges its stay and 하루 cells
   }));

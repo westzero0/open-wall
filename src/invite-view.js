@@ -11,6 +11,7 @@ import { openIntervals } from './hours.js';
 import { toast } from './log-view.js';
 import { wallPageId } from './share-id.js';
 import { loadPledge } from './pledge.js';
+import { safeStorage } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
 const toMin = (hhmm) => {
@@ -18,7 +19,7 @@ const toMin = (hhmm) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
 
-const pledgeDay = () => { try { return loadPledge(localStorage); } catch { return null; } };
+const pledgeDay = () => { try { return loadPledge(safeStorage()); } catch { return null; } };
 
 /** createInviteView({ getWalls }) → { openInvite(name), banner(invite, wall) } */
 export function createInviteView({ getWalls }) {

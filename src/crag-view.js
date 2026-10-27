@@ -5,6 +5,7 @@
 // 안쪽은 외벽 클래스(.l1·.rname·.bar·.sunband…)를 쓰지만 li·머리 버튼에는 .row/.row-btn/.rows를 붙이지 않는다(외벽 JS가 그것을 잡는다;
 // style.css는 :is(.row, .crag-row)로 넓혀 같이 칠한다). DOM은 el()과 텍스트 노드만 쓴다.
 import { el } from './dom.js';
+import { goRow } from './card-parts.js';
 import { cragCard, cragModel, COND_HINT_NO_DRY, COND_NOTE, FAR_NOTE, GEAR_BASIS } from './crag-model.js';
 import { approachModel } from './crag-approach.js';
 import { routeSummary, routeLineText } from './crag-grades.js';
@@ -104,13 +105,6 @@ function gearRow(c, icon) {
   return chips.length ? el('p', { class: 'meta-row', title: GEAR_BASIS }, ...chips, el('span', { class: 'sr-only' }, ` (${GEAR_BASIS})`)) : null;
 }
 
-// 누르는 .irow(외벽 infoBlock의 주차 줄 마크업): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳
-function goRow(mk, kids, opens, onClick, label = null) {
-  const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
-    el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
-  b.addEventListener('click', onClick);
-  return el('div', { class: 'irow' }, el('span', { class: 'mk' }, mk), b);
-}
 
 // 루트 줄(칩 줄 바로 아래, 누르면 개념도·루트 시트): 루트표가 있으면 등급 요약(내 그레이드가 있으면 내 범위 개수), 개념도만 있으면 장수, 둘 다 없으면 줄 없음
 function routeRow(name, topo, mine, onOpenRoutes) {
