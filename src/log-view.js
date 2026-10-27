@@ -867,8 +867,15 @@ export function createLogView({
       }
       panel.querySelector(`.cal-day[data-date="${focusDay}"]`)?.focus();
     });
-    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, canSaveMonth(view.year, view.month) ? '이 달 그림으로 공유' : '이 달 그림 미리보기');
-    shareBtn.addEventListener('click', () => monthShare.open({ log, year: view.year, month: view.month, from: shareBtn }));
+    // opens once last month has a record (the user has used the app for a month): the picture of the viewed month when it has ended and has
+    // records, else of last month. This month's picture is not final, so it is never offered.
+    const now = new Date();
+    const last = shiftMonth(now.getFullYear(), now.getMonth() + 1, -1);
+    const has = (m) => monthSummary(log, m.year, m.month).visits > 0;
+    const pic = canSaveMonth(view.year, view.month) && sum.visits ? view : last;
+    const ended = has(last);
+    const shareBtn = el('button', { type: 'button', class: 'cal-share' }, `${pic.month}월 기록 그림 ›`);
+    shareBtn.addEventListener('click', () => monthShare.open({ log, year: pic.year, month: pic.month, from: shareBtn }));
     const say = el('p', { class: 'sr-only', 'aria-live': 'polite' });
     if (monthSay) setTimeout(() => { say.textContent = monthSay; monthSay = ''; }, 50); // after the new region is in the page
     return el('section', { class: 'cal', 'aria-label': '기록 달력' },
@@ -879,7 +886,8 @@ export function createLogView({
         todayBtn),
       say, table,
       el('p', { class: 'cal-legend' }, '도장의 점은 그날 해의 위치 · ● 양달 ○ 응달'),
-      sum.visits ? shareBtn : null,
+      ended ? shareBtn : null, // only a month that has ended and has records (this month's picture is not final)
+      ended ? el('p', { class: 'sh-hint cal-share-sub' }, '한 달 방문을 해 그림 한 장으로') : null,
       !dayShown ? el('p', { class: 'sh-hint cal-hint' }, '날짜를 누르면 그날 기록이 아래에 열려요') : null);
   }
 
@@ -920,8 +928,8 @@ export function createLogView({
             ? el('button', { type: 'button', class: 'lg-card', ...key, 'aria-label': label }, el('img', { class: 'lg-card-img', src: thumbCache.url(r.id, thumb), alt: '' })) // the height is CSS; the width follows the card's own shape
             : el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': label }, '카드'); // made, but no thumbnail (imported)
         } else if (r.id === ctaId) {
-          cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 해벽 만들기` },
-            '오늘의 해벽 만들기', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
+          cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 해벽 카드 만들기` },
+            '오늘의 해벽 카드 만들기 · 사진 한 장', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
         } else {
           card = el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': `${r.wall} ${day} 카드 만들기` }, '+ 카드'); // short on purpose: "카드 만들기" would leave a 320px phone too little room for the wall's name
         }

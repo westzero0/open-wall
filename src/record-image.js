@@ -49,69 +49,77 @@ export const TIP = R0 + LEN + RING + 18; // the farthest anything reaches
 const INSET = (6 * Math.PI) / 180; // the first and last day stand a little above the horizontal
 
 /** pointAt(day, dim, r) → [x, y]: the day on the half circle at radius r (day 1 at the left, the last day at the right). */
-export function pointAt(day, dim, r) {
+export function pointAt(day, dim, r, cy = CY) {
   const th = Math.PI - INSET - (Math.PI - 2 * INSET) * ((day - 1) / Math.max(1, dim - 1));
-  return [CX + r * Math.cos(th), CY - r * Math.sin(th)];
+  return [CX + r * Math.cos(th), cy - r * Math.sin(th)];
 }
 
 /** rays(dim, days) → one ray per day of the month: { day, x1, y1, x2, y2, lit, ring }. lit: the day was gone; ring: [x, y] beyond the tip when a wall was visited for the first time, else null. */
-export function rays(dim, days) {
+export function rays(dim, days, cy = CY) {
   const gone = new Map(days.map((d) => [d.day, d]));
   return Array.from({ length: dim }, (_, i) => {
     const day = i + 1;
     const v = gone.get(day);
-    const [x1, y1] = pointAt(day, dim, R0);
-    const [x2, y2] = pointAt(day, dim, R0 + LEN);
-    return { day, x1, y1, x2, y2, lit: !!v, ring: v?.first ? pointAt(day, dim, R0 + LEN + RING) : null };
+    const [x1, y1] = pointAt(day, dim, R0, cy);
+    const [x2, y2] = pointAt(day, dim, R0 + LEN, cy);
+    return { day, x1, y1, x2, y2, lit: !!v, ring: v?.first ? pointAt(day, dim, R0 + LEN + RING, cy) : null };
   });
 }
 
 const SUN = '#f4b942'; // the logo's sun: here the sun is the subject, so its colour is the data
 
-/** drawMonth(canvas, pic) — pic: monthPicture's result. */
-export async function drawMonth(canvas, pic) {
+// where things stand on each card shape (y of the lockup, the month line, the names, the rule, the credit); 9:16 is the one the picture was drawn for
+export const MONTH_LAYOUT = {
+  '9:16': { h: H, cy: CY, ly: 190, lh: 270, my: 570, nl: 1428, n1: 1472, rule: 1545, cr: 1594 },
+  '4:5': { h: 1350, cy: 840, ly: 60, lh: 160, my: 320, nl: 1150, n1: 1192, rule: 1262, cr: 1306 },
+};
+
+/** drawMonth(canvas, pic, ratio = '9:16') — pic: monthPicture's result; ratio: '9:16' | '4:5'. */
+export async function drawMonth(canvas, pic, ratio = '9:16') {
+  const L = MONTH_LAYOUT[ratio] ?? MONTH_LAYOUT['9:16'];
+  const cy = L.cy; // the foot of the sun on this shape
   await Promise.all(['300 200px', '400 40px', '600 52px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 0123 번곳 처음 간')));
   canvas.width = W;
-  canvas.height = H;
+  canvas.height = L.h;
   const g = canvas.getContext('2d');
   g.fillStyle = INK;
-  g.fillRect(0, 0, W, H);
+  g.fillRect(0, 0, W, L.h);
   const sign = await lockup();
-  if (sign) g.drawImage(sign, M, 190, (303 / 140) * 270, 270); // the brand's own lockup, same place and size as the invite
+  if (sign) g.drawImage(sign, M, L.ly, (303 / 140) * L.lh, L.lh); // the brand's own lockup, same place and size as the invite
   const dim = new Date(pic.year, pic.month, 0).getDate();
 
   g.textBaseline = 'alphabetic';
   g.textAlign = 'left';
   g.fillStyle = PAPER;
   g.font = `600 52px ${FONT}`;
-  g.fillText(`${pic.year}년 ${pic.month}월`, M, 570);
+  g.fillText(`${pic.year}년 ${pic.month}월`, M, L.my);
   g.fillStyle = MUTED;
   g.font = `400 32px ${FONT}`;
   g.textAlign = 'right';
-  g.fillText('처음 간 곳', W - M, 570);
-  g.globalAlpha = 0.9; g.strokeStyle = PAPER; g.lineWidth = 2.5; g.beginPath(); g.arc(W - M - g.measureText('처음 간 곳').width - 24, 561, 9, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+  g.fillText('처음 간 곳', W - M, L.my);
+  g.globalAlpha = 0.9; g.strokeStyle = PAPER; g.lineWidth = 2.5; g.beginPath(); g.arc(W - M - g.measureText('처음 간 곳').width - 24, L.my - 9, 9, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
 
   // a soft light behind the sun (the one gradient) and the sun itself: one plain half disc
-  const glow = g.createRadialGradient(CX, CY, 0, CX, CY, TIP);
+  const glow = g.createRadialGradient(CX, cy, 0, CX, cy, TIP);
   glow.addColorStop(0, 'rgba(244,185,66,0.32)'); glow.addColorStop(0.6, 'rgba(244,185,66,0.07)'); glow.addColorStop(1, 'rgba(244,185,66,0)');
-  g.save(); g.beginPath(); g.rect(0, 0, W, CY); g.clip(); g.fillStyle = glow; g.beginPath(); g.arc(CX, CY, TIP, 0, Math.PI * 2); g.fill(); g.restore();
+  g.save(); g.beginPath(); g.rect(0, 0, W, cy); g.clip(); g.fillStyle = glow; g.beginPath(); g.arc(CX, cy, TIP, 0, Math.PI * 2); g.fill(); g.restore();
   // the guide lines behind everything: thin rings and one thin spoke per day (Sundays a little stronger, so the weeks can be read)
   g.strokeStyle = PAPER;
-  for (let k = 1; k <= 5; k++) { g.globalAlpha = 0.1; g.lineWidth = 1.5; g.beginPath(); g.arc(CX, CY, R0 + (k * (TIP - R0)) / 5, Math.PI, Math.PI * 2); g.stroke(); }
+  for (let k = 1; k <= 5; k++) { g.globalAlpha = 0.1; g.lineWidth = 1.5; g.beginPath(); g.arc(CX, cy, R0 + (k * (TIP - R0)) / 5, Math.PI, Math.PI * 2); g.stroke(); }
   for (let d = 1; d <= dim; d++) {
     const sunday = new Date(pic.year, pic.month - 1, d).getDay() === 0;
-    const [x1, y1] = pointAt(d, dim, R0 - 6);
-    const [x2, y2] = pointAt(d, dim, TIP + 8);
+    const [x1, y1] = pointAt(d, dim, R0 - 6, cy);
+    const [x2, y2] = pointAt(d, dim, TIP + 8, cy);
     g.globalAlpha = sunday ? 0.22 : 0.08; g.lineWidth = sunday ? 2 : 1.5;
     g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
   }
   g.globalAlpha = 1;
   g.fillStyle = SUN;
-  g.beginPath(); g.arc(CX, CY, 110, Math.PI, Math.PI * 2); g.closePath(); g.fill();
+  g.beginPath(); g.arc(CX, cy, 110, Math.PI, Math.PI * 2); g.closePath(); g.fill();
 
   // a ray for every day: lit for a day that was gone, nearly out for one that was not; all the same round bar
   g.lineCap = 'round';
-  for (const r of rays(dim, pic.days)) {
+  for (const r of rays(dim, pic.days, cy)) {
     g.globalAlpha = r.lit ? 1 : 0.16;
     g.strokeStyle = r.lit ? SUN : PAPER;
     g.lineWidth = r.lit ? 8 : 4; // thin: the picture is drawn with fine lines
@@ -119,12 +127,12 @@ export async function drawMonth(canvas, pic) {
   }
   g.lineCap = 'butt';
   g.strokeStyle = PAPER; g.lineWidth = 2.5; g.globalAlpha = 0.9; // a small ring at the tip of a first visit
-  for (const r of rays(dim, pic.days)) if (r.ring) { g.beginPath(); g.arc(r.ring[0], r.ring[1], 9, 0, Math.PI * 2); g.stroke(); }
+  for (const r of rays(dim, pic.days, cy)) if (r.ring) { g.beginPath(); g.arc(r.ring[0], r.ring[1], 9, 0, Math.PI * 2); g.stroke(); }
   g.globalAlpha = 1;
   g.fillStyle = MUTED;
   g.font = `400 30px ${FONT}`;
   g.textAlign = 'center';
-  for (const d of [1, 5, 10, 15, 20, 25, 30, dim]) if (d === 1 || d === dim || d <= dim - 2) { const [x, y] = pointAt(d, dim, TIP + 56); g.fillText(String(d), x, y + 11); } // the guide's numbers
+  for (const d of [1, 5, 10, 15, 20, 25, 30, dim]) if (d === 1 || d === dim || d <= dim - 2) { const [x, y] = pointAt(d, dim, TIP + 56, cy); g.fillText(String(d), x, y + 11); } // the guide's numbers
 
   // the number of visits under the sun, then the walls
   const num = String(pic.visits);
@@ -134,7 +142,7 @@ export async function drawMonth(canvas, pic) {
   g.font = `300 62px ${FONT}`;
   const wUnit = g.measureText('번').width;
   const left = CX - (wNum + 12 + wUnit) / 2;
-  const base = CY + 180;
+  const base = cy + 180;
   g.textAlign = 'left';
   g.font = `300 200px ${FONT}`;
   g.fillText(num, left, base);
@@ -149,18 +157,18 @@ export async function drawMonth(canvas, pic) {
     g.textAlign = 'left';
     g.font = `400 32px ${FONT}`;
     g.fillStyle = MUTED;
-    g.fillText('이번 달 간 곳', M, 1428);
+    g.fillText('이번 달 간 곳', M, L.nl);
     g.font = `400 38px ${FONT}`;
     g.fillStyle = PAPER;
     const text = pic.names.map((n) => (n.count > 1 ? `${n.name} ×${n.count}` : n.name)).join(' · ');
-    wrapLines((t) => g.measureText(t).width, text, W - M * 2, 2).forEach((l, i) => g.fillText(l, M, 1472 + i * 42));
+    wrapLines((t) => g.measureText(t).width, text, W - M * 2, 2).forEach((l, i) => g.fillText(l, M, L.n1 + i * 42));
   }
 
   g.fillStyle = 'rgba(244,242,236,0.45)'; // the same hairline as the invite, with the credit alone
-  g.fillRect(M, 1545, W - M * 2, 3);
+  g.fillRect(M, L.rule, W - M * 2, 3);
   g.font = `400 34px ${FONT}`;
   g.fillStyle = MUTED;
   g.textAlign = 'right';
-  g.fillText('created by 바위타는 은설', W - M, 1594); // no date: the title says which month, and a date next to the credit reads as when 은설 made it
+  g.fillText('created by 바위타는 은설', W - M, L.cr); // no date: the title says which month, and a date next to the credit reads as when 은설 made it
   g.textAlign = 'left';
 }

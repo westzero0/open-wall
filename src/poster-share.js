@@ -60,13 +60,15 @@ export function createPosterShare({ getWalls, getLog = () => [], getWeather = as
   const zoomEl = $('ps-zoom');
   const centerBtn = $('ps-center');
   const domeBtn = $('ps-dome');
+  const domeWhy = $('ps-dome-why');
   const go = $('ps-share');
   const save = $('ps-save');
   const again = $('ps-again');
   const say = $('ps-say');
   const live = $('ps-live');
   const ratioBtns = { '4:5': $('ps-ratio-45'), '9:16': $('ps-ratio-916') };
-  if (icon) go.append(icon('share'));
+  const pickSay = (t, name = 'camera') => { pickBtn.setAttribute('aria-label', t); pickBtn.title = t; if (icon) pickBtn.replaceChildren(icon(name)); }; // with a photo the camera wears a swap mark
+  if (icon) { pickBtn.append(icon('camera')); save.prepend(icon('download')); go.prepend(icon('share')); }
   line.setAttribute('maxlength', String(MAX_LINE));
   let ctx = null; // { record, wall, weather }
   let bitmap = null;
@@ -96,6 +98,8 @@ export function createPosterShare({ getWalls, getLog = () => [], getWeather = as
     canvas.hidden = view;
     img.hidden = !view;
     tools.hidden = view;
+    line.hidden = view;
+    pickBtn.hidden = view;
     zoomRow.hidden = view;
     again.hidden = !view;
   };
@@ -104,7 +108,7 @@ export function createPosterShare({ getWalls, getLog = () => [], getWeather = as
   const announce = (msg) => { flip = !flip; live.textContent = msg + (flip ? '​' : ''); };
   const syncControls = () => {
     for (const [r, b] of Object.entries(ratioBtns)) b.setAttribute('aria-pressed', String(r === ratio));
-    domeBtn.setAttribute('aria-pressed', String(dome === 'on'));
+    domeBtn.setAttribute('aria-pressed', String(dome === 'on' && !domeBtn.disabled));
     zoomEl.disabled = centerBtn.disabled = !bitmap;
     zoomEl.value = String(zoom);
     canvas.classList.toggle('can-drag', !!bitmap);
@@ -238,7 +242,7 @@ export function createPosterShare({ getWalls, getLog = () => [], getWeather = as
       bitmap = b;
       focus = { x: 0.5, y: 0.5 };
       zoom = MIN_ZOOM;
-      pickBtn.textContent = '다른 사진 고르기';
+      pickSay('다른 사진 고르기', 'camera-swap');
       syncControls();
       redraw();
     } catch {
@@ -359,12 +363,15 @@ export function createPosterShare({ getWalls, getLog = () => [], getWeather = as
       from = opener;
       bitmap = null;
       line.value = '';
-      pickBtn.textContent = '사진 고르기';
+      pickSay('사진 고르기');
       ratio = loadRatio(storage);
       dome = loadDome(storage);
       focus = { x: 0.5, y: 0.5 };
       zoom = MIN_ZOOM;
-      domeBtn.hidden = !picture().arc; // no sun to show for this record: no switch for it
+      const pic = picture();
+      domeBtn.disabled = !pic.arc; // no sun to show for this record: the switch stays, off, and says why
+      domeWhy.textContent = pic.arc ? '' : pic.hour == null ? '방문 시각을 넣으면 해의 길을 보여 줘요.' : pic.sunLine?.includes('해가 없는') ? '밤에는 해가 없어서 해의 길이 없어요.' : '이 암장은 해의 위치를 알 수 없어요.';
+      domeWhy.hidden = !!pic.arc;
       syncControls();
       say.textContent = '';
       live.textContent = '';
