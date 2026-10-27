@@ -7,7 +7,7 @@ import { wallPosition } from '../src/viewmodel.js';
 import { pictureBlob, saveFile, shareInvite, shareSay } from '../src/share-image.js';
 import { DAY_KO } from '../src/time.js';
 import { drawNoticeCard } from './card.js';
-import { CLOSINGS, KINDS, REASON_CHIPS, STATUSES, buildNotice, holidayCandidates } from './model.js';
+import { CLOSINGS, DEFAULT_ZONES, KINDS, REASON_CHIPS, STATUSES, ZONE_PRESETS, ZONE_REASONS, buildNotice, holidayCandidates } from './model.js';
 import { reflect, reflectReady } from './reflect.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +22,7 @@ const now = new Date();
 const todayStr = () => `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
 const nowHHMM = () => `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
 const st = {
-  wall: '', kind: 'today', status: null, date: '', at: '', until: '', alts: [], month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
+  wall: '', kind: 'today', status: null, date: '', at: '', until: '', alts: [], zones: [], zoneAll: [], timed: false, month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
   dates: [], reasons: {}, reason: '', open: '10:00', close: '16:00', note: '',
   closing: 'formal', sign: '', accent: '#0a7fc8',
 };
@@ -41,8 +41,10 @@ function loadPrefs() {
   const p = store.get(prefKey());
   if (p) Object.assign(st, { closing: p.closing ?? st.closing, sign: p.sign ?? '', accent: p.accent ?? st.accent });
   else Object.assign(st, { sign: '' });
+  st.zoneAll = Array.isArray(p?.zoneAll) && p.zoneAll.length ? p.zoneAll : [...(ZONE_PRESETS[st.wall] ?? DEFAULT_ZONES)];
+  st.zones = [];
 }
-const savePrefs = () => store.set(prefKey(), { closing: st.closing, sign: st.sign, accent: st.accent });
+const savePrefs = () => store.set(prefKey(), { closing: st.closing, sign: st.sign, accent: st.accent, zoneAll: st.zoneAll });
 
 // 월별 공휴일 휴관: 이 외벽이 공휴일에 쉬는 곳('closed')이면 그 달의 공휴일을 미리 체크해 둔다.
 function autoFill() {
@@ -81,8 +83,10 @@ function renderForm() {
   $('kinds').querySelectorAll('input').forEach((i) => { i.checked = i.value === st.kind; });
   $('todaySec').hidden = st.kind !== 'today';
   $('calSec').hidden = st.kind === 'today';
+  $('zoneSec').hidden = st.kind !== 'zone';
   $('reasonBox').hidden = st.kind === 'holiday' || st.kind === 'today';
-  $('hoursBox').hidden = st.kind !== 'hours';
+  $('hoursBox').hidden = !(st.kind === 'hours' || (st.kind === 'zone' && st.timed));
+  $('timed').checked = st.timed;
   $('reason').value = st.reason;
   $('open').value = st.open;
   $('close').value = st.close;
@@ -95,10 +99,34 @@ function renderForm() {
     ? (closed === 'closed' ? '이 외벽은 공휴일에 쉬는 곳으로 등록돼 있어서, 이 달의 공휴일을 미리 골라 뒀어요. 틀린 날은 눌러서 빼 주세요.'
       : '이 달의 공휴일(색 표시)을 눌러 휴관일을 골라 주세요. 쉬지 않는 날은 고르지 마세요.')
     : '쉬는 날(또는 시간이 바뀌는 날)을 눌러 고르세요. 여러 날, 여러 달도 돼요.';
-  $('chips').replaceChildren(...REASON_CHIPS.map((r) => Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: r, onclick: () => { st.reason = r; $('reason').value = r; update(); } })));
+  $('chips').replaceChildren(...(st.kind === 'zone' ? ZONE_REASONS : REASON_CHIPS).map((r) => Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: r, onclick: () => { st.reason = r; $('reason').value = r; update(); } })));
   renderStatus();
   renderUntil();
+  renderZones();
   renderCalendar();
+}
+
+function renderZones() {
+  $('zoneChips').replaceChildren(...st.zoneAll.map((z) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip zone';
+    b.textContent = z;
+    b.setAttribute('aria-pressed', String(st.zones.includes(z)));
+    b.onclick = () => { const i = st.zones.indexOf(z); if (i >= 0) st.zones.splice(i, 1); else st.zones.push(z); renderZones(); update(); };
+    return b;
+  }));
+}
+
+function addZone() {
+  const v = $('zoneNew').value.trim().slice(0, 20);
+  if (!v) return;
+  if (!st.zoneAll.includes(v)) st.zoneAll.push(v);
+  if (!st.zones.includes(v)) st.zones.push(v);
+  $('zoneNew').value = '';
+  savePrefs();
+  renderZones();
+  update();
 }
 
 function renderStatus() {
@@ -227,6 +255,7 @@ async function update() {
   $('reflectBtn').disabled = !n.ok || !reflectReady();
   $('reflectNote').textContent = reflectReady() ? '' : '해벽 반영은 아직 서버가 연결되지 않아서 꺼져 있어요. 반영될 내용만 미리 보여 드려요.';
   $('hoursNote').hidden = st.kind !== 'hours';
+  $('zoneNote').hidden = st.kind !== 'zone';
   const canvas = $('card');
   await drawNoticeCard(canvas, n, { accent: st.accent });
   if (mine !== token) return;
@@ -237,7 +266,7 @@ let timer;
 const later = () => { clearTimeout(timer); timer = setTimeout(update, 80); };
 
 function bind() {
-  $('kinds').addEventListener('change', (e) => { st.kind = e.target.value; if (st.kind === 'holiday') autoFill(); else st.dates = []; renderForm(); update(); checkWeather(); });
+  $('kinds').addEventListener('change', (e) => { st.kind = e.target.value; st.month = monthOf(new Date(now.getFullYear(), now.getMonth() + (st.kind === 'holiday' ? 1 : 0), 1)); /* 공휴일 공지는 다음 달, 임시·점검은 이번 달부터 */ if (st.kind === 'holiday') autoFill(); else st.dates = []; renderForm(); update(); checkWeather(); });
   $('prev').onclick = () => shiftMonth(-1);
   $('next').onclick = () => shiftMonth(1);
   $('cal').addEventListener('click', (e) => {
@@ -248,6 +277,9 @@ function bind() {
     renderCalendar();
     update();
   });
+  $('zoneAdd').onclick = addZone;
+  $('zoneNew').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addZone(); } };
+  $('timed').onchange = (e) => { st.timed = e.target.checked; renderForm(); update(); };
   $('until').oninput = (e) => { st.until = e.target.value; renderUntil(); later(); };
   $('reason').oninput = (e) => { st.reason = e.target.value; later(); };
   $('open').oninput = (e) => { st.open = e.target.value; later(); };

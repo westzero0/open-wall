@@ -40,6 +40,7 @@
     .day.on small, .day.on.sun span { color:#ffd3cc; }
     .hint { color:var(--muted); font-size:.85rem; margin:8px 0 0; }
     .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .chip.zone[aria-pressed=true] { background:var(--ink); color:#fff; border-color:var(--ink); }
     .chip { font:inherit; font-size:.85rem; padding:4px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; cursor:pointer; }
     .status { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
     .sbtn { font:inherit; font-weight:700; font-size:1.05rem; min-height:72px; padding:10px; border:3px solid var(--c); border-radius:14px; background:#fff; color:var(--c); cursor:pointer; }
@@ -74,11 +75,11 @@
         <p class="note" id="lockNote" hidden>이 링크는 이 외벽 전용이에요.</p>
       </section>
       <section>
-        <h2>1. 공지 종류</h2>
+        <h2>공지 종류</h2>
         <div class="radios" id="kinds"></div>
       </section>
       <section id="todaySec">
-        <h2>2. 지금 상태</h2>
+        <h2>지금 상태</h2>
         <div id="wxHint" class="wx" hidden></div>
         <div id="statusBtns" class="status"></div>
         <div id="untilBox" hidden>
@@ -95,14 +96,21 @@
         <p class="note" id="qSay"></p>
         <p class="note">누른 시각이 "○○시 기준"으로 들어가요. 마감은 정한 시각까지만 유효하고, 그 전에 자리가 나면 "다시 이용 가능"을 눌러 풀어요.</p>
       </section>
+      <section id="zoneSec" hidden>
+        <h2>제한할 구역</h2>
+        <div class="chips" id="zoneChips"></div>
+        <div class="row" style="margin-top:10px"><input type="text" id="zoneNew" maxlength="20" placeholder="구역 이름 추가 (예: 볼더링벽)" aria-label="구역 이름 추가"><button class="btn ghost" type="button" id="zoneAdd" style="flex:0 0 auto">추가</button></div>
+        <label style="margin-top:10px"><input type="checkbox" id="timed"> 시간을 정해서 제한 (아니면 종일)</label>
+        <p class="note" id="zoneNote" hidden>해벽에 구역별 제한을 반영하려면 데이터 형식을 넓혀야 해요(지금은 미리보기만).</p>
+      </section>
       <section id="calSec">
-        <h2>2. 날짜</h2>
+        <h2>날짜</h2>
         <div class="cal-head"><button type="button" id="prev" aria-label="이전 달">‹</button><strong id="monthLabel"></strong><button type="button" id="next" aria-label="다음 달">›</button></div>
         <div id="cal"></div>
         <p class="hint" id="calHint"></p>
       </section>
       <section id="contentSec">
-        <h2>3. 내용</h2>
+        <h2>내용</h2>
         <div id="reasonBox" hidden>
           <label>사유<input type="text" id="reason" maxlength="30" placeholder="예: 기상 악화"></label>
           <div class="chips" id="chips"></div>

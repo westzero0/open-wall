@@ -8,6 +8,7 @@ export const KINDS = {
   holiday: { label: '월별 공휴일 휴관', head: '휴관안내', tag: '휴관안내' },
   temp: { label: '임시휴무', head: '임시휴무', tag: '임시휴무' },
   hours: { label: '운영시간 변경·단축운영', head: '운영시간 변경', tag: '운영시간변경' },
+  zone: { label: '점검·세팅 (구역 이용 제한)', head: '이용제한', tag: '구역이용제한' },
 };
 
 // 맺음말 문체: 공단·공공시설은 격식체, 민간은 부드러운 말투. 은평인공암벽장 공지를 본뜬 formal 이 기본.
@@ -18,6 +19,7 @@ export const CLOSINGS = {
     temp: ['해당일에는 암벽장 이용이 불가하오니, 착오 없으시길 바랍니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
     hours: ['해당일에는 변경된 시간에 맞춰 이용해 주시기 바랍니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
     today: ['상황이 바뀌면 다시 안내드리겠습니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
+    zone: ['해당 구역은 위 일시 동안 이용이 제한되오니 양해 부탁드립니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
   },
   friendly: {
     label: '부드러운 말투',
@@ -25,6 +27,7 @@ export const CLOSINGS = {
     temp: ['이날은 문을 닫아요. 헛걸음하지 않도록 미리 알려드려요.', '불편을 드려 죄송해요!'],
     hours: ['이날은 운영시간이 달라요. 방문 전에 꼭 확인해 주세요 :)', '불편을 드려 죄송해요!'],
     today: ['상황이 바뀌면 바로 다시 알려드릴게요.', '헛걸음 없으시길 바라요!'],
+    zone: ['이 구역은 위 시간에 쉬어가요. 양해 부탁드려요!', '불편을 드려 죄송해요.'],
   },
 };
 
@@ -37,6 +40,14 @@ export const STATUSES = {
   wind: { label: '강풍으로 이용 불가', short: '강풍 이용 불가', badge: '강풍', tone: '#d98a00', line: (u) => `강풍으로 안전을 위해 ${u ? `${u}까지` : '현재'} 이용을 제한합니다.`, alt: true, timed: true },
   full: { label: '정원 초과 · 마감', short: '마감', badge: '마감', tone: '#c0392b', line: (u) => `현장 정원이 차서 ${u ? `${u}까지` : '오늘'} 이용이 마감되었습니다.`, alt: true, timed: true },
 };
+
+// 점검·세팅: 구역은 외벽마다 다르다. 해벽 데이터에는 구역 목록이 아직 없어서 여기에 둔다(은평: 데이터의 메모 '실내 1~3층 지구력 암장 · 실외 리드 벽'과 태그 '스피드월').
+// 데이터에 zones 필드가 생기면 이 표는 없앤다. 목록에 없는 외벽은 기본 구역에서 시작하고, 관리자가 직접 더할 수 있다(이 기기에 저장).
+export const ZONE_PRESETS = {
+  은평인공암벽장: ['지구력벽 1층', '지구력벽 2층', '지구력벽 3층', '외부 리드월', '스피드월'],
+};
+export const DEFAULT_ZONES = ['리드벽', '스피드월', '볼더링벽', '지구력벽'];
+export const ZONE_REASONS = ['정기 점검', '루트 세팅', '볼트·로프 점검', '청소·보수', '강습·전용 사용'];
 
 export const REASON_CHIPS = ['기상 악화', '시설 점검', '볼트·루트 세팅', '행사·대회', '공사'];
 
@@ -95,6 +106,7 @@ const hoursText = (st) => (st.open && st.close ? `${st.open}~${st.close}` : '');
 /** buildNotice(state) → { ok, kind, rows, title, head, badge, body, caption, patch }. state: see notice/app.js. */
 export function buildNotice(st) {
   if (st.kind === 'today') return buildToday(st);
+  if (st.kind === 'zone') return buildZone(st);
   const kind = KINDS[st.kind] ?? KINDS.holiday;
   const dates = activeDates(st);
   const rs = runs(st, dates);
@@ -158,5 +170,42 @@ function buildToday(st) {
     ok: Boolean(st.status), kind: 'today', wall, month: null, color: status.tone, rows, title, head: KINDS.today.head, badge: status.badge,
     panelHead: stamp || '오늘', note, closing, sign, body: bodyLines.join('\n'), caption,
     patch: st.date ? { wall, kind: 'today', status: st.status, at: `${st.date}T${st.at ?? '00:00'}`, until: until || undefined, expires: `${st.date}T${until || '23:59'}`, note: note || undefined, alternatives: alts.map((a) => a.name) } : null,
+  };
+}
+
+const timeOk = (st) => !st.timed || Boolean(st.open && st.close && st.close > st.open);
+
+/** buildZone(state) — 점검·세팅: which zones are limited, when (whole day or a time range) and why; the rest stay open. */
+function buildZone(st) {
+  const wall = (st.wall ?? '').trim() || '암벽장';
+  const zones = (st.zones ?? []).filter((z) => (st.zoneAll ?? []).includes(z));
+  const rest = (st.zoneAll ?? []).filter((z) => !zones.includes(z));
+  const dates = activeDates(st);
+  const rs = runs(st, dates);
+  const when = st.timed && st.open && st.close ? `${st.open}~${st.close}` : '종일';
+  const first = rs[0] ? rangeText(rs[0]) : '';
+  const zoneName = zones.length <= 2 ? zones.join('·') : `${zones[0]} 외 ${zones.length - 1}곳`;
+  const title = `${wall} ${zoneName ? `${zoneName} ` : ''}이용 제한 안내${first ? ` (${first}${rs.length > 1 ? ` 외 ${rs.length - 1}건` : ''})` : ''}`.replace(/\s+/g, ' ');
+  const reason = (st.reason ?? '').trim();
+  const note = (st.note ?? '').trim();
+  const closing = (CLOSINGS[st.closing] ?? CLOSINGS.formal).zone;
+  const sign = (st.sign ?? '').trim() || wall;
+  const signLine = st.closing === 'formal' ? `- ${sign} 드림 -` : `- ${sign} -`;
+  const lines = [
+    `· 제한 구역 : ${zones.join(', ') || '(구역을 골라 주세요)'}`,
+    ...rs.map((r) => `· 일시 : ${rangeText(r)} ${when}`),
+    ...(reason ? [`· 사유 : ${reason}`] : []),
+    ...(rest.length && zones.length ? [`· 이용 가능 : 그 외 구역(${rest.join(', ')})은 정상 운영합니다.`] : []),
+  ];
+  const bodyLines = [`■ ${title}`, ...lines, ...(note ? ['', note] : []), '', ...closing, signLine];
+  const hash = (s) => `#${s.replace(/[\s·]/g, '')}`;
+  const caption = [title, '', ...lines, ...(note ? ['', note] : []), '', ...closing, '', [hash(wall), '#해벽', '#클라이밍', '#실외암벽', hash(KINDS.zone.tag)].join(' ')].join('\n');
+  const rows = rs.map((r) => { const text = `${rangeText(r)} ${when}`; return { ...r, reason: '', text, line: text }; });
+  // 카드 머리띠에는 구역이 2곳까지만 들어간다. 더 많으면 첫 줄에 전부 적어 이미지만 봐도 알 수 있게 한다.
+  if (zones.length > 2) rows.unshift({ from: rs[0]?.from, to: rs[0]?.from, reason: '', text: zones.join(' · '), line: zones.join(' · ') });
+  return {
+    ok: dates.length > 0 && zones.length > 0 && timeOk(st), kind: 'zone', wall, month: null, color: null, rows, title, head: KINDS.zone.head,
+    badge: reason || '구역 제한', panelHead: zoneName || '구역을 골라 주세요', note, closing, sign, body: bodyLines.join('\n'), caption,
+    patch: dates.length && zones.length ? { wall, kind: 'zone', zone_limits: [{ zones, dates, from: st.timed ? st.open : undefined, to: st.timed ? st.close : undefined, reason: reason || undefined }] } : null,
   };
 }
