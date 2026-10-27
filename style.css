@@ -47,7 +47,7 @@
   /* page-level layers, low to high: list bands < sticky controls < the search dropdown < the tab bar < toast < boot screen.
      Inside one component the numbers are local (0-3) and stay as they are. */
   --z-band: 2; --z-axis: 3; --z-tabbar-flow: 4; --z-controls: 5; --z-picks: 6; --z-to-top: 6; --z-tabbar: 7; --z-boot: 100; --z-toast: 1000;
-  --now: var(--fg);
+  --now: var(--accent);
   --pin-open: #2e5e3e;
   --pin-soon: #a8325a;
   --pin-closed: #9aa29c;
@@ -491,7 +491,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .axis .t.under { visibility: hidden; } /* under the time tag (app.js) */
 .axis .nowtag {
   top: calc(.25em - 1px); white-space: nowrap; z-index: 1; left: clamp(calc(1.5em + 6px), calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x)), calc(100% - 1.5em - 6px)); /* half the tag, so big text keeps it on screen */
-  font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--fg); color: var(--bg);
+  font-weight: 700; line-height: 1; padding: var(--sp-4) var(--sp-6); border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent);
 }
 .plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; display: none; } /* the hour grid behind the rows is off: the axis labels and each row's own bar say the time */
 .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); }
@@ -570,7 +570,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
    구름 only a hollow ring, so the rows that matter stand out. The ring around it is the row's own background (--rowbg), so a pressed row stays clean */
 :is(.row-btn, .crag-head):active { --rowbg: color-mix(in srgb, var(--fg) 6%, var(--surface)); }
 :is(.row, .crag-row).is-open :is(.row-btn, .crag-head) { --rowbg: rgb(255 255 255 / .9); }
-:is(.row, .crag-row):is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; border-radius: 50%; background: var(--wg) center / 10px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
+:is(.row, .crag-row):is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--wg) center / 13px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
 :is(.row, .crag-row).veil { --wbg: var(--surface); --wring: inset 0 0 0 1.5px #66706a; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366706a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
 .row.windy { --wbg: #1f7a70; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 8a2.5 2.5 0 1 1 2 4H2'/%3E%3Cpath d='M12.8 19.6A2 2 0 1 0 14 16H2'/%3E%3C/svg%3E"); }
 :is(.row, .crag-row).wet { --wbg: #2f62b0; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%23fff'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
@@ -1093,11 +1093,11 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-axis span { position: absolute; top: 0; line-height: 22px; transform: translateX(-50%); white-space: nowrap; }
 .g-axis .first { transform: none; }
 .g-axis .last { transform: translateX(-100%); }
-.g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--now); color: var(--bg); font-weight: 700; z-index: 4; }
+.g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent); font-weight: 700; z-index: 4; }
 .g-body { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); }
 .g-plot { position: absolute; top: 0; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
 .g-plot .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); z-index: 1; }
-.g-plot .nowl { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--now); z-index: 3; }
+.g-plot .nowl { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--now); box-shadow: 0 0 0 1px var(--surface); z-index: 3; }
 .g-row { display: flex; min-height: 44px; border-top: 1px solid var(--hair); }
 .g-lab { width: var(--lab); flex: none; display: flex; flex-direction: column; justify-content: center; font-size: var(--fs-sm); line-height: 1.2; }
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
