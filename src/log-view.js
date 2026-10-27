@@ -119,6 +119,7 @@ box.addEventListener('focusout', armToast);
  */
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
+  getPlan = () => [], // getPlan('YYYY-MM-DD') → [{ name, rain }]: the walls scheduled for that day (운동 스케줄; [] when none or the feature is off)
   getOrigin = () => null, addFav = () => {}, getWeather = async () => null, getWallId = () => null, // getWallId(name) → the wall's id (null for a name not in the lists)
 }) {
   const panel = $('panel-log');
@@ -762,14 +763,16 @@ export function createLogView({
     home.addEventListener('click', showList);
     // the month as it will fill up: the real grid, dimmed, nothing pressable and no made-up records
     const p = dayParts(today());
+    const planned = new Set(monthGrid(p.year, p.month).weeks.flat().filter((c) => c && getPlan(c.date).length).map((c) => c.date)); // 운동 예정 days: the dot shows here too
     const ghost = el('div', { class: 'lg-ghost', 'aria-hidden': 'true' },
       el('p', { class: 'lg-ghost-t' }, `${p.year}년 ${p.month}월`),
       el('table', { class: 'cal-grid' },
         el('thead', {}, el('tr', {}, ...['일', '월', '화', '수', '목', '금', '토'].map((d) => el('th', {}, d)))),
         el('tbody', {}, ...monthGrid(p.year, p.month).weeks.map((week) => el('tr', {}, ...week.map((c) => el('td', {},
-          c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day)) : null)))))));
+          c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day), planned.has(c.date) ? el('span', { class: 'cal-plan' }) : null) : null)))))));
     return el('div', { class: 'lg-empty' },
       ghost,
+      ...(planned.size ? [el('p', { class: 'lg-plan' }, '초록 점은 운동 예정인 날이에요')] : []),
       el('h3', {}, '아직 기록이 없어요'),
       el('p', { class: 'lg-empty-say' }, el('span', {}, '다녀온 암장을 남기면 몇 곳을 다녀왔는지'), el('span', {}, '모아서 보여드려요. 이 기기에만 저장돼요.')), // two centred lines, each a phrase of its own
       el('div', { class: 'lg-empty-btns' }, add, home));
@@ -863,13 +866,15 @@ export function createLogView({
     const rows = grid.weeks.map((week) => el('tr', {}, ...week.map((c) => {
       if (!c) return el('td', { role: 'gridcell', class: 'cal-pad' });
       const n = byDay.get(c.date)?.length ?? 0;
+      const plan = n ? [] : getPlan(c.date); // a stamped day shows the stamp only
       const p = dayParts(c.date);
       const b = el('button', {
         type: 'button', class: 'cal-day', 'data-date': c.date, tabindex: c.date === focusDay ? '0' : '-1',
-        'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}`,
+        'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}${plan.length ? `, 운동 예정 ${plan.map((x) => (x.rain ? `${x.name}(${x.rain})` : x.name)).join(', ')}` : ''}`,
         'aria-current': c.date === t ? 'date' : null,
       }, n ? stamp(c.date === stamped ? 'cal-stamp stamp-in' : 'cal-stamp', byDay.get(c.date)) : null,
       el('span', { class: 'cal-n', 'aria-hidden': 'true' }, String(c.day)),
+      plan.length ? el('span', { class: 'cal-plan', 'aria-hidden': 'true' }) : null,
       n > 1 ? el('span', { class: 'cal-badge', 'aria-hidden': 'true' }, `+${n - 1}`) : null);
       if (c.date > t) b.classList.add('future');
       return el('td', { role: 'gridcell', 'aria-selected': String(c.date === picked) }, b);
@@ -939,12 +944,14 @@ export function createLogView({
     const p = dayParts(picked);
     const recs = byDay.get(picked) ?? [];
     const future = picked > t;
+    const plan = recs.length ? [] : getPlan(picked);
     const ctaId = pickCta(recs, madeIds, t); // the one record of today that gets the big "오늘의 해벽 만들기" line
     // several records in a day: the day's 완등 / 시도 add up in the title (one record shows its own lines)
     const dg = dayGrades(recs);
     const dayTotals = recs.length > 1 && (dg.sends || dg.tries) ? ` · ${[dg.sends ? `완등 ${dg.sends}` : '', dg.tries ? `시도 ${dg.tries}` : ''].filter(Boolean).join(' · ')}` : '';
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
       el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개${dayTotals}` : ' · 기록 없음')),
+      plan.length ? el('p', { class: 'lg-plan' }, '운동 예정 · ', ...plan.flatMap((x, i) => [i ? ', ' : null, el('span', { class: 'lg-plan-n' }, x.name), x.rain ? ` (${x.rain})` : null])) : null,
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
         const open = el('button', { type: 'button', class: 'lg-open', 'aria-haspopup': 'dialog' },
           el('span', { class: 'lg-name' }, r.wall),

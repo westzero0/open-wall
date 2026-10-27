@@ -460,6 +460,34 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .pick-alt { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); border-top: 1px solid var(--line); background: var(--sunken); } /* the 대안: a row of its own, a step quieter */
 .pick-altk { color: var(--accent); font-size: var(--fs-xs); font-weight: 700; }
 .pick-note { margin: 0; padding: var(--sp-4) 0 var(--sp-12); color: var(--muted); font-size: var(--fs-xs); }
+/* 운동 스케줄 비 알림 (src/schedule-view.js): the home card reuses .pick; its week is seven tappable days, and the 내 정보 sheet's weekdays are the same cells as toggles */
+.sd-rain { display: inline-flex; padding: var(--sp-2) var(--sp-6); color: var(--soon); }
+.sd-rain svg { width: 24px; height: 24px; }
+.sd-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--sp-2); margin: 0 0 var(--sp-6); padding: 0; list-style: none; }
+.sd-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--muted); font: inherit; font-size: var(--fs-xs); }
+.sd-day b { font-weight: 600; }
+.sd-day svg { width: 16px; height: 16px; }
+.sd-day.wet { background: color-mix(in srgb, var(--soon) 14%, var(--surface)); } /* a rainy day: the pink of 곧 마감 and the card's wet head; the letter stays dark (the pink on its own tint is 3.3:1), the umbrella carries the colour */
+.sd-day.wet b { color: var(--fg); }
+.sd-day.wet svg { color: var(--soon); }
+.sd-day.mine { outline: 2px solid var(--accent); outline-offset: -2px; } /* a 운동 요일: the frame */
+.sd-day.mine b { color: var(--fg); }
+.sd-day[aria-pressed="true"], .sd-tog:has(:checked) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.sd-day[aria-pressed="true"] b, .sd-day[aria-pressed="true"] svg, .sd-tog:has(:checked) b { color: var(--on-accent); }
+.sd-tog:has(:checked) b { font-weight: 700; }
+.sd-day:focus-visible, .sd-tog:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sd-tog { cursor: pointer; }
+.sd-tog b { color: var(--fg); font-size: var(--fs-sm); }
+.sd-key { margin-bottom: var(--sp-8); }
+.pick-dh:not(.wet) em { color: var(--muted); } /* a dry day's head: no warning pink */
+#sched .pick-hint { white-space: normal; } /* the wall and the day are both worth reading: two lines, not an ellipsis */
+.sd-ask { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-10) var(--pad); } /* 어제 다녀왔어요?: a row under the rain card's slot, one question at a time */
+.sd-asktext { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; font-size: var(--fs-base); font-weight: 600; }
+.sd-askbtns { display: flex; gap: var(--sp-8); }
+.sh-toggle.sd-yes { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.sh-toggle.sd-yes:focus-visible { outline-color: var(--fg); } /* the filled button's own ring would be the same green */
+.sd-wall { clear: both; margin-bottom: var(--sp-10); }
+.sd-wallh { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); margin-bottom: var(--sp-4); }
 .card.no-photo { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: no-preference) {
   #pin-card.enter .card { animation: pin-in var(--dur-ui) var(--ease-out); }
@@ -1879,7 +1907,7 @@ button.cchip { position: relative; cursor: pointer; }
 .lg-empty h3 { font-size: var(--fs-lg); }
 .lg-ghost { margin: 0 0 var(--sp-16); opacity: .45; pointer-events: none; user-select: none; } /* the empty 기록 shows its own month, dimmed: what it will look like once a visit is saved */
 .lg-ghost-t { margin: 0 0 var(--sp-4); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
-.lg-ghost-day { display: grid; place-items: center; min-height: 36px; border-radius: var(--r-md); font-size: var(--fs-sm); color: var(--muted); }
+.lg-ghost-day { position: relative; display: grid; place-items: center; min-height: 36px; border-radius: var(--r-md); font-size: var(--fs-sm); color: var(--muted); }
 .lg-ghost-day.now { box-shadow: inset 0 0 0 1px var(--fg); color: var(--fg); }
 .lg-empty p { margin: var(--sp-6) 0 var(--sp-16); color: var(--muted); font-size: var(--fs-sm); }
 .lg-empty-say span { display: block; text-wrap: balance; } /* one phrase per line: no break inside "보여드려요" */
@@ -1961,6 +1989,9 @@ html[data-text] .ps-ratio { flex-basis: 100%; } /* 큰 글씨: 세그먼트가 �
 }
 .cal-day.future { color: var(--muted); }
 .cal-n { font-weight: 600; }
+.cal-plan { position: absolute; left: 50%; bottom: 3px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--accent); } /* 운동 예정: information, not decoration; the accent, never the sun colour */
+.lg-plan { margin: 0 0 var(--sp-6); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
+.lg-plan-n { white-space: nowrap; } /* a wall's name is not broken across lines */
 .cal-badge { position: absolute; bottom: 1px; right: 1px; z-index: 2; min-width: 15px; padding: 0 3px; border-radius: var(--r-pill); background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 700; line-height: 15px; }
 .cal-day[aria-current="date"] { border: 1.5px solid var(--muted); }
 .cal-day:has(.cal-stamp) .cal-n { visibility: hidden; } /* a stamped day shows the stamp only, whatever the artwork lets through */

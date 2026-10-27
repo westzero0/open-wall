@@ -10,6 +10,7 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
 // 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
+// 운동 스케줄 비 알림: scheduleAlert — 켜면 내 정보 시트에 '운동 스케줄' 줄·홈 알림 카드·어제 기록 묻기·기록 달력 점이 생긴다(docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md). 공개 단계(stage)와 별개: 베타 이용자 요청이라 먼저 연다. 새 외부 요청은 없다.
 // assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
 // 공지 제보 (docs/prd/notice-links-spec.md 3번, 중단): noticeReport — 켜면 제보 시트에 '공지' 선택이 생긴다. 기본은 꺼 둠(이용자 제보를 기대하지 않기로 함).
 // 공개 단계 (docs/superpowers/specs/2026-10-21-home-simplify-design.md): stage — 'beta'는 클라이머 유형 테스트와 이번 주말 추천을 숨기고, 'open'이면 연다.
@@ -20,6 +21,7 @@ export const config = {
   stage: 'beta',
   noticeReport: false,
   climberTest: true,
+  scheduleAlert: true,
   singlePitch: false,
   data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',

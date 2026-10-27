@@ -4,9 +4,10 @@ import { config } from './config.js';
 
 const NEEDS_OPEN = new Set(['pick']);
 
-/** featureOn(name, cfg) → bool. 'climber' also needs its own switch (config.climberTest). */
+/** featureOn(name, cfg) → bool. 'climber' also needs its own switch (config.climberTest). 'schedule' (운동 스케줄 비 알림) is its own switch alone: it is asked for by beta visitors, so it does not wait for stage 'open'. */
 export function featureOn(name, cfg = config) {
   if (name === 'climber') return !!cfg.climberTest && cfg.stage === 'open';
+  if (name === 'schedule') return !!cfg.scheduleAlert;
   return NEEDS_OPEN.has(name) && cfg.stage === 'open';
 }
 

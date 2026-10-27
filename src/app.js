@@ -25,6 +25,8 @@ import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
+import { addSkipped, askYesterday, loadSchedule, loadSkipped, plannedOn, rainAlerts, saveSchedule, saveSkipped } from './schedule.js';
+import { renderScheduleAsk, renderScheduleCard, renderScheduleRows } from './schedule-view.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
@@ -165,12 +167,14 @@ function syncTheme() {
 syncTheme();
 applyTextSize(ui.textSize);
 // 기록 (log-view.js): the tab, the add sheet; list rows read a wall's records through recordsFor
+let planOf = () => []; // the 기록 달력's 운동 예정 (set below, once the forecast store exists)
 const logView = createLogView({
   storage,
   icon,
   getWalls: () => state.walls,
   getWallId: (name) => { const w = allWalls().find((x) => x.name === name); return w ? wallPageId(w) : null; },
   getFavs: () => favs,
+  getPlan: (date) => planOf(date),
   onChange: () => render(),
   reveal: (name) => revealFromLog(name),
   showList: () => showTab('list', true),
@@ -763,6 +767,8 @@ function addrLine(m) {
 // ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
 const allWalls = () => [...state.walls, ...state.crags]; // the lists a ♥ is read against (names in memory, ids in the store)
 let favs = loadFavs(storage); // ids until the lists load; resolved to names right after (see the line after state.crags)
+let schedule = loadSchedule(storage); // 운동 스케줄 (src/schedule.js): ids until the lists load, names after (next to favs)
+let skipped = loadSkipped(storage, new Date()); // 안 갔어요 answers of the last two weeks ([{wall, date}]): not asked again
 let changesSeen = loadChangesSeen(storage); // 이번 주 변경: the ones a visitor already dismissed
 // 세팅일이 바뀌었어요 (setting.js): the setting.last seen per ♥ wall; a first look only records it
 let seen = loadSeen(storage);
@@ -885,6 +891,7 @@ async function loadWeekendWeather() {
     const f = document.activeElement; // a late answer must not drop focus from a pick control
     if (f?.closest?.('#pick-body') && f.dataset.focus) pickRefocus = f.dataset.focus;
     renderPick();
+    renderSched(); // the 운동 스케줄 card reads the same forecast
   }
 }
 // 목록 줄의 날씨 (weather.js; docs/system/permissions.md): one request for every outdoor wall's hourly temperature and sky, the way
@@ -934,6 +941,52 @@ const syncWxCredit = () => { if ($('wxCredit')) $('wxCredit').hidden = !wxList.b
 const paintListWx = syncWxCredit;
 const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get(dayKey(date)));
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
+// 운동 스케줄 비 알림 (docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md): a card above the weekend picks, only when a 운동 요일 of the
+// week has rain. It asks for no forecast of its own: the weekend picks' one request (every outdoor wall, 7 days) answers it too.
+function renderSched() {
+  if (!$('sched')) return; // a cached older page
+  const wanted = featureOn('schedule') && state.walls.length && schedule.some((e) => e.days.length);
+  if (wanted) loadWeekendWeather();
+  const today = new Date();
+  if ($('schedAsk')) { // 어제 다녀왔어요?: asked once; 기록하기 opens the 기록 추가 sheet with the wall and the day filled in, and the record itself ends the question (onChange → render)
+    const ask = featureOn('schedule') && state.walls.length ? askYesterday({ schedule, walls: state.walls, recordsFor: logView.recordsFor, skipped, today }) : null;
+    renderScheduleAsk({ box: $('schedAsk') }, {
+      ask,
+      onRecord: (a, btn) => logView.openAdd({ wall: a.wall.name, date: a.date, from: btn }),
+      onSkip: (a) => {
+        const before = skipped;
+        skipped = addSkipped(skipped, a.wall.name, a.date, new Date());
+        saveSkipped(storage, skipped, new Date());
+        renderSched();
+        const next = $('sched'); // the row is gone: the next card takes the focus
+        if (next && !next.hidden) next.querySelector('summary')?.focus();
+        toast(`${a.label} ${shortName(a.wall)} 안 갔다고 답했어요`, () => { skipped = before; saveSkipped(storage, skipped, new Date()); renderSched(); }, '되돌리기');
+      },
+    });
+  }
+  const alerts = wanted ? rainAlerts(schedule, { walls: state.walls, forecasts: wxPick.byName, today }) : [];
+  renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body') }, {
+    alerts, walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
+    onOpen: (wall, date) => { goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
+  });
+}
+// the 내 정보 sheet's 운동 스케줄 rows: drawn when the sheet opens and by their own changes (never by render(): a redraw would drop the focus)
+function drawScheduleRows() {
+  const row = $('scheduleRow');
+  if (!row) return; // a cached older page
+  row.hidden = !featureOn('schedule');
+  if (row.hidden) return;
+  renderScheduleRows($('scheduleBody'), {
+    schedule, walls: state.walls, favs, toast,
+    onChange: (next) => { schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); if (ui.tab === 'log') logView.render(); }, // the 기록 달력's dots follow
+  });
+}
+$('meBtn')?.addEventListener('click', drawScheduleRows);
+planOf = (date) => {
+  if (!featureOn('schedule')) return [];
+  if (schedule.some((e) => e.days.length)) loadWeekendWeather(); // the home may not have asked for the forecast (the 기록 tab can be the first screen); it asks once, and is quiet when fresh
+  return plannedOn(schedule, { walls: state.walls, forecasts: wxPick.byName, date, today: new Date() });
+};
 function renderPick() {
   const box = $('pick');
   const wallFavs = favs.filter((n) => state.walls.some((w) => w.name === n)); // a ♥ crag (same store) is not a 내 암장 for the wall pick
@@ -1900,6 +1953,7 @@ function renderCrags(at, now, isNow) {
   $('locateMsg').textContent = msg;
   $('locateMsg').hidden = !msg;
   $('pick').hidden = true; // the wall picks and changes are for the wall list; render() draws them again when it comes back
+  for (const id of ['sched', 'schedAsk']) if ($(id)) $(id).hidden = true;
   $('changesLine').hidden = true;
   syncCragFilterUi(n, isNow, !!myGrade, cv);
   const active = document.activeElement;
@@ -2094,6 +2148,7 @@ function render() {
   $('map-note').hidden = !unlocated.length;
   mapApi?.setRows(all, at);
   renderPick();
+  renderSched();
   renderChanges();
   loadListWeather();
   syncWxCredit();
@@ -2579,7 +2634,7 @@ const tick = () => {
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   // not skipped: the 혼잡도 CSV if due, then the re-render
-  const ran = go({ type: 'tick', hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick') }).length;
+  const ran = go({ type: 'tick', hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick, #sched, #schedAsk') }).length;
   if (!ran || !li) return;
   const now = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === li.wallName);
   (now?.querySelectorAll(FOCUSABLE)[i] ?? now?.querySelector('.row-btn'))?.focus({ preventScroll: true });
@@ -2641,6 +2696,7 @@ partners = loadedPartners;
 state.walls = first ?? [];
 if (cragOn) state.crags = await fetchCrags().catch(() => []);
 favs = loadFavs(storage, allWalls());
+schedule = loadSchedule(storage, allWalls());
 logView.reconcile(allWalls());
 if (cragOn) loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}); // the save totals are asked again with the topos
 showLoadError(!first);
@@ -2731,9 +2787,10 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     if (due.kakao) { afterNotice = due.intro ? runTour : null; show(null, { kakao: true }); } else if (due.intro) runTour();
   };
 }
-{ // handed over from KakaoTalk (?from=kakao): offer the install once, as soon as this browser can do it
+{ // handed over from KakaoTalk (?from=kakao), or back for another visit (the tour was already seen before this page loaded; a share link came for one wall): offer the install once, as soon as this browser can do it
   const u = new URL(location.href);
   const handed = fromKakao(location.search);
+  const again = ui.introDone && !sharedCrag && !new URL(entryHref || location.href).searchParams.has('wall');
   if (handed) { u.searchParams.delete('from'); history.replaceState(null, '', u); }
   const b = $('install-banner');
   const show = () => {
@@ -2743,7 +2800,7 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     if (how === 'ios') $('install-text').textContent = '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요. 닉네임을 정하기 전에 해 두면 좋아요.';
     b.hidden = false;
   };
-  if (handed && b) {
+  if ((handed || again) && b) {
     show();
     window.addEventListener('beforeinstallprompt', () => setTimeout(show)); // Chrome's event can come after load (install.js has already kept it)
     $('install-go').addEventListener('click', async () => { if (await promptInstall()) { b.hidden = true; closeInstall(); } });
