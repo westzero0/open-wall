@@ -21,7 +21,7 @@ import { canSaveMonth } from './record-image.js';
 import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
 import {
-  MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
+  MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
   timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
 } from './log.js';
@@ -188,8 +188,10 @@ export function createLogView({
   let chipNames = []; // the ≤3 chips, fixed when the sheet opens so they don't shuffle under a finger
   let extraWall = null; // a wall picked by search: it joins the chips, selected
   let opener = null;
+  let editing = null; // the record the sheet is changing (its time, memo and grades), or null when it adds one
   // 한 줄 타임라인에도 공유: off by default, only with the board on. Only the nickname and the memo are posted; the record stays here.
   const shareRow = dlg.querySelector('.la-share');
+  const whenRow = dlg.querySelector('.la-when');
   const shareOn = $('la-share');
   const shareBody = dlg.querySelector('.la-share-body');
   const shareNickIn = $('la-share-nick');
@@ -327,7 +329,7 @@ export function createLogView({
   // the question shows only while crowdAsk says so (set up, a time, the last 7 days, not later than now)
   function drawCrowd() {
     const wall = sheetWall();
-    const ask = wall && visitMin != null ? crowdAsk(wall, form.elements.date.value, timeOfMin(visitMin)) : null;
+    const ask = !editing && wall && visitMin != null ? crowdAsk(wall, form.elements.date.value, timeOfMin(visitMin)) : null;
     const wait = ask && ask !== 'ask'; // reported a moment ago: the row stays, off, with the reason
     crowdRow.hidden = !ask;
     crowdSentNote.hidden = !wait;
@@ -477,6 +479,10 @@ export function createLogView({
     form.reset();
     gradeWall.clear();
     gradesBox.open = false;
+    editing = null;
+    $('log-add-title').textContent = '기록 추가';
+    whenRow.hidden = false;
+    shareRow.hidden = !config.boardUrl;
     fixedWall = wall;
     fixedPlace = wall ? place : null;
     choice = null;
@@ -503,6 +509,26 @@ export function createLogView({
     resetTime();
     dlg.showModal();
   }
+  /**
+   * openEdit(record, from): the same sheet for a record already saved: its wall and date stay (no way to change them here), the time bar, the memo and
+   * the grades are filled in; the 혼잡도 and 한 줄 타임라인 asks belong to a new record and are left out.
+   */
+  function openEdit(r, from) {
+    openAdd({ wall: r.wall, date: r.date, from });
+    editing = r;
+    $('log-add-title').textContent = '기록 수정';
+    whenRow.hidden = true;
+    shareRow.hidden = true;
+    visitMin = r.time ? minOfTime(r.time) : null;
+    timeTouched = true;
+    form.elements.memo.value = r.memo ?? '';
+    moreBox.open = Boolean(r.memo);
+    gradeWall.set('sends', r.sends ?? {});
+    gradeWall.set('tries', r.tries ?? {});
+    gradesBox.open = Boolean(r.sends || r.tries);
+    drawTime();
+    setTimeOpen(false);
+  }
   for (const b of dlg.querySelectorAll('[data-close]')) b.addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close());
 
@@ -511,6 +537,21 @@ export function createLogView({
     const wall = sheetWall();
     if (!wall) return;
     const time = visitMin == null ? '' : timeOfMin(visitMin);
+    if (editing) {
+      const up = updateRecord(log, editing.id, { time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries') }, { today: today(), nowMin: nowMin() });
+      if (up.field === 'time') {
+        timeErr.textContent = up.error;
+        timeErr.hidden = false;
+        setTimeOpen(true);
+        return timeIn.focus();
+      }
+      if (up.error) return toast(up.error);
+      log = up.log;
+      persist();
+      dlg.close();
+      changed();
+      return toast(`${wall} 기록을 고쳤어요`);
+    }
     const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries') }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
@@ -890,7 +931,7 @@ export function createLogView({
       !dayShown ? el('p', { class: 'sh-hint cal-hint' }, '날짜를 누르면 그날 기록이 아래에 열려요') : null);
   }
 
-  // the picked day: its records (tap → the wall's card; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)
+  // the picked day: its records (tap → the 기록 수정 sheet; 삭제 with 실행 취소) (a future day shows only the 오늘 이후 note; the one way to add is the card's 기록 button)
   function dayList(byDay) {
     if (!dayShown) return null;
     const t = today();
@@ -904,13 +945,13 @@ export function createLogView({
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
       el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개${dayTotals}` : ' · 기록 없음')),
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
-        const open = el('button', { type: 'button', class: 'lg-open' },
+        const open = el('button', { type: 'button', class: 'lg-open', 'aria-haspopup': 'dialog' },
           el('span', { class: 'lg-name' }, r.wall),
           regionOf(r.wall) ? el('span', { class: 'lg-region' }, regionOf(r.wall)) : null,
           recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null, // "15:00 · 메모"
           r.sends ? el('span', { class: 'lg-gr send' }, `완등 ${gradeLine(r.sends)}`) : null,
           r.tries ? el('span', { class: 'lg-gr try' }, `시도 ${gradeLine(r.tries)}`) : null);
-        open.addEventListener('click', () => reveal(r.wall));
+        open.addEventListener('click', () => openEdit(r, open)); // the row opens its own edit sheet; the wall's card is one tap away in 암장별
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
         // the way into the card, by what the row is: a made card shows its thumbnail, today's newest without one gets the big line under the

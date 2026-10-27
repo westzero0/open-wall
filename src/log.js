@@ -156,6 +156,19 @@ export function addRecord(log, input, { today, id, nowMin = null }) {
   return { log: [...log, record].sort(newestFirst), record };
 }
 
+/**
+ * updateRecord(log, id, {time, memo, sends, tries}, {today, nowMin}) → {log, record} or {error, field?}: one record's time, memo and grades
+ * changed; its wall and date stay. time '' makes it 시간 모름. A later time today is refused like in addRecord.
+ */
+export function updateRecord(log, id, input, { today, nowMin = null }) {
+  const old = log.find((r) => r.id === id);
+  if (!old) return { error: '기록을 찾지 못했어요.' };
+  if (validTime(input?.time) && isAhead(old.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
+  const record = cleanRecord({ id, wall: old.wall, date: old.date, time: input?.time, memo: input?.memo, sends: input?.sends, tries: input?.tries }, today);
+  if (!record) return { error: '저장하지 못했어요.' };
+  return { log: log.map((r) => (r.id === id ? record : r)).sort(newestFirst), record };
+}
+
 export const removeRecord = (log, id) => log.filter((r) => r.id !== id);
 
 const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
