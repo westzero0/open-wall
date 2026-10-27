@@ -264,14 +264,17 @@ function memoLines(memo) {
   const lines = parts.map((part) => {
     // a leading "!" marks a line that can stop a visit: the card face shows it (the mark itself is dropped)
     const marked = /^!/.test(part);
-    const s = part.replace(/^!+\s*/, '');
+    const stripped = part.replace(/^!+\s*/, '');
+    const group = /^(안내|시설|이용환경)\s+(?=\S)/.exec(stripped)?.[1] ?? null; // the data's 안내 / 시설 / 이용환경 prefixes sort a line; they are not shown
+    const s = group ? stripped.replace(/^\S+\s+/, '') : stripped;
     if (!s) return null;
     const key = marked || (MEMO_KEY.test(s) && !MEMO_NONE.test(s));
     const m = s.match(MEMO_LABEL);
     const raw = (m?.[1] ?? m?.[2])?.trim();
     const label = raw && CLOSED_LABEL.test(raw) ? '정기휴무' : raw;
     const value = m?.[3].replace(/^\(([^()]*)\)$/, '$1').trim();
-    return label && value ? { label, value, key } : { label: null, value: s, key };
+    const g = group ? { group } : {}; // only a prefixed line carries it
+    return label && value ? { label, value, key, ...g } : { label: null, value: s, key, ...g };
   }).filter(Boolean);
   return [...lines.filter((l) => l.key), ...lines.filter((l) => !l.key)];
 }
@@ -488,7 +491,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
 // chips: [{ kind, text, icon, tone, to }] — flat on purpose: a 싱글피치 or 실내 model only fills the same array (its own kinds, its own icons) and the
 // card draws it. tone: plain | good | warn | muted. to: where the sheet opens ({tab, section}), null = nothing more to read.
 // Everything else (루트 수, 난이도, 주차 요금, the wall's other facts) is in the sheet the chips open.
-const AMENITY = /화장실|샤워|휴게실|탈의|락커|라커|매점|자판기|정수기|수유실|편의시설/; // memo lines about the building's conveniences (the wall's own features — 스피드월, 지붕 — are tags, not memo lines)
+const AMENITY = /화장실|샤워|세족|휴게실|탈의|락커|라커|매점|자판기|정수기|수유실|편의시설/; // memo lines about the building's conveniences (the wall's own features — 스피드월, 지붕 — are tags, not memo lines)
 const CLOSURE_LABEL =/^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
 // The closing chip says the weekly closing days only (월·화, 둘째·넷째 일): from the hours (a weekday with none) and the nth closures, else from the day words of the memo line.
 // Public holidays, 명절, 임시휴무 are not a chip: the sheet's 시간 tab says the whole line (closureFull), and a holiday on the picked day shows on the card (day.holiday).
@@ -533,8 +536,7 @@ function specsOf(wall, rope, sizes, now) {
   const rows = all?.rows ?? [];
   const old = rv?.stale ? '세팅 이전 집계' : null;
   return [
-    wall.height_m && { k: '높이', v: `${wall.height_m}m` },
-    width && { k: '폭', v: width },
+    (wall.height_m || width) && { k: '규모', v: [wall.height_m && `높이 ${wall.height_m}m`, width && `폭 ${width}`].filter(Boolean).join(' · ') },
     rope && { k: '권장 로프', v: rope.ask.replace(/^로프 /, ''), note: rope.basis },
     all && { k: '루트 수', v: `${rv.total}개`, note: old },
     rows.length && { k: '난이도', v: rows.length > 1 ? `${rows[0].label}–${rows.at(-1).label}` : rows[0].label, note: old },

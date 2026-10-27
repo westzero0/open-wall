@@ -1399,6 +1399,23 @@ function sheetHead(wall, at, d, isNow) {
   return { tone: tone || 'k-none', sunT, region: wall.region || '', ok: icon('close'), report: Boolean(config.reportEndpoint),
     chip: !tone ? '' : tone.startsWith('k-night') ? '해 진 뒤' : `${isNow ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}` };
 }
+// 외벽 제원 · 시설: every row has its label, in one fixed order so the same item sits at the same place on every wall:
+// the wall's numbers (규모 · 권장 로프 · 루트 수 · 난이도), 벽 구성, 편의시설, 이용 환경, the memo lines that carry their own label (찾아가는 길 …), and last the free lines under 안내 (they differ from wall to wall)
+function specsList(m) {
+  const row = (k, v, note) => el('li', {}, el('span', k ? { class: 'mk' } : { class: 'mk', 'aria-hidden': 'true' }, k), el('span', { class: 'mv' }, tightParens(v), note ? el('small', { class: 'sp-note' }, note) : null));
+  const env = m.facilityRest.filter((l) => l.group === '이용환경');
+  const rest = m.facilityRest.filter((l) => l.group !== '이용환경');
+  const free = rest.filter((l) => !l.label);
+  const rows = [
+    ...m.specs.map((x) => row(x.k, x.v, x.note)),
+    m.facilityFacts.length && row('벽 구성', m.facilityFacts.join(' · ')),
+    m.amenities.length && row('편의시설', m.amenities.map((l) => l.value).join(' · ')),
+    env.length && row('이용 환경', env.map((l) => l.value).join(' · ')),
+    ...rest.filter((l) => l.label).map((l) => row(l.label, l.value)),
+    ...free.map((l, i) => row(i ? '' : '안내', l.value)),
+  ].filter(Boolean);
+  return rows.length ? el('div', { class: 'ws-info' }, el('ul', { class: 'memo-list info' }, ...rows)) : el('div', { class: 'ws-info' });
+}
 function buildWallSheet(wallName) {
   const row = allRows.find((r) => r.wall.name === wallName);
   const at = shown.at ?? new Date();
@@ -1415,11 +1432,7 @@ function buildWallSheet(wallName) {
     hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, m.closureFull ? kv(m.closureFull.k, m.closureFull.v) : null, blocks.sun), // one card: the hours, then the seasons' sun under the same axis
     fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
-    specs: el('div', { class: 'ws-info' }, ...[
-      m.specs.length && el('ul', { class: 'memo-list info' }, ...m.specs.map((s) => el('li', {}, el('span', { class: 'mk' }, s.k), el('span', { class: 'mv' }, tightParens(s.v), s.note ? el('small', { class: 'sp-note' }, s.note) : null)))),
-      (m.facilityFacts.length || m.facilityRest.length) && el('ul', { class: 'memo-list info' }, ...(m.facilityFacts.length ? [memoItem({ value: m.facilityFacts.join(' · ') })] : []), ...m.facilityRest.map(memoItem)),
-      m.amenities.length && el('ul', { class: 'memo-list info' }, ...m.amenities.map(memoItem)),
-    ].filter(Boolean)) };
+    specs: specsList(m) };
   const pos = wallPosition(wall);
   const head = sheetHead(wall, at, d, vs.live);
   return {
