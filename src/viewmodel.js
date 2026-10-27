@@ -62,11 +62,16 @@ export const unknownText = (wall) => (wall?.timeBasis === 'indoor-missing' ? '�
 // ---- list: scope, filters, groups, order ----
 export const hasParking = (wall) => wall.parking?.status === 'free' || wall.parking?.status === 'paid';
 
-// 장비 대여: the fee items that rent gear by itself ("장비 대여(1일)", "하네스 대여"). Not the ones that merely include it ("체험(장비대여 포함)", "체험·강습 장비 대여")
+// 장비 대여: the fee items that rent lead gear by themselves ("장비 대여(1일)", "하네스 대여", "빌레이 디바이스 대여"). Not the ones that merely include it ("체험(장비대여 포함)", "체험·강습 장비 대여")
 // nor the ones that name who rents ("자유입장 대여 암벽화 이용자") or other things ("돗자리 대여").
-const RENT_ITEM = /(장비|하네스|초크백)\s*대여/; // lead gear (harness, rope, chalk bag); renting shoes alone ("암벽화 대여") does not count
+const RENT_ITEM = /(장비|하네스|빌레이(?:\s*디바이스)?|확보기|디바이스)\s*대여/; // renting shoes or a chalk bag alone does not count
 const RENT_NOT = /포함|체험|강습|이용자|돗자리/;
-export const rentalOf = (wall) => (wall.fees ?? []).filter((f) => RENT_ITEM.test(f.item ?? '') && !RENT_NOT.test(f.item ?? ''));
+const LEAD_GEAR = /하네스|빌레이|확보기|디바이스/; // a general "장비 대여" whose note lists only shoes / chalk ("암벽화·초크 각 3,000") lends no lead gear
+const SOFT_GEAR = /암벽화|클라이밍화|신발|초크/;
+export const rentalOf = (wall) => (wall.fees ?? []).filter((f) => {
+  const item = f.item ?? '', note = f.note ?? '';
+  return RENT_ITEM.test(item) && !RENT_NOT.test(item) && (LEAD_GEAR.test(item) || LEAD_GEAR.test(note) || !SOFT_GEAR.test(note));
+});
 export const hasRental = (wall) => rentalOf(wall).length > 0;
 /** "장비 3,000원" for a price note ("3,000", "3,000 (…)"), the note itself when it already says what it is ("암벽화 3,000 · 하네스 3,000", "무료"); up to two items. '' = rentable, price not told. */
 export function rentalText(wall) {

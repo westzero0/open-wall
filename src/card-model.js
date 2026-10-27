@@ -518,7 +518,7 @@ const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
       fee && { kind: 'fee', icon: 'ticket', tone: fee === '무료' ? 'good' : 'plain', text: fee, to: { tab: 'use', section: 'fees' } },
       days.length > 0 && { kind: 'closed', icon: 'calendar', tone: 'warn', text: `정기휴무 ${days.join('·')}`, note: `${closure.label} ${closure.value}`, to: { tab: 'time', section: 'hours' } },
       { kind: 'parking', icon: 'car', tone: parking.tone, text: parking.text, to: { tab: 'use', section: 'parking' } },
-      rental && { kind: 'rental', icon: 'bag', tone: 'plain', text: '장비 대여', to: { tab: 'use', section: 'fees' } },
+      rental && { kind: 'rental', icon: 'carabiner', tone: 'plain', text: '장비 대여', to: { tab: 'use', section: 'fees' } },
     ].filter(Boolean),
   };
 };

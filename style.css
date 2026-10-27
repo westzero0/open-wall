@@ -235,7 +235,6 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .filters .pill { flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-8); font-size: var(--fs-xs); white-space: nowrap; }
 /* 양달/응달 · 3시간+ · 가까운 순 switch something on and off: outlined pills. 조건 opens a sheet: a text button at the right edge, bold with an underline while a condition is on */
 .filters .quiet { margin-left: auto; padding: 0 var(--sp-8); border-color: transparent; background: transparent; color: var(--muted); font-size: var(--fs-sm); } /* 조건 ▾ and the date ▾ (.scrub-sum) are the same kind of control: muted words, --fs-sm, 600, a ▾ */
-.filters .quiet#moreFilters { min-width: 5em; text-align: right; } /* 조건 ▾ → 조건 1 ▾ (가까운 순을 켜면 1이 붙는다)에도 검색창 폭·핀 위치가 그대로 */
 .filters .quiet.on { color: var(--fg); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 button.pill.quiet:hover { border-color: transparent; }
 .pill {
