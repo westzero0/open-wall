@@ -19,6 +19,9 @@ const sampleSource = () => {
   }
   return null;
 };
+// 날씨 배지 종류(칩 모서리의 원 하나, 가장 결정에 중요한 것: 비 > 돌풍 > 구름). 예시 줄은 지금 목록에 실제로 나오는 종류를 따른다
+const WX = ['wet', 'windy', 'veil'];
+const nowBadge = () => WX.find((k) => document.querySelector(`#panel-list .row.${k}`)) ?? 'veil';
 const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && (sampleSource()?.matches(s.sample) || sampleSource()?.querySelector(s.sample))); };
 
 /** startTour({ onClose }) → boolean: false (and nothing opens) when no step has a visible target.
@@ -60,7 +63,7 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   const resolve = (s) => {
     const real = s.forceSample ? null : find(s.target);
     const smp = real || !s.sample ? null : sampleFor(s.sample);
-    if (sampleBox) { sampleBox.hidden = !smp; sampleBox.firstChild.classList.toggle('veil', Boolean(s.veil)); }
+    if (sampleBox) { sampleBox.hidden = !smp; for (const k of WX) sampleBox.firstChild.classList.toggle(k, Boolean(s.badge) && k === nowBadge()); }
     return real ?? smp;
   };
   let last = ''; // 마지막으로 그린 타깃 사각형: 같으면 다시 그리지 않는다

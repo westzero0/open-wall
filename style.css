@@ -1568,8 +1568,9 @@ dialog::backdrop { background: var(--scrim); }
 .rp-name { color: var(--fg); font-size: var(--fs-base); font-weight: 600; min-width: 0; overflow-wrap: break-word; }
 
 /* ---- 내 정보 (header button + sheet) ---- */
-.top .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; }
-.top .wrap > :not(h1):not(.me-btn):not(.safety-btn):not(.help-btn) { grid-column: 1 / -1; }
+.top .wrap { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; } /* title | 종류 스위치 | 도움말 | 안전수칙 | 내 정보 */
+.top .wrap > :not(h1):not(.mode-switch):not(.me-btn):not(.safety-btn):not(.help-btn) { grid-column: 1 / -1; }
+.top .wrap > h1 { grid-column: 1; } .top .wrap > .help-btn { grid-column: 3; } .top .wrap > .safety-btn { grid-column: 4; } .top .wrap > .me-btn { grid-column: 5; }
 .help-btn { color: var(--fg); }
 .me-btn { margin-right: -10px; color: var(--fg); }
 .me-btn svg { width: 24px; height: 24px; }
@@ -2081,7 +2082,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .ib-meta { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .k-past { background: var(--gone); box-shadow: none; }
 /* 맨 위로: shows after a screen of scrolling, so the filters are one tap away from the bottom of a long list */
-.to-top { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: var(--z-to-top); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* centred, just above the tab bar */
+.to-top { position: fixed; right: var(--sp-16); bottom: calc(var(--sp-16) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom))); z-index: var(--z-to-top); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-float); cursor: pointer; } /* right edge, just above the tab bar: clear of the browser's own centred scroll arrows */
 .to-top[hidden] { display: none; }
 .to-top svg { width: 22px; height: 22px; }
 .to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2539,10 +2540,13 @@ html[data-text="xlarge"] .tour-dots { display: none; } /* 글자를 가장 크�
    목록 줄은 외벽 줄의 규칙을 같이 쓴다(위쪽 외벽 규칙을 :is(.row, .crag-row) / :is(.row-btn, .crag-head)로 넓힘): 여기에는 크랙에만 있는 것만 둔다. 컨디션 글자는 운영 상태 색(초록·앰버)과 뜻이 겹치지 않게 중립 톤이고 비 예보만 와인(조심할 것)이다. */
 /* 조건 시트: 싱글피치 목록(cragList)이 쓰지 않는 줄은 싱글피치 모드에서 숨긴다(구분·최소 이용 시간·기온·휴게시간·주차·장비 대여; 내 지역 칩의 개수는 외벽 수라 숨김). 정렬의 첫 칸은 모드마다 말이 다르다 */
 body[data-mode="crag"] :is(#venueRow, #minRow, #tempRow, #breakRow, #parkRow, #rentRow, #regionOptsC .rg-n), body[data-mode="crag"] .for-wall, body:not([data-mode="crag"]) .for-crag { display: none; }
-.mode-switch { display: inline-flex; gap: var(--sp-4); padding: var(--sp-4); margin-top: var(--sp-8); background: var(--sunken); border-radius: var(--r-base); }
+.mode-switch { grid-column: 2; justify-self: start; display: inline-flex; padding: var(--sp-2); margin-left: var(--sp-12); background: var(--sunken); border-radius: var(--r-pill); } /* 로고 줄의 빈자리: 헤더 높이를 늘리지 않는다 */
 .mode-switch[hidden] { display: none; }
-.mode-switch button { min-height: var(--tap); padding: 0 var(--sp-14); border: 0; border-radius: var(--r-md); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.mode-switch button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-seg); }
+.mode-switch button { position: relative; display: grid; place-items: center; width: 46px; height: 40px; padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--muted); cursor: pointer; }
+.mode-switch button::after { content: ""; position: absolute; inset: -2px -1px; } /* 눌리는 칸은 세로 44px */
+.mode-switch button svg { width: 30px; height: 30px; }
+.mode-switch button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-seg); }
+.mode-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .crag-board { --pad: 16px; position: relative; margin: var(--sp-10) -16px 0; background: var(--surface); border-block: 1px solid var(--line); } /* .board와 같은 면: --pad는 .board처럼 여기서 정의한다(루트 토큰이 아니다) */
 .crag-board[hidden] { display: none; }
 .crag-rows { list-style: none; margin: 0; padding: 0; }
