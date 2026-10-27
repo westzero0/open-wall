@@ -81,13 +81,19 @@
         <h2>2. 지금 상태</h2>
         <div id="wxHint" class="wx" hidden></div>
         <div id="statusBtns" class="status"></div>
+        <div id="untilBox" hidden>
+          <h2 style="margin-top:14px">언제까지 안내할까요?</h2>
+          <div class="row"><label>마감 시각<input type="time" id="until"></label></div>
+          <div class="chips" id="untilChips"></div>
+          <p class="note" id="untilHint"></p>
+        </div>
         <div id="altBox" hidden>
           <h2 style="margin-top:14px">가까운 다른 외벽도 안내할까요?</h2>
           <div id="altList"></div>
         </div>
         <div class="row" style="margin-top:12px"><button class="btn big" type="button" id="qShare">이미지 저장 · 공유</button><button class="btn big ghost" type="button" id="qCopy">본문 복사</button></div>
         <p class="note" id="qSay"></p>
-        <p class="note">누른 시각이 "○○시 기준"으로 들어가고, 이 상태는 오늘 하루만 유효해요.</p>
+        <p class="note">누른 시각이 "○○시 기준"으로 들어가요. 마감은 정한 시각까지만 유효하고, 그 전에 자리가 나면 "다시 이용 가능"을 눌러 풀어요.</p>
       </section>
       <section id="calSec">
         <h2>2. 날짜</h2>

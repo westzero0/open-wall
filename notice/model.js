@@ -30,11 +30,12 @@ export const CLOSINGS = {
 
 // 오늘 상태: 한 번 누르면 공지가 완성된다. tone 은 카드 색(초록=정상, 주황=조심, 빨강=이용 불가·마감), alt 는 대체 외벽을 같이 안내할지.
 export const STATUSES = {
-  open: { label: '정상 운영', badge: '정상', tone: '#2e9e5b', line: '현재 정상 운영 중입니다.', alt: false },
-  caution: { label: '일부 구역 이용 제한', badge: '일부 제한', tone: '#d98a00', line: '일부 구역은 현재 이용이 제한됩니다.', alt: true },
-  rain: { label: '우천으로 이용 불가', badge: '우천', tone: '#d98a00', line: '우천으로 벽면이 젖어 현재 이용이 어렵습니다.', alt: true },
-  wind: { label: '강풍으로 이용 불가', badge: '강풍', tone: '#d98a00', line: '강풍으로 안전을 위해 현재 이용을 제한합니다.', alt: true },
-  full: { label: '정원 초과 · 오늘 마감', badge: '오늘 마감', tone: '#c0392b', line: '현장 정원이 차서 오늘 이용이 마감되었습니다.', alt: true },
+  open: { label: '정상 운영', short: '정상 운영', badge: '정상', tone: '#2e9e5b', line: () => '현재 정상 운영 중입니다.', alt: false, timed: false },
+  resume: { label: '다시 이용 가능', short: '이용 재개', badge: '이용 가능', tone: '#2e9e5b', line: () => '자리가 나서 다시 이용하실 수 있습니다.', alt: false, timed: false },
+  caution: { label: '일부 구역 이용 제한', short: '일부 구역 이용 제한', badge: '일부 제한', tone: '#d98a00', line: (u) => `일부 구역은 ${u ? `${u}까지` : '현재'} 이용이 제한됩니다.`, alt: true, timed: true },
+  rain: { label: '우천으로 이용 불가', short: '우천 이용 불가', badge: '우천', tone: '#d98a00', line: (u) => `우천으로 벽면이 젖어 ${u ? `${u}까지` : '현재'} 이용이 어렵습니다.`, alt: true, timed: true },
+  wind: { label: '강풍으로 이용 불가', short: '강풍 이용 불가', badge: '강풍', tone: '#d98a00', line: (u) => `강풍으로 안전을 위해 ${u ? `${u}까지` : '현재'} 이용을 제한합니다.`, alt: true, timed: true },
+  full: { label: '정원 초과 · 마감', short: '마감', badge: '마감', tone: '#c0392b', line: (u) => `현장 정원이 차서 ${u ? `${u}까지` : '오늘'} 이용이 마감되었습니다.`, alt: true, timed: true },
 };
 
 export const REASON_CHIPS = ['기상 악화', '시설 점검', '볼트·루트 세팅', '행사·대회', '공사'];
@@ -137,22 +138,25 @@ function buildToday(st) {
   const wall = (st.wall ?? '').trim() || '암벽장';
   const day = st.date ? fmtDate(st.date) : '';
   const stamp = [day, st.at ? `${st.at} 기준` : ''].filter(Boolean).join(' ');
+  // 마감 시각: 기본은 그날 운영 종료 시각, 관리자가 바꿀 수 있다. 누른 시각 이전이거나 형식이 틀리면 '오늘 하루'로 본다.
+  const until = status.timed && /^\d\d:\d\d$/.test(st.until ?? '') && (!st.at || st.until > st.at) ? st.until : '';
   const alts = status.alt ? (st.alts ?? []) : [];
   const note = (st.note ?? '').trim();
   const closing = (CLOSINGS[st.closing] ?? CLOSINGS.formal).today;
   const sign = (st.sign ?? '').trim() || wall;
   const signLine = st.closing === 'formal' ? `- ${sign} 드림 -` : `- ${sign} -`;
-  const title = `${wall} ${day} ${status.label === '정상 운영' ? '정상 운영 안내' : `${status.badge === '오늘 마감' ? '오늘 마감' : status.label} 안내`}`.replace(/\s+/g, ' ');
+  const title = `${wall} ${day} ${until ? `${until}까지 ` : ''}${status.short} 안내`.replace(/\s+/g, ' ');
   const altBlock = alts.length ? ['', '가까운 다른 외벽', ...alts.map((a) => `· ${altLine(a)}`)] : [];
-  const bodyLines = [`■ ${title}`, stamp, '', status.line, ...(note ? [note] : []), ...altBlock, '', ...closing, signLine];
+  const bodyLines = [`■ ${title}`, stamp, '', status.line(until), ...(note ? [note] : []), ...altBlock, '', ...closing, signLine];
   const hash = (s) => `#${s.replace(/[\s·]/g, '')}`;
-  const caption = [title, stamp, '', status.line, ...(note ? [note] : []), ...altBlock, '', ...closing, '', [hash(wall), '#해벽', '#클라이밍', '#실외암벽', hash(KINDS.today.tag)].join(' ')].join('\n');
-  const rows = [{ from: st.date, to: st.date, reason: '', text: status.label, line: status.label },
+  const caption = [title, stamp, '', status.line(until), ...(note ? [note] : []), ...altBlock, '', ...closing, '', [hash(wall), '#해벽', '#클라이밍', '#실외암벽', hash(KINDS.today.tag)].join(' ')].join('\n');
+  const label = `${status.label}${until ? ` (${until}까지)` : ''}`;
+  const rows = [{ from: st.date, to: st.date, reason: '', text: label, line: label },
     ...(note ? [{ from: st.date, to: st.date, reason: '', text: note, line: note }] : []),
     ...alts.map((a) => ({ from: st.date, to: st.date, reason: '', text: `인근 ${altLine(a)}`, line: `인근 ${altLine(a)}` }))];
   return {
     ok: Boolean(st.status), kind: 'today', wall, month: null, color: status.tone, rows, title, head: KINDS.today.head, badge: status.badge,
     panelHead: stamp || '오늘', note, closing, sign, body: bodyLines.join('\n'), caption,
-    patch: st.date ? { wall, kind: 'today', status: st.status, at: `${st.date}T${st.at ?? '00:00'}`, expires: `${st.date}T23:59`, note: note || undefined, alternatives: alts.map((a) => a.name) } : null,
+    patch: st.date ? { wall, kind: 'today', status: st.status, at: `${st.date}T${st.at ?? '00:00'}`, until: until || undefined, expires: `${st.date}T${until || '23:59'}`, note: note || undefined, alternatives: alts.map((a) => a.name) } : null,
   };
 }

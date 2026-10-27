@@ -1,5 +1,6 @@
 // notice/app.js — 외벽 관리자 공지 도구 화면. 템플릿 라디오 + 날짜 선택 → 이미지·제목·본문·캡션이 바로 바뀐다.
 import { holidayName } from '../src/holidays.js';
+import { openIntervals } from '../src/hours.js';
 import { nearWalls } from '../src/near-walls.js';
 import { GUST_STRONG, forecastUrl, parseCurrent, skyWet } from '../src/weather.js';
 import { wallPosition } from '../src/viewmodel.js';
@@ -21,7 +22,7 @@ const now = new Date();
 const todayStr = () => `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
 const nowHHMM = () => `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
 const st = {
-  wall: '', kind: 'today', status: null, date: '', at: '', alts: [], month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
+  wall: '', kind: 'today', status: null, date: '', at: '', until: '', alts: [], month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
   dates: [], reasons: {}, reason: '', open: '10:00', close: '16:00', note: '',
   closing: 'formal', sign: '', accent: '#0a7fc8',
 };
@@ -96,6 +97,7 @@ function renderForm() {
     : '쉬는 날(또는 시간이 바뀌는 날)을 눌러 고르세요. 여러 날, 여러 달도 돼요.';
   $('chips').replaceChildren(...REASON_CHIPS.map((r) => Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: r, onclick: () => { st.reason = r; $('reason').value = r; update(); } })));
   renderStatus();
+  renderUntil();
   renderCalendar();
 }
 
@@ -134,12 +136,42 @@ function refreshNear() {
   syncAlts();
 }
 
+const hhmm = (min) => `${pad(Math.floor(Math.min(min, 1439) / 60))}:${pad(Math.min(min, 1439) % 60)}`;
+
+// 오늘 운영 종료 시각('HH:MM'): 지금 열려 있으면 그 구간의 끝, 아직 안 열렸으면 다음 구간의 끝. 정보가 없거나 쉬는 날이면 ''.
+function closeToday() {
+  const w = wallInfo();
+  if (!w) return '';
+  const d = new Date();
+  const mins = d.getHours() * 60 + d.getMinutes();
+  const spans = openIntervals(w, d);
+  const hit = spans.find(([s, e]) => mins >= s && mins < e) ?? spans.find(([s]) => s > mins);
+  return hit ? hhmm(hit[1]) : '';
+}
+
+function renderUntil() {
+  const timed = STATUSES[st.status]?.timed;
+  $('untilBox').hidden = !timed;
+  if (!timed) return;
+  $('until').value = st.until;
+  const close = closeToday();
+  $('untilHint').textContent = !st.until ? '시각을 비우면 "오늘 하루"로 안내해요.'
+    : st.until <= st.at ? '이미 지난 시각이에요. 지금보다 늦은 시각으로 바꿔 주세요.'
+      : `${close && st.until === close ? '오늘 운영 종료 시각까지로 잡혀 있어요. ' : ''}자리가 나면 아래 "다시 이용 가능"을 눌러 바로 풀 수 있어요.`;
+  $('untilChips').replaceChildren(...[['1시간 뒤', 60], ['2시간 뒤', 120]].map(([label, add]) => {
+    const d = new Date();
+    return Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: label, onclick: () => { st.until = hhmm(d.getHours() * 60 + d.getMinutes() + add); renderUntil(); update(); } });
+  }), ...(close ? [Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: `운영 종료(${close})까지`, onclick: () => { st.until = close; renderUntil(); update(); } })] : []));
+}
+
 function pickStatus(k) {
   st.status = k;
   st.date = todayStr();
   st.at = nowHHMM();
+  st.until = STATUSES[k].timed ? closeToday() : '';
   refreshNear();
   renderStatus();
+  renderUntil();
   update();
 }
 
@@ -181,7 +213,7 @@ async function copy(id, btn) {
 }
 
 async function update() {
-  if (st.kind === 'today' && st.date && st.date !== todayStr()) { st.status = null; st.date = ''; st.at = ''; renderStatus(); } // 어제의 상태는 오늘 남지 않는다
+  if (st.kind === 'today' && st.date && st.date !== todayStr()) { st.status = null; st.date = ''; st.at = ''; st.until = ''; renderStatus(); renderUntil(); } // 어제의 상태는 오늘 남지 않는다
   const n = buildNotice(st);
   const mine = ++token;
   $('outTitle').value = n.title;
@@ -216,6 +248,7 @@ function bind() {
     renderCalendar();
     update();
   });
+  $('until').oninput = (e) => { st.until = e.target.value; renderUntil(); later(); };
   $('reason').oninput = (e) => { st.reason = e.target.value; later(); };
   $('open').oninput = (e) => { st.open = e.target.value; later(); };
   $('close').oninput = (e) => { st.close = e.target.value; later(); };
@@ -253,7 +286,7 @@ function pickWall(name) {
   st.wall = name;
   loadPrefs();
   autoFill();
-  st.status = null; st.date = ''; st.at = '';
+  st.status = null; st.date = ''; st.at = ''; st.until = '';
   refreshNear();
   renderForm();
   update();
