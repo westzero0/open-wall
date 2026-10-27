@@ -10,7 +10,7 @@ import { approachModel } from './crag-approach.js';
 import { routeSummary, routeLineText } from './crag-grades.js';
 import { forecastTrusted, skyKind } from './weather.js';
 
-const FIT_WORD = { ok: '내 로프로 충분해요', short: '내 로프로는 모자라요' };
+const SHORT_ROPE = '내 로프로는 모자라요'; // read out with the rope chip when my rope is too short (the chip itself shows the ! icon, as on the wall card)
 const SUN_WORD = { sun: '양달', shade: '응달', night: '해 진 시각', unknown: '방향 모름' };
 const SUN_PIC = { sun: 'sun', shade: 'shade', night: 'shade', unknown: 'unknown' };
 const p2 = (n) => String(n).padStart(2, '0');
@@ -96,9 +96,10 @@ function sunChipOf(sun, text, { sunChip, icon }) {
 }
 
 // 칩 줄: 외벽 metaRow의 로프 칩과 같은 마크업, 알려 주기만 한다(개념도·루트는 아래 루트 줄이 연다)
-function gearRow(c) {
+function gearRow(c, icon) {
   const g = c.gear;
-  const chips = [g.rope && el('span', { class: 'chip rope' }, g.rope), g.rope && g.ownFit && el('span', { class: `chip rope ${g.ownFit}` }, FIT_WORD[g.ownFit]),
+  const short = g.rope && g.ownFit === 'short'; // only a rope too short is told, on the chip: no 'enough' chip (the wall card says nothing then either)
+  const chips = [g.rope && el('span', { class: `chip rope${short ? ' short' : ''}` }, short && icon ? icon('alert') : null, g.rope, short ? el('span', { class: 'sr-only' }, ` (${SHORT_ROPE})`) : null),
     g.quickdraws && el('span', { class: 'chip rope' }, g.quickdraws)].filter(Boolean);
   return chips.length ? el('p', { class: 'meta-row', title: GEAR_BASIS }, ...chips, el('span', { class: 'sr-only' }, ` (${GEAR_BASIS})`)) : null;
 }
@@ -165,7 +166,7 @@ function cardEl(c, at, deps) {
   return [
     deps.links?.(c) ?? null,
     c.caution ? el('p', { class: 'crag-caution' }, c.caution) : null,
-    gearRow(c),
+    gearRow(c, deps.icon),
     routeRow(c.name, routes?.get(c.name), mine, onOpenRoutes),
     condRow(c, daily, now),
     ...approachRows(c, approachModel(c.crag), onOpenApproach),

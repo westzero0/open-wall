@@ -1,6 +1,7 @@
 // src/gear.js — 근처 장비점 (data/partners.json): 정제, 거리 필터·정렬, 로드. DOM 없음.
 // 정보 영역(info)은 무료·대가 없음, 광고·제휴 영역(sponsored)은 대가를 받는 업체만(시범에서는 비어 있음).
 // 순위·가중치 필드는 없다: 정렬은 암장 좌표에서 업체까지의 거리순(같으면 가나다순). 이용자 위치는 쓰지 않는다.
+import { config } from './config.js';
 import { distanceKm } from './viewmodel.js';
 
 export const GEAR_RADIUS_KM = 7;
@@ -69,7 +70,7 @@ export function nearGear(partners, position, radiusKm = GEAR_RADIUS_KM) {
 /** Read data/partners.json; any failure (offline, 404, bad JSON) is simply "no partners". */
 export async function loadPartners(fetchFn = globalThis.fetch) {
   try {
-    const res = await fetchFn('data/partners.json', { credentials: 'omit' });
+    const res = await fetchFn(config.data.partners, { credentials: 'omit' });
     if (!res?.ok) return EMPTY();
     return normalizePartners(await res.json());
   } catch { return EMPTY(); }

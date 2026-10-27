@@ -1,6 +1,7 @@
 // src/manage.js
 import { MAX_MEMO, MAX_NAME, MAX_REGION, exportJson, keepGeo, mergeWalls, normalizeWall, parseJson } from './store.js';
 import { CSV_HEADERS, csvToWalls, parseCsv, wallToRow } from './csv.js';
+import { config } from './config.js';
 import { state, setWalls } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -97,7 +98,7 @@ $('importFile').addEventListener('change', async (e) => {
 
 $('loadNational').addEventListener('click', async () => {
   try {
-    const list = parseJson(await (await fetch('data/national.json')).text());
+    const list = parseJson(await (await fetch(config.data.walls)).text());
     const res = mergeWalls(state.walls, list, 'skip');
     setWalls(res.walls);
     report(res, [], '새 정보 보강'); // skip mode only fills what an existing wall lacks

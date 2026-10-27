@@ -21,6 +21,7 @@ export const config = {
   noticeReport: false,
   climberTest: true,
   singlePitch: false,
+  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
   reportNickEntry: 'entry.1516503630', nickRequired: true,
@@ -29,3 +30,6 @@ export const config = {
   crowdFields: { wall: 'entry.1128962446', level: 'entry.1535482151', kind: '', when: 'entry.1240200685' },
   crowdCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRo5ix5HkR_u07cMefjHVC_8XbrZ89w-JN3eCQAbcpRRBSLEibj4KnTP9sDCXQHFsJUdJkUjGr3kkCz/pub?gid=324204039&single=true&output=csv',
 };
+
+// 게시판(Worker)이 켜졌는가. boardUrl이 비면 꺼진 것이고 요청도 가지 않는다. 화면은 boardUrl 대신 이것을 묻는다.
+export const boardOn = () => Boolean(config.boardUrl);

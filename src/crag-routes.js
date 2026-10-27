@@ -1,6 +1,8 @@
 // 자연암장 루트 목록·개념도(topo) 데이터: 믿지 않는 입력을 정제하고 표시용 도우미를 둔다(DOM 없음).
 // 모양은 { version, crags: { [암장]: { areas?, topos, routes } } }. 정제 결과는 crags 객체만 돌려준다.
+import { config } from './config.js';
 import { PHOTO_RE } from './store.js';
+import { wallPageId } from './share-id.js';
 
 const ID_RE = /^r[0-9]+$/;
 const MAX_ROUTES = 150;
@@ -76,10 +78,17 @@ export function equipLabel(r) {
   return parts.join(' · ') || '–';
 }
 
-/** 실패·잘못된 JSON이면 빈 객체. 예외 없음. */
-export async function loadCragRoutes({ fetchFn = fetch, url = 'data/crag-routes.json' } = {}) {
+// 파일의 키는 암장 id, 앱·관리자 안에서는 이름. 목록(crags)에 없는 키는 그대로 둔다.
+const rekey = (src, keyOf) => { const out = Object.create(null); for (const [k, v] of Object.entries(src ?? {})) out[keyOf.get(k) ?? k] = v; return out; };
+/** keyedByName(src, crags) → src의 id 키를 암장 이름으로 바꾼 객체. */
+export const keyedByName = (src, crags) => rekey(src, new Map(crags.map((c) => [wallPageId(c), c.name])));
+/** keyedById(src, crags) → src의 이름 키를 암장 id로 바꾼 객체(파일에 쓸 때). */
+export const keyedById = (src, crags) => rekey(src, new Map(crags.map((c) => [c.name, wallPageId(c)])));
+
+/** 실패·잘못된 JSON이면 빈 객체. 예외 없음. crags를 주면 id 키가 이름으로 바뀐다. */
+export async function loadCragRoutes({ fetchFn = fetch, url = config.data.cragRoutes, crags = [] } = {}) {
   try {
     const res = await fetchFn(url, { credentials: 'omit' });
-    return res.ok ? cleanCragRoutes(await res.json()) : {};
+    return res.ok ? keyedByName(cleanCragRoutes(await res.json()), crags) : {};
   } catch { return {}; /* no routes shown */ }
 }

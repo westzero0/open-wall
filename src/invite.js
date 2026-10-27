@@ -6,7 +6,7 @@ import { hasHours, openIntervals } from './hours.js';
 import { isSunlit } from './sun.js';
 import { dayText, fmtMin, sunIntervals } from './viewmodel.js';
 import { CHAT_URL_RE } from './store.js';
-import { sharePageUrl } from './share-id.js';
+import { sharePageUrl, wallShareId } from './share-id.js';
 
 // The only tags an invite can carry: an id in the link, a label on screen. Free text never becomes a tag.
 // 'pledge' is offered only after 안전수칙 약속 (pledge.js); the link itself cannot prove it, like any other tag.
@@ -67,8 +67,8 @@ export const momentString = (date, min) => `${date}T${p2(Math.floor(min / 60))}:
  * buildInviteUrl(href, { name, date, min, n, tags, note }) → the wall's share page (w/<id>/, its own link preview) with only
  * the invite params; the page adds wall=<name> and keeps these when it sends the visitor on to the app.
  */
-export function buildInviteUrl(href, { name, date, min, n = null, kind = 'look', tags = [], note = '' }) {
-  const u = sharePageUrl(href, name);
+export function buildInviteUrl(href, { name, id = wallShareId(name), date, min, n = null, kind = 'look', tags = [], note = '' }) {
+  const u = sharePageUrl(href, id);
   u.searchParams.set('at', momentString(date, min));
   const count = cleanCount(n);
   const kinds = cleanTags(tags);

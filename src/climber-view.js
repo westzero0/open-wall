@@ -16,7 +16,7 @@ import { pictureBlob, shareInvite, shareSay } from './share-image.js';
 import { ymd } from './time.js';
 
 const $ = (id) => document.getElementById(id);
-const store = () => { try { return localStorage; } catch { return null; } };
+import { safeStorage as store } from './storage.js';
 
 /** createClimberView({ getOpenCount, isCardDone, setCardDone }) → { open(), banner(code) }. A no-op pair when config.climberTest is off. */
 export function createClimberView({ getOpenCount = () => null, isCardDone = () => false, setCardDone = () => {} } = {}) {

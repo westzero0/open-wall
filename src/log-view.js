@@ -1,7 +1,7 @@
 // src/log-view.js — the 기록 tab (progress, month calendar, the picked day's records), the 기록 추가 sheet and the
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
-import { config } from './config.js';
+import { config, boardOn } from './config.js';
 import { shareNick, shareToBoard } from './board-view.js';
 import { saveBackupAt } from './backup.js';
 import { ymd } from './time.js';
@@ -21,7 +21,7 @@ import { canSaveMonth } from './record-image.js';
 import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
 import {
-  MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
+  MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, reconcileLog, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
   timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
 } from './log.js';
@@ -118,7 +118,7 @@ box.addEventListener('focusout', armToast);
  */
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
-  getOrigin = () => null, addFav = () => {}, getWeather = async () => null,
+  getOrigin = () => null, addFav = () => {}, getWeather = async () => null, getWallId = () => null, // getWallId(name) → the wall's id (null for a name not in the lists)
 }) {
   const panel = $('panel-log');
   const monthShare = createMonthShare({ getWalls, icon });
@@ -195,7 +195,7 @@ export function createLogView({
   const shareOn = $('la-share');
   const shareBody = dlg.querySelector('.la-share-body');
   const shareNickIn = $('la-share-nick');
-  shareRow.hidden = !config.boardUrl;
+  shareRow.hidden = !boardOn();
   shareOn.addEventListener('change', () => {
     $('la-memo-hint').textContent = shareOn.checked ? '체크하면 이 메모가 공개돼요' : '100자까지. 이 기기에만 저장돼요.';
     if (shareOn.checked) {
@@ -482,7 +482,7 @@ export function createLogView({
     editing = null;
     $('log-add-title').textContent = '기록 추가';
     whenRow.hidden = false;
-    shareRow.hidden = !config.boardUrl;
+    shareRow.hidden = !boardOn();
     fixedWall = wall;
     fixedPlace = wall ? place : null;
     choice = null;
@@ -552,7 +552,7 @@ export function createLogView({
       changed();
       return toast(`${wall} 기록을 고쳤어요`);
     }
-    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries') }, { today: today(), id: newId(), nowMin: nowMin() });
+    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries'), wall_id: getWallId(wall) }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
       timeErr.hidden = false;
@@ -565,7 +565,7 @@ export function createLogView({
       return form.elements.date.focus();
     }
     // asked again at save time: the question's conditions (a week back, not later than now, not sent yet) may have moved
-    const share = config.boardUrl && shareOn.checked ? { wall, nick: shareNickIn.value, memo: res.record.memo ?? '' } : null;
+    const share = boardOn() && shareOn.checked ? { wall, nick: shareNickIn.value, memo: res.record.memo ?? '' } : null;
     const level = crowdLevel && crowdAsk(wall, res.record.date, time) === 'ask' ? crowdLevel : null;
     const before = rankNow();
     log = res.log;
@@ -600,7 +600,7 @@ export function createLogView({
       }, '♥ 추가');
     } else {
       // the 공유 box was left off (the default): the record is on this device only. With the board on, one tap more can put a line on the wall's 타임라인 too (its form asks for the nickname when there is none)
-      const toBoard = config.boardUrl && !share ? { label: '타임라인에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
+      const toBoard = boardOn() && !share ? { label: '타임라인에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
       toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽', toBoard ? 5000 : 0, toBoard);
     }
     // a failed share never undoes the record: it is already saved
@@ -1050,6 +1050,7 @@ export function createLogView({
     importFile,
     count: () => log.length,
     justStamped: (name) => stampedWall === name, // true only while changed() redraws after a save
+    reconcile: (walls) => { const r = reconcileLog(log, walls); if (r.changed) { log = r.log; persist(); } }, // after the lists load: names follow ids, old records get ids
     recordsFor: (name) => log.filter((r) => r.wall === name), // newest first (normalizeLog/addRecord keep that order)
   };
 }

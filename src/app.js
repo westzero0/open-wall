@@ -3,7 +3,10 @@ import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, toMin, ymd } from './time.js';
 import { fetchNational, fetchCrags, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
-import { config } from './config.js';
+import { config, boardOn } from './config.js';
+import { idByName, wallPageId } from './share-id.js';
+import { safeStorage } from './storage.js';
+import { getJson, getText, postForm } from './remote.js';
 import { featureOn } from './stage.js';
 import { labCrag, withoutLab, LAB_NOTE } from './lab.js'; // 시범 스위치(?lab=crag)
 import { createMap } from './map.js';
@@ -108,6 +111,7 @@ const ICONS = {
   ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
   clock: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 7v5l3 2'], // the wall sheet's tabs: 시간 (this), 이용 (ticket), 루트 (route), 게시판 (chat)
   route: ['M3 19l6-10 4 6 3-4 5 8z'],
+  alert: ['m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3', 'M12 9v4', 'M12 17h.01'], // ! in a triangle: my rope is too short for the wall (the rope chip)
   map: ['M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z', 'M15 5.764v15', 'M9 3.236v15'],
   gear: ['m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7', 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8', 'M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4', 'M2 7h20', 'M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7'], // a shopfront with an awning: the kind 장비점 (the 스토어 link has the bag)
   bag: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'], // 근처 장비점 sheet: 지도 / 스토어
@@ -164,6 +168,7 @@ const logView = createLogView({
   storage,
   icon,
   getWalls: () => state.walls,
+  getWallId: (name) => { const w = allWalls().find((x) => x.name === name); return w ? wallPageId(w) : null; },
   getFavs: () => favs,
   onChange: () => render(),
   reveal: (name) => revealFromLog(name),
@@ -175,7 +180,7 @@ const logView = createLogView({
   addFav: (name) => {
     if (favs.includes(name)) return;
     favs = toggleFav(favs, name);
-    saveFavs(storage, favs);
+    saveFavs(storage, favs, allWalls());
     syncFavs();
     if (ui.favOnly) render();
   },
@@ -424,7 +429,7 @@ function creditChip(c) {
 
 // no photo yet: a quiet link at the right end of the name row opens the 제보 sheet on 암장 사진 for this wall (needs the board Worker: config.boardUrl; empty = no link)
 function photoLink(m) {
-  return m.photo || !config.boardUrl ? null : cameraBtn(m.name, { icon });
+  return m.photo || !boardOn() ? null : cameraBtn(m.name, { icon });
 }
 
 // An open row with a photo wears it: the photo sits behind the row's own line and bar (style.css .row.has-photo),
@@ -455,7 +460,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner
   near.observe(li);
   imgs[0].addEventListener('error', () => { li.classList.remove('has-photo'); wrap.remove(); onFail?.(); }, { once: true });
   imgs.slice(1).forEach((img, k) => img.addEventListener('error', () => img.closest('.rhero-slide')?.remove(), { once: true }));
-  const add = canAdd && config.boardUrl ? cameraBtn(m.name, { more: true, icon }) : null;
+  const add = canAdd && boardOn() ? cameraBtn(m.name, { more: true, icon }) : null;
   if (!many && !add) return withCorner(wrap);
   // right-bottom: faint dots say where we are (the current one stretches out when it changes), the camera sends one more
   const dots = el('span', { class: 'rhero-dots', 'aria-hidden': 'true' });
@@ -472,7 +477,7 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner
   if (many) {
     paint(0);
     track.addEventListener('scroll', () => { const i = Math.max(0, Math.min(list.length - 1, Math.round(track.scrollLeft / track.clientWidth))); if (i !== cur) { cur = i; paint(i); } }, { passive: true });
-    const open = () => openGallery({ name: m.name, photos: m.photos, index: cur, canSend: Boolean(config.boardUrl), onClose: (i) => { cur = Math.min(i, list.length - 1); goTo(cur, false); paint(cur); } });
+    const open = () => openGallery({ name: m.name, photos: m.photos, index: cur, canSend: boardOn(), onClose: (i) => { cur = Math.min(i, list.length - 1); goTo(cur, false); paint(cur); } });
     track.addEventListener('click', open);
     track.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); else if (e.key === 'ArrowRight') goTo(cur + 1, true); else if (e.key === 'ArrowLeft') goTo(cur - 1, true); });
   }
@@ -538,6 +543,8 @@ function hoursGrid(wall, at) {
         go({ type: 'season', name: wall.name, pick: k, current: weeklyHours(wall, at).season });
         const next = hoursGrid(wall, at);
         sec.replaceWith(next);
+        const sun = next.closest('.ws-hours')?.querySelector('.ssun'); // the seasonal sun under it follows the switch
+        if (sun) sun.replaceWith(seasonSunBlock(wall, at, sun._d, true));
         next.querySelector(`[data-season="${k}"]`)?.focus();
       });
       return b;
@@ -664,11 +671,13 @@ function hoursGrid(wall, at) {
 // in that season (solid where they meet). One legend line under the rows.
 function seasonSunBlock(wall, at, d, shared = false) { // shared: it sits under the hours grid and reads that grid's axis
   if (noSunMath(d)) return null;
-  const rows = seasonSun(wall, at);
-  const fold = false; // the three seasons are always all shown (one line each)
+  const sel = weeklyHours(wall, at, vs.season[wall.name]).season; // with a 하계/동계 switch only that season's rows show (a switch that leaves none keeps all)
+  const all = seasonSun(wall, at);
+  const rows = all.some((r) => r.winter === (sel === 'winter')) ? all.filter((r) => r.winter === (sel === 'winter')) : all;
+  const fold = false;
   const texts = []; // what each bar says in words (the bars are aria-hidden): kept for screen readers, a line a season
   const why = whyBubble('계산 기준', sunLimit().textContent, ' 지금 계절은 고른 날짜의 해로, 나머지 계절은 6/21(여름) · 3/21(봄·가을) · 12/21(겨울)의 해를 기준으로 계산해요.'); // the caveat is a ! bubble, as on the sun card
-  return el('section', { class: 'ssun', 'aria-label': `계절마다 양달인 시간, ${DAY_KO[at.getDay()]}요일 운영시간 기준` },
+  const block = el('section', { class: 'ssun', 'aria-label': `계절마다 양달인 시간, ${DAY_KO[at.getDay()]}요일 운영시간 기준` },
     shared ? el('h4', { class: 'ssun-h' }, '계절별 양달', why) : gridAxis(null),
     ...rows.map((s) => {
       const open = s.open.length > 0; // with open hours only the sun inside them is told; a closed / unknown day keeps the day's whole window for reference
@@ -689,6 +698,8 @@ function seasonSunBlock(wall, at, d, shared = false) { // shared: it sits under 
     }),
     el('ul', { class: 'sr-only', 'aria-label': '계절별 양달 시간, 운영 중 예상' }, ...texts),
     shared ? null : el('p', { class: 'ws-chk end' }, '계산 기준', why)); // alone (no hours grid above): the ! sits in the card's foot line
+  block._d = d;
+  return block;
 }
 
 // The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
@@ -707,7 +718,7 @@ function feesBlock(wall) {
   const t = feeTable(wall);
   if (t) return feeTableEl(t);
   if (!wall.tags?.includes('무료')) return null; // the chip says 무료: the 입장 요금 card must not stay empty
-  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · ${shortenDates(wall.checked_at, ymd(new Date()))} 확인`) : null));
+  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.checked_at ? el('span', { class: 'f-note' }, ` · 확인 ${shortenDates(wall.checked_at, ymd(new Date()))}`) : null));
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -744,7 +755,8 @@ function addrLine(m) {
 }
 
 // ---- 즐겨찾기: a heart before the name on the card (list and map), a strip of my walls on top of the list, a filter in 조건 ----
-let favs = loadFavs(storage);
+const allWalls = () => [...state.walls, ...state.crags]; // the lists a ♥ is read against (names in memory, ids in the store)
+let favs = loadFavs(storage); // ids until the lists load; resolved to names right after (see the line after state.crags)
 let changesSeen = loadChangesSeen(storage); // 이번 주 변경: the ones a visitor already dismissed
 // 세팅일이 바뀌었어요 (setting.js): the setting.last seen per ♥ wall; a first look only records it
 let seen = loadSeen(storage);
@@ -818,7 +830,7 @@ function favBtn(name, label = null) { // label: a word under the heart (the link
   const btn = el('button', { type: 'button', class: label ? 'lb-item fav-btn' : 'icon-btn fav-btn', 'data-fav': name, 'aria-label': `${name} 즐겨찾기`, title: '즐겨찾기', ...(label ? { 'data-label': label } : {}) });
   btn.addEventListener('click', () => {
     favs = toggleFav(favs, name);
-    saveFavs(storage, favs);
+    saveFavs(storage, favs, allWalls());
     syncFavs();
     renderChanges();
     if (favs.includes(name)) document.dispatchEvent(new CustomEvent('stats:fav-add')); // stats.js counts it (no wall name in it)
@@ -857,8 +869,8 @@ async function loadWeekendWeather() {
   wxPick.busy = true;
   let days = null;
   try {
-    const res = await fetch(weekendForecastUrl(spots.map(([, p]) => p)), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
-    if (res.ok) days = parseDaily(await res.json(), spots.length);
+    const j = await getJson(weekendForecastUrl(spots.map(([, p]) => p)));
+    if (j) days = parseDaily(j, spots.length);
   } catch { /* quiet: picks stay as they are */ }
   wxPick.entry = { hours: days, at: Date.now() }; // the shape weatherFresh reads
   wxPick.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
@@ -900,8 +912,7 @@ async function loadListWeather() {
   wxList.busy = true;
   let json = null;
   try {
-    const res = await fetch(listForecastUrl(spots.map(([, p]) => p)), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
-    if (res.ok) json = await res.json();
+    json = await getJson(listForecastUrl(spots.map(([, p]) => p)));
   } catch { /* quiet: rows stay without weather */ }
   if (useWxList(spots, json, Date.now())) {
     try { storage.setItem(WXL_KEY, JSON.stringify({ key, at: wxList.entry.at, json })); } catch { /* full or blocked: asked again next visit */ }
@@ -1025,7 +1036,7 @@ function shareBtn(name, label = null, kind = 'wall') { // label: a word under th
   const say = el('span', { class: 'sr-only', 'aria-live': 'polite' });
   let timer;
   btn.addEventListener('click', async () => {
-    const url = shareUrl(location.href, name, kind);
+    const url = shareUrl(location.href, name, kind, idByName(state.walls, name));
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -1201,7 +1212,7 @@ function veilText(m, wall, at) {
 }
 // The three pieces under a wall's photo on the list card: the dock (길찾기 · 다녀왔어요), the chips, the line into the wall sheet. (The map card is the simple one: it takes only the line, sheetRowOf.)
 // 한 줄 타임라인 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
-const boardNotice = config.boardUrl ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl }), storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
+const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl }), storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
 const openBoardOf = (name) => (b) => openWallSheet(name, b, { tab: 'board' });
 boardNotice?.onChange(() => document.querySelectorAll('.sheet-row[data-wall]').forEach((row) => setBoardPill(row, boardNotice.notice(row.dataset.wall), openBoardOf(row.dataset.wall), icon)));
 const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b), { board: boardNotice?.notice(m.name) ?? null, onBoard: boardNotice ? openBoardOf(m.name) : null, icon });
@@ -1290,7 +1301,7 @@ function holidayAsk(m, none) {
 // 루트 tab = 전경 (the whole-wall picture, src/overview-view.js) above the route count
 function routePane(m, wall) {
   // nothing known about the routes or the picture: one dotted box asking for both, not two in a row
-  if (!wall.overview?.length && config.boardUrl && !routeView(wall)) return el('div', { class: 'ws-use' }, routeEmpty(m, wall, true));
+  if (!wall.overview?.length && boardOn() && !routeView(wall)) return el('div', { class: 'ws-use' }, routeEmpty(m, wall, true));
   return el('div', { class: 'ws-use' }, overviewSection(m.name, wall.overview, TAB_KINDS.routes), routeBars(m, wall));
 }
 // the 루트 section with nothing counted: the dotted box asks for the count (and, `withPhoto`, for the whole-wall picture too)
@@ -1390,7 +1401,7 @@ function buildWallSheet(wallName) {
   const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   const hoursG = hoursGrid(wall, at);
   const blocks = { hours: hoursG, fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d, Boolean(hoursG)) };
-  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: Boolean(config.boardUrl || m.blog) });
+  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: boardOn() || Boolean(m.blog) });
   // what the card's chips cut or only name, told whole here: the closing rule under the hours
   const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
@@ -1486,10 +1497,9 @@ async function loadCrowd() {
   if (!config.crowdCsvUrl || crowd.busy || Date.now() - crowd.at < 5 * 60e3) return;
   crowd.busy = true;
   try {
-    const res = await fetch(config.crowdCsvUrl, { credentials: 'omit' });
-    if (!res.ok) throw new Error(String(res.status));
+    const text = await getText(config.crowdCsvUrl);
     const byWall = new Map();
-    for (const r of parseCrowdCsv(await res.text(), state.walls.map((w) => w.name))) {
+    for (const r of parseCrowdCsv(text, state.walls.map((w) => w.name))) {
       if (!byWall.has(r.wall)) byWall.set(r.wall, []);
       byWall.get(r.wall).push(r);
     }
@@ -1514,8 +1524,8 @@ async function loadWeather(wall) {
   wx.busy.add(wall.name);
   let hours = null, current = null;
   try {
-    const res = await fetch(forecastUrl(pos.lat, pos.lng), { credentials: 'omit', signal: AbortSignal.timeout?.(8000) });
-    if (res.ok) { const j = await res.json(); hours = parseForecast(j); current = parseCurrent(j); }
+    const j = await getJson(forecastUrl(pos.lat, pos.lng));
+    if (j) { hours = parseForecast(j); current = parseCurrent(j); }
   } catch { /* quiet: no forecast line */ }
   wx.byWall.set(wall.name, { hours, current, at: Date.now() });
   wx.busy.delete(wall.name);
@@ -1581,10 +1591,7 @@ async function sendCrowd(name, level, date, time) {
   const store = (v) => { try { localStorage.setItem(CROWD_KEY, JSON.stringify(v)); } catch { /* private mode: no limit */ } };
   store(markSent(before, name, Date.now(), `${date} ${time}`));
   try {
-    await fetch(config.crowdEndpoint, {
-      method: 'POST', mode: 'no-cors', credentials: 'omit',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: crowdPayload(config.crowdFields, name, level, `${date} ${time}`),
-    });
+    await postForm(config.crowdEndpoint, crowdPayload(config.crowdFields, name, level, `${date} ${time}`));
   } catch {
     store(before);
     return false;
@@ -1720,7 +1727,7 @@ const wallBoard = document.querySelector('#panel-list .board');
 const cragWx = { daily: new Map(), hourly: new Map(), ok: false, busy: false, at: 0 };
 let cragOpen = null; // the open crag row (by name); a rebuild keeps it
 let cragRefocus = null; // a tap on a row redraws the board, so the focus goes back to that row
-const labOn = labCrag(location.search, (() => { try { return localStorage; } catch { return null; } })() ?? { getItem: () => null }); // 이 기기에서만 켠 시범
+const labOn = labCrag(location.search, safeStorage() ?? { getItem: () => null }); // 이 기기에서만 켠 시범
 if (new URLSearchParams(location.search).has('lab')) history.replaceState(null, '', withoutLab(location.href));
 const cragOn = config.singlePitch || labOn; // 싱글피치를 쓰는가: 스위치가 켜졌거나 시범 기기
 const cragMode = () => !!$('crag-board') && effectiveMode(ui.mode, { enabled: cragOn, count: state.crags.length }) === 'crag';
@@ -2613,7 +2620,9 @@ const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]);
 partners = loadedPartners;
 state.walls = first ?? [];
 if (cragOn) state.crags = await fetchCrags().catch(() => []);
-if (cragOn) loadCragRoutes().then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}); // the save totals are asked again with the topos
+favs = loadFavs(storage, allWalls());
+logView.reconcile(allWalls());
+if (cragOn) loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}); // the save totals are asked again with the topos
 showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
 // memory only; nothing is saved until the visitor changes a filter) and starts on the list.

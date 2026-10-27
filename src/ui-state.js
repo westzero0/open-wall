@@ -2,7 +2,7 @@
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
 // What is on screen but not saved (picked moment, open row, position) is view-state.js.
 import { normalizeAreas } from './areas.js';
-import { sharePageUrl } from './share-id.js';
+import { sharePageUrl, wallShareId } from './share-id.js';
 
 export const UI_KEY = 'open-wall:ui';
 const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall' };
@@ -124,22 +124,22 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
 
 /**
  * cragFilterView(ui, { hasGrade, query }) → the 싱글피치 list's 조건 count and empty-box buttons: only what cragList uses.
- * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 내 로프 길이, 어프로치 도보 — cragList drops crags by the last two); 양달/응달 and the search sit outside the sheet, as for walls.
- * national: 내 지역 narrows the list (전국으로 보기). clear: 양달/응달, the search, 즐겨찾기만, a set 내 로프 길이 or 어프로치 도보 narrows it (조건 지우기 clears those five).
+ * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 내 로프 길이 (a setting: it hides no crag), 어프로치 도보 — cragList drops crags by the last); 양달/응달 and the search sit outside the sheet, as for walls.
+ * national: 내 지역 narrows the list (전국으로 보기). clear: 양달/응달, the search, 즐겨찾기만, a set 어프로치 도보 narrows it (조건 지우기 clears those four).
  */
 export function cragFilterView(ui, { hasGrade = false, query = '' } = {}) {
   return {
     sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.ropeM) > 0) + Number(Number(ui.approachMax) > 0),
     national: ui.regions.length > 0,
-    clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.ropeM) > 0 || Number(ui.approachMax) > 0 || query.trim() !== '',
+    clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || query.trim() !== '',
   };
 }
 
 // Share link: the wall's static share page next to the app, w/<id>/ (no ?edit, no hash). The page carries the wall's own
 // link preview (og tags, made at deploy) and sends the visitor on to ?wall=<name>, which is where wallFromSearch takes over.
 // A crag (kind 'crag') has no share page: the app address with ?crag=<name> only, read back by cragFromSearch.
-export function shareUrl(href, name, kind = 'wall') {
-  if (kind !== 'crag') return sharePageUrl(href, name).toString();
+export function shareUrl(href, name, kind = 'wall', id = wallShareId(name)) { // id: the wall's stored id
+  if (kind !== 'crag') return sharePageUrl(href, id).toString();
   const u = new URL(href);
   u.search = '';
   u.hash = '';

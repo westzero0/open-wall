@@ -3,7 +3,7 @@
 // Without: a dotted box that asks for one. Hidden when the board Worker is off and there is nothing to show (no way to send). DOM via el()/textContent only.
 import { el } from './dom.js';
 import { openGallery } from './gallery-view.js';
-import { config } from './config.js';
+import { config, boardOn } from './config.js';
 
 const KIND = '전경 사진';
 const mmdd = (d) => (/^\d{4}-\d\d-\d\d$/.test(d ?? '') ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '');
@@ -14,7 +14,7 @@ const openAll = (name, list, canSend) => openGallery({ name, photos: list, index
 
 export function overviewSection(name, overview, kinds) {
   const list = listOf(overview);
-  const canSend = Boolean(config.boardUrl);
+  const canSend = boardOn();
   if (!list.length && !canSend) return null;
   const send = (label, cls = 'ws-ask sub') => {
     const b = el('button', { type: 'button', class: cls }, label);

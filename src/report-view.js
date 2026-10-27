@@ -1,5 +1,6 @@
 // Report sheet: opens on wall:report, posts to the Google Form (no-cors: the response is unreadable, only a network error counts as failure).
-import { config } from './config.js';
+import { config, boardOn } from './config.js';
+import { postForm } from './remote.js';
 import { el } from './dom.js';
 import { buildLabel } from './build-label.js';
 import { searchPicks } from './viewmodel.js';
@@ -189,7 +190,7 @@ if (dlg) {
   // Shrink + upload one picked file. Returns '' on success, else the message to show.
   // Returns '' on success, else the reason key of PHOTO_SAY.
   async function postPhotoWhy(file, note, nick, big = false) {
-    if (!config.boardUrl) return 'network';
+    if (!boardOn()) return 'network';
     let blob;
     try { blob = await shrinkToJpeg(file, big ? { edge: OVERVIEW_EDGE, maxBytes: FIT_BYTES } : {}); } catch (e) { return e.message === 'too_big' ? 'too_big' : 'bad_image'; }
     const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick });
@@ -288,10 +289,7 @@ if (dlg) {
     if (c.save) saveNick(c.nick);
     if (!v.honeypot) {
       try {
-        await fetch(config.reportEndpoint, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: buildPayload(v.report, config.reportNickEntry, buildLabel()),
-        });
+        await postForm(config.reportEndpoint, buildPayload(v.report, config.reportNickEntry, buildLabel()));
       } catch {
         busy = false; refresh();
         alt.hidden = false;

@@ -1,4 +1,5 @@
 // 이벤트 랭킹: shown in the 내 정보 sheet while data/contributors.json says the event runs (parseContributors); hidden on any failure.
+import { config } from './config.js';
 import { parseContributors } from './contrib.js';
 import { ymd } from './time.js';
 import { el } from './dom.js';
@@ -6,7 +7,7 @@ import { el } from './dom.js';
 const box = document.getElementById('pfRank');
 if (box) {
   try {
-    const r = await fetch('data/contributors.json');
+    const r = await fetch(config.data.contributors);
     const c = r.ok ? parseContributors(await r.json(), ymd(new Date())) : null;
     if (c && c.rows.length) {
       const [, m, d] = c.until.split('-').map(Number);

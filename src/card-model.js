@@ -115,7 +115,7 @@ export function noticeFresh(wall, now) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(wall.notice_checked_at ?? '');
   if (!m || !safeUrl(wall.contact?.notice_url)) return { noticeChecked: null };
   const days = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
-  return { noticeChecked: days > NOTICE_STALE_DAYS ? null : `공지 확인 ${wall.notice_checked_at}` }; // an old date is hidden, not warned about
+  return { noticeChecked: days > NOTICE_STALE_DAYS ? null : `확인 ${wall.notice_checked_at}` }; // an old date is hidden, not warned about
 }
 
 // Gaps between a day's open intervals (lunch break etc.), as chip words.
@@ -492,8 +492,8 @@ const closedDays = (wall, line) => {
 const ROPE_CHIP_MIN_M = 17; // the card's rope chip shows from this wall height up
 const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
   const size = rope && wall.height_m >= ROPE_CHIP_MIN_M // the height is told in the sheet (시설) only; a low wall needs no rope talk on the card (the sheet's 권장 로프 row stays)
-    ? { kind: 'size', icon: 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
-      note: rope?.basis ?? null,
+    ? { kind: 'size', icon: rope?.own?.tone === 'short' ? 'alert' : 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
+      note: [rope?.own?.tone === 'short' ? rope.own.text : null, rope?.basis].filter(Boolean).join(' · ') || null,
       text: rope.ask.replace(/ 이상$/, '+') } // 로프 40m+
     : null;
   const closure = info.shown.find((l) => CLOSURE_LABEL.test(l.label ?? ''));

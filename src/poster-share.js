@@ -25,7 +25,7 @@ const SAY = {
 };
 const toBlob = (canvas, q) => new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', q));
 const unit = (v) => Math.min(1, Math.max(0, v));
-const safeStorage = () => { try { return localStorage; } catch { return null; } };
+import { safeStorage } from './storage.js';
 
 // the thumbnail the 기록 tab shows: 180 wide, the card's own shape, the first quality that fits MAX_THUMB (null when none does)
 async function makeThumb(src, ratio) {

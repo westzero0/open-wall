@@ -9,6 +9,7 @@ import { drawInviteCard, pictureBlob, saveFile } from './share-image.js';
 import { KAKAO_SAY, kakaoPayload, loadKakao, shareKakao } from './kakao-share.js';
 import { openIntervals } from './hours.js';
 import { toast } from './log-view.js';
+import { wallPageId } from './share-id.js';
 import { loadPledge } from './pledge.js';
 
 const $ = (id) => document.getElementById(id);
@@ -180,7 +181,7 @@ export function createInviteView({ getWalls }) {
   kakaoBtn.addEventListener('click', async () => {
     const now = keyOf();
     if (!now) return feedback(past ? ERR.past : ERR.empty);
-    const url = buildInviteUrl(location.href, { name: wall.name, ...fields() });
+    const url = buildInviteUrl(location.href, { name: wall.name, id: wallPageId(wall), ...fields() });
     if (!kakao) return kakaoOff ? copyInstead(url) : feedback('카카오톡 공유를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.');
     if (ready?.key !== now) return feedback('그림을 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.');
     if (!ready.card) return copyInstead(url);

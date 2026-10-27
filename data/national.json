@@ -4,6 +4,7 @@
   "walls": [
     {
       "name": "양주인공암벽장",
+      "id": "ekipzve0",
       "short_name": "양주",
       "region": "경기 양주시",
       "height_m": 16,
@@ -190,6 +191,7 @@
     },
     {
       "name": "고양인공암벽장",
+      "id": "54a4imhi",
       "short_name": "고양",
       "region": "경기 고양시",
       "height_m": 18,
@@ -487,6 +489,7 @@
     },
     {
       "name": "클라임스퀘어 ICN",
+      "id": "5wjsuv06",
       "short_name": "클라임스퀘어 ICN",
       "region": "인천 서구",
       "height_m": 15,
@@ -625,6 +628,7 @@
     },
     {
       "name": "광명시인공암벽장",
+      "id": "ou3s93e4",
       "short_name": "광명",
       "region": "경기 광명시",
       "height_m": 18,
@@ -802,6 +806,7 @@
     },
     {
       "name": "부천시인공암벽장",
+      "id": "8cdb7vng",
       "short_name": "부천종합운동장",
       "region": "경기 부천시",
       "height_m": 19.6,
@@ -977,6 +982,7 @@
     },
     {
       "name": "인천문학경기장암벽장",
+      "id": "k0a3c9m2",
       "short_name": "문학경기장",
       "region": "인천 미추홀구",
       "height_m": 18,
@@ -1196,6 +1202,7 @@
     },
     {
       "name": "시흥스포츠클라이밍센터",
+      "id": "5lv9dflp",
       "short_name": "시흥",
       "region": "경기 시흥시",
       "height_m": null,
@@ -1410,6 +1417,7 @@
     },
     {
       "name": "안양새물공원인공암벽장",
+      "id": "dwvcx5o5",
       "short_name": "안양 새물공원",
       "region": "경기 안양시",
       "height_m": 18,
@@ -1633,6 +1641,7 @@
     },
     {
       "name": "화랑유원지인공암벽등반장",
+      "id": "tb2nerxs",
       "short_name": "화랑유원지",
       "region": "경기 안산시",
       "height_m": 18,
@@ -1925,6 +1934,7 @@
     },
     {
       "name": "광교스포츠클라이밍장",
+      "id": "obqvcndv",
       "short_name": "광교호수공원",
       "region": "경기 수원시",
       "height_m": 20,
@@ -2230,6 +2240,7 @@
     },
     {
       "name": "죽미체육공원인공암벽장",
+      "id": "tnianpi2",
       "short_name": "죽미체육공원",
       "region": "경기 오산시",
       "height_m": null,
@@ -2329,6 +2340,7 @@
     },
     {
       "name": "소흘생활체육공원 인공암벽장",
+      "id": "qjc1ekac",
       "short_name": "소흘",
       "region": "경기 포천시",
       "height_m": 18,
@@ -2514,6 +2526,7 @@
     },
     {
       "name": "소흘국민체육센터 실내 인공암벽장",
+      "id": "ugdmcz92",
       "short_name": "소흘 실내",
       "region": "경기 포천시",
       "height_m": null,
@@ -2662,6 +2675,7 @@
     },
     {
       "name": "한석봉체육관 클라이밍장",
+      "id": "ng03m3pb",
       "short_name": "한석봉체육관",
       "region": "경기 가평군",
       "height_m": 14,
@@ -2737,6 +2751,7 @@
     },
     {
       "name": "남양주시 인공암벽",
+      "id": "wf5nr13r",
       "short_name": "남양주",
       "region": "경기 남양주시",
       "height_m": 15,
@@ -2994,6 +3009,7 @@
     },
     {
       "name": "성남시인공암벽장",
+      "id": "j4526pwt",
       "short_name": "성남종합운동장",
       "region": "경기 성남시",
       "height_m": 15,
@@ -3185,6 +3201,7 @@
     },
     {
       "name": "판교공원 인공암벽장",
+      "id": "bhv8rlhd",
       "short_name": "판교공원",
       "region": "경기 성남시",
       "height_m": 16,
@@ -3377,6 +3394,7 @@
     },
     {
       "name": "설봉공원인공암벽장",
+      "id": "lsaenjdh",
       "short_name": "설봉공원",
       "region": "경기 이천시",
       "height_m": null,
@@ -3550,6 +3568,7 @@
     },
     {
       "name": "북한산 국제클라이밍센터",
+      "id": "bekd7ba1",
       "short_name": "북한산",
       "region": "서울 강북구",
       "height_m": 15,
@@ -3764,6 +3783,7 @@
     },
     {
       "name": "당고개인공암벽장",
+      "id": "prmlb2fi",
       "short_name": "당고개",
       "region": "서울 노원구",
       "height_m": 15,
@@ -3953,6 +3973,7 @@
     },
     {
       "name": "은평인공암벽장",
+      "id": "6d99uktw",
       "short_name": "은평",
       "region": "서울 은평구",
       "height_m": 15.6,
@@ -4250,6 +4271,7 @@
     },
     {
       "name": "서울산악문화체험센터",
+      "id": "zqnf2ysz",
       "short_name": "서울산악문화센터",
       "region": "서울 마포구",
       "height_m": 14.4,
@@ -4505,6 +4527,7 @@
     },
     {
       "name": "강서한강공원 인공암벽장",
+      "id": "iglad7pb",
       "short_name": "강서한강공원",
       "region": "서울 강서구",
       "height_m": 14,
@@ -4671,6 +4694,7 @@
     },
     {
       "name": "중랑 스포츠클라이밍 경기장",
+      "id": "fmc7rvb9",
       "short_name": "중랑 용마폭포",
       "region": "서울 중랑구",
       "height_m": 17,
@@ -4940,6 +4964,7 @@
     },
     {
       "name": "응봉산 인공암벽공원",
+      "id": "cluwm0rc",
       "short_name": "응봉산",
       "region": "서울 성동구",
       "height_m": 15,
@@ -5106,6 +5131,7 @@
     },
     {
       "name": "뚝섬한강공원 인공암벽",
+      "id": "ngff5jcn",
       "short_name": "뚝섬한강공원",
       "region": "서울 광진구",
       "height_m": 15,
@@ -5300,6 +5326,7 @@
     },
     {
       "name": "영등포 스포츠클라이밍경기장",
+      "id": "7gfeh5ya",
       "short_name": "영등포",
       "region": "서울 영등포구",
       "height_m": 17,
@@ -5555,6 +5582,7 @@
     },
     {
       "name": "보라매공원 인공암벽등반장",
+      "id": "dth6pucf",
       "short_name": "보라매공원",
       "region": "서울 동작구",
       "height_m": 15.5,
@@ -5713,6 +5741,7 @@
     },
     {
       "name": "강남스포츠클라이밍센터",
+      "id": "uj7965n1",
       "short_name": "강남",
       "region": "서울 강남구",
       "height_m": 18,
@@ -5976,6 +6005,7 @@
     },
     {
       "name": "파주스타디움 인공암벽장",
+      "id": "h1ughp02",
       "short_name": "파주스타디움",
       "region": "경기 파주시",
       "height_m": 18,
@@ -6368,6 +6398,7 @@
     },
     {
       "name": "용인시스포츠클라이밍장",
+      "id": "vptvy55o",
       "short_name": "용인",
       "region": "경기 용인시",
       "height_m": 16,
@@ -6574,6 +6605,7 @@
     },
     {
       "name": "천안시도솔광장인공암벽장",
+      "id": "5rtvpdd2",
       "short_name": "도솔광장",
       "region": "충남 천안시",
       "height_m": null,
@@ -6789,6 +6821,7 @@
     },
     {
       "name": "당진인공암벽장",
+      "id": "rhq16ebc",
       "short_name": "당진",
       "region": "충남 당진시",
       "height_m": null,
@@ -6959,6 +6992,7 @@
     },
     {
       "name": "김해인공암벽장",
+      "id": "rrzrbygx",
       "short_name": "김해",
       "region": "경남 김해시",
       "height_m": null,
@@ -7158,6 +7192,7 @@
     },
     {
       "name": "금곡공원 인공암벽장",
+      "id": "8kpd1ovn",
       "short_name": "금곡공원",
       "region": "경기 성남시",
       "height_m": 11.9,
@@ -7465,6 +7500,7 @@
     },
     {
       "name": "청주국제스포츠클라이밍센터",
+      "id": "yor1kzel",
       "short_name": "청주",
       "region": "충북 청주시",
       "height_m": 18,
@@ -7771,6 +7807,7 @@
     },
     {
       "name": "한림스포츠클라이밍경기장",
+      "id": "rmj9q4kz",
       "short_name": "한림",
       "region": "제주 제주시",
       "height_m": 18,
@@ -7878,6 +7915,7 @@
     },
     {
       "name": "만날공원 인공암벽장",
+      "id": "rdz80z4u",
       "short_name": "만날공원",
       "region": "경남 창원시",
       "height_m": 16,
@@ -8090,6 +8128,7 @@
     },
     {
       "name": "스포츠아일랜드 클라이밍 오창",
+      "id": "kpx1dany",
       "short_name": "오창",
       "region": "충북 청주시",
       "height_m": null,
@@ -8202,6 +8241,7 @@
     },
     {
       "name": "봄내체육관 인공암벽장",
+      "id": "0msdgdk1",
       "short_name": "봄내체육관",
       "region": "강원 춘천시",
       "height_m": 9,
@@ -8285,6 +8325,7 @@
     },
     {
       "name": "용머리인공암벽장",
+      "id": "77q3o3rx",
       "short_name": "용머리",
       "region": "강원 양구군",
       "height_m": null,
@@ -8390,6 +8431,7 @@
     },
     {
       "name": "고창인공암벽장",
+      "id": "uayoxucw",
       "short_name": "고창",
       "region": "전북 고창군",
       "height_m": 16,
@@ -8544,6 +8586,7 @@
     },
     {
       "name": "팔공산인공암벽장",
+      "id": "9bvfat23",
       "short_name": "팔공산",
       "region": "대구 동구",
       "height_m": null,
@@ -8649,6 +8692,7 @@
     },
     {
       "name": "수안보인공암벽장",
+      "id": "lxswmpkl",
       "short_name": "수안보",
       "region": "충북 충주시",
       "height_m": null,
@@ -8804,6 +8848,7 @@
     },
     {
       "name": "신정호인공암벽장",
+      "id": "yd6hk7g9",
       "short_name": "신정호",
       "region": "충남 아산시",
       "height_m": null,
@@ -8909,6 +8954,7 @@
     },
     {
       "name": "전북특별자치도 인공암벽장",
+      "id": "t3fvpe33",
       "short_name": "전북",
       "region": "전북 부안군",
       "height_m": null,
@@ -9118,6 +9164,7 @@
     },
     {
       "name": "남원종합스포츠타운 스포츠클라이밍",
+      "id": "v5g6xhly",
       "short_name": "남원",
       "region": "전북 남원시",
       "height_m": null,
@@ -9397,6 +9444,7 @@
     },
     {
       "name": "경산국제클라이밍파크",
+      "id": "4jm90qm2",
       "short_name": "경산",
       "region": "경북 경산시",
       "height_m": null,
@@ -9656,6 +9704,7 @@
     },
     {
       "name": "상주인공암벽장",
+      "id": "x5wjpvrl",
       "short_name": "상주",
       "region": "경북 상주시",
       "height_m": 16.1,
@@ -9809,6 +9858,7 @@
     },
     {
       "name": "김천종합스포츠타운인공암벽장",
+      "id": "680ycj6f",
       "short_name": "김천",
       "region": "경북 김천시",
       "tags": [
@@ -9995,6 +10045,7 @@
     },
     {
       "name": "철원 클라이밍센터",
+      "id": "klr38kt0",
       "short_name": "철원",
       "region": "강원 철원군",
       "tags": [],
@@ -10095,6 +10146,7 @@
     },
     {
       "name": "동해 웰빙레포츠타운 인공암벽장",
+      "id": "8gqmqyk6",
       "short_name": "동해",
       "region": "강원 동해시",
       "tags": [
@@ -10262,6 +10314,7 @@
     },
     {
       "name": "광주 서구 상무 인공암벽장",
+      "id": "ni4q9v5i",
       "short_name": "상무",
       "region": "광주 서구",
       "tags": [
@@ -10437,6 +10490,7 @@
     },
     {
       "name": "남구국제스포츠클라이밍장",
+      "id": "gl5zcoe9",
       "short_name": "남구",
       "region": "대구 남구",
       "height_m": 16,
@@ -10608,6 +10662,7 @@
     },
     {
       "name": "문경국제클라이밍센터",
+      "id": "68kn95vh",
       "short_name": "문경",
       "region": "경북 문경시",
       "height_m": 15.7,
@@ -10751,6 +10806,7 @@
     },
     {
       "name": "안동 클라이밍장",
+      "id": "lya2yxcz",
       "short_name": "안동",
       "region": "경북 안동시",
       "height_m": null,
@@ -10863,6 +10919,7 @@
     },
     {
       "name": "목포국제스포츠클라이밍센터",
+      "id": "sisj2215",
       "short_name": "목포",
       "region": "전남 목포시",
       "height_m": 16,
@@ -10967,6 +11024,7 @@
     },
     {
       "name": "순천팔마종합운동장 팔마인공암벽장",
+      "id": "e8p0bdrc",
       "short_name": "팔마",
       "region": "전남 순천시",
       "height_m": null,
@@ -11072,6 +11130,7 @@
     },
     {
       "name": "원클라임",
+      "id": "xrn7r7tc",
       "short_name": "원클라임",
       "region": "전남 순천시",
       "height_m": 18,
@@ -11208,6 +11267,7 @@
     },
     {
       "name": "대전인공암벽장",
+      "id": "a0766i0x",
       "short_name": "대전월드컵",
       "region": "대전 유성구",
       "height_m": 17,
@@ -11482,6 +11542,7 @@
     },
     {
       "name": "옥녀봉 인공암벽장",
+      "id": "i86vzacd",
       "short_name": "옥녀봉",
       "region": "대전 서구",
       "tags": [
@@ -11619,6 +11680,7 @@
     },
     {
       "name": "포항국제클라이밍센터",
+      "id": "1xih1304",
       "short_name": "포항",
       "region": "경북 포항시",
       "height_m": null,
@@ -11807,6 +11869,7 @@
     },
     {
       "name": "경주 인공암벽장",
+      "id": "w2n6jagc",
       "short_name": "경주",
       "region": "경북 경주시",
       "tags": [],
@@ -11947,6 +12010,7 @@
     },
     {
       "name": "익산시스포츠클라이밍장",
+      "id": "0bu2bzhq",
       "short_name": "익산",
       "region": "전북 익산시",
       "height_m": null,
@@ -12079,6 +12143,7 @@
     },
     {
       "name": "완산생활체육공원인공암벽장",
+      "id": "ggxecit5",
       "short_name": "완산",
       "region": "전북 전주시",
       "height_m": 16,
@@ -12229,6 +12294,7 @@
     },
     {
       "name": "국립등산학교 인공암벽장",
+      "id": "vpdb4f8v",
       "short_name": "국립등산학교",
       "region": "강원 속초시",
       "height_m": 17,
@@ -12386,6 +12452,7 @@
     },
     {
       "name": "통영산양스포츠파크인공암벽장",
+      "id": "ynlnue6b",
       "short_name": "통영산양",
       "region": "경남 통영시",
       "height_m": null,
@@ -12490,6 +12557,7 @@
     },
     {
       "name": "영남알프스 국제클라이밍센터",
+      "id": "pg8tqdyp",
       "short_name": "영남알프스",
       "region": "울산 울주군",
       "height_m": null,
@@ -12713,6 +12781,7 @@
     },
     {
       "name": "울산인공암벽센터",
+      "id": "bwqnsi28",
       "short_name": "울산",
       "region": "울산 남구",
       "height_m": null,
@@ -12936,6 +13005,7 @@
     },
     {
       "name": "라온체육공원 인공암벽장",
+      "id": "ukwz9l4e",
       "short_name": "라온체육공원",
       "region": "경남 거제시",
       "height_m": 16,
@@ -13090,6 +13160,7 @@
     },
     {
       "name": "클럽 스파이더 클라이밍 사상점",
+      "id": "ejnjr129",
       "short_name": "스파이더 사상",
       "region": "부산 사상구",
       "height_m": 8,
@@ -13234,6 +13305,7 @@
     },
     {
       "name": "와클라이밍",
+      "id": "9kuvokx5",
       "short_name": "와클라이밍",
       "region": "충남 아산시",
       "height_m": 8,
@@ -13350,6 +13422,7 @@
     },
     {
       "name": "클라임투게더 수원점",
+      "id": "6pa2a1i7",
       "short_name": "클라임투게더 수원",
       "region": "경기 수원시",
       "height_m": 14,
@@ -13521,6 +13594,7 @@
     },
     {
       "name": "클라임투게더 원주점",
+      "id": "qqde7zfg",
       "short_name": "클라임투게더 원주",
       "region": "강원 원주시",
       "tags": [
@@ -13633,6 +13707,7 @@
     },
     {
       "name": "송암스포츠타운 인공암벽장",
+      "id": "v665fzay",
       "short_name": "송암스포츠타운",
       "region": "강원 춘천시",
       "height_m": 16,
@@ -13664,6 +13739,7 @@
     },
     {
       "name": "광주시스포츠클라이밍경기장",
+      "id": "nyhgcahz",
       "short_name": "광주시",
       "region": "경기 광주시",
       "height_m": 21,

@@ -11,4 +11,10 @@ export function wallShareId(name) {
 }
 
 /** The share page of a wall, from the app's own address (href's path; its query and hash are dropped). */
-export const sharePageUrl = (href, name) => new URL(`w/${wallShareId(name)}/`, href);
+/** wallPageId(wall) → the wall's stored id (data/*.json `id`); a wall without one falls back to the name hash, which is what the id was first made from. */
+export const wallPageId = (wall) => (typeof wall?.id === 'string' && wall.id ? wall.id : wallShareId(wall?.name ?? ''));
+
+/** idByName(walls, name) → the id of the wall with that name in the list (or the name hash when the list has no such wall). */
+export const idByName = (walls, name) => wallPageId(walls?.find((w) => w.name === name) ?? { name });
+
+export const sharePageUrl = (href, id) => new URL(`w/${id}/`, href);

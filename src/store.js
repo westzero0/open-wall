@@ -1,3 +1,4 @@
+import { config } from './config.js';
 import { cleanShadow } from './shadow.js';
 import { hasHours, orderIntervals } from './hours.js';
 import { cleanCounts } from './grades.js';
@@ -442,6 +443,9 @@ export function cleanRouteSets(v) {
 // Public holidays: 'weekend' (Saturday's hours), 'closed', 'weekday' (the weekday's own hours); absent = not known.
 export const HOLIDAY_RULES = ['weekend', 'closed', 'weekday'];
 
+// A wall's stable id: 8 lowercase base36 chars, the form of src/share-id.js. Written once into the data, it stays when the name changes.
+export const WALL_ID_RE = /^[a-z0-9]{8}$/;
+
 export function normalizeWall(raw) {
   if (!isPlainObject(raw)) {
     return {
@@ -460,6 +464,7 @@ export function normalizeWall(raw) {
   }
 
   const name = typeof raw.name === 'string' ? raw.name.normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
+  const id = typeof raw.id === 'string' && WALL_ID_RE.test(raw.id) ? raw.id : '';
   const tags = getStringArray(raw.tags);
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
@@ -525,6 +530,7 @@ export function normalizeWall(raw) {
     contact,
     sun,
     name,
+    ...(id ? { id } : {}),
     ...(seasons.length ? { seasons } : {}),
     ...(suspended ? { suspended } : {}),
     ...(rope_m ? { rope_m } : {}),
@@ -585,6 +591,7 @@ export function keepGeo(old, next) {
     if (!out.photos && old.photos) out.photos = old.photos;
     if (!out.photo_credit && old.photo_credit) out.photo_credit = old.photo_credit;
   }
+  if (!out.id && old.id) out.id = old.id; // a CSV or an older export carries no id
   if (!out.short_name && old.short_name) out.short_name = old.short_name;
   if (!out.venue && old.venue) out.venue = old.venue; // an older CSV without 구분 keeps the stored one
   if (!out.indoor_kinds && old.indoor_kinds) out.indoor_kinds = old.indoor_kinds; // so does one without 실내종류
@@ -660,7 +667,7 @@ export function parseJson(text) {
 
 // The shipped list. Anything but a non-empty list is an error, so a bad network never reads as "0 open".
 export async function fetchNational(fetchFn = fetch) {
-  const r = await fetchFn('data/national.json', { cache: 'no-cache' }); // revalidate (304 is cheap): Pages' max-age=600 would show a data deploy up to 10 minutes late
+  const r = await fetchFn(config.data.walls, { cache: 'no-cache' }); // revalidate (304 is cheap): Pages' max-age=600 would show a data deploy up to 10 minutes late
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const list = parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
   if (!list.length) throw new Error('empty');
@@ -669,7 +676,7 @@ export async function fetchNational(fetchFn = fetch) {
 
 // Single-pitch crags (data/single-pitch.json), a separate list from the walls. Unlike fetchNational an empty list is fine.
 export async function fetchCrags(fetchFn = fetch) {
-  const r = await fetchFn('data/single-pitch.json');
+  const r = await fetchFn(config.data.crags);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
 }

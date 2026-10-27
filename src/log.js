@@ -5,6 +5,7 @@
 // Everything read (localStorage, an imported file) is untrusted and goes through normalizeLog.
 
 import { GRADES, cleanCounts, totalOf } from './grades.js';
+import { wallPageId } from './share-id.js';
 
 export const LOG_KEY = 'open-wall:log';
 export const MAX_RECORDS = 2000;
@@ -14,6 +15,7 @@ export const MAX_IMPORT_BYTES = 1_000_000;
 export const TIP_AT = 5; // the save toast mentions the backup once, when this many records exist
 
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const WALL_ID_RE = /^[a-z0-9]{8}$/; // a wall's stored id (store.js WALL_ID_RE); the record keeps it next to the name
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 // A real calendar day (no 2026-02-30), from 2000 on.
 export function validDate(s) {
@@ -41,11 +43,12 @@ function cleanRecord(r, today, nowMin = null) {
   if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
   const wall = cleanText(r.wall, MAX_WALL);
   if (typeof r.id !== 'string' || !ID_RE.test(r.id) ||!wall || !validDate(r.date) || r.date > today) return null;
+  const wall_id = typeof r.wall_id === 'string' && WALL_ID_RE.test(r.wall_id) ? r.wall_id : '';
   const memo = cleanText(r.memo, MAX_MEMO);
   const sends = cleanCounts(r.sends);
   const tries = cleanCounts(r.tries);
   return {
-    id: r.id, wall, date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}),
+    id: r.id, wall, ...(wall_id ? { wall_id } : {}), date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}),
     ...(Object.keys(sends).length ? { sends } : {}), ...(Object.keys(tries).length ? { tries } : {}),
   };
 }
@@ -151,7 +154,7 @@ export function addRecord(log, input, { today, id, nowMin = null }) {
   if (input.date > today) return { error: '오늘 이후 날짜는 기록할 수 없어요.' };
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
   if (log.length >= MAX_RECORDS) return { error: `기록은 ${MAX_RECORDS}개까지 저장돼요.` };
-  const record = cleanRecord({ id, wall, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries }, today);
+  const record = cleanRecord({ id, wall, wall_id: input.wall_id, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: [...log, record].sort(newestFirst), record };
 }
@@ -164,12 +167,32 @@ export function updateRecord(log, id, input, { today, nowMin = null }) {
   const old = log.find((r) => r.id === id);
   if (!old) return { error: '기록을 찾지 못했어요.' };
   if (validTime(input?.time) && isAhead(old.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
-  const record = cleanRecord({ id, wall: old.wall, date: old.date, time: input?.time, memo: input?.memo, sends: input?.sends, tries: input?.tries }, today);
+  const record = cleanRecord({ id, wall: old.wall, wall_id: old.wall_id, date: old.date, time: input?.time, memo: input?.memo, sends: input?.sends, tries: input?.tries }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: log.map((r) => (r.id === id ? record : r)).sort(newestFirst), record };
 }
 
 export const removeRecord = (log, id) => log.filter((r) => r.id !== id);
+
+/**
+ * reconcileLog(log, walls) → { log, changed }: each record meets the current list. One with a wall_id takes the wall's current name
+ * (a rename follows); one without (from before ids) gets the id of the wall of that name. A wall not in the list is left as it is.
+ * walls: [{ name, id? }]; a wall without a stored id counts under its name hash (wallPageId).
+ */
+export function reconcileLog(log, walls) {
+  const byId = new Map(walls.map((w) => [wallPageId(w), w]));
+  const byName = new Map(walls.map((w) => [w.name, w]));
+  let changed = false;
+  const out = log.map((r) => {
+    const w = (r.wall_id && byId.get(r.wall_id)) || (!r.wall_id && byName.get(r.wall)) || null;
+    if (!w) return r;
+    const id = wallPageId(w);
+    if (r.wall === w.name && r.wall_id === id) return r;
+    changed = true;
+    return { ...r, wall: w.name, wall_id: id };
+  });
+  return { log: out, changed };
+}
 
 const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
 // "10월 5일 일요일" parts for a record date (local calendar; the string is a plain day, no time zone)

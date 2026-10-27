@@ -4,7 +4,7 @@ import { dayLabel, loadPledge, savePledge } from './pledge.js';
 import { ymd } from './time.js';
 
 const $ = (id) => document.getElementById(id);
-const store = () => { try { return localStorage; } catch { return null; } };
+import { safeStorage as store } from './storage.js';
 
 export function createSafetyView() {
   const dlg = $('safety-sheet');

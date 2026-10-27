@@ -357,7 +357,7 @@ export function seasonSun(wall, at) {
     // the other rows stay on their season's day (6/21 · 3/21 · 12/21)
     const windows = i === cur ? sunIntervals(wall, new Date(at.getFullYear(), at.getMonth(), at.getDate(), 12)) : s.windows;
     const on = overlap(open, windows);
-    return { ...s, windows, open, on, closed: v === null, unknown: v === undefined, current: i === cur };
+    return { ...s, windows, open, on, closed: v === null, unknown: v === undefined, current: i === cur, winter: inWinter(wall, day) };
   });
 }
 

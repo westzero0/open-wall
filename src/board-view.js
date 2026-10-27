@@ -2,7 +2,7 @@
 // One state per wall (boardState) feeds both views, so a post written in one shows in the other and nothing is fetched twice.
 // DOM via el()/textContent only. The pure helpers and the state are unit-tested; boardBox is the only DOM part. No config.boardUrl = no box, no request.
 import { el } from './dom.js';
-import { config } from './config.js';
+import { config, boardOn } from './config.js';
 import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
 import { MAX_BODY, MAX_NICK, PREVIEW, ageText, cleanBoardNick, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
@@ -84,7 +84,7 @@ export function shareNick() {
 }
 /** posts the memo as a one-line timeline post → { ok, error? }. Never throws: the caller's record is already saved. */
 export async function shareToBoard({ wall, nick, memo }) {
-  if (!config.boardUrl) return { ok: false, error: '게시판이 꺼져 있어요' };
+  if (!boardOn()) return { ok: false, error: '게시판이 꺼져 있어요' };
   const { nick: have, locked } = shareNick();
   const v = planShare({ wall, nick: locked ? have : nick, memo, lastTs: Number(store.get(K_TS)), now: Date.now() });
   if (!v.ok) return v;
@@ -202,7 +202,7 @@ const boxes = new Map(); // one view per wall and mode: re-renders of an open ca
  * mode 'preview' (default): the latest PREVIEW posts and a 전체 글 보기 button (calls onOpenAll(button)); 'full': every post, 더 보기.
  */
 export function boardBox(wallName, { mode = 'preview', onOpenAll } = {}) {
-  if (!config.boardUrl) return null;
+  if (!boardOn()) return null;
   const key = `${mode}|${wallName}`;
   const box = boxes.get(key) || boxes.set(key, build(wallName, mode, onOpenAll)).get(key);
   box.retryIfFailed();

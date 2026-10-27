@@ -5,7 +5,7 @@ import { loadRatio, saveRatio } from './poster-image.js';
 import { saveFile, shareInvite, shareSay } from './share-image.js';
 
 const $ = (id) => document.getElementById(id);
-const safeStorage = () => { try { return localStorage; } catch { return null; } };
+import { safeStorage } from './storage.js';
 const p2 = (n) => String(n).padStart(2, '0');
 
 /** createMonthShare({ getWalls, icon }) → { open({ log, year, month, from }) }. `from`: the button to give focus back to. */
