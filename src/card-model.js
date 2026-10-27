@@ -282,11 +282,17 @@ const won = (n) => (n === 0 ? '무료' : `${String(n).replace(/\B(?=(\d{3})+$)/g
 // unless a unit already follows (원 명 % 년 시 분 cm 개월 세 타임) or it is part of a time or range (15:00, 09~13).
 export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(?:,\d{3})+|\d{3,})(?![\d:~]|-\d{2}-\d{2}|\s?(?:원|명|%|년|시|분|cm|개월|세|타임))/g, '$1원'));
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
+// The order of the 요금 rows: 일일 → 체험 → 월 → 횟수권 → 전용 → 강습 → 대여 → 사물함, by how the item name starts (a name that matches none keeps the rank of the item before it, so it stays beside its neighbour); inside a rank the typed order is kept.
+const FEE_RANKS = [/^(?:일일|1일|1Day)/, /^\S*체험/, /^(?:월|\d+개월|주말 회원|청소년 월)/, /^(?:\d+회(?: ?이용)?권|횟수권|\S* 다회권)/, /^(?:전용|\S+ 전용)/, /^(?:강습|정규강습|기초 강습|Basic Class|Lead Class|학생반|동반 교실)/, /^(?:장비 ?대여|암벽\S* ?대여|돗자리 대여)/, /^(?:개인)?사물함/];
+export function sortFees(fees) {
+  let last = 0;
+  return fees.map((f, i) => { const r = FEE_RANKS.findIndex((re) => re.test(f.item)); if (r >= 0) last = r; return { f, r: last, i }; }).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
+}
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
 // only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '–' when only one is known.
 // An item with only a note is one row (noteOnly). `split` false: every price is the same on weekdays and holidays. null without fees.
 export function feeTable(wall) {
-  const fees = wall.fees ?? [];
+  const fees = sortFees(wall.fees ?? []);
   if (!fees.length) return null;
   const whoRows = (o, prefix = '') => WHO.filter(([k]) => o[k]).map(([k, who]) => (
     o[k].all !== undefined ? { who: prefix + who, all: won(o[k].all) }
@@ -324,7 +330,7 @@ export function entryFee(wall, now = new Date()) {
 export function feeWord(wall, now = new Date()) {
   if (entryFee(wall, now) === '무료') return '무료';
   for (const f of wall.fees ?? []) {
-    const adult = f.adult ?? f.groups?.[0]?.adult; // an item priced only per 거주지 (groups): its first group (the visitor's: 관외, 타시민) speaks
+    const adult = f.adult ?? f.groups?.[0]?.adult; // an item priced only per 거주지 (groups): its first group (the visitor's: 관외) speaks
     const p = [adult?.weekend, adult?.all, adult?.weekday].find((n) => n > 0);
     if (p) return `성인 ${won(p)}`;
   }
