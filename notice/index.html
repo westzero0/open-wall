@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; base-uri 'self'; form-action 'none'">
   <meta name="robots" content="noindex">
   <title>해벽 공지 도구</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,6 +41,13 @@
     .hint { color:var(--muted); font-size:.85rem; margin:8px 0 0; }
     .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .chip { font:inherit; font-size:.85rem; padding:4px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; cursor:pointer; }
+    .status { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .sbtn { font:inherit; font-weight:700; font-size:1.05rem; min-height:72px; padding:10px; border:3px solid var(--c); border-radius:14px; background:#fff; color:var(--c); cursor:pointer; }
+    .sbtn[aria-pressed=true] { background:var(--c); color:#fff; }
+    .wx { background:#fff7e0; border:1px solid #f0d58a; border-radius:10px; padding:10px 12px; margin-bottom:10px; font-size:.92rem; }
+    .wx .btn { margin-top:6px; }
+    #altList label { padding:4px 0; }
+    .btn.big { font-size:1rem; padding:12px 14px; min-height:48px; }
     .preview { position:sticky; top:12px; align-self:start; }
     canvas { width:100%; height:auto; display:block; border:1px solid var(--line); border-radius:10px; background:#fff; }
     .empty { color:var(--muted); text-align:center; padding:8px 0 0; }
@@ -70,13 +77,25 @@
         <h2>1. 공지 종류</h2>
         <div class="radios" id="kinds"></div>
       </section>
-      <section>
+      <section id="todaySec">
+        <h2>2. 지금 상태</h2>
+        <div id="wxHint" class="wx" hidden></div>
+        <div id="statusBtns" class="status"></div>
+        <div id="altBox" hidden>
+          <h2 style="margin-top:14px">가까운 다른 외벽도 안내할까요?</h2>
+          <div id="altList"></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn big" type="button" id="qShare">이미지 저장 · 공유</button><button class="btn big ghost" type="button" id="qCopy">본문 복사</button></div>
+        <p class="note" id="qSay"></p>
+        <p class="note">누른 시각이 "○○시 기준"으로 들어가고, 이 상태는 오늘 하루만 유효해요.</p>
+      </section>
+      <section id="calSec">
         <h2>2. 날짜</h2>
         <div class="cal-head"><button type="button" id="prev" aria-label="이전 달">‹</button><strong id="monthLabel"></strong><button type="button" id="next" aria-label="다음 달">›</button></div>
         <div id="cal"></div>
         <p class="hint" id="calHint"></p>
       </section>
-      <section>
+      <section id="contentSec">
         <h2>3. 내용</h2>
         <div id="reasonBox" hidden>
           <label>사유<input type="text" id="reason" maxlength="30" placeholder="예: 기상 악화"></label>

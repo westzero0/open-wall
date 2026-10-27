@@ -46,7 +46,8 @@ export async function drawNoticeCard(canvas, n, { accent = '#0a7fc8' } = {}) {
   ctx.fillText(`${n.wall} 안내문`, PAD, 215 + 30 + nameSize);
 
   const cx = CARD_W - PAD - 118, cy = 190;
-  ctx.fillStyle = accent;
+  const tone = n.color ?? accent; // 오늘 상태는 상태 색(초록·주황·빨강)
+  ctx.fillStyle = tone;
   ctx.beginPath(); ctx.arc(cx, cy, 118, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
@@ -65,7 +66,7 @@ export async function drawNoticeCard(canvas, n, { accent = '#0a7fc8' } = {}) {
   roundRect(ctx, px, py, pw, ph, 44); ctx.fill();
   ctx.save();
   roundRect(ctx, px, py, pw, ph, 44); ctx.clip();
-  ctx.fillStyle = accent;
+  ctx.fillStyle = tone;
   ctx.fillRect(px, py, pw, bandH);
   ctx.restore();
   ctx.strokeStyle = INK; ctx.lineWidth = 10;
@@ -76,8 +77,7 @@ export async function drawNoticeCard(canvas, n, { accent = '#0a7fc8' } = {}) {
     ctx.beginPath(); ctx.moveTo(x, py - 26); ctx.lineTo(x, py + 24); ctx.stroke();
   }
   ctx.fillStyle = '#fff';
-  const headline = n.month ? `${n.month}월` : n.rows[0] ? `${Number(n.rows[0].from.slice(5, 7))}월` : '';
-  const hl = n.rows[0] ? `${n.rows[0].from.slice(0, 4)}년 ${headline}` : '날짜를 골라 주세요';
+  const hl = n.panelHead;
   ctx.font = `900 ${fit(ctx, hl, 900, 72, 40, pw - 80)}px ${FONT}`;
   ctx.textAlign = 'center';
   ctx.fillText(hl, px + pw / 2, py + 84);
