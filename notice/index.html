@@ -96,6 +96,23 @@
         <p class="note" id="qSay"></p>
         <p class="note">누른 시각이 "○○시 기준"으로 들어가요. 마감은 정한 시각까지만 유효하고, 그 전에 자리가 나면 "다시 이용 가능"을 눌러 풀어요.</p>
       </section>
+      <section id="infoSec" hidden>
+        <h2>안내 종류</h2>
+        <div class="radios" id="infoTypes"></div>
+        <div id="infoText">
+          <label>제목 (선택)<input type="text" data-f="infoTitle" maxlength="40" id="infoTitle" placeholder="비우면 외벽 이름으로 자동"></label>
+          <label id="infoBodyLabel" style="margin-top:10px">수칙<textarea data-f="infoBody" id="infoBody" rows="6" maxlength="800"></textarea></label>
+        </div>
+        <div id="infoLost" hidden>
+          <label>물품<input type="text" data-f="item" maxlength="40" placeholder="예: 검은색 확보기"></label>
+          <label style="margin-top:8px">발견 장소<input type="text" data-f="where" maxlength="40" placeholder="예: 2층 지구력벽 앞"></label>
+          <div class="row" style="margin-top:8px"><label>발견 날짜<input type="date" data-f="whenDate"></label><label>보관 기한 (선택)<input type="date" data-f="keepUntil"></label></div>
+          <label style="margin-top:8px">보관 장소<input type="text" data-f="keep" maxlength="40"></label>
+          <p class="note">이름·연락처 같은 개인정보나 사람이 나온 사진은 올리지 마세요. 물품의 세부 특징(각인, 내용물)은 일부러 빼서, 주인이 직접 말하게 하세요.</p>
+        </div>
+        <label id="infoContact" style="margin-top:10px" hidden>문의처<input type="text" data-f="contact" maxlength="40" placeholder="외벽 대표 전화 등"></label>
+        <p class="note">안내문은 해벽의 운영 상태에는 반영하지 않고, 글과 이미지만 만들어요. 내용은 관리자가 직접 적어 주세요.</p>
+      </section>
       <section id="zoneSec" hidden>
         <h2>제한할 구역</h2>
         <div class="chips" id="zoneChips"></div>

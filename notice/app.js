@@ -7,7 +7,7 @@ import { wallPosition } from '../src/viewmodel.js';
 import { pictureBlob, saveFile, shareInvite, shareSay } from '../src/share-image.js';
 import { DAY_KO } from '../src/time.js';
 import { drawNoticeCard } from './card.js';
-import { CLOSINGS, DEFAULT_ZONES, KINDS, REASON_CHIPS, STATUSES, ZONE_PRESETS, ZONE_REASONS, buildNotice, holidayCandidates } from './model.js';
+import { CLOSINGS, DEFAULT_ZONES, INFO_TYPES, KINDS, REASON_CHIPS, STATUSES, ZONE_PRESETS, ZONE_REASONS, buildNotice, holidayCandidates } from './model.js';
 import { reflect, reflectReady } from './reflect.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +22,8 @@ const now = new Date();
 const todayStr = () => `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`;
 const nowHHMM = () => `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
 const st = {
-  wall: '', kind: 'today', status: null, date: '', at: '', until: '', alts: [], zones: [], zoneAll: [], timed: false, month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
+  wall: '', kind: 'today', status: null, date: '', at: '', until: '', alts: [], zones: [], zoneAll: [], timed: false,
+  infoType: 'safety', infoTitle: '', infoBody: '', item: '', where: '', whenDate: '', keep: '안내 데스크', keepUntil: '', contact: '', month: monthOf(new Date(now.getFullYear(), now.getMonth() + 1, 1)), // 공지는 보통 다음 달 것
   dates: [], reasons: {}, reason: '', open: '10:00', close: '16:00', note: '',
   closing: 'formal', sign: '', accent: '#0a7fc8',
 };
@@ -84,7 +85,10 @@ function renderForm() {
   $('todaySec').hidden = st.kind !== 'today';
   $('calSec').hidden = st.kind === 'today';
   $('zoneSec').hidden = st.kind !== 'zone';
-  $('reasonBox').hidden = st.kind === 'holiday' || st.kind === 'today';
+  $('calSec').hidden = st.kind === 'today' || st.kind === 'info';
+  $('infoSec').hidden = st.kind !== 'info';
+  renderInfo();
+  $('reasonBox').hidden = st.kind === 'holiday' || st.kind === 'today' || st.kind === 'info';
   $('hoursBox').hidden = !(st.kind === 'hours' || (st.kind === 'zone' && st.timed));
   $('timed').checked = st.timed;
   $('reason').value = st.reason;
@@ -104,6 +108,17 @@ function renderForm() {
   renderUntil();
   renderZones();
   renderCalendar();
+}
+
+function renderInfo() {
+  const lost = st.infoType === 'lost';
+  $('infoTypes').querySelectorAll('input').forEach((i) => { i.checked = i.value === st.infoType; });
+  $('infoText').hidden = lost;
+  $('infoLost').hidden = !lost;
+  $('infoContact').hidden = st.infoType === 'safety';
+  $('infoBodyLabel').firstChild.textContent = st.infoType === 'safety' ? '수칙 (한 줄에 하나씩)' : '안내 내용 (한 줄에 하나씩)';
+  $('infoBody').placeholder = st.infoType === 'safety' ? '외벽의 실제 규정을 한 줄씩 적어 주세요' : '안내할 내용을 한 줄씩 적어 주세요';
+  document.querySelectorAll('[data-f]').forEach((i) => { if (i !== document.activeElement) i.value = st[i.dataset.f] ?? ''; });
 }
 
 function renderZones() {
@@ -247,9 +262,9 @@ async function update() {
   $('outTitle').value = n.title;
   $('outBody').value = n.body;
   $('outCaption').value = n.caption;
-  $('patch').textContent = n.patch ? JSON.stringify(n.patch, null, 2) : '날짜를 고르면 해벽에 반영될 내용이 여기에 나와요.';
+  $('patch').textContent = n.patch ? JSON.stringify(n.patch, null, 2) : st.kind === 'info' ? '안내문은 해벽 상태에 반영하지 않아요. 글과 이미지만 만들어요.' : '날짜를 고르면 해벽에 반영될 내용이 여기에 나와요.';
   $('empty').hidden = n.ok;
-  $('empty').textContent = st.kind === 'today' ? '지금 상태를 누르면 이미지가 만들어져요.' : '날짜를 고르면 이미지가 만들어져요.';
+  $('empty').textContent = st.kind === 'today' ? '지금 상태를 누르면 이미지가 만들어져요.' : st.kind === 'info' ? '내용을 적으면 이미지가 만들어져요.' : '날짜를 고르면 이미지가 만들어져요.';
   ['qShare', 'qCopy'].forEach((id) => { $(id).disabled = !n.ok; });
   ['saveImg', 'reflectBtn'].forEach((id) => { $(id).disabled = !n.ok; });
   $('reflectBtn').disabled = !n.ok || !reflectReady();
@@ -277,6 +292,8 @@ function bind() {
     renderCalendar();
     update();
   });
+  document.querySelectorAll('[data-f]').forEach((i) => { i.oninput = () => { st[i.dataset.f] = i.value; later(); }; });
+  $('infoTypes').addEventListener('change', (e) => { st.infoType = e.target.value; renderInfo(); update(); });
   $('zoneAdd').onclick = addZone;
   $('zoneNew').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addZone(); } };
   $('timed').onchange = (e) => { st.timed = e.target.checked; renderForm(); update(); };
@@ -319,6 +336,8 @@ function pickWall(name) {
   loadPrefs();
   autoFill();
   st.status = null; st.date = ''; st.at = ''; st.until = '';
+  st.contact = wallInfo()?.contact?.phone ?? ''; // 시설 대표 전화(개인 연락처가 아니라 외벽의 번호)
+  st.whenDate = todayStr();
   refreshNear();
   renderForm();
   update();
@@ -340,6 +359,11 @@ async function init() {
   $('closings').replaceChildren(...Object.entries(CLOSINGS).map(([k, v]) => {
     const l = document.createElement('label');
     l.append(Object.assign(document.createElement('input'), { type: 'radio', name: 'closing', value: k }), ` ${v.label}`);
+    return l;
+  }));
+  $('infoTypes').replaceChildren(...Object.entries(INFO_TYPES).map(([k, v]) => {
+    const l = document.createElement('label');
+    l.append(Object.assign(document.createElement('input'), { type: 'radio', name: 'infoType', value: k }), ` ${v}`);
     return l;
   }));
   bind();

@@ -9,7 +9,11 @@ export const KINDS = {
   temp: { label: '임시휴무', head: '임시휴무', tag: '임시휴무' },
   hours: { label: '운영시간 변경·단축운영', head: '운영시간 변경', tag: '운영시간변경' },
   zone: { label: '점검·세팅 (구역 이용 제한)', head: '이용제한', tag: '구역이용제한' },
+  info: { label: '안내문 (안전 수칙·분실물·민원)', head: '안내', tag: '이용안내' },
 };
+
+// 안내문의 세 갈래. 상태·날짜가 아니라 글이 중심이라 해벽 상태에는 반영하지 않고 글과 이미지만 만든다.
+export const INFO_TYPES = { safety: '안전 수칙', lost: '분실물(습득물)', civil: '이용·민원 안내' };
 
 // 맺음말 문체: 공단·공공시설은 격식체, 민간은 부드러운 말투. 은평인공암벽장 공지를 본뜬 formal 이 기본.
 export const CLOSINGS = {
@@ -20,6 +24,7 @@ export const CLOSINGS = {
     hours: ['해당일에는 변경된 시간에 맞춰 이용해 주시기 바랍니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
     today: ['상황이 바뀌면 다시 안내드리겠습니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
     zone: ['해당 구역은 위 일시 동안 이용이 제한되오니 양해 부탁드립니다.', '이용에 불편을 드려 죄송합니다.', '감사합니다.'],
+    info: { safety: ['모두의 안전을 위해 협조 부탁드립니다.', '감사합니다.'], lost: ['본인의 물품이 맞다면 위 방법으로 문의해 주시기 바랍니다.', '감사합니다.'], civil: ['이용에 참고해 주시기 바랍니다.', '감사합니다.'] },
   },
   friendly: {
     label: '부드러운 말투',
@@ -28,6 +33,7 @@ export const CLOSINGS = {
     hours: ['이날은 운영시간이 달라요. 방문 전에 꼭 확인해 주세요 :)', '불편을 드려 죄송해요!'],
     today: ['상황이 바뀌면 바로 다시 알려드릴게요.', '헛걸음 없으시길 바라요!'],
     zone: ['이 구역은 위 시간에 쉬어가요. 양해 부탁드려요!', '불편을 드려 죄송해요.'],
+    info: { safety: ['모두가 안전하게 오래 즐길 수 있게 함께 지켜 주세요!'], lost: ['내 물건이 맞다면 위 방법으로 편하게 문의해 주세요 :)'], civil: ['이용에 참고해 주세요 :)'] },
   },
 };
 
@@ -107,6 +113,7 @@ const hoursText = (st) => (st.open && st.close ? `${st.open}~${st.close}` : '');
 export function buildNotice(st) {
   if (st.kind === 'today') return buildToday(st);
   if (st.kind === 'zone') return buildZone(st);
+  if (st.kind === 'info') return buildInfo(st);
   const kind = KINDS[st.kind] ?? KINDS.holiday;
   const dates = activeDates(st);
   const rs = runs(st, dates);
@@ -208,4 +215,45 @@ function buildZone(st) {
     badge: reason || '구역 제한', panelHead: zoneName || '구역을 골라 주세요', note, closing, sign, body: bodyLines.join('\n'), caption,
     patch: dates.length && zones.length ? { wall, kind: 'zone', zone_limits: [{ zones, dates, from: st.timed ? st.open : undefined, to: st.timed ? st.close : undefined, reason: reason || undefined }] } : null,
   };
+}
+
+const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+const lines = (s) => String(s ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+/** buildInfo(state) — 안내문: 안전 수칙(줄마다 한 수칙), 분실물(물품·장소·보관), 이용·민원 안내(제목+내용). 내용은 관리자가 직접 쓴다. */
+function buildInfo(st) {
+  const wall = (st.wall ?? '').trim() || '암벽장';
+  const type = INFO_TYPES[st.infoType] ? st.infoType : 'safety';
+  const t = (st.infoTitle ?? '').trim();
+  const contact = (st.contact ?? '').trim();
+  const note = (st.note ?? '').trim();
+  const closing = (CLOSINGS[st.closing] ?? CLOSINGS.formal).info[type];
+  const sign = (st.sign ?? '').trim() || wall;
+  const signLine = st.closing === 'formal' ? `- ${sign} 드림 -` : `- ${sign} -`;
+  const field = (label, v) => (v && String(v).trim() ? [`· ${label} : ${String(v).trim()}`] : []);
+  let title, rows, badge, panelHead, ok;
+  if (type === 'lost') {
+    title = `${wall} 분실물(습득물) 안내`;
+    const item = (st.item ?? '').trim();
+    rows = [
+      ...field('물품', item), ...field('발견 장소', st.where),
+      ...(st.whenDate ? field('발견 일시', fmtDate(st.whenDate)) : []),
+      ...field('보관 장소', st.keep), ...(st.keepUntil ? field('보관 기간', `${fmtDate(st.keepUntil)}까지`) : []), ...field('문의', contact),
+    ];
+    badge = '습득물'; panelHead = clip(item || '습득물', 22); ok = Boolean(item);
+  } else if (type === 'safety') {
+    title = t || `${wall} 안전 수칙 안내`;
+    const rules = lines(st.infoBody);
+    rows = rules.map((r, i) => `${i + 1}. ${r}`);
+    badge = '안전'; panelHead = clip(t || '안전 수칙', 22); ok = rules.length > 0;
+  } else {
+    title = t || `${wall} 이용 안내`;
+    rows = [...lines(st.infoBody), ...field('문의', contact)];
+    badge = '안내'; panelHead = clip(t || '이용 안내', 22); ok = lines(st.infoBody).length > 0;
+  }
+  const body = [`■ ${title}`, ...rows, ...(note ? ['', note] : []), '', ...closing, signLine].join('\n');
+  const hash = (s) => `#${s.replace(/[\s·]/g, '')}`;
+  const caption = [title, '', ...rows, ...(note ? ['', note] : []), '', ...closing, '', [hash(wall), '#해벽', '#클라이밍', '#실외암벽', hash(KINDS.info.tag)].join(' ')].join('\n');
+  const cardRows = rows.map((r) => { const text = r.replace(/^· /, ''); return { from: '', to: '', reason: '', text, line: text }; });
+  return { ok, kind: 'info', wall, month: null, color: null, rows: cardRows, title, head: type === 'lost' ? '분실물안내' : type === 'safety' ? '안전수칙' : KINDS.info.head, badge, panelHead, note, closing, sign, body, caption, patch: null };
 }
