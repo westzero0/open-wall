@@ -885,7 +885,7 @@ async function loadWeekendWeather() {
     if (j) days = parseDaily(j, spots.length);
   } catch { /* quiet: picks stay as they are */ }
   wxPick.entry = { hours: days, at: Date.now() }; // the shape weatherFresh reads
-  wxPick.byName = new Map(days ? spots.map(([w], i) => [w.name, days[i]]) : []);
+  if (days) wxPick.byName = new Map(spots.map(([w], i) => [w.name, days[i]])); // a failed call keeps the last good forecast
   wxPick.busy = false;
   if (days) {
     const f = document.activeElement; // a late answer must not drop focus from a pick control
@@ -943,6 +943,7 @@ const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
 // 운동 스케줄 비 알림 (docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md): a card above the weekend picks, only when a 운동 요일 of the
 // week has rain. It asks for no forecast of its own: the weekend picks' one request (every outdoor wall, 7 days) answers it too.
+let askFocus = false; // 기록하기 was pressed: when the row goes after the save, move the focus on
 function renderSched() {
   if (!$('sched')) return; // a cached older page
   const wanted = featureOn('schedule') && state.walls.length && schedule.some((e) => e.days.length);
@@ -952,7 +953,7 @@ function renderSched() {
     const ask = featureOn('schedule') && state.walls.length ? askYesterday({ schedule, walls: state.walls, recordsFor: logView.recordsFor, skipped, today }) : null;
     renderScheduleAsk({ box: $('schedAsk') }, {
       ask,
-      onRecord: (a, btn) => logView.openAdd({ wall: a.wall.name, date: a.date, from: btn }),
+      onRecord: (a, btn) => { askFocus = true; logView.openAdd({ wall: a.wall.name, date: a.date, from: btn }); },
       onSkip: (a) => {
         const before = skipped;
         skipped = addSkipped(skipped, a.wall.name, a.date, new Date());
@@ -964,8 +965,13 @@ function renderSched() {
       },
     });
   }
+  if (askFocus && !$('schedAsk').querySelector('button')) { // 기록하기 saved: the row is gone, so the next card takes the focus, as after 안 갔어요
+    askFocus = false;
+    const next = $('sched');
+    if (next && !next.hidden) next.querySelector('summary')?.focus();
+  }
   const alerts = wanted ? rainAlerts(schedule, { walls: state.walls, forecasts: wxPick.byName, today }) : [];
-  renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body') }, {
+  renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body'), live: $('sched-live') }, {
     alerts, walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
     onOpen: (wall, date) => { goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
   });
@@ -978,7 +984,11 @@ function drawScheduleRows() {
   if (row.hidden) return;
   renderScheduleRows($('scheduleBody'), {
     schedule, walls: state.walls, favs, toast,
-    onChange: (next) => { schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); if (ui.tab === 'log') logView.render(); }, // the 기록 달력's dots follow
+    onChange: (next) => {
+      const y = new Date(); y.setDate(y.getDate() - 1); // a weekday switched on now is not asked about for yesterday: the visitor has just made the schedule
+      for (const e of next) if (e.days.includes(y.getDay()) && !schedule.find((x) => x.wall === e.wall)?.days.includes(y.getDay())) skipped = addSkipped(skipped, e.wall, ymd(y), new Date());
+      saveSkipped(storage, skipped, new Date());
+      schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); if (ui.tab === 'log') logView.render(); }, // the 기록 달력's dots follow
   });
 }
 $('meBtn')?.addEventListener('click', drawScheduleRows);

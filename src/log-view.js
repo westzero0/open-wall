@@ -772,7 +772,7 @@ export function createLogView({
           c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day), planned.has(c.date) ? el('span', { class: 'cal-plan' }) : null) : null)))))));
     return el('div', { class: 'lg-empty' },
       ghost,
-      ...(planned.size ? [el('p', { class: 'lg-plan' }, '초록 점은 운동 예정인 날이에요')] : []),
+      ...(planned.size ? [el('p', { class: 'lg-plan' }, '점 찍힌 날은 운동 예정이에요')] : []),
       el('h3', {}, '아직 기록이 없어요'),
       el('p', { class: 'lg-empty-say' }, el('span', {}, '다녀온 암장을 남기면 몇 곳을 다녀왔는지'), el('span', {}, '모아서 보여드려요. 이 기기에만 저장돼요.')), // two centred lines, each a phrase of its own
       el('div', { class: 'lg-empty-btns' }, add, home));
@@ -870,7 +870,7 @@ export function createLogView({
       const p = dayParts(c.date);
       const b = el('button', {
         type: 'button', class: 'cal-day', 'data-date': c.date, tabindex: c.date === focusDay ? '0' : '-1',
-        'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}${plan.length ? `, 운동 예정 ${plan.map((x) => (x.rain ? `${x.name}(${x.rain})` : x.name)).join(', ')}` : ''}`,
+        'aria-label': `${p.month}월 ${p.day}일 ${p.dow}요일${c.date === t ? ', 오늘' : ''}, ${n ? `기록 ${n}개` : '기록 없음'}${plan.length ? `, 운동 예정 ${plan.map((x) => (x.rain ? `${x.short || x.name}(${x.rain})` : (x.short || x.name))).join(', ')}` : ''}`,
         'aria-current': c.date === t ? 'date' : null,
       }, n ? stamp(c.date === stamped ? 'cal-stamp stamp-in' : 'cal-stamp', byDay.get(c.date)) : null,
       el('span', { class: 'cal-n', 'aria-hidden': 'true' }, String(c.day)),
@@ -950,8 +950,8 @@ export function createLogView({
     const dg = dayGrades(recs);
     const dayTotals = recs.length > 1 && (dg.sends || dg.tries) ? ` · ${[dg.sends ? `완등 ${dg.sends}` : '', dg.tries ? `시도 ${dg.tries}` : ''].filter(Boolean).join(' · ')}` : '';
     return el('section', { class: 'lg-day', 'aria-labelledby': 'lg-day-title' },
-      el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개${dayTotals}` : ' · 기록 없음')),
-      plan.length ? el('p', { class: 'lg-plan' }, '운동 예정 · ', ...plan.flatMap((x, i) => [i ? ', ' : null, el('span', { class: 'lg-plan-n' }, x.name), x.rain ? ` (${x.rain})` : null])) : null,
+      el('h3', { id: 'lg-day-title', tabindex: '-1' }, `${p.month}월 ${p.day}일 ${p.dow}요일`, el('span', {}, recs.length ? ` · 기록 ${recs.length}개${dayTotals}` : plan.length || future ? '' : ' · 기록 없음')),
+      plan.length ? el('p', { class: 'lg-plan' }, '운동 예정 · ', ...plan.flatMap((x, i) => [i ? ', ' : null, el('span', { class: 'lg-plan-n' }, x.short || x.name), x.rain ? ` (${x.rain})` : null])) : null,
       recs.length ? el('ul', { class: 'lg-recs' }, ...recs.map((r) => {
         const open = el('button', { type: 'button', class: 'lg-open', 'aria-haspopup': 'dialog' },
           el('span', { class: 'lg-name' }, r.wall),

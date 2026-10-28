@@ -7,6 +7,7 @@ import { NEAR_KM, addWall, alternatives, hintOf, nextDryDay, removeWall, toggleD
 const sel = new Map(); // wall name → the picked day's time (ms; the strip moves with today, so an index would not hold); the first rainy 운동 요일 until a tap
 let current = []; // the sheet rows' list as last drawn, for 되돌리기
 let last = null; // the card's arguments, to draw it again after a tap
+let say = ''; // what the picked day says, for the status line a screen reader hears after a tap
 
 const dayLong = (d, i) => (i === 0 ? `${DAY_KO[d.dow]}요일 · 오늘` : `${DAY_KO[d.dow]}요일`);
 const heart = () => el('span', { class: 'rfav', role: 'img', 'aria-label': '즐겨찾기' }, '♥');
@@ -17,7 +18,7 @@ const heart = () => el('span', { class: 'rfav', role: 'img', 'aria-label': '즐�
  */
 export function renderScheduleCard(dom, args, { focus = false, key = null } = {}) {
   last = [dom, args];
-  const { box, chip, hint, body } = dom;
+  const { box, chip, hint, body, live } = dom;
   const keep = focus ? key ?? document.activeElement?.dataset?.focus : null; // read before the old buttons are replaced
   const { alerts, walls, favs, forecasts, today, icon, onOpen } = args;
   box.hidden = !alerts.length;
@@ -36,17 +37,19 @@ export function renderScheduleCard(dom, args, { focus = false, key = null } = {}
         type: 'button', class: `sd-day${d.rain ? ' wet' : ''}${d.mine ? ' mine' : ''}`, 'aria-pressed': String(k === i), 'data-focus': `sd-${name}-${k}`,
         'aria-label': `${DAY_KO[d.dow]}요일 ${d.rain ? d.text : d.known ? '비 없음' : '예보 없음'}${d.mine ? ' · 내 운동 요일' : ''}`,
       }, el('b', {}, d.label), d.rain ? icon('sky-rain') : d.known ? icon('check') : el('span', { 'aria-hidden': 'true' }, '–'));
-      b.addEventListener('click', () => { sel.set(name, +d.date); redraw(); });
+      b.addEventListener('click', () => { sel.set(name, +d.date); say = `${name} ${dayLong(d, k)} ${d.rain ? d.text : d.known ? '비 없어요' : '예보 없어요'}`; redraw(); });
       return el('li', {}, b);
     }));
     return [
       el('p', { class: 'pick-basis' }, `${a.wall.short_name || name} · ${days} 운동`),
       week,
       el('p', { class: 'pick-key sd-key' }, '테두리는 내 운동 요일이에요'),
-      el('div', { class: 'pick-cols' }, detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay: (k) => { sel.set(name, +a.strip[k].date); redraw(`sd-${name}-${k}`); } })),
+      el('div', { class: 'pick-cols' }, detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay: (k) => { sel.set(name, +a.strip[k].date); say = `${name} ${dayLong(a.strip[k], k)} 비 없어요`; redraw(`sd-${name}-${k}`); } })),
     ];
   });
   body.replaceChildren(...groups.flat(), el('p', { class: 'pick-note' }, '운영시간·휴무는 가기 전에 확인해 주세요.'));
+  if (say && live) live.textContent = say;
+  say = '';
   if (keep) body.querySelector(`[data-focus="${CSS.escape(keep)}"]`)?.focus({ preventScroll: true });
 }
 
@@ -128,7 +131,9 @@ export function renderScheduleRows(body, { schedule: stored, walls, favs, onChan
       adder.addEventListener('click', () => again({ adding: true, focus: 'sd-add' }));
     }
   }
+  const empty = schedule.some((e) => !e.days.length);
   body.replaceChildren(...rows, ...(adder ? [adder] : []),
+    ...(empty ? [el('p', { class: 'sh-hint' }, '요일을 눌러 주세요')] : []),
     el('p', { class: 'sh-hint' }, '운동하는 요일을 누르면, 그 날 비 예보가 있을 때 홈에 알려 줘요. 최대 5곳. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
   if (focus) body.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus();
 }

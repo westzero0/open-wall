@@ -9,6 +9,7 @@ import { dayKey, dayWeather } from './weather.js';
 
 export const SCHEDULE_KEY = 'open-wall:schedule';
 export const MAX_SCHEDULE = 5; // walls
+const MAX_NAME = 60; // a stored wall name longer than this is not a wall
 export const NEAR_KM = 30; // an alternative wall within this distance of the scheduled one
 export const MAX_ALTS = 3;
 export const STRIP_DAYS = 7;
@@ -22,19 +23,20 @@ export function cleanSchedule(v) {
   for (const e of v) {
     if (!e || typeof e !== 'object' || typeof e.wall !== 'string') continue;
     const wall = nfc(e.wall);
-    if (!wall || out.some((x) => x.wall === wall)) continue;
+    if (!wall || wall.length > MAX_NAME || out.some((x) => x.wall === wall)) continue;
     const days = [...new Set((Array.isArray(e.days) ? e.days : []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
     out.push({ wall, days });
   }
   return out.slice(0, MAX_SCHEDULE);
 }
 
-// The store keeps each wall's id (a rename does not lose the schedule), like the favorites; an id not in `walls` stays as it is.
+// The store keeps each wall's id (a rename does not lose the schedule), like the favorites; without `walls` an id stays as it is, with them an unknown wall is dropped.
 export function loadSchedule(storage, walls = []) {
   try {
     const byId = new Map(walls.map((w) => [wallPageId(w), w.name]));
     const raw = JSON.parse(storage.getItem(SCHEDULE_KEY));
-    return cleanSchedule(Array.isArray(raw) ? raw.map((e) => (e && typeof e === 'object' ? { ...e, wall: byId.get(e.wall) ?? e.wall } : e)) : raw);
+    const list = cleanSchedule(Array.isArray(raw) ? raw.map((e) => (e && typeof e === 'object' ? { ...e, wall: byId.get(e.wall) ?? e.wall } : e)) : raw);
+    return walls.length ? list.filter((e) => walls.some((w) => w.name === e.wall)) : list; // with the list in hand, a wall that is not in it is gone: it must not take one of the five places unseen
   } catch {
     return [];
   }
@@ -177,7 +179,7 @@ export function askYesterday({ schedule, walls, recordsFor, skipped, today }) {
   const date = ymd(day);
   for (const e of schedule) {
     const wall = walls.find((w) => w.name === e.wall);
-    if (!wall || !e.days.includes(day.getDay())) continue;
+    if (!wall || wall.venue === 'indoor' || !e.days.includes(day.getDay())) continue;
     if (recordsFor(wall.name).some((r) => r.date === date) || skipped.some((x) => x.wall === wall.name && x.date === date)) continue;
     return { wall, date, label: `어제(${DAY_KO[day.getDay()]})` };
   }
@@ -196,6 +198,6 @@ export function plannedOn(schedule, { walls, forecasts, date, today }) {
     const wall = walls.find((w) => w.name === e.wall);
     if (!wall) return [];
     const wx = wall.venue === 'indoor' ? null : dayWeather(forecasts.get(wall.name)?.get(date));
-    return [{ name: wall.name, rain: wx?.rainText ?? null }];
+    return [{ name: wall.name, short: wall.short_name || wall.name, rain: wx?.rainText ?? null }];
   });
 }

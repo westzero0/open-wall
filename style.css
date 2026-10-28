@@ -471,6 +471,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .sd-day.wet b { color: var(--fg); }
 .sd-day.wet svg { color: var(--soon); }
 .sd-day.mine { outline: 2px solid var(--accent); outline-offset: -2px; } /* a 운동 요일: the frame */
+.sd-day.mine[aria-pressed="true"] { outline-color: var(--on-accent); outline-offset: -4px; } /* on the accent fill the frame turns light, inside the edge */
 .sd-day.mine b { color: var(--fg); }
 .sd-day[aria-pressed="true"], .sd-tog:has(:checked) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .sd-day[aria-pressed="true"] b, .sd-day[aria-pressed="true"] svg, .sd-tog:has(:checked) b { color: var(--on-accent); }
