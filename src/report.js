@@ -89,11 +89,16 @@ export function validateReport(input = {}, now = new Date(), opts = {}) {
   if (memo.length > MAX_BODY) return fail(`내용은 ${MAX_BODY}자까지 적을 수 있어요.`);
   const lines = [];
   if (kind === '임시휴무') {
+    const state = s(input.state);
     const from = s(input.from);
     const to = s(input.to);
-    if (!isDate(from)) return fail('휴무가 시작되는 날짜를 골라 주세요.');
-    if (to && (!isDate(to) || to < from)) return fail('끝나는 날은 시작일과 같거나 그 뒤여야 해요.');
-    lines.push(`휴무: ${to && to !== from ? `${from} ~ ${to}` : from}`);
+    if (state === '정상') lines.push('상태: 정상 운영(휴무가 아니에요)'); // the card said closed or maybe-closed: this is the other way round
+    else {
+      if (!state && !isDate(from)) return fail('휴무인지 정상 운영인지 골라 주세요.');
+      if (from && !isDate(from)) return fail('휴무가 시작되는 날짜를 골라 주세요.');
+      if (to && (!isDate(to) || (from && to < from))) return fail('끝나는 날은 시작일과 같거나 그 뒤여야 해요.');
+      lines.push(from ? `휴무: ${to && to !== from ? `${from} ~ ${to}` : from}` : '상태: 휴무예요(날짜는 모름)');
+    }
   } else if (kind === '주차') {
     const parking = s(input.parking);
     if (!PARKING.includes(parking)) return fail('주차 상태를 골라 주세요.');

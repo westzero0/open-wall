@@ -107,7 +107,7 @@ if (dlg) {
     const v = (n) => f.elements[n].value.trim();
     switch (kind) {
       case '': return false;
-      case '임시휴무': return !!v('from');
+      case '임시휴무': return !!(f.elements.state.value || v('from'));
       case '주차': return !!f.elements.parking.value;
       case '오픈채팅방': return !!v('chat');
       case NOTICE_KIND: return true; // every field is optional
@@ -279,7 +279,7 @@ if (dlg) {
     if (isPhotoKind(kind) || (hasEvidence(kind) && !hasText(kind))) return sendPhoto(kind);
     const v = validateReport({
       name: wallName, kind: f.elements.kind.value, body: f.elements.body.value,
-      from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value, insta: f.elements.insta.value, newUrl: f.elements.newUrl.value,
+      state: f.elements.state.value, from: f.elements.from.value, to: f.elements.to.value, parking: f.elements.parking.value, chat: f.elements.chat.value, insta: f.elements.insta.value, newUrl: f.elements.newUrl.value,
       setLast: f.elements.setLast.value, setNext: f.elements.setNext.value, routes: routeWall.routes(), sections: routeWall.sections(),
       note: f.elements.note.value, hp: f.elements.website.value, nick: nickCommit(mode, readNick(), f.elements.nick.value).nick,
     }, new Date(), { nick: mode, crag });

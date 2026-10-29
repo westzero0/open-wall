@@ -75,9 +75,21 @@ export function loadUi(storage) {
 /** climberCardDue(ui, today, hasResult) → bool: the 클라이머 테스트 intro card shows from the first visit *after* the first day (a reload is not a second visit), until closed or the test is taken. */
 export const climberCardDue = (ui, today, hasResult) => !ui.climberCardDone && !hasResult && ui.climberFirstDay !== '' && ui.climberFirstDay < today;
 
-export function saveUi(storage, ui) {
+// A shared link shows its wall over the saved filters (in memory only). holdLinkView applies that view and returns what it
+// replaced; saveUi writes the saved value back for every key the visitor has not changed since, so opening a link and then
+// touching one control never wipes 내 지역 or the other saved filters.
+export function holdLinkView(ui, patch) {
+  const held = {};
+  for (const k of Object.keys(patch)) held[k] = { saved: structuredClone(ui[k]), link: structuredClone(patch[k]) };
+  Object.assign(ui, patch);
+  return held;
+}
+
+export function saveUi(storage, ui, held = {}) {
+  const out = { ...ui };
+  for (const [k, h] of Object.entries(held)) if (JSON.stringify(ui[k]) === JSON.stringify(h.link)) out[k] = h.saved;
   try {
-    storage.setItem(UI_KEY, JSON.stringify(ui));
+    storage.setItem(UI_KEY, JSON.stringify(out));
   } catch { /* storage full or blocked: keep in memory */ }
 }
 
@@ -111,7 +123,7 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
     // the sheet button counts what only the sheet shows: 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온, 내 로프 길이 (a setting: it hides no wall)
-    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance' || ui.sortMode === 'mygrade') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0) + Number(Number(ui.ropeM) > 0),
+    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance' || ui.sortMode === 'mygrade') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
       ? `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`
@@ -124,12 +136,12 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
 
 /**
  * cragFilterView(ui, { hasGrade, query }) → the 싱글피치 list's 조건 count and empty-box buttons: only what cragList uses.
- * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 내 로프 길이 (a setting: it hides no crag), 어프로치 도보 — cragList drops crags by the last); 양달/응달 and the search sit outside the sheet, as for walls.
+ * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 어프로치 도보 — cragList drops crags by the last); 양달/응달 and the search sit outside the sheet, as for walls.
  * national: 내 지역 narrows the list (전국으로 보기). clear: 양달/응달, the search, 즐겨찾기만, a set 어프로치 도보 narrows it (조건 지우기 clears those four).
  */
 export function cragFilterView(ui, { hasGrade = false, query = '' } = {}) {
   return {
-    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.ropeM) > 0) + Number(Number(ui.approachMax) > 0),
+    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0),
     national: ui.regions.length > 0,
     clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || query.trim() !== '',
   };

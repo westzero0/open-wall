@@ -1,6 +1,7 @@
 // src/card-model.js — one list row → every value the list row, the expanded row and the map card draw.
 // No DOM: app.js only draws what this returns, so the three views can't phrase the same rule differently.
 import { hasHours, openIntervals } from './hours.js';
+import { countLabel } from './board-summary.js';
 import { hhmm, ymd } from './time.js';
 import { CHAT_URL_RE, ROPE_LENGTHS } from './store.js';
 import { routeView } from './routes.js';
@@ -287,9 +288,11 @@ export const withWon = (s) => (s == null ? s : s.replace(/(?<![\d,.:~])(\d{1,3}(
 const WHO = [['adult', '성인'], ['youth', '청소년'], ['child', '어린이']];
 // The order of the 요금 rows: 일일 → 체험 → 월 → 횟수권 → 전용 → 강습 → 대여 → 사물함, by how the item name starts (a name that matches none keeps the rank of the item before it, so it stays beside its neighbour); inside a rank the typed order is kept.
 const FEE_RANKS = [/^(?:일일|1일|1Day)/, /^\S*체험/, /^(?:월|\d+개월|주말 회원|청소년 월)/, /^(?:\d+회(?: ?이용)?권|횟수권|\S* 다회권)/, /^(?:전용|\S+ 전용)/, /^(?:강습|정규강습|기초 강습|Basic Class|Lead Class|학생반|동반 교실)/, /^(?:장비 ?대여|암벽\S* ?대여|돗자리 대여)/, /^(?:개인)?사물함/];
-export function sortFees(fees) {
+// 체험·월(회원·개월)·전용·강습 are not shown (the app is for the gear-carrying day visitor; the data keeps them). Judged by the item's own name with its parentheses left out, never by a neighbour: "개인 이용(체험/강습/동호인)" is a day fee, "체험이용(1회 2시간)" is not.
+const HIDDEN_FEE = /체험|강습|교실|수강|월\s?회원|월권|월 ?(?:정기|자유|사용|이용|단위)|월정기|\d+개월|\d+년 이용권|주중권|주말 회원|(?<!일일 ?)회원권|전용|대관/;
+export function sortFees(fees, { all = false } = {}) {
   let last = 0;
-  return fees.map((f, i) => { const r = FEE_RANKS.findIndex((re) => re.test(f.item)); if (r >= 0) last = r; return { f, r: last, i }; }).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
+  return fees.map((f, i) => { const r = FEE_RANKS.findIndex((re) => re.test(f.item)); if (r >= 0) last = r; return { f, r: last, i }; }).filter((x) => all || !HIDDEN_FEE.test(x.f.item.replace(/\([^)]*\)/g, ''))).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
 }
 // The 요금 tab as rows: per item, one row per who that has a price (성인 always when priced; 청소년·어린이
 // only with a value). `all`: one cell over weekday and weekend; weekday/weekend: '–' when only one is known.
@@ -493,7 +496,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
 // Everything else (루트 수, 난이도, 주차 요금, the wall's other facts) is in the sheet the chips open.
 const AMENITY = /화장실|샤워|세족|휴게실|탈의|락커|라커|매점|자판기|정수기|수유실|편의시설/; // memo lines about the building's conveniences (the wall's own features — 스피드월, 지붕 — are tags, not memo lines)
 const CLOSURE_LABEL =/^(정기휴무|정기휴장|휴무|휴관|휴장)$/;
-// The closing chip says the weekly closing days only (월·화, 둘째·넷째 일): from the hours (a weekday with none) and the nth closures, else from the day words of the memo line.
+// The 운영 row says the weekly closing days only (월·화, 둘째·넷째 일): from the hours (a weekday with none) and the nth closures, else from the day words of the memo line.
 // Public holidays, 명절, 임시휴무 are not a chip: the sheet's 시간 tab says the whole line (closureFull), and a holiday on the picked day shows on the card (day.holiday).
 const WEEK = [['mon', '월'], ['tue', '화'], ['wed', '수'], ['thu', '목'], ['fri', '금'], ['sat', '토'], ['sun', '일']];
 const NTH = ['첫째', '둘째', '셋째', '넷째', '다섯째'];
@@ -514,12 +517,12 @@ const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
   const closure = info.shown.find((l) => CLOSURE_LABEL.test(l.label ?? ''));
   const days = closure ? closedDays(wall, closure) : [];
   return {
-    closure, // the line the chip says: the card's list leaves it out
+    closure, // the line the 운영 row says (its weekly closing days): the card's list leaves it out
+    days, // the weekly closing days (월·화, 둘째 일), for the 운영 row
     // the order the visit is decided in: the rope, the price, the closing day, parking, the rental (the 예약 band sits above them); they wrap onto a second line when they must
     chips: [
       size,
       fee && { kind: 'fee', icon: 'ticket', tone: fee === '무료' ? 'good' : 'plain', text: fee, to: { tab: 'use', section: 'fees' } },
-      days.length > 0 && { kind: 'closed', icon: 'calendar', tone: 'warn', text: `정기휴무 ${days.join('·')}`, note: `${closure.label} ${closure.value}`, to: { tab: 'time', section: 'hours' } },
       { kind: 'parking', icon: 'car', tone: parking.tone, text: parking.text, to: { tab: 'use', section: 'parking' } },
       rental && { kind: 'rental', icon: 'carabiner', tone: 'plain', text: '장비 대여', to: { tab: 'use', section: 'fees' } },
     ].filter(Boolean),
@@ -541,6 +544,90 @@ function specsOf(wall, rope, sizes, now) {
     all && { k: '루트 수', v: `${rv.total}개`, note: old },
     rows.length && { k: '난이도', v: rows.length > 1 ? `${rows[0].label}–${rows.at(-1).label}` : rows[0].label, note: old },
   ].filter(Boolean);
+}
+
+
+/** How long ago, in the card's words: 방금 · N분 전 · N시간 전 · N일 전 (the newest post's `last`, ms). */
+export function agoText(last, now = Date.now()) {
+  const min = Math.floor((now - last) / 60000);
+  if (!Number.isFinite(min) || min < 1) return '방금';
+  if (min < 60) return `${min}분 전`;
+  if (min < 1440) return `${Math.floor(min / 60)}시간 전`;
+  return `${Math.floor(min / 1440)}일 전`;
+}
+
+/** The words for a wall's 한 줄 타임라인 ({ kind: 'has' | 'new' | 'none', n, last } from board-summary.js), one set for the pill and the 게시판 row.
+ *  A new post says when ("5분 전 새 글"); a blog review (`blog`: the card model's blog, the row passes it) is told beside the posts; nothing yet is an invitation ("새 글 쓰기").
+ *  { kind, lead, fresh (the pill bolds 새 글 after the lead), text, label (for screen readers) } or null without a summary. */
+export function boardText(board, name = '', { blog = null, now = Date.now() } = {}) {
+  if (!board) return null;
+  const reviews = blog ? '블로그 후기' : null;
+  if (board.kind === 'new') {
+    const lead = agoText(board.last, now);
+    return { kind: 'new', lead, fresh: true, text: `${lead} 새 글`, label: `${name} 한 줄 타임라인 ${countLabel(board.n)}개, ${lead} 새 글 있음` };
+  }
+  if (board.kind === 'none') {
+    const text = reviews ? `${reviews} ${blog.posts.length}개` : '새 글 쓰기';
+    return { kind: 'none', lead: text, fresh: false, text, label: `${name} 한 줄 타임라인, ${reviews ? `${text}, 새 글 쓰기` : '새 글 쓰기'}` };
+  }
+  const lead = `타임라인 ${countLabel(board.n)}`;
+  const text = reviews ? `${lead} · ${reviews}` : lead;
+  return { kind: 'has', lead, fresh: false, text, label: `${name} 한 줄 타임라인 ${countLabel(board.n)}개${reviews ? `, ${reviews} 있음` : ''}` };
+}
+
+// ---- the card's 휴무안내 line and the 운영 · 이용 rows ----
+const CLOSED_WORD = /휴무|휴관|휴장/;
+const COND_RE = /우천|강우|호우|폭우|폭설|태풍|기상|날씨|침수|비가|비 ?올|눈이/; // a closing that comes with the weather: a possibility, not a fact
+const RAIN_RE = /우천|강우|호우|폭우|비가|비 ?올/; // the ones the rain forecast can light up
+const closesOnWord = (l) => (CLOSED_WORD.test(`${l.label ?? ''} ${l.value}`) || (COND_RE.test(l.value) && /불가|중단/.test(l.value))) && !MEMO_NONE.test(l.value); // "우천 시 이용 불가" says a closing without the word
+
+const NOTICE_LABEL = '휴무안내'; // a memo line "휴무안내: 우천 시 실외 이용 불가": the data's own short wording for the card (30자 이하), the long lines stay for the sheet
+export const NOTICE_MAX = 30;
+/** a long 휴무안내 is cut at a word (어절), never in the middle of one: "우천 시 실외 암벽장 이용이 불가할 수 있음" → "우천 시 실외 암벽장 이용이…" */
+export function clipNotice(text, max = NOTICE_MAX) {
+  if (text.length <= max) return text;
+  const head = text.slice(0, max + 1);
+  const at = head.lastIndexOf(' ');
+  return `${(at > 0 ? head.slice(0, at) : text.slice(0, max)).replace(/[\s,·.]+$/, '')}…`;
+}
+
+/** The memo lines that say a closing, split: `cond` (it may close with the weather: the card's 휴무안내) and `fixed` (설 연휴 …: the sheet's 시간 tab).
+ *  A line the data wrote as "휴무안내: …" is the card's line; every other closing line then goes to the sheet. */
+export function closingNotes(lines) {
+  const closing = lines.filter(closesOnWord);
+  const own = closing.filter((l) => l.label === NOTICE_LABEL);
+  if (own.length) return { cond: own, fixed: closing.filter((l) => l.label !== NOTICE_LABEL) };
+  return { cond: closing.filter((l) => COND_RE.test(l.value)), fixed: closing.filter((l) => !COND_RE.test(l.value)) };
+}
+
+/** 휴무안내: { tone: 'sure' (an admin-entered closing: red) | 'maybe' (a weather condition: quiet, `rain` when the forecast can light it), text } or null. */
+export function closureNotice({ suspended, day, dayLabel, cond }) {
+  if (suspended) return { tone: 'sure', text: ['임시 휴관', suspended.since, suspended.note].filter(Boolean).join(' · ') };
+  if (day.closed && day.text.startsWith('임시 휴장')) return { tone: 'sure', text: `${dayLabel} 임시 휴장` };
+  if (!cond.length) return null;
+  const full = cond.map((l) => l.value).join(' · ');
+  return { tone: 'maybe', rain: RAIN_RE.test(full), text: clipNotice(full) };
+}
+
+const num = (n) => String(n).replace(/\B(?=(\d{3})+$)/g, ',');
+/** The 이용 row's value: { text } or { empty: true } (아직 몰라요) or null (hidden: free with nothing to add). One adult entry, the way the 요금 tab tells it. */
+export function useRowOf(wall, now = new Date()) {
+  const fee = entryFee(wall, now);
+  const fees = sortFees(wall.fees ?? []);
+  if (fee === '무료') {
+    const until = wall.free_until && wall.free_until >= ymd(now) ? `${+wall.free_until.slice(5, 7)}/${+wall.free_until.slice(8)}까지` : null;
+    const extra = fees.find((f) => (f.adult?.all ?? f.adult?.weekday) > 0);
+    const add = until ?? (extra && `${extra.item} ${extra.adult.all !== undefined ? '' : '평일 '}${num(extra.adult.all ?? extra.adult.weekday)}원`);
+    return add ? { text: `무료 · ${add}` } : null;
+  }
+  for (const f of fees) {
+    const a = f.adult ?? f.groups?.[0]?.adult;
+    if (a?.weekday > 0 && a?.weekend > 0) return { text: `성인 평일 ${num(a.weekday)} · 주말 ${num(a.weekend)}` };
+    const p = [a?.all, a?.weekday, a?.weekend].find((n) => n > 0);
+    if (p) return { text: `성인 ${num(p)}원` };
+  }
+  const note = fees.find((f) => f.note)?.note;
+  return note ? { text: withWon(note) } : { empty: true };
 }
 
 export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
@@ -578,6 +665,8 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall), fee });
   const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
+  const closing = closingNotes(info.shown.filter((l) => l !== chipLine.closure));
+  const suspendedModel = wall.suspended ? { since: wall.suspended.since ? `${+wall.suspended.since.slice(5, 7)}/${+wall.suspended.since.slice(8)}부터` : null, note: wall.suspended.note ?? null } : null;
   const plain = day.closed || /(시간 미입력|아직 몰라요)$/.test(day.text); // not "오늘 운영 운영시간 미입력"
   const route = pos ? `https://map.kakao.com/link/to/${encodeURIComponent(wall.name)},${pos.lat},${pos.lng}` : null;
   const routeNaver = pos ? `https://map.naver.com/p/directions/-/${pos.lng},${pos.lat},${encodeURIComponent(wall.name)}/-/transit` : null;
@@ -626,7 +715,11 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     settingBadgeShort: settingAfterVisit(wall.setting, visits) ? '새 세팅' : null, // the list row has little room: the short word (the full one is its title)
     notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
     info, // expanded row's 안내 (face) and 시설 (wall sheet)
-    infoFace: info.shown.filter((l) => l !== chipLine.closure), // the 안내 lines under the chips: the closing day is a chip
+    infoFace: info.shown.filter((l) => l !== chipLine.closure && !closesOnWord(l)), // the 안내 lines on the card: the closing lines are the 운영 row, the 휴무안내 line and the sheet's 시간 tab
+    notice: closureNotice({ suspended: suspendedModel, day, dayLabel, cond: closing.cond }),
+    closureNotes: closing.fixed.map((l) => ({ k: !l.label || CLOSED_LABEL.test(l.label) || l.label === '정기휴무' ? '지정휴무' : l.label, v: l.value })), // the sheet's 시간 tab
+    opsRow: plain && !day.closed ? { empty: true } : { text: [`${dayLabel} ${day.text}`, !day.closed && chipLine.days.length ? `${chipLine.days.join('·')} 휴무` : null].filter(Boolean).join(' · ') },
+    useRow: useRowOf(wall, now),
     chips: chipLine.chips,
     specs: specsOf(wall, rope, facts.sizes, now), // the sheet's 시설 list
     closureFull: chipLine.closure && /[^월화수목금토일\s·,]/.test(chipLine.closure.value) ? { k: chipLine.closure.label, v: chipLine.closure.value } : null, // the 시간 tab says the whole line, but only when it says more than the hours table's weekday rows (명절, 공휴일, n째 주 …)
@@ -645,7 +738,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     today: { lead: `${day.season ? `${day.season} · ` : ''}${dayLabel}${plain ? '' : `${wall.timeBasis === 'outdoor' ? ' 실외' : ''} 운영`}`, text: day.text },
     holiday: day.holiday,
     closedDay: day.closed,
-    suspended: wall.suspended ? { since: wall.suspended.since ? `${+wall.suspended.since.slice(5, 7)}/${+wall.suspended.since.slice(8)}부터` : null, note: wall.suspended.note ?? null } : null,
+    suspended: suspendedModel,
     dayLabel,
     route,
     hasChat, // the card offers 오픈채팅 추가 only while there is none

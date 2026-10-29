@@ -5,7 +5,7 @@
 //   gaugeEnds(bar)     open time (left) and close time (right) under the bar's ends
 //   remainPill(left)   "10시간" / "10시간 가능", "곧 마감", "3시간 뒤 휴게" (the closing time is the gauge's right end): the wording is picked by css width (.lf-s / .lf-l)
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
-//   dock(go, been)     the two actions under the photo: 길찾기 and 다녀왔어요
+//   dock(go, been, tel) the actions under the photo: 길찾기 · 전화 (icons only; no 전화 without a number) and 다녀왔어요
 //   goRow(mk, kids, …) a tappable info line (이름 칸 · 내용 · ›) that opens a sheet
 //   photoTools(…)      round buttons (share) in the photo's corner
 //   cameraBtn(…)       the camera that sends a photo (on a photo: one more; on the placeholder: the first)
@@ -15,7 +15,7 @@
 //   chipBar(chips, …)  one line of chips from card-model `chips` [{kind, text, icon, tone, to}]
 import { el } from './dom.js';
 import { AXIS, axisFrac, fmtMin } from './viewmodel.js';
-import { countLabel } from './board-summary.js';
+import { boardText } from './card-model.js';
 
 export const axisX = (min) => `${axisFrac(min) * 100}%`;
 export const span = (cls, a, b) => {
@@ -64,17 +64,61 @@ export function remainPill(left) {
   return el('span', { class: 'lf-card' }, el('span', { class: 'lf-s', 'aria-hidden': 'true' }, left.short), el('span', { class: 'lf-l' }, left.long));
 }
 
-// 누르는 .irow (주차·근처·어프로치 줄): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳
-export function goRow(mk, kids, opens, onClick, label = null) {
+// 누르는 .irow (주차·근처·어프로치 줄): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳.
+// arrow: the mark at the right end (a row with no value says `알려 주기 ›` there)
+export function goRow(mk, kids, opens, onClick, label = null, arrow = '›') {
   const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
-    el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
+    el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, arrow));
   b.addEventListener('click', onClick);
   return el('div', { class: 'irow' }, el('span', { class: 'mk' }, mk), b);
 }
 
+// The three rows under the chips (운영 · 이용 · 게시판), each opening its tab of the wall sheet. `row` is card-model's {text} | {empty: true} (value not known:
+// a quiet 아직 몰라요 and 알려 주기 › in the arrow's place, the whole row asks the wall's report) | null (no row). open(button) opens the tab; ask(button) the report.
+// a time range (08:00–21:00) stays on one line: the value may break between ranges and words, never inside one
+const rangesKept = (t) => t.split(/(\d{1,2}:\d{2}[–-]\d{1,2}:\d{2})/).map((p, i) => (i % 2 ? el('span', { class: 'tr' }, p) : p));
+export function infoRow(mk, row, { opens, open, ask, text = null }) {
+  if (!row) return null;
+  if (row.empty) return goRow(mk, [el('span', { class: 'pv-none' }, '아직 몰라요')], opens, (e) => ask(e.currentTarget), `${mk} 정보 없음, 알려 주기`, '알려 주기 ›');
+  return goRow(mk, text ? [text] : rangesKept(row.text), opens, (e) => open(e.currentTarget), `${mk} ${row.text ?? ''}`.trim());
+}
+
+// 게시판 row: the wall's 한 줄 타임라인 (the same words as the pill, boardText). board: the summary or null (not here yet: a plain 한 줄 타임라인);
+// open(button) opens the wall sheet on its board tab. setBoardRow repaints the row when the summary arrives.
+export function boardRow(board, { name, open, blog = null }) {
+  const row = goRow('게시판', [], 'board', (e) => open(e.currentTarget), null);
+  row.dataset.board = name;
+  row.blog = blog; // the row repaints itself when the summary arrives: it keeps what it needs
+  setBoardRow(row, board);
+  return row;
+}
+export function setBoardRow(row, board) {
+  const blog = row.blog;
+  const t = boardText(board, row.dataset.board, { blog });
+  row.querySelector('.pv-t').textContent = t?.text ?? (blog ? `블로그 후기 ${blog.posts.length}개` : '한 줄 타임라인');
+  row.querySelector('.pv-go').setAttribute('aria-label', t?.label ?? `${row.dataset.board} 한 줄 타임라인`);
+}
+
+// 휴무안내: one line under the chips, only when the card has a closing to tell (card-model `notice`). 'sure' (an admin-entered closing) is red and final;
+// 'maybe' (a weather condition) is quiet, blue when rain is coming (lit), and asks for a report (report(button) opens the 임시휴무 sheet).
+export function noticeLine(n, { lit = false, report = null, icon = null } = {}) {
+  if (!n) return null;
+  const on = n.tone === 'maybe' && n.rain && lit;
+  const ask = n.tone === 'maybe' && report
+    ? el('button', { type: 'button', class: 'nt-go', 'aria-label': '오늘 휴무 제보하기' }, icon ? icon('megaphone') : null, '제보하기') : null;
+  ask?.addEventListener('click', () => report(ask));
+  return el('div', { class: `irow notice ${n.tone}${on ? ' rain' : ''}`, role: 'note' },
+    el('span', { class: 'mk' }, '휴무안내'), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
+}
+
+// The dock's icon buttons (길찾기, 전화): no words on them, the label and title say it; the same 48px square. `icon` draws the glyph.
+export const dockIcon = (cls, label, glyph, attrs, icon) => el('a', { class: `dock-go dock-ic ${cls}`, 'aria-label': label, title: label, ...attrs }, icon(glyph));
+// 전화: `link` is the card model's phone link ({href}) or absent: a place with no number has no button
+export const telButton = (name, link, icon) => (link ? dockIcon('dock-tel', `${name} 전화하기`, 'phone', { href: link.href }, icon) : null);
+
 // The two actions under the photo, the same for every kind of place: [길찾기 | 다녀왔어요], side by side. Both buttons come ready-made (they belong to the
 // app: the map-app dialog, the log sheet); a place with no position has no 길찾기 and the other fills the row.
-export const dock = (go, been) => el('div', { class: 'dock' }, go, been);
+export const dock = (go, been, tel = null) => el('div', { class: 'dock' }, go, tel, been);
 
 // ♥ and share as round buttons in the photo's top-right corner (or the placeholder block's); the app passes its own buttons.
 export const photoTools = (...buttons) => el('div', { class: 'photo-tools' }, ...buttons);
@@ -106,13 +150,9 @@ export function sheetLine(name, onOpen, { board = null, onBoard = null, icon = n
 export function setBoardPill(row, board, onBoard, icon) {
   row.querySelector('.board-pill')?.remove();
   if (!board || !onBoard) return;
-  const name = row.dataset.wall;
-  const text = board.kind === 'none' ? '첫 소식 남기기'
-    : board.kind === 'new' ? [`타임라인 ${countLabel(board.n)} · `, el('b', {}, '새 글')] : `타임라인 ${countLabel(board.n)}`;
-  const label = board.kind === 'none' ? `${name} 한 줄 타임라인, 첫 소식 남기기`
-    : `${name} 한 줄 타임라인 ${countLabel(board.n)}개${board.kind === 'new' ? ', 새 글 있음' : ''}`;
-  const pill = el('button', { type: 'button', class: `board-pill ${board.kind}`, 'aria-label': label },
-    icon ? icon('chat') : null, el('span', {}, ...(Array.isArray(text) ? text : [text])), el('i', { 'aria-hidden': 'true' }, '›'));
+  const t = boardText(board, row.dataset.wall);
+  const pill = el('button', { type: 'button', class: `board-pill ${board.kind}`, 'aria-label': t.label },
+    icon ? icon('chat') : null, el('span', {}, ...(t.fresh ? [`${t.lead} `, el('b', {}, '새 글')] : [t.lead])), el('i', { 'aria-hidden': 'true' }, '›'));
   pill.addEventListener('click', () => onBoard(pill));
   row.append(pill);
 }

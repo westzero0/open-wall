@@ -369,8 +369,15 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 /* the selected card floats over the map's lower part, so the map and its pins stay in view */
 .mapbox { position: relative; }
 #pin-card:empty { display: none; }
+/* the map card is the list row's own header (rowHead) opened: chips and the line into the sheet under it */
+#pin-card { --pad: 16px; background: var(--surface); width: min(440px, calc(100% - 16px)); margin-inline: auto; } /* a phone's width at most: on a wide map the wide 길찾기 would stretch across 600px */
+#pin-card .pin-row { border-bottom: 0; }
+#pin-card .row-btn { padding-right: calc(var(--pad) + 36px); } /* room for the close button */
+#pin-card .row-go { display: none; }
+#pin-card :is(.pin-row, .row-btn, .l1, .expand, .expand-in, .dock, .chip-bar, .sheet-row) { min-width: 0; max-width: 100%; } /* a narrow card (320px, big text) shrinks its rows instead of scrolling sideways */
+#pin-card .chip-bar { margin: var(--sp-4) 0 0; }
 #pin-card {
-  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; max-height: 75%; overflow: auto; overscroll-behavior: contain; /* the card is short now; the scroll only guards huge text sizes */
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; max-height: 85%; overflow: auto; overscroll-behavior: contain; /* the card is short now; the scroll only guards huge text sizes */
   border-radius: var(--r-base); box-shadow: var(--shadow-float);
 }
 /* 자세히 보기: the one way on from the map card to the list card */
@@ -496,10 +503,8 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 }
 /* the map credit sits top right (map.js), clear of the card */
 #map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--r-base) 0 6px; max-width: calc(100% - var(--tap) - var(--sp-24)); } /* wraps in the room right of the zoom buttons (big text made it two lines over +) */
-#pin-card .card.unknown { background: var(--surface); } /* floats over the map: a flat (transparent) 운영시간 미입력 card would show the pins through it */
-#pin-card .head { padding-right: var(--sp-40); } /* room for the close button */
 .pin-close {
-  position: absolute; top: 4px; right: 4px; z-index: 1; width: 44px; height: 44px; border: 0; border-radius: var(--r-md);
+  position: absolute; top: 4px; right: 4px; z-index: 4; width: 44px; height: 44px; border: 0; border-radius: var(--r-md);
   background: transparent; color: var(--muted); font-size: var(--fs-lg); line-height: 1;
 }
 
@@ -734,7 +739,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .6) 0%, rgb(0 0 0 / .35) 42%, rgb(0 0 0 / 0) 58%, rgb(0 0 0 / 0) 64%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
 .row.is-open > .expand .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* as wide as the photo and right under it: the photo's own toolbar */
 /* the wide two-column card: a photo card has no head line, so the info starts in the first row (the strip above spans both columns) */
-@media (min-width: 560px) and (max-width: 1023px) { .row.has-photo .m-cols { margin-top: 0; } .row.has-photo .m-cols:not(:has(> .m-head :is(.x-sub, .susp-note, .addr-btn))) > .m-info { grid-row: 1; } } /* the info rises beside the sun box only when the (otherwise empty) head holds nothing: a 휴게 line or note in it keeps its own row above */
+@media (min-width: 560px) and (max-width: 1023px) { .row.has-photo .m-cols { margin-top: 0; } .row.has-photo .m-cols:not(:has(> .m-head :is(.x-sub, .addr-btn))) > .m-info { grid-row: 1; } } /* the info rises beside the sun box only when the (otherwise empty) head holds nothing: a 휴게 line or note in it keeps its own row above */
 .rhero-foot { position: absolute; z-index: 1; left: var(--pad); right: var(--pad); bottom: var(--sp-12); display: flex; flex-direction: column; gap: var(--sp-10); }
 .rhero-line { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-8); }
 .rhero-wx { min-height: 1.5rem; line-height: 1.5rem; margin: 0; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); font-size: var(--fs-sm); font-weight: 500; } 
@@ -800,7 +805,6 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 /* the decision line: today's hours one step larger */
 .susp-pill { display: inline-block; padding: 0 var(--sp-10); border-radius: var(--r-pill); background: var(--warn); color: var(--on-accent); font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
 .today-row .today b.susp-pill, .rhero-cap b.susp-pill { display: inline-block; width: fit-content; margin-top: var(--sp-4); font-size: var(--fs-sm); line-height: 1.8; letter-spacing: 0; text-shadow: none; } /* a small pill, not the 2rem hours of an open day */
-.susp-note { margin: var(--sp-6) 0 0; font-size: var(--fs-sm); color: var(--muted); }
 .g-lead.susp { color: var(--warn); font-weight: 600; }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
@@ -1205,6 +1209,32 @@ html[data-text="xlarge"] .g-axis .sub { display: none; } /* 가장 큰 글씨: 0
 .pv-go { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); min-height: var(--tap); width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .pv-t { min-width: 0; }
 .pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-lg); }
+.pv-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+.pv-none { color: var(--muted); }
+.ws-contact { margin: 0; padding: 0; list-style: none; }
+.ws-contact-link { display: flex; align-items: center; min-height: var(--tap); color: var(--fg); text-decoration: none; border-top: 1px solid var(--hair); }
+.ws-contact li:first-child .ws-contact-link { border-top: 0; }
+.ws-contact-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pv-go:has(.pv-none) .pv-arrow { font-size: var(--fs-sm); white-space: nowrap; } /* 아직 몰라요 · 알려 주기 › */
+/* 휴무안내: a quiet line (a weather condition) or a red one (an admin-entered closing); the report button sits at the right, under the words when the line is narrow */
+.irow.notice { padding: var(--sp-6) 0; }
+.irow.notice .nt-t { min-width: 0; grid-column: 2; color: var(--muted); }
+.irow.notice.sure :is(.mk, .nt-t) { color: var(--warn); font-weight: 600; }
+.irow.notice.rain .nt-t { color: #2f62b0; font-weight: 600; } /* rain is coming: the weather box's rain blue */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .irow.notice.rain .nt-t { color: #8db4ee; } }
+:root[data-theme="dark"] .irow.notice.rain .nt-t { color: #8db4ee; }
+.tr { white-space: nowrap; }
+.nt-go { grid-column: 3; display: inline-flex; align-items: center; gap: var(--sp-4); min-height: var(--tap); padding: 0 var(--sp-12); border: 0; border-radius: var(--r-pill); background: none; box-shadow: inset 0 0 0 1.5px var(--fg); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.nt-go svg { width: 16px; height: 16px; flex: none; }
+.nt-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nt-go:active { transform: scale(.97); }
+@media (max-width: 340px) { .irow.notice:has(.nt-go) .nt-go { grid-column: 2; grid-row: 2; justify-self: start; } }
+html[data-text="large"] .irow.notice:has(.nt-go) .nt-go, html[data-text="xlarge"] .irow.notice:has(.nt-go) .nt-go { grid-column: 2; grid-row: 2; justify-self: start; }
+/* big type: the name sits over the words, so the words get the whole width */
+html:is([data-text="large"], [data-text="xlarge"]) .irow.notice { grid-template-columns: minmax(0, 1fr) auto; }
+html:is([data-text="large"], [data-text="xlarge"]) .irow.notice .mk { grid-column: 1 / -1; grid-row: 1; }
+html:is([data-text="large"], [data-text="xlarge"]) .irow.notice .nt-t { grid-column: 1 / -1; grid-row: 2; }
+html:is([data-text="large"], [data-text="xlarge"]) .irow.notice:has(.nt-go) .nt-go { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
 /* 주차 요금표: 행 = 주차장, 열 = 1시간·하루·비고. The name column stays while the rest scrolls sideways. */
 .pfee-wrap { margin-top: var(--sp-8); overflow-x: auto; }
 .pfee { border-collapse: separate; border-spacing: 0; font-size: var(--fs-sm); white-space: nowrap; }
@@ -1615,6 +1645,11 @@ button.pf-link { width: 100%; padding: 0; border: 0; background: none; font: inh
 .pf-ios { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .pf-link span { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); text-align: right; }
 .pf-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pf-sec { margin: var(--sp-16) 0 0; font-size: var(--fs-base); font-weight: 700; }
+.pf-region { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.pf-region .sh-label { white-space: nowrap; }
+.pf-region #regionSum { flex: 1; font-weight: 600; }
+.pf-region .pf-link { flex: none; width: auto; padding: 0 var(--sp-8); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; text-decoration: underline; }
 
 /* ---- 기록 추가 sheet ---- */
 .la-pick legend { margin-bottom: var(--sp-8); }
@@ -1788,6 +1823,12 @@ p.setnew { margin-top: var(--sp-8); }
 .dock :is(svg, .been-stamp) { width: 20px; height: 20px; flex: none; }
 .dock .been-btn small { font-size: inherit; }
 .dock > :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 길찾기 · 전화: icons only (aria-label + title say it), one square each; 다녀왔어요 takes the rest of the line */
+:is(.expand-in, .crag-body) .dock > .dock-ic { flex: 0 0 52px; padding: 0; }
+.dock > .dock-share { flex: 0 0 52px; display: flex; margin: 0; } /* the map card's 공유: the same outlined square as 길찾기 and 전화 */
+.dock-share > .icon-btn { width: 100%; height: auto; min-height: 48px; border-radius: var(--r-base); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-seg), inset 0 0 0 1.5px var(--fg); }
+.dock-share svg { width: 22px; height: 22px; }
+.dock > .dock-ic svg { width: 22px; height: 22px; }
 .dock > :active { transform: scale(.98); }
 /* the one line of chips (card-parts.js chipBar): pale pills, 30px to look at and 44px to tap; each opens the sheet where its detail is */
 .chip-bar { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-12) 0 var(--sp-4); }

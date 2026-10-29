@@ -23,7 +23,7 @@ const holdIcon = ({ pin, approx }, lit) => L.divIcon({
 
 /**
  * createMap(container, {onSelect, onError, onOk, covered, coveredTop}) → {select(name|null), setRows(rows, at), setUser(latlng|null), refresh(), fitAll()}
- * covered(): px of the map's foot hidden by the selected card; a tapped pin is panned above it.
+ * covered(): px of the map's foot hidden by the selected card; a tapped pin is panned to the middle of the part left uncovered.
  * coveredTop(): px of the map's top hidden by the page's sticky controls; the pin stays below them.
  * select(name|null, fromClick?): select a wall's pin from outside (the card's close button, the search); fromClick also pans it clear of the card.
  * From zoom LABEL_ZOOM the pins carry their short names; names that would overlap are hidden.
@@ -93,12 +93,12 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
     restyle();
     labels();
     onSelect(p?.row ?? null, fromClick, at);
-    // the selected card covers the map's foot: keep the tapped pin above it
+    // the selected card covers the map's foot: the tapped pin goes to the middle of what is left uncovered (below the sticky controls, above the card)
     if (p && fromClick) {
-      map.panInside([p.lat, p.lng], {
-        paddingTopLeft: [24, coveredTop() + 24], paddingBottomRight: [24, covered() + 40], // the pin clears the card's edge by more than its own ring
-        animate: !matchMedia('(prefers-reduced-motion: reduce)').matches,
-      });
+      const size = map.getSize();
+      const want = size.divideBy(2);
+      want.y = (coveredTop() + size.y - covered()) / 2;
+      map.panBy(map.latLngToContainerPoint([p.lat, p.lng]).subtract(want), { animate: !matchMedia('(prefers-reduced-motion: reduce)').matches });
     }
   };
 

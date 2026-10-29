@@ -32,7 +32,7 @@ import { renderScheduleAsk, renderScheduleCard, renderScheduleRows } from './sch
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { cleanMode, effectiveMode } from './ui-state.js'; // 싱글피치: 보기 종류
@@ -50,7 +50,7 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 function setSub(at, extra = '') {
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
-import { axisX, cameraBtn, goRow, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, setBoardPill, sheetLine, span, whyBubble } from './card-parts.js';
+import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, setBoardPill, sheetLine, span, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -154,7 +154,8 @@ function sunChip(sun, veiled = false) { // veiled: the sky hides the sun (the li
 
 // ---- UI state: filters persist in localStorage (ui-state.js), location stays in memory ----
 const ui = loadUi(storage); // regions are pruned to existing ones once the list loads (syncRegions)
-const saveUi = () => storeUi(storage, ui);
+let linkHeld = {}; // what a shared link's view replaced (holdLinkView): saved back until the visitor changes it
+const saveUi = () => storeUi(storage, ui, linkHeld);
 // the headline: strong pieces (time, count) are <b>; a count of 0 is muted (style.css #summary b.zero)
 const drawSummary = (parts) => {
   $('summary').classList.toggle('none', parts.every(([, strong]) => !strong)); // nothing to count (0곳): the whole headline is muted
@@ -248,31 +249,7 @@ let mapFailed = false;
 
 // ---- card ----
 // Every value below comes from cardModel (card-model.js); these functions only draw it.
-const basisTag = (m) => (m.basis ? el('span', { class: 'basis' }, m.basis) : null);
 // 입장 유료/무료 as a ticket icon + the one word (the full phrase stays for screen readers); 무료 in the accent colour
-const feeChip = (m) => (m.fee ? el('span', { class: `fee ${m.fee.endsWith('무료') ? 'free' : 'paid'}`, role: 'img', 'aria-label': m.fee }, icon('ticket'), m.fee.replace(/^입장 /, '')) : null);
-
-function placeholder({ primary, secondary }) {
-  return el('div', { class: 'thumb placeholder', 'aria-hidden': 'true' },
-    el('span', { class: 'ph-primary' }, primary), secondary ? el('span', { class: 'ph-secondary' }, secondary) : null);
-}
-
-function thumb(m) {
-  if (!m.photo) return placeholder(m.placeholder);
-  const img = el('img', { class: 'thumb', src: m.photo, loading: 'lazy', decoding: 'async', width: 72, height: 72, alt: `${m.name} 외벽` });
-  img.addEventListener('error', () => img.replaceWith(placeholder(m.placeholder)), { once: true });
-  return img;
-}
-
-// The same bar as the list row's (gaugeBar), and nothing under it, as in a folded list row: the open and close times show once a card is opened.
-// A closed wall opening on a later day shows that day without a tick; its bar keeps the 6 · 12 · 18 · 24 axis.
-function dayBarBlock(bar) {
-  return el('div', { class: 'daybar-wrap' },
-    gaugeBar(bar),
-    bar.ahead ? el('div', { class: 'ticks', 'aria-hidden': 'true' },
-      ...[360, 720, 1080, 1440].map((t) => { const x = el('span', {}, String(t / 60)); x.style.left = axisX(t); return x; })) : null,
-    bar.note === null ? null : el('p', { class: 'nosun' }, bar.note));
-}
 
 // 길찾기 · 공지 · 전화 …: one hairline strip of icon + word cells (flat like the list rows, no pills); 길찾기 first
 const LINK_ICON = { 길찾기: 'nav', '공지 보기': 'megaphone', 예약: 'calendar', 오픈채팅: 'chat', 전화: 'phone' };
@@ -340,7 +317,7 @@ function openNavDialog(choices, copyText, geo) {
 }
 // 길찾기 as a dock button: the link strip's cell without the strip (the same map-app dialog, remembered app and address copy)
 function navButton(link, copyText, geo) {
-  const a = el('a', { class: 'dock-go', href: link.href, target: '_blank', rel: 'noopener noreferrer' }, icon('nav'), el('span', {}, '길찾기'));
+  const a = dockIcon('', '길찾기', 'pin', { href: link.href, target: '_blank', rel: 'noopener noreferrer' }, icon);
   if (link.choices) a.addEventListener('click', (e) => { e.preventDefault(); openNavDialog(link.choices, copyText, geo); });
   return a;
 }
@@ -378,26 +355,16 @@ const rowButtons = (name, ...extra) => {
   return kids.length ? el('div', { class: 'row-actions' }, ...kids) : null;
 };
 
-// The map's selected pin: only what reads at a glance (photo, name, status, today's bar). Everything else is the
-// wall's card in the list, one tap away.
+// The map's selected pin: the list row's own header (rowHead), then the list card's dock without 다녀왔어요 (길찾기 · 전화 · 공유), its chips and the line into the wall sheet. No photo.
 function card(row, at) {
-  const m = cardModel(row, at);
-  const sheetRow = sheetRowOf(m); // the one way on: the list card's own line into the wall sheet
-  // no photo: no grey placeholder block; its type and height ride on the place line instead
-  const { primary, secondary } = m.placeholder;
-  return el('li', { class: `card ${m.state}${m.short ? ' short' : ''}${m.stale ? ' stale' : ''}${m.photo ? '' : ' no-photo'}` },
-    m.photo ? thumb(m) : null,
-    el('div', { class: 'head' },
-      el('div', { class: 'name-row' }, favBtn(m.name), el('h3', { class: 'name' }, m.name, feeChip(m))),
-      el('p', { class: 'where' },
-        m.region ? el('small', {}, m.region) : null,
-        !m.photo && secondary ? el('small', {}, secondary) : null,
-        !m.photo && primary.endsWith('m') ? el('small', {}, `높이 ${primary}`) : null,
-        basisTag(m)),
-      // an open wall tells how long you can stay in the list row's words (remainPill: 11시간 · 곧 마감 · 3시간 뒤 휴게); a shut one keeps its next opening
-      el('p', { class: `status${m.soon ? ' soon' : ''}` }, m.leftCard ? remainPill(m.leftCard) : m.statusText)),
-    m.bar ? dayBarBlock(m.bar) : null,
-    sheetRow);
+  const m = modelOf(row, at);
+  const { btn, heart, cls } = rowHead(row, at, m, true);
+  btn.removeAttribute('aria-controls');
+  btn.removeAttribute('aria-expanded');
+  btn.addEventListener('click', (e) => { e.stopPropagation(); openWallSheet(m.name, btn); }); // not the list's open / close: the header leads to the sheet too
+  const { dock: actions, chips } = cardActions(m, row.wall, true); // 길찾기 · 전화 · 공유, then the chips (plain here: only 암장 정보 자세히 leads on)
+  return el('li', { class: `row ${cls} pin-row` }, btn, heart,
+    el('div', { class: 'expand' }, el('div', { class: 'expand-in' }, actions, chips, sheetRowOf(m))));
 }
 
 function safeCard(row, at) {
@@ -729,8 +696,8 @@ function feesBlock(wall) {
     if (free && wall.free_until) box.prepend(el('p', { class: 'f-free' }, el('b', {}, '무료'), el('span', { class: 'f-note' }, ` · ${shortenDates(wall.free_until, ymd(new Date()))}까지`)));
     return box;
   }
-  if (!free) return null; // the chip says 무료: the 입장 요금 card must not stay empty
-  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.free_until ? el('span', { class: 'f-note' }, ` · ${shortenDates(wall.free_until, ymd(new Date()))}까지`) : wall.checked_at ? el('span', { class: 'f-note' }, ` · 확인 ${shortenDates(wall.checked_at, ymd(new Date()))}`) : null));
+  if (!free) return entryFee(wall) === '유료' ? el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '요금 확인 필요'))) : null; // 유료 but no price left to show (체험·강습·회원권 are hidden): say so, no date
+  return el('section', { class: 'fees', 'aria-label': '요금' }, el('p', { class: 'f-free' }, el('b', {}, '무료'), wall.free_until ? el('span', { class: 'f-note' }, ` · ${shortenDates(wall.free_until, ymd(new Date()))}까지`) : null)); // the chip says 무료: the 입장 요금 card must not stay empty
 }
 
 // The address sits under the place line; tapping it copies it (a copy icon says so; the text turns into
@@ -1284,17 +1251,34 @@ function veilText(m, wall, at) {
 // 한 줄 타임라인 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
 const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }), idOf, nameOf, storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
 const openBoardOf = (name) => (b) => openWallSheet(name, b, { tab: 'board' });
+boardNotice?.onChange(() => document.querySelectorAll('.irow[data-board]').forEach((row) => setBoardRow(row, boardNotice.notice(row.dataset.board))));
 boardNotice?.onChange(() => document.querySelectorAll('.sheet-row[data-wall]').forEach((row) => setBoardPill(row, boardNotice.notice(row.dataset.wall), openBoardOf(row.dataset.wall), icon)));
 const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b), { board: boardNotice?.notice(m.name) ?? null, onBoard: boardNotice ? openBoardOf(m.name) : null, icon });
-function cardActions(m, wall) {
+const reportFrom = (name, kind, kinds) => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind, kinds } }));
+const rainComing = (m) => Boolean(m.weather?.rain || m.weather?.ahead?.some((a) => a.rain)); // raining now, or rain forecast in the hours still ahead today
+// 운영 · 이용 · 게시판: each opens its tab of the wall sheet (the tab row shows below); a value not known asks for a report instead
+function cardRows(m) {
+  const to = (tab, section) => (b) => openWallSheet(m.name, b, { tab, section });
+  const ask = (kind, tab) => (b) => reportFrom(m.name, kind, TAB_KINDS[tab], b);
+  const board = boardNotice?.notice(m.name) ?? null;
+  return [
+    infoRow('운영', m.opsRow, { opens: 'time', open: to('time', 'hours'), ask: ask('운영시간', 'time') }),
+    infoRow('이용', m.useRow, { opens: 'use', open: to('use', 'fees'), ask: ask('요금', 'use') }),
+    boardNotice || m.blog ? boardRow(board, { name: m.name, open: openBoardOf(m.name), blog: m.blog }) : null,
+  ];
+}
+const mapShare = (name) => { const w = shareBtn(name); w.classList.add('dock-share'); return w; }; // the share button (inside its wrapper) drawn as an outlined square like 길찾기 and 전화 (style.css .dock-share)
+function cardActions(m, wall, onMap = false) { // onMap: 공유 stands where 다녀왔어요 does (a map card has no visit to log)
   const pos = wallPosition(wall);
   const nav = m.links.find((l) => l.primary); // 길찾기: the same map-app dialog as the link strip's cell (the strip itself is not drawn on the card for now)
   const go = nav ? navButton(nav, m.navAddress ?? m.address, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null) : null;
+  if (onMap && go) { go.classList.remove('dock-ic'); go.append(el('span', {}, '길찾기')); } // the map card's main action: wide and worded, 전화 and 공유 stay squares
   return {
-    dock: dock(go, beenBtn(m)),
+    dock: dock(go, onMap ? mapShare(m.name) : beenBtn(m), telButton(m.name, m.links.find((x) => x.label === '전화'), icon)),
     reserve: reserveBand(m.reserve, { icon }),
-    chips: chipBar(m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }),
-    sheetRow: sheetRowOf(m),
+    chips: chipBar(onMap ? m.chips?.map((c) => ({ ...c, to: null })) : m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }),
+    notice: noticeLine(m.notice, { lit: rainComing(m), report: (b) => reportFrom(m.name, '임시휴무', ['임시휴무'], b), icon }),
+    rows: cardRows(m),
   };
 }
 function rowDetails(m, wall, at) {
@@ -1309,7 +1293,7 @@ function rowDetails(m, wall, at) {
   // 다녀왔어요 sits beside 자세히 at the card's foot; its sheet asks the visit time and the crowd. Under a sun picture the two are the picture card's
   // own foot (sc-actions: the wall's base, painted with the card's colours); a wall with no picture (indoor, closed day) keeps them in a row of their own (go-row)
   const sunParts = wall.venue === 'indoor' ? [] : withWeather(sunBox(dial, m.name, m.closedDay, m.closedDay ? null : sunVerdict(wall, at), veilText(m, wall, at), at), weatherBox(m, wall, at)); // an indoor wall has no sun: no card at all. The sun box (the 날씨 is the top line of its sky), after the facts
-  const { dock: actions, reserve, chips, sheetRow } = cardActions(m, wall); // floating over the photo's foot, then the chips, then the line into the sheet
+  const { dock: actions, reserve, chips, notice, rows } = cardActions(m, wall); // floating over the photo's foot, then the chips, then the line into the sheet
   // (linkBar and m.links stay for the wall sheet's 연락 section; until then the phone / 공지 / 오픈채팅 links are not on the card)
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
@@ -1317,13 +1301,13 @@ function rowDetails(m, wall, at) {
     actions,
     reserve,
     chips,
-    sheetRow,
+    notice,
+    ...rows,
     el('div', { class: 'm-cols' },
       // what decides the visit: name, today's hours and the sun now (open: the row already says how long is left)
       el('div', { class: 'm-head' },
         el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
         (m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place : m.sub) : null, // a wall with no hours says so once, in the hero (not again here, nor in the row's chip: style.css hides it while open) // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
-        m.suspended ? el('p', { class: 'susp-note' }, [m.suspended.since, m.suspended.note].filter(Boolean).join(' · ') || '이용 전 확인해 주세요') : null,
         // (no 휴게 chips on the card: the hours already split around the break, the list bar and the wall sheet's table show it)
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
@@ -1481,6 +1465,14 @@ function specsList(m) {
   ].filter(Boolean);
   return rows.length ? el('div', { class: 'ws-info' }, el('ul', { class: 'memo-list info' }, ...rows)) : el('div', { class: 'ws-info' });
 }
+// 연락: the wall's phone and notice (and 오픈채팅) at the foot of the 시간 tab. 예약 and 길찾기 are on the card already: not here again.
+function contactSection(m) {
+  const items = m.links.filter((l) => !l.primary && l.label !== '예약').flatMap((l) => (l.choices && l.label === '전화' ? l.choices.map((c) => ({ label: `전화 ${c.label}`, href: c.href })) : [{ label: l.label === '공지 보기' ? '공지 보기' : l.label === '전화' ? `전화 ${l.href.replace(/^tel:/, '')}` : l.label, href: l.href }]));
+  if (!items.length) return null;
+  return el('section', { class: 'ws-sec', 'aria-label': '연락' },
+    el('div', { class: 'ws-sec-h' }, el('h3', {}, '연락')),
+    el('ul', { class: 'ws-contact' }, ...items.map((i) => el('li', {}, el('a', { class: 'ws-contact-link', href: i.href, ...(i.href.startsWith('tel:') ? {} : { target: '_blank', rel: 'noopener noreferrer' }) }, i.label)))));
+}
 function buildWallSheet(wallName) {
   const row = allRows.find((r) => r.wall.name === wallName);
   const at = shown.at ?? new Date();
@@ -1494,7 +1486,7 @@ function buildWallSheet(wallName) {
   // what the card's chips cut or only name, told whole here: the closing rule under the hours
   const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
-    hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, m.closureFull ? kv(m.closureFull.k, m.closureFull.v) : null, blocks.sun), // one card: the hours, then the seasons' sun under the same axis
+    hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, m.closureFull ? kv(m.closureFull.k, m.closureFull.v) : null, ...m.closureNotes.map((n) => kv(n.k, n.v)), blocks.sun), // one card: the hours, then the seasons' sun under the same axis
     fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
     specs: specsList(m) };
@@ -1506,7 +1498,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).map((s) => sheetSection(m, s, content[s.key]))), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).map((s) => sheetSection(m, s, content[s.key])), t.key === 'time' ? contactSection(m) : null), // 시간 or 이용 (연락 at the foot of 시간)
     }))],
   };
 }
@@ -1703,11 +1695,10 @@ const FEW_MIN = 180; // 3 hours or less to stay: said bolder, so a short row sta
 const leftParts = (left) => { const m = /^(\d+시간)( 가능)$/.exec(left); return m ? [m[1], el('span', { class: 'lf-pre' }, m[2])] : [left]; };
 // what the dimmed / veiled look says in words (a screen reader hears no opacity)
 const a11yNotes = (row) => { const n = [row.cold && `기온 ${ui.tempMin}도 미만`, row.wet && `${row.wetText} 예보`, row.windy && '바람 셈 예보', row.veil && '해 가려짐'].filter(Boolean); return n.length ? `, ${n.join(', ')}` : ''; };
-function timeRow(row, at) {
-  const m = modelOf(row, at);
+// The row's header, shared by the list row and the map card: sun chip, ♥, name, region, time left, the day bar and its ends. cls: the row's state classes.
+function rowHead(row, at, m, isOpen) {
   const { bar } = m; // "내일 10:00 오픈" draws tomorrow's hours, without a now tick; no bar without hours
   const id = `row-x-${++rowSeq}`;
-  const isOpen = vs.openName === m.name;
   // 양달/응달/방향 모름 in words, not only the orange band
   const { sun } = m;
   const heart = favBtn(m.name); // ♥ left of the name: the list's own 즐겨찾기 button, beside the row button (style.css .row-fav)
@@ -1725,9 +1716,17 @@ function timeRow(row, at) {
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
     bar ? gaugeBar(bar) : null,
     bar ? gaugeEnds(bar) : null); // drawn on every row, shown by css only while the card is open (style.css .gauge-ends)
+  const cls = `${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}`;
+  return { btn, heart, id, cls };
+}
+
+function timeRow(row, at) {
+  const m = modelOf(row, at);
+  const isOpen = vs.openName === m.name;
+  const { btn, heart, id, cls } = rowHead(row, at, m, isOpen);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.photo ? ' has-photo' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}` });
+  const li = el('li', { class: `row ${cls}${m.photo ? ' has-photo' : ''}` });
   li.append(btn, heart, ...(m.photo ? [rowPhoto(m, li, { corner: photoTools(shareBtn(m.name)) })] : []), el('div', { class: 'expand', id }, inner)); // DOM order = tab order: the row, its ♥, the photo's camera and share, then the card (the grid places them by area, not by order)
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -1991,7 +1990,7 @@ function renderCrags(at, now, isNow) {
   if ($('wxCredit')) $('wxCredit').hidden = !(cragWx.daily.size || cragWx.hourly.size); // main's syncWxCredit() counts only the wall forecast
 }
 // the crag list's empty box (the wall's .empty buttons): 전국으로 보기 clears 내 지역; 조건 지우기 clears what else narrows the crag list
-// (양달/응달, the search, 즐겨찾기만, 내 로프 길이, 어프로치 도보; the wall-only filters are not shown here and stay as they are)
+// (양달/응달, the search, 즐겨찾기만, 어프로치 도보; the wall-only filters are not shown here and stay as they are)
 $('crag-board')?.addEventListener('click', (e) => {
   const b = e.target.closest('.empty .clear-filters');
   if (!b) return;
@@ -1999,8 +1998,7 @@ $('crag-board')?.addEventListener('click', (e) => {
     setUi('regions', []);
     return $('sunOnly').focus(); // the button is gone
   }
-  Object.assign(ui, { sun: 'any', favOnly: false, ropeM: '0', approachMax: '0' });
-  sheetForm.elements.ropeM.value = '0';
+  Object.assign(ui, { sun: 'any', favOnly: false, approachMax: '0' });
   sheetForm.elements.approachMax.value = '0';
   $('findQ').value = '';
   saveUi();
@@ -2413,12 +2411,15 @@ for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', '
 }
 const sheet = $('conditions');
 const sheetForm = sheet.querySelector('form');
-for (const k of ['minHours', 'sortMode', 'venue', 'ropeM', 'approachMax', 'tempMin']) sheetForm.elements[k].value = ui[k];
+const ropeForm = $('profile').querySelector('form'); // 내 로프 길이 lives in 내 정보 (a setting, not a filter)
+for (const k of ['minHours', 'sortMode', 'venue', 'approachMax', 'tempMin']) sheetForm.elements[k].value = ui[k];
+ropeForm.elements.ropeM.value = ui.ropeM;
 
 const setUi = (k, v) => {
   pinnedName = null; // a filter change ends the one-wall exception
   ui[k] = v;
-  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'ropeM' || k === 'approachMax' || k === 'tempMin') sheetForm.elements[k].value = v;
+  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'approachMax' || k === 'tempMin') sheetForm.elements[k].value = v;
+  if (k === 'ropeM') ropeForm.elements.ropeM.value = v;
   if (k === 'sortMode') go({ type: 'sort' });
   saveUi();
   render();
@@ -2457,31 +2458,30 @@ $('regionChip').addEventListener('click', () => {
 // 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5), in both the 조건 sheet and 내 정보 (the same choice);
 // rebuilt only when that list changes, so a tick keeps focus. The saved choice is pruned to 권역 that exist (not while the list
 // failed to load).
-const regionBoxes = () => document.querySelectorAll('#regionOptsC input[name="region"], #regionOpts input[name="region"]');
+const regionBoxes = () => document.querySelectorAll('#regionOptsC input[name="region"]');
 let regionKey = null;
 function syncRegions() {
   if (!state.walls.length) return;
   const areas = areaList(state.walls);
   ui.regions = cleanRegions(ui.regions, areas.map((a) => a.name));
-  $('regionRow').hidden = !areas.length;
+  $('regionRow').hidden = !areas.length; // 내 정보 shows the choice as one line
   if ($('regionRowC')) $('regionRowC').hidden = !areas.length; // (a cached older page may lack the 조건 row)
   const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
   if (regionKey === key) return;
   regionKey = key;
-  for (const id of ['regionOpts', 'regionOptsC']) {
+  for (const id of ['regionOptsC']) {
     $(id)?.replaceChildren(el('div', { class: 'rg-list' }, ...areas.map((a) => el('label', {},
       el('input', { type: 'checkbox', name: 'region', value: a.name }), a.name, el('span', { class: 'rg-n' }, `${a.total}`)))));
   }
 }
 function syncRegionCounts() {
-  $('regionClear').hidden = !ui.regions.length;
+  $('regionSum').textContent = ui.regions.length ? ui.regions.join(' · ') : '전국';
+  $('locate').hidden = ui.sortMode !== 'distance'; // the position is asked for by 가까운 순; this is the retry
+  $('locate').textContent = vs.origin ? '내 위치 다시 찾기' : '내 위치 찾기';
 }
 
 $('pickOn')?.addEventListener('change', (e) => setUi('hidePick', !e.target.checked));
-$('regionClear').addEventListener('click', () => {
-  setUi('regions', []);
-  $('regionOpts').querySelector('input')?.focus(); // the button is gone
-});
+$('regionEdit').addEventListener('click', () => { $('profile').close(); sheet.showModal(); $('regionOptsC').querySelector('input')?.focus(); });
 $('moreFilters').addEventListener('click', () => sheet.showModal());
 document.querySelector('#group-open .empty').addEventListener('click', (e) => {
   if (e.target.closest('.to-national')) {
@@ -2493,8 +2493,6 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
   sheetForm.elements.minHours.value = '0';
   sheetForm.elements.venue.value = 'any';
   sheetForm.elements.tempMin.value = '0';
-  ui.ropeM = '0'; // the 조건 count holds it, so 조건 지우기 clears it too (it hides no wall)
-  sheetForm.elements.ropeM.value = '0';
   saveUi();
   render();
   $('sunOnly').focus(); // the button is gone; land on the first filter
@@ -2540,12 +2538,12 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours') setUi('minHours', e.target.value);
   if (e.target.name === 'sortMode') chooseSort(e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
-  if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value));
   if (e.target.name === 'approachMax') setUi('approachMax', cleanApproach(e.target.value));
   if (e.target.name === 'tempMin') setUi('tempMin', cleanTemp(e.target.value));
 });
-// 내 지역 lives in the 내 정보 sheet (profile-view.js wires the rest of it)
-for (const id of ['regionOpts', 'regionOptsC']) {
+ropeForm.addEventListener('change', (e) => { if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value)); });
+// 내 지역 is chosen in the 조건 sheet; 내 정보 shows it as a line (profile-view.js wires the rest of it)
+for (const id of ['regionOptsC']) {
   $(id)?.addEventListener('change', (e) => {
     setUi('regions', [...e.currentTarget.querySelectorAll('input[name="region"]:checked')].map((b) => b.value));
     if (e.target.checked) document.dispatchEvent(new CustomEvent('stats:region-set')); // stats.js counts it (no region name in it)
@@ -2719,13 +2717,13 @@ showLoadError(!first);
 const sharedWall = wallFromSearch(state.walls, location.search);
 const invite = sharedWall ? parseInvite(location.search, new Date()) : null; // 같이 가요: the link also names a moment
 if (sharedWall) {
-  Object.assign(ui, CLEARED, { regions: [], tab: 'list', mode: 'wall' }); // a wall link opens the wall list even when the saved view is the 싱글피치 one (in memory only)
+  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', mode: 'wall' }); // a wall link opens the wall list even when the saved view is the 싱글피치 one (in memory only)
 }
 // A crag link (?crag=이름, the crag card's 공유) opens that crag in the 싱글피치 list the same way: this visit drops the filters
 // and the search, and shows the crag mode (in memory only). With config.singlePitch off it is ignored.
 const sharedCrag = !sharedWall && cragOn ? cragFromSearch(state.crags, location.search) : null;
 if (sharedCrag) {
-  Object.assign(ui, CLEARED, { regions: [], tab: 'list', mode: 'crag' });
+  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', mode: 'crag' });
   if ($('findQ')) $('findQ').value = '';
 }
 syncRegions();

@@ -55,7 +55,7 @@ export function boardNotice(summary, name, seen, now) {
   if (!summary) return null;
   const entry = summary.get(name.normalize('NFC'));
   if (!entry) return { kind: 'none', n: 0 };
-  return { kind: hasNew(entry, seen?.[name.normalize('NFC')], now) ? 'new' : 'has', n: entry.n };
+  return { kind: hasNew(entry, seen?.[name.normalize('NFC')], now) ? 'new' : 'has', n: entry.n, last: entry.last }; // last: when the newest post was written (ms), for "5분 전 새 글"
 }
 
 /**
