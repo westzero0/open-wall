@@ -28,6 +28,13 @@ const angleDiff = (a, b) => {
   return d > 180 ? 360 - d : d;
 };
 
+// 벽 정면이 바라보는 각도(북 0, 시계 방향): sun.facing_deg 가 있으면 그것, 없으면 8방위 sun.facing, 둘 다 없으면 null.
+export function facingDegOf(sun) {
+  const d = sun?.facing_deg;
+  if (Number.isFinite(d) && d >= 0 && d < 360) return d;
+  return typeof sun?.facing === 'string' && Object.hasOwn(FACING, sun.facing) ? FACING[sun.facing] : null;
+}
+
 // Order: manual override -> no facing -> low sun -> wall faces away -> terrain -> sunlit.
 export function isSunlit(wall, at) {
   if (wall.venue === 'indoor') return { lit: null, reason: 'indoor' }; // indoor-only: no sun math
@@ -37,9 +44,8 @@ export function isSunlit(wall, at) {
     const lit = override.some(([a, b]) => toMin(a) <= m && m < toMin(b));
     return { lit, reason: 'override', method: 'override' };
   }
-  const key = wall.sun?.facing;
-  if (typeof key !== 'string' || !Object.hasOwn(FACING, key)) return { lit: null };
-  const facing = FACING[key];
+  const facing = facingDegOf(wall.sun);
+  if (facing === null) return { lit: null };
   const p = sunPosition(at, Number.isFinite(wall.sun.lat) ? wall.sun.lat : SEOUL.lat, Number.isFinite(wall.sun.lng) ? wall.sun.lng : SEOUL.lng);
   let reason = 'sun';
   if (p.altitude < MIN_ALTITUDE) reason = 'night';

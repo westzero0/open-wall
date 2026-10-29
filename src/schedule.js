@@ -83,7 +83,7 @@ export function nextDryDay(strip, i) {
 }
 
 /**
- * alternatives(wall, date, { walls, favs, forecasts, now }) → up to three walls to go to instead, [{ wall, km, fav }]: dry that day, outdoor, open that day
+ * alternatives(wall, date, { walls, favs, forecasts, now }) → up to three walls to go to instead, [{ wall, km, fav }]: dry that day (an indoor wall is dry by itself and needs no forecast), open that day
  * (today: still open after `now`; a timetable that is out of date does not count, as in the weekend picks), within NEAR_KM of `wall`, nearest first;
  * what is missing is filled with dry ♥ walls at any distance. forecasts: Map wall name → parseDaily's day Map.
  */
@@ -92,8 +92,9 @@ export function alternatives(wall, date, { walls, favs = [], forecasts, now = nu
   const origin = wallPosition(wall);
   const nowMin = now && dayKey(now) === key ? now.getHours() * 60 + now.getMinutes() : 0;
   const ok = (w) => {
-    if (w.name === wall.name || w.venue === 'indoor' || w.suspended || !hasHours(w) || staleness(w, now ?? date).stale
+    if (w.name === wall.name || w.suspended || !hasHours(w) || staleness(w, now ?? date).stale
       || !openIntervals(w, date).some(([, end]) => end > nowMin) || !wallPosition(w)) return false;
+    if (w.venue === 'indoor') return true;
     const f = forecasts.get(w.name)?.get(key);
     return !!f && !dayWeather(f).rain;
   };
@@ -179,7 +180,7 @@ export function askYesterday({ schedule, walls, recordsFor, skipped, today }) {
   const date = ymd(day);
   for (const e of schedule) {
     const wall = walls.find((w) => w.name === e.wall);
-    if (!wall || wall.venue === 'indoor' || !e.days.includes(day.getDay())) continue;
+    if (!wall || !e.days.includes(day.getDay())) continue;
     if (recordsFor(wall.name).some((r) => r.date === date) || skipped.some((x) => x.wall === wall.name && x.date === date)) continue;
     return { wall, date, label: `어제(${DAY_KO[day.getDay()]})` };
   }

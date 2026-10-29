@@ -7,6 +7,8 @@ import { NICK_KEY, loadNick, nickLocked, nickMode } from './report.js';
 import { createBoardApi } from './board-api.js';
 import { MAX_BODY, MAX_NICK, PREVIEW, ageText, cleanBoardNick, allLabel, cleanMine, hasMore, showAll, validatePost } from './board.js';
 import { getStr, setStr } from './storage.js';
+import { idOf } from './wall-ids.js';
+import { getAuthorId } from './author-id.js';
 
 export const COOLDOWN_MS = 20_000;
 const MAX_REPORTED = 200;
@@ -195,7 +197,7 @@ export function makeBoardState(wallName, api) {
   return s;
 }
 const states = new Map(); // one state per wall
-export const boardState = (wallName) => states.get(wallName) || states.set(wallName, makeBoardState(wallName, createBoardApi({ url: config.boardUrl }))).get(wallName);
+export const boardState = (wallName) => states.get(wallName) || states.set(wallName, makeBoardState(wallName, createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }))).get(wallName);
 
 const boxes = new Map(); // one view per wall and mode: re-renders of an open card reuse it instead of building again
 /**

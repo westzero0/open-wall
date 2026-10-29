@@ -16,8 +16,8 @@ export function fitSize(w, h, max = MAX_EDGE) {
   return [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))];
 }
 
-/** photoPath(wall, note) → '/v1/photos?wall=…&note=…' (note omitted when empty). */
-export const photoPath = (wall, note = '', nick = '') => `/v1/photos?wall=${encodeURIComponent(wall)}${note ? `&note=${encodeURIComponent(note)}` : ''}${nick ? `&nick=${encodeURIComponent(nick)}` : ''}`;
+/** photoPath(wall, note, nick, wallId) → wall_id=<id> when the wall has an id, else the old wall=<name>: '/v1/photos?wall=…&note=…' (note omitted when empty). */
+export const photoPath = (wall, note = '', nick = '', wallId = null) => `/v1/photos?${wallId ? `wall_id=${encodeURIComponent(wallId)}` : `wall=${encodeURIComponent(wall)}`}${note ? `&note=${encodeURIComponent(note)}` : ''}${nick ? `&nick=${encodeURIComponent(nick)}` : ''}`;
 
 /** What the sheet says for each outcome of an upload. */
 export const PHOTO_SAY = {
@@ -63,14 +63,15 @@ export async function shrinkToJpeg(file, {
   }
 }
 
-/** uploadPhoto({ url, wall, blob, note, nick, fetchFn }) → { ok: true } | { ok: false, why }. Empty url = feature off: nothing is sent. */
-export async function uploadPhoto({ url, wall, blob, note = '', nick = '', fetchFn = (...a) => fetch(...a), timeoutMs = 20000 }) {
+/** uploadPhoto({ url, wall, blob, note, nick, idOf, getAuthorId, fetchFn }) → { ok: true } | { ok: false, why }. Empty url = feature off: nothing is sent. */
+export async function uploadPhoto({ url, wall, blob, note = '', nick = '', idOf = () => null, getAuthorId = () => null, fetchFn = (...a) => fetch(...a), timeoutMs = 20000 }) {
   const base = String(url || '').replace(/\/+$/, '');
   if (!base) return { ok: false, why: 'network' };
+  const author = getAuthorId();
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetchFn(base + photoPath(wall, note, nick), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob, credentials: 'omit', signal: ctl.signal });
+    const r = await fetchFn(base + photoPath(wall, note, nick, idOf(wall)), { method: 'POST', headers: { 'Content-Type': 'image/jpeg', ...(author ? { 'X-Author-Id': author } : {}) }, body: blob, credentials: 'omit', signal: ctl.signal });
     return r.ok ? { ok: true } : { ok: false, why: whyOf(r.status) };
   } catch {
     return { ok: false, why: 'network' };

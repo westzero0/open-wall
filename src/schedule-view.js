@@ -62,9 +62,9 @@ function detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay }) {
   else if (!d.rain) kids.push(el('p', { class: 'pick-empty' }, `이 날은 ${a.wall.short_name || a.wall.name}에 비 예보가 없어요`));
   else {
     const alts = alternatives(a.wall, d.date, { walls, favs, forecasts, now: today });
-    const why = (r) => ['비 없음', r.km === null ? null : `${Math.round(r.km)}km`, r.fav && !(r.km <= NEAR_KM) ? '즐겨찾기' : null].filter(Boolean).join(' · ');
+    const why = (r) => [r.wall.venue === 'indoor' ? '실내' : '비 없음', r.km === null ? null : `${Math.round(r.km)}km`, r.fav && !(r.km <= NEAR_KM) ? '즐겨찾기' : null].filter(Boolean).join(' · ');
     const open = (r) => () => onOpen(r.wall, d.date);
-    if (!alts.length) kids.push(el('p', { class: 'pick-empty' }, '비 없는 외벽이 근처에 없어요'));
+    if (!alts.length) kids.push(el('p', { class: 'pick-empty' }, '비 없는 암장이 근처에 없어요'));
     else {
       const [lead, ...rest] = alts;
       const lb = el('button', { type: 'button', class: 'pick-lead' }, el('span', { class: 'pick-name' }, ...(lead.fav ? [heart()] : []), lead.wall.short_name || lead.wall.name), el('span', { class: 'pick-why' }, why(lead)));
@@ -115,7 +115,7 @@ export function renderScheduleRows(body, { schedule: stored, walls, favs, onChan
     });
     return el('div', { class: 'sd-wall' }, el('div', { class: 'sd-wallh' }, el('span', { class: 'pick-name' }, shown), del), el('div', { class: 'sd-week', role: 'group', 'aria-label': `${shown} 운동 요일` }, ...cells));
   });
-  const free = walls.filter((w) => w.venue !== 'indoor' && !schedule.some((e) => e.wall === w.name));
+  const free = walls.filter((w) => !schedule.some((e) => e.wall === w.name));
   let adder = null;
   if (schedule.length < MAX_SCHEDULE && free.length) {
     if (adding) {
@@ -134,7 +134,7 @@ export function renderScheduleRows(body, { schedule: stored, walls, favs, onChan
   const empty = schedule.some((e) => !e.days.length);
   body.replaceChildren(...rows, ...(adder ? [adder] : []),
     ...(empty ? [el('p', { class: 'sh-hint' }, '요일을 눌러 주세요')] : []),
-    el('p', { class: 'sh-hint' }, '운동하는 요일을 누르면, 그 날 비 예보가 있을 때 홈에 알려 줘요. 최대 5곳. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
+    el('p', { class: 'sh-hint' }, '운동하는 요일을 누르면, 그 날 비 예보가 있을 때 홈에 알려 줘요(실내 암장은 비와 무관해 알리지 않아요). 최대 5곳. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
   if (focus) body.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus();
 }
 

@@ -8,6 +8,8 @@ import { createSectionWall } from './route-sections.js';
 import { CRAG_KINDS, CRAG_TOPICS, MAX_BODY, MAX_NICK, NICK_KEY, NOTICE_KIND, OVERVIEW_KIND, PHOTO_KIND, isPhotoKind, cleanNick, buildPayload, cooldownLeft, loadNick, nickCommit, nickConfirmText, nickLocked, nickMode, validateReport } from './report.js';
 import { FIT_BYTES, MAX_NOTE, OVERVIEW_EDGE, PHOTO_SAY, PICK_MAX_SAY, addPicks, photosMessage, sendPhotos, shrinkToJpeg, uploadPhoto } from './photo-upload.js';
 import { getStr, setStr } from './storage.js';
+import { idOf } from './wall-ids.js';
+import { getAuthorId } from './author-id.js';
 
 const dlg = document.getElementById('report');
 if (dlg) {
@@ -194,7 +196,7 @@ if (dlg) {
     if (!boardOn()) return 'network';
     let blob;
     try { blob = await shrinkToJpeg(file, big ? { edge: OVERVIEW_EDGE, maxBytes: FIT_BYTES } : {}); } catch (e) { return e.message === 'too_big' ? 'too_big' : 'bad_image'; }
-    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick });
+    const r = await uploadPhoto({ url: config.boardUrl, wall: wallName, blob, note, nick, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) });
     return r.ok ? '' : r.why;
   }
   const postPhoto = async (file, note, nick) => { const why = await postPhotoWhy(file, note, nick); return why ? PHOTO_SAY[why] : ''; }; // the message to show, or ''

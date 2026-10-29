@@ -4,7 +4,9 @@ import { PAGE, parseBoard, parseReplies, parseToken, parseTotal } from './board.
 const fail = (code) => Object.assign(new Error(code), { code });
 const codeOf = (status) => (status === 429 ? 'rate_limited' : status >= 400 && status < 500 ? 'bad_request' : 'server');
 
-export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs = 8000 }) {
+// idOf(name) → the wall's id or null (src/wall-ids.js); getAuthorId() → this device's authorId or null (src/author-id.js). Both are only
+// asked once a request is really going out, so an empty url never makes an id.
+export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs = 8000, idOf = () => null, getAuthorId = () => null }) {
   const base = String(url || '').replace(/\/+$/, '');
   async function call(path, init = {}) {
     if (!base) throw fail('network');
@@ -23,9 +25,10 @@ export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs
   return {
     async list(wall, { before } = {}) {
       if (!base) return { posts: [], total: null };
-      const q = `wall=${encodeURIComponent(wall)}&limit=${PAGE}${before != null ? `&before=${encodeURIComponent(before)}` : ''}`;
+      const id = idOf(wall);
+      const q = `${id ? `wall_id=${encodeURIComponent(id)}` : `wall=${encodeURIComponent(wall)}`}&limit=${PAGE}${before != null ? `&before=${encodeURIComponent(before)}` : ''}`;
       const raw = await call(`/v1/posts?${q}`);
-      return { posts: parseBoard(raw, wall, Date.now()), total: parseTotal(raw) };
+      return { posts: parseBoard(raw, { id: idOf(wall), name: wall }, Date.now()), total: parseTotal(raw) };
     },
     async summary() { // the raw answer of GET /v1/summary (board-summary.js parses it); off without a url
       if (!base) return null;
@@ -33,11 +36,15 @@ export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs
     },
     async replies(wall, id) {
       if (!base) return [];
-      return parseReplies(await call(`/v1/posts/${encodeURIComponent(id)}/replies`), wall, Date.now());
+      return parseReplies(await call(`/v1/posts/${encodeURIComponent(id)}/replies`), { id: idOf(wall), name: wall }, Date.now());
     },
     async post({ wall, nick, body, hp = '', parent }) {
-      const raw = await call('/v1/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wall, nick, body, hp, ...(parent ? { parent } : {}) }) });
-      const [p] = parseBoard({ posts: [raw?.post] }, wall, Date.now());
+      const wallId = idOf(wall);
+      const headers = { 'content-type': 'application/json' };
+      const author = base ? getAuthorId() : null;
+      if (author) headers['X-Author-Id'] = author;
+      const raw = await call('/v1/posts', { method: 'POST', headers, body: JSON.stringify({ ...(wallId ? { wall_id: wallId } : { wall }), nick, body, hp, ...(parent ? { parent } : {}) }) });
+      const [p] = parseBoard({ posts: [raw?.post] }, { id: wallId, name: wall }, Date.now());
       if (!p) throw fail('server');
       return { post: p, token: parseToken(raw) };
     },

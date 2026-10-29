@@ -46,8 +46,10 @@ export function parseWhen(v) {
  * one of `names` (NFC), the level one of LEVELS, the time parseable, not in the future and within 8 weeks.
  * A 방문시각 must also be parseable and lie between 8 days before its 제보시각 and (a few minutes past) it.
  * Anything else (the header row too) is dropped.
+ * An optional 5th column 암장ID (the form's wallId question) wins over the name when `nameOf(id)` is one of `names`: a renamed wall's
+ * newer rows land on its current name. A row whose id is unknown falls back to its name column.
  */
-export function parseCrowdCsv(text, names, now = new Date()) {
+export function parseCrowdCsv(text, names, now = new Date(), { nameOf = () => null } = {}) {
   if (typeof text !== 'string' || !text) return [];
   let src = text;
   if (src.length > MAX_CHARS) src = src.slice(src.length - MAX_CHARS).replace(/^[^\n]*\n/, ''); // drop the cut line
@@ -61,7 +63,8 @@ export function parseCrowdCsv(text, names, now = new Date()) {
     const visit = visitCell ? parseWhen(visitCell) : null;
     if (!filed || +filed > hi || (visitCell && (!visit || +visit > +filed + SKEW_MS || +visit < +filed - LATE_MS))) continue;
     const when = visit ?? filed;
-    const wall = String(row[1] ?? '').normalize('NFC').trim();
+    const byId = nameOf(String(row[4] ?? '').trim());
+    const wall = byId && known.has(String(byId).normalize('NFC')) ? String(byId).normalize('NFC') : String(row[1] ?? '').normalize('NFC').trim();
     const score = LEVELS.indexOf(String(row[2] ?? '').normalize('NFC').trim());
     if (score < 0 || !known.has(wall) || +when > hi || +when < lo) continue;
     out.push({ t: +when, wall, score });
@@ -186,9 +189,10 @@ export const markSent = (sent, wall, now = Date.now(), visit = null) => {
 // timestamp stands for the visit.
 const ENTRY_RE = /^entry\.\d+$/;
 export const crowdReady = (endpoint, fields) => /^https?:\/\//.test(endpoint ?? '') && ENTRY_RE.test(fields?.wall ?? '') && ENTRY_RE.test(fields?.level ?? '');
-export function crowdPayload(fields, wall, level, when = '') {
+export function crowdPayload(fields, wall, level, when = '', wallId = '') {
   const p = new URLSearchParams();
   p.set(fields.wall, wall);
+  if (ENTRY_RE.test(fields.wallId ?? '') && /^[a-z0-9]{8}$/.test(wallId)) p.set(fields.wallId, wallId); // the wall's id: a rename later cannot split its reports
   p.set(fields.level, level);
   if (ENTRY_RE.test(fields.kind ?? '')) p.set(fields.kind, '혼잡도');
   if (ENTRY_RE.test(fields.when ?? '') && parseWhen(when)) p.set(fields.when, when);

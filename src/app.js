@@ -6,6 +6,8 @@ import { state, storage, onChange, canEdit } from './state.js';
 import { config, boardOn } from './config.js';
 import { idByName, wallPageId } from './share-id.js';
 import { safeStorage, getStr, setStr } from './storage.js';
+import { idOf, nameOf, setWalls } from './wall-ids.js';
+import { getAuthorId } from './author-id.js';
 import { getJson, getText, postForm } from './remote.js';
 import { featureOn } from './stage.js';
 import { labCrag, withoutLab, LAB_NOTE } from './lab.js'; // 시범 스위치(?lab=crag)
@@ -1280,7 +1282,7 @@ function veilText(m, wall, at) {
 }
 // The three pieces under a wall's photo on the list card: the dock (길찾기 · 다녀왔어요), the chips, the line into the wall sheet. (The map card is the simple one: it takes only the line, sheetRowOf.)
 // 한 줄 타임라인 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
-const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl }), storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
+const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }), idOf, nameOf, storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
 const openBoardOf = (name) => (b) => openWallSheet(name, b, { tab: 'board' });
 boardNotice?.onChange(() => document.querySelectorAll('.sheet-row[data-wall]').forEach((row) => setBoardPill(row, boardNotice.notice(row.dataset.wall), openBoardOf(row.dataset.wall), icon)));
 const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b), { board: boardNotice?.notice(m.name) ?? null, onBoard: boardNotice ? openBoardOf(m.name) : null, icon });
@@ -1582,7 +1584,7 @@ async function loadCrowd() {
   try {
     const text = await getText(config.crowdCsvUrl);
     const byWall = new Map();
-    for (const r of parseCrowdCsv(text, state.walls.map((w) => w.name))) {
+    for (const r of parseCrowdCsv(text, state.walls.map((w) => w.name), new Date(), { nameOf })) {
       if (!byWall.has(r.wall)) byWall.set(r.wall, []);
       byWall.get(r.wall).push(r);
     }
@@ -1674,7 +1676,7 @@ async function sendCrowd(name, level, date, time) {
   const store = (v) => { setStr(CROWD_KEY, JSON.stringify(v)); }; // private mode: no limit
   store(markSent(before, name, Date.now(), `${date} ${time}`));
   try {
-    await postForm(config.crowdEndpoint, crowdPayload(config.crowdFields, name, level, `${date} ${time}`));
+    await postForm(config.crowdEndpoint, crowdPayload(config.crowdFields, name, level, `${date} ${time}`, idOf(name) ?? ''));
   } catch {
     store(before);
     return false;
@@ -2680,6 +2682,7 @@ $('retry').addEventListener('click', async () => {
   $('retry').disabled = false;
   if (!list) return;
   state.walls = list;
+  setWalls(list);
   showLoadError(false);
   syncRegions();
   render();
@@ -2704,6 +2707,7 @@ $('mailCopy')?.addEventListener('click', async () => {
 const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]); // loaded together: a share link opens its sheet right after, and the 근처 line is decided then (loadPartners never rejects; a failed load = no tab)
 partners = loadedPartners;
 state.walls = first ?? [];
+setWalls(state.walls);
 if (cragOn) state.crags = await fetchCrags().catch(() => []);
 favs = loadFavs(storage, allWalls());
 schedule = loadSchedule(storage, allWalls());

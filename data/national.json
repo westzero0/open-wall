@@ -3143,7 +3143,8 @@
         ]
       },
       "contact": {
-        "phone": "031-729-3055"
+        "phone": "031-729-3055",
+        "notice_url": "https://spo.isdc.co.kr/notice02.do"
       },
       "sun": {
         "facing": "SW",
@@ -8410,7 +8411,7 @@
       "contact": {
         "phone": "0507-1367-7821",
         "naver_map": "https://naver.me/Fio7txAf",
-        "notice_url": "https://www.cuc.or.kr/"
+        "notice_url": "https://www.cuc.or.kr/listBoard.do?divId=110"
       },
       "checked_at": "2026-10-13",
       "location": {
@@ -11934,7 +11935,7 @@
       },
       "contact": {
         "phone": "054-280-9566",
-        "notice_url": "https://www.phsisul.org/sisul_9/sub/notice_view.do?prc=read&prcValue=e5492c6aed3648e94652aee9075d9663"
+        "notice_url": "https://www.phsisul.org/sisul_9/sub/notice.do"
       },
       "checked_at": "2026-10-20",
       "venue": "indoor",
@@ -12832,7 +12833,7 @@
       "holiday": "weekend",
       "contact": {
         "phone": "052-204-2932",
-        "notice_url": "https://ynawc.ulju.ulsan.kr"
+        "notice_url": "https://ynawc.ulju.ulsan.kr/notice"
       },
       "checked_at": "2026-10-12",
       "sun": {

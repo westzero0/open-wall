@@ -1,5 +1,5 @@
 // Sun compass model (no DOM): the view of someone standing in front of the wall, wall = up.
-import { isSunlit, sunPosition } from './sun.js';
+import { isSunlit, sunPosition, facingDegOf } from './sun.js';
 import { horizonAt } from './shadow.js';
 import { fmtMin, formatRanges, sunIntervals } from './viewmodel.js';
 
@@ -54,7 +54,7 @@ export function sunHeadOf(d, verdict, at, isNow) {
 // pick: { isNow, dayLabel } describes the picked moment for wording ('지금/오늘' only when it really is).
 export function dialModel(wall, at, { isNow = true, dayLabel = '오늘' } = {}) {
   const lit = isSunlit(wall, at);
-  const facing = FACING[wall.sun?.facing] ?? null;
+  const facing = facingDegOf(wall.sun);
   const ahead = facing === null ? null : mod(facing + 180);
   const relOf = (az) => mod(az - (ahead ?? 0));
   const pos = (p) => ({ rel: relOf(p.azimuth), radius: 1 - p.altitude / 90 });

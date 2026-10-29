@@ -233,6 +233,7 @@ function cleanSun(v) {
   const s = getPlainObject(v);
   const out = {};
   if (typeof s.facing === 'string' && FACINGS.includes(s.facing)) out.facing = s.facing;
+  if (Number.isFinite(s.facing_deg) && s.facing_deg >= 0 && s.facing_deg < 360) out.facing_deg = Math.round(s.facing_deg * 10) / 10 % 360; // 8방위 사이의 각도(선택, 소수 1자리)
   if (Number.isFinite(s.lat) && Math.abs(s.lat) <= 90) out.lat = s.lat;
   if (Number.isFinite(s.lng) && Math.abs(s.lng) <= 180) out.lng = s.lng;
   return out;

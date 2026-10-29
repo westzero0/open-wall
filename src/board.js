@@ -11,6 +11,7 @@ const MAX_ROWS = 100;
 const MAX_REPLY_COUNT = 1000; // a reply_count above this (or not a whole number) is not believed
 const SKEW = 5 * 60 * 1000;
 const ID_RE = /^[A-Za-z0-9_-]{16,32}$/;
+const WALL_ID_RE = /^[a-z0-9]{8}$/; // a wall's stored id (store.js WALL_ID_RE; not imported: the Worker bundles this file)
 
 export const cleanBody = (v) => cleanLine(v, MAX_BODY);
 export const cleanBoardNick = (v) => cleanLine(v, MAX_NICK);
@@ -26,19 +27,25 @@ export function validatePost(p) {
   return { ok: true, post: { wall, nick, body } };
 }
 
-/** parseBoard(raw, wallName, now) → the usable posts of an untrusted { posts: [...] } response. */
-export function parseBoard(raw, wallName, now) {
+/**
+ * parseBoard(raw, wall, now) → the usable posts of an untrusted { posts: [...] } response. `wall` is the requested wall's name, or
+ * { id, name }: a row with a wall_id belongs to the wall with that id (a renamed wall still matches), an old row without one is
+ * matched by name. Accepted rows carry the requested name as `wall` (the screens work with names).
+ */
+export function parseBoard(raw, wall, now) {
+  const want = typeof wall === 'string' ? { id: null, name: wall } : wall;
+  const mine = (r) => (want.id && typeof r.wall_id === 'string' && WALL_ID_RE.test(r.wall_id) ? r.wall_id === want.id : r.wall === want.name); // the app does not know this wall's id: match by name
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.posts)) return [];
   const out = [];
   for (const r of raw.posts.slice(0, MAX_ROWS)) {
-    if (!r || typeof r !== 'object' || r.wall !== wallName) continue;
+    if (!r || typeof r !== 'object' || !mine(r)) continue;
     if (typeof r.id !== 'string' || !ID_RE.test(r.id)) continue;
     const t = r.created_at;
     if (!Number.isInteger(t) || t < 0 || t > now + SKEW) continue;
     const nick = cleanBoardNick(r.nick);
     const body = cleanBody(r.body);
     const rc = r.reply_count;
-    if (nick && body) out.push({ id: r.id, wall: r.wall, nick, body, created_at: t, replyCount: Number.isInteger(rc) && rc >= 0 && rc <= MAX_REPLY_COUNT ? rc : 0 });
+    if (nick && body) out.push({ id: r.id, wall: want.name, nick, body, created_at: t, replyCount: Number.isInteger(rc) && rc >= 0 && rc <= MAX_REPLY_COUNT ? rc : 0 });
   }
   return out;
 }
@@ -64,8 +71,8 @@ export const hasMore = (total, loaded, lastPage) => lastPage > 0 && (total != nu
 export const showAll = (total, loaded) => (total ?? loaded) > PREVIEW;
 export const allLabel = (total) => (total != null && total >= COUNT_FROM ? `전체 글 보기 (${total})` : '전체 글 보기');
 
-/** parseReplies(raw, wallName, now) → the usable rows of an untrusted { replies: [...] } response (same checks as posts). */
-export const parseReplies = (raw, wallName, now) => parseBoard({ posts: raw?.replies }, wallName, now);
+/** parseReplies(raw, wall, now) → the usable rows of an untrusted { replies: [...] } response (same checks as posts). */
+export const parseReplies = (raw, wall, now) => parseBoard({ posts: raw?.replies }, wall, now);
 
 /** ageText(createdAt, now) → '방금' / '12분 전' / '3시간 전' / 'M/D' (local date once a day has passed). */
 export function ageText(createdAt, now) {
