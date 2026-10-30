@@ -245,16 +245,6 @@ const cleanSunNote = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim
 
 const isMonth = (m) => Number.isInteger(m) && m >= 1 && m <= 12;
 
-// from_day / to_day (optional): a day beyond the month's length becomes the month's end (2월 30 → 29; the year is not known, so 2월 29 stays); bad values are dropped.
-const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-const cleanDays = (v) => {
-  const out = {};
-  for (const [k, m] of [['from_day', v.from_month], ['to_day', v.to_month]]) {
-    if (Number.isInteger(v[k]) && v[k] >= 1 && v[k] <= 31) out[k] = Math.min(v[k], MONTH_DAYS[m - 1]);
-  }
-  return out;
-};
-
 function getWinter(v) {
   if (!isPlainObject(v) || !['closed', 'changed'].includes(v.type)) return { type: 'none' };
   if (!isMonth(v.from_month) || !isMonth(v.to_month)) return { type: 'none' }; // a season with no valid months would never apply
@@ -263,7 +253,6 @@ function getWinter(v) {
     type: v.type,
     from_month: v.from_month,
     to_month: v.to_month,
-    ...cleanDays(v),
     ...(v.hours === undefined ? {} : { hours: cleanHours(v.hours) }),
     ...(note ? { indoor_note: note } : {}),
   };
@@ -314,7 +303,7 @@ export function cleanSuspended(v) {
 function cleanSeasons(v) {
   if (!Array.isArray(v)) return [];
   return v.filter((s) => isPlainObject(s) && isMonth(s.from_month) && isMonth(s.to_month) && isPlainObject(s.hours))
-    .map((s) => ({ from_month: s.from_month, to_month: s.to_month, ...cleanDays(s), hours: cleanHours(s.hours) }))
+    .map((s) => ({ from_month: s.from_month, to_month: s.to_month, hours: cleanHours(s.hours) }))
     .filter((s) => Object.keys(s.hours).length);
 }
 
@@ -401,12 +390,35 @@ function cleanNthClosed(v) {
   return [...byDay].map(([day, nth]) => ({ day, nth: [...new Set(nth)].sort((a, b) => (a === -1) - (b === -1) || a - b) }));
 }
 
+// 임시휴무 사유(날짜별): 고정 4종 또는 '기타' 직접 입력(공백 정리 뒤 12자 이하, 제어문자 없음).
+export const CLOSURE_REASONS = ['루트 세팅', '시설 점검·공사', '행사·대회', '우천·날씨'];
+export const CLOSURE_REASON_MAX = 12;
+export function cleanClosureReason(v) {
+  if (typeof v !== 'string') return '';
+  const s = v.replace(/\s+/g, ' ').trim();
+  return s.length <= CLOSURE_REASON_MAX && !/[\u0000-\u001f\u007f<>]/.test(s) ? s : '';
+}
+// 카드에는 줄임말로: 고정 사유 '시설 점검·공사'는 '시설 공사', 직접 입력이 8자를 넘으면 7자 + '…'.
+export const CLOSURE_SHORT = { '시설 점검·공사': '시설 공사' };
+export const shortClosureReason = (r) => CLOSURE_SHORT[r] ?? (r.length > 8 ? `${r.slice(0, 7)}…` : r);
+// { 'YYYY-MM-DD': 사유 } for dates that are in closed_dates only; bad dates and values dropped.
+export function cleanClosedReasons(v, dates) {
+  if (!isPlainObject(v)) return {};
+  const out = {};
+  for (const d of Object.keys(v).sort()) {
+    const r = cleanClosureReason(v[d]);
+    if (r && isDateStr(d) && dates.includes(d)) out[d] = r;
+  }
+  return out;
+}
+
 function getExceptions(v) {
   if (!isPlainObject(v)) return { closed_dates: [], rain_rule: false };
   const closed_dates = Array.isArray(v.closed_dates) ? v.closed_dates.filter(isDateStr) : [];
   const rain_rule = typeof v.rain_rule === 'boolean' ? v.rain_rule : false;
   const nth_closed = cleanNthClosed(v.nth_closed);
-  return { closed_dates, rain_rule, ...(nth_closed.length ? { nth_closed } : {}) };
+  const closed_reasons = cleanClosedReasons(v.closed_reasons, closed_dates);
+  return { closed_dates, rain_rule, ...(nth_closed.length ? { nth_closed } : {}), ...(Object.keys(closed_reasons).length ? { closed_reasons } : {}) };
 }
 
 // 세팅일: { last?, next? } as real calendar dates ('YYYY-MM-DD'); anything else is dropped key by key, null when both are gone.

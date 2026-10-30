@@ -521,7 +521,7 @@ function hoursGrid(wall, at) {
     ...[['summer', '하계', ws.summer], ['winter', '동계', ws.winter]].map(([k, label, months]) => {
       // the months sit inside the switch ("하계 4~9월 · 동계 10~3월"); a winter closure reads in the warning colour
       const shut = k === 'winter' && ws.closed;
-      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k), class: shut ? 'shut' : null, 'aria-label': `${label} ${months ?? '연중'}${shut ? ' 외벽 휴장' : ''}` },
+      const b = el('button', { type: 'button', 'data-season': k, 'aria-pressed': String(wk.season === k), class: shut ? 'shut' : null, 'aria-label': `${label} ${months ?? '연중'}${shut ? ' 외벽 휴무' : ''}` },
         el('span', { class: 'sw-k' }, label), months ? el('span', { class: 'sw-m' }, months) : null);
       b.addEventListener('click', () => {
         go({ type: 'season', name: wall.name, pick: k, current: weeklyHours(wall, at).season });
@@ -537,7 +537,7 @@ function hoursGrid(wall, at) {
 
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
-    ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.text)) : null) // the day's sun is under 계절별 양달
+    ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.full ?? day.text)) : null) // the day's sun is under 계절별 양달
     : el('p', { class: 'g-lead preview' }, `${wk.season === 'winter' ? '동계' : '하계'} 미리 보기 · 지금 시각선 없이 그 계절 시간만 보여요`);
 
   const body = el('div', { class: 'g-body', role: 'list' });
@@ -780,7 +780,7 @@ function paintStar(btn) {
 const mdOf = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`;
 const sinceText = (d) => (Date.now() - new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)) > 60 * 864e5 ? `${+d.slice(5, 7)}월부터` : `${mdOf(d)}부터`); // a long-ago start: the month only
 function changeText(c) {
-  if (c.kind === 'added' || c.kind === 'opened') return `${c.kind === 'added' ? '새 암장' : '개장'} · ${mdOf(c.from)}`;
+  if (c.kind === 'added' || c.kind === 'opened') return c.kind === 'added' ? `새 외벽이 오픈했어요 · ${+c.from.slice(5, 7)}월 ${+c.from.slice(8)}일` : `개장 · ${mdOf(c.from)}`;
   if (c.kind === 'winter') return [c.season === 'start' ? '동절기 시작' : '동절기 끝', `${mdOf(c.from)}${c.season === 'start' ? '부터' : ''}`, c.note].filter(Boolean).join(' · ');
   const when = c.kind === 'closed' ? (c.from === c.to ? mdOf(c.from) : `${mdOf(c.from)}~${mdOf(c.to)}`) : c.from ? sinceText(c.from) : '';
   return [c.kind === 'closed' ? '임시 휴무' : '이용 어려움', when, c.note].filter(Boolean).join(' · ');
@@ -797,7 +797,7 @@ function newsState() {
   }
   return newsMemo;
 }
-const newsPill = (name, tag = 'span') => { const c = newsState().map.get(name); return c && (tag === 'p' || c.kind !== 'winter') ? el(tag, { class: 'newspill', title: changeText(c) }, tag === 'p' ? changeText(c) : newsChip(c)) : null; };
+const newsPill = (name, tag = 'span') => { const c = newsState().map.get(name); return c && (tag === 'p' || c.kind !== 'winter') ? el(tag, { class: c.kind === 'closed' ? 'newspill warn' : 'newspill', title: changeText(c) }, tag === 'p' ? changeText(c) : newsChip(c)) : null; };
 const changesList = () => unseen(weekChanges(state.walls, new Date(), { favs, found: newsState().found }), changesSeen);
 function dismissChanges(keys) {
   changesSeen = [...changesSeen, ...keys];
@@ -1164,7 +1164,7 @@ function shareBtn(name, label = null, kind = 'wall') { // label: a word under th
 
 // First view under the chips: 안내 (status notes, then the memo lines that can stop a visit), parking (one line).
 // Weekly closures are a 안내 line and the hatched grid rows.
-const memoItem = (l) => el('li', { class: l.key ? 'key' : null },
+const memoItem = (l) => el('li', { class: l.key ? (l.quiet ? 'key quiet' : 'key') : null },
   l.label ? el('span', { class: 'mk' }, l.label) : null,
   el('span', { class: l.label ? 'mv' : 'mv free' }, tightParens(l.value)));
 
@@ -1174,7 +1174,7 @@ const CLOSED_WORD = /(휴무|휴관|휴장)/; // a memo line that says a closing
 function closedItem(l, m) {
   const go = el('button', { type: 'button', class: 'mv pv-go' }, el('span', { class: 'pv-t' }, l.value), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, '›'));
   go.addEventListener('click', () => openWallSheet(m.name, go, { tab: 'time', section: 'hours' }));
-  return el('li', { class: l.key ? 'key' : null }, el('span', { class: 'mk' }, l.label), go);
+  return el('li', { class: l.key ? (l.quiet ? 'key quiet' : 'key') : null }, el('span', { class: 'mk' }, l.label), go);
 }
 function infoBlock(m) {
   const parts = [];
@@ -1293,7 +1293,7 @@ function sunBox(d, name, closedDay, verdict, veilText = null, at = null) {
   const extra = sunNote || veil ? el('div', { class: 'sun-extra' }, sunNote, veil) : null; // one grid track for both quiet lines
   if (closedDay) {
     return el('section', { class: 'sunbox solo', 'aria-label': '해' }, el('div', { class: 'sb-txt' },
-      el('p', { class: 'dsent off' }, '운영하지 않는 날이라 해 나침반은 접어 뒀어요.'),
+      noSunMath(d) ? el('p', { class: 'dsent off' }, '운영하지 않아서 해 나침반은 접어 뒀어요.') : null, // the status already says it: this line only when the reference below has nothing
       noSunMath(d) ? null : el('p', { class: 'dwhen ref' }, d.windows.length ? `참고 · 예상 양달 ${formatRanges(d.windows)}` : '참고 · 하루 종일 응달'), sunWhy()));
   }
   if (noSunMath(d)) {
@@ -1415,13 +1415,13 @@ function rowDetails(m, wall, at) {
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
-        newsPill(m.name, 'p'), // what changes this week comes first
+        m.notice?.tone === 'sure' ? null : newsPill(m.name, 'p'), // what changes this week comes first (a closing the 휴무 line already tells is not said a third time)
         ...crowdBox(m), // before the visit (길찾기 · 전화), then 다녀왔어요
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
         ...infoBlock(m),
         gearRow(wall),
-        m.settingBadge ? el('p', { class: 'setnew' }, el('span', { 'aria-hidden': 'true' }, '✦ '), m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
+        m.settingBadge ? el('p', { class: 'setnew' }, m.settingBadge) : null), // the check dates (정보·공지·세팅) are in the wall sheet
       ...sunParts), // after the facts (the right column when wide)
     visitLog(m),
     helps,
@@ -1675,7 +1675,7 @@ function blogBox(blog, withList = true) {
 // place: the crag object when m is a 싱글피치 crag (not in state.walls; the sheet's time bar reads it, no hours).
 function beenBtn(m, place = null) {
   const mark = logView.justStamped(m.name) ? inkStamp(el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }), state.walls.find((w) => w.name === m.name)) : icon('stamp');
-  const been = el('button', { type: 'button', class: `btn been-btn${m.visits ? ' done' : ''}`, 'data-focus': 'been', 'aria-label': m.beenAria ?? '다녀왔어요 기록 추가' }, mark, el('small', {}, m.visits ? m.beenLabel.replace('다녀옴 ', '') : m.beenLabel));
+  const been = el('button', { type: 'button', class: `btn been-btn${m.visits ? ' done' : ''}`, 'data-focus': 'been', 'aria-label': m.beenAria ?? '다녀왔어요 기록 추가' }, mark, el('small', {}, m.beenLabel));
   been.addEventListener('click', () => logView.openAdd({ wall: m.name, from: been, place }));
   return been;
 }
@@ -1790,12 +1790,14 @@ function weatherBox(m, wall, at) {
   if (!cur) return [];
   if (!wxShownSent) { wxShownSent = true; document.dispatchEvent(new CustomEvent('stats:weather-shown')); }
   const strong = windy(cur);
+  const cold = Number(ui.tempMin) > 0 && Math.round(cur.t) < Number(ui.tempMin); // 내 기준 기온 미만: the row's badge, here the same word
   const [w, g] = [Math.round(cur.w), Math.round(cur.g)];
   const words = [skyKind(cur.c).text, g > w ? `바람 ${w}–${g}m/s` : `바람 ${w}m/s`]; // wind and gust as one range: the row stays one line
-  return [el('section', { class: 'wx-box', 'aria-label': `날씨, ${cur.hhmm} 관측, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}` },
+  return [el('section', { class: 'wx-box', 'aria-label': `날씨, ${cur.hhmm} 관측, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}` },
     el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
       el('span', { class: 'wxb-t' }, `${Math.round(cur.t)}°`),
-      strong ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // beside the temperature; the words wrap under both
+      strong ? el('span', { class: 'wx-pill' }, '바람 셈') : null,
+      cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
       el('span', { class: 'wxb-d' }, words.join(' · ')),
       el('span', { class: 'wxb-obs' }, `${cur.hhmm} 관측`)))];
 }

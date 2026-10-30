@@ -75,7 +75,9 @@ function make() {
     onClose?.();
     onClose = null;
     // back to the button that opened it; opened by a link (or the card was re-drawn): the card's own 자세히 › for this wall
-    const own = [...document.querySelectorAll('.row.is-open [data-sheet-open]')].find((b) => b.dataset.name === wall);
+    // (the list card's 운영·이용·게시판 rows are .pv-go, the map card's is [data-sheet-open]; a news card is gone by now: the wall's own row, then the first news card)
+    const row = [...document.querySelectorAll('.row')].find((r) => r.wallName === wall && r.classList.contains('is-open')) ?? [...document.querySelectorAll('.row')].find((r) => r.wallName === wall);
+    const own = [...document.querySelectorAll('.row.is-open [data-sheet-open]')].find((b) => b.dataset.name === wall) ?? row?.querySelector('[data-sheet-open], .pv-go') ?? row?.querySelector('.row-btn') ?? document.querySelector('.cs-main');
     const o = opener?.isConnected ? opener : own;
     opener = null;
     o?.focus();

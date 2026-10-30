@@ -5,6 +5,7 @@ import { areaOf } from './areas.js';
 import { dayRule, hasHours, inWinter, nthHit, openIntervals, orderIntervals, slotOf } from './hours.js';
 import { isSunlit, sunWindows } from './sun.js';
 import { DAY_KEYS, DAY_KO, toMin, ymd } from './time.js';
+import { shortClosureReason } from './store.js';
 
 // ---- time words ----
 const p2 = (n) => String(n).padStart(2, '0');
@@ -276,7 +277,7 @@ export function weeklyHours(wall, date, pick = null) {
   const base = { season, preview: !live, hasWinter };
   if (!hasHours(wall)) return { ...base, rows: [] };
   if (winter && wall.winter.type === 'closed') {
-    return { ...base, rows: [{ key: 'winter', days: '동절기', text: '외벽 휴장', range: '외벽 휴장', today: live, intervals: [], breaks: [], closed: true, nth: null }] };
+    return { ...base, rows: [{ key: 'winter', days: '동절기', text: '외벽 휴무', range: '외벽 휴무', today: live, intervals: [], breaks: [], closed: true, nth: null }] };
   }
   const rows = [...WEEK, ['hol', '공휴일']].map(([key, days]) => {
     const v = slotOf(wall, key, winter, live ? date : undefined); // a previewed season has no date: seasons entries don't apply
@@ -331,13 +332,17 @@ export function dayLine(wall, date) {
     : null;
   if (intervals.length) return { season, closed: false, text: formatRanges(intervals), holiday };
   if (!hasHours(wall)) return { season, closed: false, text: unknownText(wall), holiday };
-  let text = '휴무';
-  if (rule.why === 'closed_date') text = rule.holiday ? '휴무' : '임시 휴장 · 휴무'; // a closed date on a public holiday is the wall's own holiday closing (설·추석 …), not a sudden one
-  else if (rule.why === 'nth') text = `${NTH_KO[nthHit(wall, date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
-  else if (season && wall.winter.type === 'closed') text = '외벽 휴장';
+  let text = '휴무', full;
+  if (rule.why === 'closed_date') {
+    const why = wall.exceptions?.closed_reasons?.[ymd(date)]; // 사유(선택): "임시 휴무 (루트 세팅)"
+    const base = rule.holiday ? '휴무' : '임시 휴무'; // a closed date on a public holiday is the wall's own holiday closing (설·추석 …), not a sudden one
+    text = base + (why ? ` (${shortClosureReason(why)})` : '');
+    if (why && text !== `${base} (${why})`) full = `${base} (${why})`; // the sheet says the whole reason where the card abbreviates it
+  } else if (rule.why === 'nth') text = `${NTH_KO[nthHit(wall, date)]} ${DAY_KO[date.getDay()]}요일 휴무`;
+  else if (season && wall.winter.type === 'closed') text = '외벽 휴무';
   else if (rule.key === 'hol' && wall.holiday === 'closed') text = '공휴일 휴무';
   else if (rule.slot === undefined) text = '운영시간을 아직 몰라요';
-  return { season, closed: true, text, holiday };
+  return { season, closed: true, text, holiday, ...(full ? { full } : {}) };
 }
 
 // Same-weekday sun at the three season days (seasonWindows), against that weekday's hours in that season

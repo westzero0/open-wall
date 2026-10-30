@@ -43,7 +43,7 @@ export function sceneLayout(m, at = null) {
   L.low = kind === 'lit' && h < 12;
   if (kind === 'lit') {
     L.rays = [WTOP + 12, WTOP + 36, WTOP + 60].map((y0, i) => ({ points: [[sx + (WX0 - sx) * 0.2, sy + (y0 - sy) * 0.2], [WX0, y0], [WX0, y0 + 9]].map((p) => p.map(r1)), opacity: [0.55, 0.42, 0.3][i] }));
-    L.labels.push({ x: r1(clamp(sx, 48, 168)), y: r1(Math.min(sy + r + 16, HY - 6)), text: `alt ${Math.round(h)}°`, anchor: 'middle', cls: 'dim' });
+    L.labels.push({ x: r1(clamp(sx, 48, 168)), y: r1(Math.min(sy + r + 16, HY - 6)), text: `고도 ${Math.round(h)}°`, anchor: 'middle', cls: 'dim' });
     L.aria = `해가 벽 앞에서 비춰요, 해 높이 ${Math.round(h)}도`;
     return L;
   }
@@ -51,8 +51,8 @@ export function sceneLayout(m, at = null) {
   if (m.state === 'facing' || sx > WX1) {
     const len = clamp((HY - WTOP) / Math.tan(rad(Math.max(h, 5))) * 0.71, 50, 190);
     L.shadow = { points: [[WX0, HY], [WX0, HY + 12], [WX0 - len, HY + 12], [WX0 - len + 14, HY]].map((p) => p.map(r1)) };
-    L.labels.push({ x: r1(WX0 - len / 2), y: HY + 26, text: 'wall shadow', anchor: 'middle', cls: 'on-ground' });
-    L.labels.push({ x: W - 8, y: r1(Math.max(sy - r - 8, TOP + 12)), text: 'behind wall', anchor: 'end', cls: 'dim' });
+    L.labels.push({ x: r1(WX0 - len / 2), y: HY + 26, text: '벽 그림자', anchor: 'middle', cls: 'on-ground' });
+    L.labels.push({ x: W - 8, y: r1(Math.max(sy - r - 8, TOP + 12)), text: '벽 뒤', anchor: 'end', cls: 'dim' });
   }
   L.aria = m.state === 'terrain' ? '해가 산에 가려져 벽이 그늘이에요' : '해가 벽 뒤에 있어서 벽이 그늘이에요';
   if (m.state === 'terrain' && m.horizonAtSun > 0) {

@@ -113,7 +113,9 @@ export function boardRow(board, { name, open, blog = null }) {
 export function setBoardRow(row, board) {
   const blog = row.blog;
   const t = boardText(board, row.dataset.board, { blog });
-  row.querySelector('.pv-t').textContent = t?.text ?? (blog ? `블로그 후기 ${blog.posts.length}개` : '한 줄 타임라인');
+  const pt = row.querySelector('.pv-t');
+  pt.textContent = t?.text ?? (blog ? `블로그 후기 ${blog.posts.length}개 · 타임라인에서 보기` : '한 줄 타임라인');
+  pt.classList.toggle('is-new', t?.kind === 'new'); // only a fresh post is accent; the other values are plain
   row.querySelector('.pv-go').setAttribute('aria-label', t?.label ?? `${row.dataset.board} 한 줄 타임라인`);
 }
 
@@ -125,8 +127,8 @@ export function noticeLine(n, { lit = false, report = null, icon = null } = {}) 
   const ask = n.tone === 'maybe' && report
     ? el('button', { type: 'button', class: 'nt-go', 'aria-label': '오늘 휴무 제보하기' }, icon ? icon('megaphone') : null, '제보하기') : null;
   ask?.addEventListener('click', () => report(ask));
-  return el('div', { class: `irow notice ${n.tone}${on ? ' rain' : ''}`, role: 'note' },
-    el('span', { class: 'mk' }, '휴무안내'), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
+  return el('div', { class: `irow irow-s notice ${n.tone}${on ? ' rain' : ''}`, role: 'note' }, // 2-letter label in the 3em column: the value lines up with 운영·이용·게시판
+    el('span', { class: 'mk' }, '휴무'), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
 }
 
 // The dock's icon buttons (길찾기, 전화): no words on them, the label and title say it; the same 48px square. `icon` draws the glyph.

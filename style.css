@@ -622,7 +622,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .rsub { container-type: inline-size; flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: center; column-gap: var(--sp-8); height: 1.5rem; line-height: 1.5rem; overflow: hidden; }
 .rsub > * { flex: none; max-width: 100%; }
 /* a hard rule for a stray letter: when the extras are squeezed to almost nothing, none of them shows */
-@container (max-width: 4.5em) { .rsub > * { visibility: hidden; } }
+@container (max-width: 4.5em) { .rsub > :not(.newspill) { visibility: hidden; } }
+@container (max-width: 9.5em) { .rsub:has(.newspill) .rmeta { display: none; } } /* a pill takes the line before the region is cut to a stub ("서…") */
 :is(.row, .crag-row):is(.cold, .wet):not(.is-open) .rname { opacity: .85; }
 :is(.row, .crag-row):is(.cold, .wet):not(.is-open) .bar { opacity: .65; } /* a wall below the chosen 기온, or under rain without a roof, recedes (name and bar only: the hours and the temperature stay at full contrast) */
 /* a lit wall whose sun the sky hides: the chip turns to a soft tint and takes a small cloud (still the 양달 chip: no new verdict) */
@@ -635,16 +636,19 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
    구름 only a hollow ring, so the rows that matter stand out. The ring around it is the row's own background (--rowbg), so a pressed row stays clean */
 :is(.row-btn, .crag-head):active { --rowbg: color-mix(in srgb, var(--fg) 6%, var(--surface)); }
 :is(.row, .crag-row).is-open :is(.row-btn, .crag-head) { --rowbg: rgb(255 255 255 / .9); }
-:is(.row, .crag-row):is(.veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--wg) center / 13px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
-:is(.row, .crag-row).veil { --wbg: var(--surface); --wring: inset 0 0 0 1.5px #66706a; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366706a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+:is(.row, .crag-row):is(.cold, .veil, .windy, .wet) .sunnow.pic::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--wg) center / 13px no-repeat, var(--wbg); box-shadow: var(--wring), 0 0 0 2px var(--rowbg); }
+:is(.row, .crag-row).cold { --wbg: var(--surface); --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355585b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z'/%3E%3C/svg%3E"); } /* 기온 낮음: a thermometer in the veil's outline badge (the pill's --muted, no new colour; the thermometer stroke is --muted's value as a literal; 비 · 돌풍 below override it) */
+:is(.row, .crag-row).veil { --wbg: var(--surface); --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355585b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
 .row.windy { --wbg: #1f7a70; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 8a2.5 2.5 0 1 1 2 4H2'/%3E%3Cpath d='M12.8 19.6A2 2 0 1 0 14 16H2'/%3E%3C/svg%3E"); }
 :is(.row, .crag-row).wet { --wbg: #2f62b0; --wring: 0 0 0 0 transparent; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12a10.06 10.06 0 0 0-20 0Z' fill='%23fff'/%3E%3Cpath d='M12 12v8a2 2 0 0 0 4 0'/%3E%3Cpath d='M12 2v1'/%3E%3C/svg%3E"); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.row, .crag-row).veil { --wring: inset 0 0 0 1.5px #aab3ad; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+  :root:not([data-theme="light"]) :is(.row, .crag-row).veil { --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaa7' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+  :root:not([data-theme="light"]) :is(.row, .crag-row).cold { --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaa7' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z'/%3E%3C/svg%3E"); }
   :root:not([data-theme="light"]) .row.windy { --wbg: #2f9a8c; }
   :root:not([data-theme="light"]) :is(.row, .crag-row).wet { --wbg: #4f86d6; }
 }
-:root[data-theme="dark"] :is(.row, .crag-row).veil { --wring: inset 0 0 0 1.5px #aab3ad; --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aab3ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] :is(.row, .crag-row).veil { --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaa7' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] :is(.row, .crag-row).cold { --wring: inset 0 0 0 1.5px var(--muted); --wg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaa7' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z'/%3E%3C/svg%3E"); }
 :root[data-theme="dark"] .row.windy { --wbg: #2f9a8c; }
 :root[data-theme="dark"] :is(.row, .crag-row).wet { --wbg: #4f86d6; }
 /* the list row's chip is a 34px square (the icon centred), so the badge and the name have room */
@@ -668,9 +672,11 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .left .lf-pre { display: none; } /* 가능: only on the open card's pill */
 .row.is-open .left .lf-pre { display: inline; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
 .l1 .rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 400px) { html[data-text="xlarge"] .l1 .rname { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; min-width: 4em; flex: 1 1 4em; } html[data-text="xlarge"] .row.unknown .l1 .left { display: none; } html[data-text="xlarge"] .l1 { flex-wrap: wrap; } html[data-text="xlarge"] .l1 .left { margin-left: auto; } } /* 운영시간을 아직 몰라요 is the group's own title above: the row gives the width to the name */ /* the biggest text on a narrow phone: the name may take two lines before it is cut */
 .rmeta { font-size: var(--fs-xs); color: var(--muted); height: 1.5rem; overflow: hidden; } /* wraps at spaces inside its one-line box: "서울 광진구" shows "서울" before it would show half a word */
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; color: var(--open); } /* the value is the same on most rows: light; .few (3 hours or less) is bold */
 .left.few, :is(.row, .crag-row).is-open .left { font-weight: 700; }
+.row.has-photo.is-open .row-btn .left:not(.few) { font-weight: 600; } /* on the photo's pill only the few-hours value is bold: 8시간 and 2시간 must not look the same */
 :is(.row, .crag-row).is-open:not(.has-photo) :is(.row-btn, .crag-head) .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: color-mix(in srgb, currentColor 12%, transparent); } /* the open card's time left is a pill with or without a photo */
 .row.soon .left { color: var(--soon); }
 .row.closed .rname, .row.unknown .rname { color: var(--muted); font-weight: 500; }
@@ -729,7 +735,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 /* right-bottom: faint dots (the current one stretches out with a springy pop) and the camera that sends one more; the tap area is 44px, the chip stays small */
 .rhero-tools { position: absolute; z-index: 2; right: calc(var(--pad) - 6px); bottom: var(--sp-8); display: inline-flex; align-items: center; gap: var(--sp-2); height: 28px; color: var(--on-photo); filter: drop-shadow(0 1px 2px rgb(0 0 0 / .65)); }
 .rhero-dots { display: inline-flex; align-items: center; gap: var(--sp-4); margin-right: var(--sp-6); }
-.rhero-dots i { width: 4px; height: 4px; border-radius: 3px; background: rgb(255 255 255 / .4); transition: width 260ms cubic-bezier(.34, 1.56, .64, 1), height 260ms cubic-bezier(.34, 1.56, .64, 1), background-color 160ms, transform 160ms; }
+.rhero-dots i { width: 4px; height: 4px; border-radius: 3px; background: rgb(255 255 255 / .55); box-shadow: 0 0 0 1px rgb(0 0 0 / .28); transition: width 260ms cubic-bezier(.34, 1.56, .64, 1), height 260ms cubic-bezier(.34, 1.56, .64, 1), background-color 160ms, transform 160ms; }
 .rhero-dots i.on { width: 11px; height: 6px; background: rgb(255 255 255 / .95); }
 .rhero-dots i.edge { transform: scale(.6); }
 @media (prefers-reduced-motion: reduce) { .rhero-dots i { transition: none; } }
@@ -768,7 +774,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .gal-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gal-foot { padding: var(--sp-6) var(--sp-16) var(--sp-16); } .gal-foot[hidden] { display: none; }
 .gal-send { width: 100%; min-height: 48px; border: 1px solid rgb(255 255 255 / .55); border-radius: var(--r-pill); background: none; color: #fff; font: inherit; font-size: var(--fs-base); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .6) 0%, rgb(0 0 0 / .35) 42%, rgb(0 0 0 / 0) 58%, rgb(0 0 0 / 0) 64%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
+.rhero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .6) 0%, rgb(0 0 0 / .4) 42%, rgb(0 0 0 / .1) 58%, rgb(0 0 0 / .1) 64%, rgb(0 0 0 / .8) 100%); pointer-events: none; }
 .row.is-open > .expand .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* as wide as the photo and right under it: the photo's own toolbar */
 /* the wide two-column card: a photo card has no head line, so the info starts in the first row (the strip above spans both columns) */
 @media (min-width: 560px) and (max-width: 1023px) { .row.has-photo .m-cols { margin-top: 0; } .row.has-photo .m-cols:not(:has(> .m-head :is(.x-sub, .addr-btn))) > .m-info { grid-row: 1; } } /* the info rises beside the sun box only when the (otherwise empty) head holds nothing: a 휴게 line or note in it keeps its own row above */
@@ -784,6 +790,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 :is(.row, .crag-row).has-photo.is-open > :is(.row-btn, .crag-head) { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) :is(.rname, .rmeta, .basis, .fee, .been, .setnew, .newspill) { color: var(--on-photo); }
+:is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head):focus-visible { outline-color: var(--on-photo); box-shadow: inset 0 0 0 4px rgb(0 0 0 / .45); } /* a ring that shows on a photo: white inside a dark edge */
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-edge); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
 .row.susp .left { flex: 0 1 auto; min-width: 0; max-width: 9em; overflow: hidden; text-overflow: ellipsis; } /* a shut wall's reason can be long: it gives way instead of pushing the row wider */
@@ -802,7 +809,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 /* open and close time under the bar's ends, on every row: pulled up into the bar box's empty lower half, so a row grows by little more than the text */
 .gauge-ends { display: none; } /* a folded row and the map card keep the bar clean: the times show once a list card is open */
 .row.is-open .gauge-ends { display: flex; justify-content: space-between; gap: var(--sp-8); margin-top: calc(var(--sp-4) * -1); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
-.row.has-photo.is-open .gauge-ends { color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
+.row.has-photo.is-open .gauge-ends { color: var(--on-photo); text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); } /* the same edge as the photo credit: the end times stay readable on a bright sky, where the scrim has faded */
 /* time-left chip on every open row, folded or open: "10h" on a narrow phone, "10시간 가능" with room (a shut row keeps its rowLeft words) */
 .lf-card .lf-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* narrow: clipped, not display:none, so a screen reader still hears the long wording */
 @media (min-width: 421px) { .lf-card .lf-s { display: none; } .lf-card .lf-l { position: static; width: auto; height: auto; overflow: visible; clip: auto; } }
@@ -845,6 +852,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .warn-line { margin-top: var(--sp-6); }
 .warn-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--warn); }
 .row.is-open.warned .row-btn .left { display: none; } /* the open card says it in its own pill */
+.row.has-photo.is-open.warned .row-btn .left { display: inline-block; color: var(--soon-on-white); } /* a photo card: the glass pill on the photo says 확인 중 (the one place the eye starts) */
 .g-lead.susp { color: var(--warn); font-weight: 600; }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
@@ -859,13 +867,15 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .sunbox.sc .wx-box :is(.wxb-d, .wxb-obs, .wxb-hrs li) { opacity: .85; }
 .sunbox.sc .wx-box .wxb-hrs b { color: inherit; }
 .sunbox.sc .wx-box .wxb-hrs li { border-left-color: color-mix(in srgb, currentColor 18%, transparent); }
-.wxb-top { flex: 1 1 9rem; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); }
+.wxb-top { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-8); }
 .wxb-t { font-size: var(--fs-xl); font-weight: 700; line-height: 1.2; }
 .wxb-d { font-size: var(--fs-xs); color: var(--muted); }
 .wxb-obs { flex: none; margin-left: auto; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .wxb-top .wx-pill { margin-left: 0; align-self: center; }
 .wxb-top .wxb-d { flex: 0 1 auto; min-width: 0; }
-.sunbox.sc .wx-box .wx-pill { background: #9a3a55; color: #fff; } /* readable on every sky, light or dark */
+.sunbox.sc .wx-box .wx-pill { background: var(--soon-on-white); color: #fff; } /* readable on every sky, light or dark */
+.wx-pill.cold { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; color: var(--muted); } /* 기온 낮음 is a condition, not a harm: muted like the row badge (--warn stays for rain and wind) */
+.sunbox.sc .wx-box .wx-pill.cold { background: rgb(0 0 0 / .4); color: #fff; }
 .wxb-hrs { flex: 0 1 auto; list-style: none; display: flex; margin: 0; padding: 0; }
 .wxb-hrs li { flex: none; min-width: 2.6rem; display: grid; justify-items: center; font-size: var(--fs-xs); color: var(--muted); border-left: 1px solid var(--hair); }
 .wxb-hrs li:first-child { border-left: 0; }
@@ -908,7 +918,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .crowd-pill:active, .la-chip:active { transform: scale(.97); }
 .crowd-pill[aria-pressed="true"], .la-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .crowd-pill[aria-pressed="true"]::before, .la-chip[aria-pressed="true"]::before { content: "✓"; content: "✓" / ""; margin-right: var(--sp-2); }
-.stale-note { margin-top: var(--sp-4); font-size: var(--fs-xs); color: var(--warn); }
+.stale-note { margin-top: var(--sp-4); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); } /* muted note: --fs-sm, 600 */
 .tags { margin-top: var(--sp-8); display: flex; flex-wrap: wrap; gap: var(--sp-6); }
 .tags-line { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-8); margin: var(--sp-10) 0 0; } /* the rope chip and the wall's facts share a row */
@@ -948,7 +958,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .nav-pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tag { display: inline-block; border: 1px solid var(--line); border-radius: var(--r-md); padding: 0 var(--sp-10); font-size: var(--fs-xs); line-height: 2; }
 .tag.brk { background: var(--sunken); border-color: transparent; }
-.hol-note { margin-top: var(--sp-4); font-size: var(--fs-xs); color: var(--muted); }
+.hol-note { margin-top: var(--sp-4); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 /* sun box: compass column (Task 4 draws into .sundial-slot) + words */
 .sunbox {
   display: flex; flex-direction: column; gap: var(--sp-10); margin-top: var(--sp-10);
@@ -1038,11 +1048,11 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .sc-shadow { fill: #08101c; opacity: .38; } .sc-ray { fill: #fff1c2; } .sc-star { fill: #eef1fb; opacity: .85; }
 .sc-tick { fill: var(--sc-acc); } .sc-now { fill: var(--sc-sun); stroke: #fff; stroke-width: 1.2; }
 .sc-body { stroke: var(--sc-body); } .sc-fill-body { fill: var(--sc-body); } .sc-helmet { fill: var(--sc-helmet); } .sc-lamp { fill: #fff3c4; }
-.sc-lab { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; fill: var(--sc-ink); text-anchor: middle; }
+.sc-lab { font-family: var(--font); font-size: 13px; font-weight: 600; fill: var(--sc-ink); text-anchor: middle; }
 .sc-lab.acc { fill: var(--sc-acc); } .sc-lab.on-ground { fill: #cfe0f5; }
 .dsent { margin: 0; font-size: var(--fs-md); line-height: 1.5; }
 .dsent b { font-weight: 700; }
-.dsent.off { color: var(--muted); }
+.dsent.off, .sunbox.solo:has(.sb-chip.na) .dsent { color: var(--muted); font-size: var(--fs-sm); font-weight: 600; } /* a quiet one-line reason (no direction → no sun math) */
 .sun-limit { margin: 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .dwhen { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-8); font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
 .dwhen .dw-k { flex: 1 0 100%; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
@@ -1077,6 +1087,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
   .m-cols > .m-head { grid-column: 1; grid-row: 1; }
   .m-cols > .m-info { grid-column: 1; grid-row: 2; }
   .m-cols .sunbox { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; padding: var(--sp-16); }
+  .m-cols:not(:has(> .m-head :is(.x-sub, .addr-btn), > .m-info > *)) > .sunbox { grid-column: 1 / -1; max-width: 480px; justify-self: center; width: 100%; } /* nothing in the left column: the sun box takes the full width, not the right half beside a blank */
   .m-cols .sunbox:not(.solo) { display: flex; }
   .m-cols .sunbox:not(.solo) > .sb-fig { max-width: 300px; }
   .m-cols .sunbox.sc { padding: 0; display: block; }
@@ -1240,7 +1251,7 @@ html[data-text="xlarge"] .g-axis .sub { display: none; } /* 가장 큰 글씨: 0
 .irow { display: grid; grid-template-columns: 4.5em minmax(0, 1fr) auto; gap: var(--sp-8); align-items: center; padding: 3px 0; border-top: 1px solid var(--hair); font-size: var(--fs-sm); line-height: 1.45; }
 .irow .mk { color: var(--muted); align-self: center; } /* the row is a 44px tap target: the label sits on the value's middle, not at the top */
 .irow-s { grid-template-columns: 3em minmax(0, 1fr) auto; }
-.irow-s .mk { text-align-last: justify; } /* 운영·이용·게시판: 두 글자도 세 글자 칸 양끝에 맞춘다 */
+.irow-s .mk { text-align-last: justify; text-justify: inter-character; } /* 운영·이용·게시판: 두 글자도 세 글자 칸 양끝에 맞춘다 */
 .memo-list li:has(> .pv-go) { align-items: center; }
 .pv { grid-column: 2 / -1; min-width: 0; margin: 0; overflow-wrap: break-word; }
 .pk-word { font-weight: 600; }
@@ -1254,10 +1265,12 @@ html[data-text="xlarge"] .g-axis .sub { display: none; } /* 가장 큰 글씨: 0
 .pv-t:has(.tr) { color: var(--muted); } /* 운영: today's hours lead, the rest (휴무 요일) is quiet */
 .pv-t .tr { color: var(--fg); font-weight: 600; }
 .pv-t:not(:has(.tr, .pv-none)) { font-weight: 600; } /* 이용·게시판: one value, so it carries the weight */
-.pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-md); opacity: .55; }
+.pv-t.is-new { color: var(--accent); }
+.pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-md); } /* full opacity: 3:1+ on both themes (a faded › was 2.4:1) */
+.pv-go:active { background: color-mix(in srgb, var(--fg) 6%, transparent); border-radius: var(--r-sm); }
 .pv-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
-.pv-none { color: var(--muted); }
-.pv-go:has(.pv-none) .pv-arrow { font-size: var(--fs-sm); white-space: nowrap; } /* 아직 몰라요 · 알려 주기 › */
+.pv-none { color: var(--muted); font-weight: 600; }
+.pv-go:has(.pv-none) .pv-arrow { font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; } /* 아직 몰라요 · 알려 주기 › */
 /* 휴무안내: a quiet line (a weather condition) or a red one (an admin-entered closing); the report button sits at the right, under the words when the line is narrow */
 .irow.notice { padding: var(--sp-6) 0; }
 .irow.notice .nt-t { min-width: 0; grid-column: 2; color: var(--muted); }
@@ -1275,7 +1288,7 @@ html[data-text="xlarge"] .g-axis .sub { display: none; } /* 가장 큰 글씨: 0
 html[data-text="large"] .irow.notice:has(.nt-go) .nt-go, html[data-text="xlarge"] .irow.notice:has(.nt-go) .nt-go { grid-column: 2; grid-row: 2; justify-self: start; }
 /* big type: the name sits over the words, so the words get the whole width */
 html:is([data-text="large"], [data-text="xlarge"]) .irow.notice { grid-template-columns: minmax(0, 1fr) auto; }
-html:is([data-text="large"], [data-text="xlarge"]) .irow.notice .mk { grid-column: 1 / -1; grid-row: 1; }
+html:is([data-text="large"], [data-text="xlarge"]) .irow.notice .mk { grid-column: 1 / -1; grid-row: 1; text-align-last: start; }
 html:is([data-text="large"], [data-text="xlarge"]) .irow.notice .nt-t { grid-column: 1 / -1; grid-row: 2; }
 html:is([data-text="large"], [data-text="xlarge"]) .irow.notice:has(.nt-go) .nt-go { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
 /* 주차 요금표: 행 = 주차장, 열 = 1시간·하루·비고. The name column stays while the rest scrolls sideways. */
@@ -1360,6 +1373,7 @@ button.gear-link { width: 100%; border: 0; background: none; font: inherit; curs
 .memo-list .mv.free { grid-column: 1 / -1; }
 .memo-list .sp-note { display: block; margin-top: 1px; color: var(--muted); font-size: var(--fs-xs); } /* 시설's spec rows: where the number comes from, under it */
 .memo-list li.key .mk, .memo-list li.key .mv { color: var(--warn); font-weight: 600; }
+.memo-list li.key.quiet .mk, .memo-list li.key.quiet .mv { color: var(--muted); } /* 우천·동절기 안내: a rule to know, not something wrong today (--warn is for what affects now) */
 .expand-in .row-actions { margin: var(--sp-8) 0 0; }
 .expand-in .row-actions button { font-size: var(--fs-sm); }
 
@@ -1550,7 +1564,7 @@ dialog::backdrop { background: var(--scrim); }
 .btn, .manage-buttons button, .row-actions button, .file-btn, #nowBtn, button.pill { white-space: nowrap; }
 
 .card.stale .status { color: var(--muted); }
-.card .stale-note { color: var(--warn); }
+.card .stale-note { color: var(--muted); }
 
 .credit {
   position: absolute; right: 10px; bottom: 10px; max-width: 55%; padding: 3px var(--sp-8); border-radius: var(--r-pill);
@@ -1855,10 +1869,12 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 .been { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
 /* 세팅일이 바뀌었어요 (♥ walls, setting.js): words + ✦ in an outlined pill, not colour alone */
 .setnew, .newspill { flex: none; display: inline-block; width: fit-content; padding: 0 var(--sp-8); border: 1px solid currentColor; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; color: var(--accent); white-space: nowrap; }
-.rsub:has(.newspill) { flex-wrap: nowrap; } /* the pill and the region on one line: the region is the one that gives way */
+.rsub:has(.newspill) { flex-wrap: nowrap; min-width: 6em; } /* the pill and the region on one line: the region is the one that gives way */
 .rsub:has(.newspill) .rmeta { flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
 .rsub > .newspill { line-height: calc(1.5rem - 2px); } /* inside the 1.5rem line with its border */
 p.setnew, p.newspill { margin-top: var(--sp-8); }
+.newspill.warn { color: var(--warn); } /* 닫힘 소식만 --warn (the other news stay accent) */
+.row.is-open:is(:has(.irow.notice.sure), :has(p.newspill)) .row-btn .newspill { display: none; } /* an open card says a closing twice at most: the 휴무 line or the news sentence replaces the head's pill */
 p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(--sp-12); } /* the card's pill tells the whole thing, so it may wrap */
 /* 다녀왔어요: a 64px stamp square left of 자세히 (outlined; filled with the count once there is a record) */
 .go-row { display: flex; align-items: stretch; margin-top: var(--sp-12); overflow: hidden; border-radius: var(--r-base); box-shadow: inset 0 0 0 1.5px var(--go-edge); --go-edge: color-mix(in srgb, var(--fg) 50%, var(--paper)); } /* the edge keeps 3:1 against the page in both themes */
@@ -1880,7 +1896,7 @@ p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(-
 .photo-tools .icon-btn:is(:hover, .done) { color: inherit; }
 .photo-tools .icon-btn:focus-visible { outline: 2px solid currentColor; outline-offset: -6px; }
 /* the two actions under the photo (card-parts.js dock): 길찾기 outlined, 다녀왔어요 in the panel tone, 48px, no outline */
-.dock { display: flex; gap: var(--sp-8); margin-top: var(--sp-12); padding: 0 var(--sp-12); } /* no pill around the two buttons (it was a card inside the card): they stand on their own, each with its own seg-level shadow */
+.dock { display: flex; gap: var(--sp-8); margin-top: var(--sp-12); padding: 0; } /* no pill around the two buttons (it was a card inside the card): they stand on their own, each with its own seg-level shadow */
 :is(.expand-in, .crag-body) .dock > :is(.dock-go, .been-btn) { flex: 1 1 0; min-width: 0; } /* halves (beats the stamp's flex:none) */
 .dock-go, :is(.expand-in, .crag-body) .dock .been-btn { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: 48px; padding: 0 var(--sp-12); border: 0; border-radius: var(--r-base); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; }
 .dock-go { background: var(--sunken); color: var(--fg); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); } /* the way there: a soft sunken fill, below 다녀왔어요 in the order of the two */
@@ -1891,8 +1907,7 @@ p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(-
 .dock .been-btn small { font-size: inherit; }
 .dock > :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 길찾기 · 전화: icons only (aria-label + title say it), one square each; 다녀왔어요 takes the rest of the line */
-:is(.expand-in, .crag-body) .dock > .dock-ic { flex: 0 0 52px; padding: 0; }
-.dock > .dock-share { flex: 0 0 52px; display: flex; margin: 0; } /* the map card's 공유: the same outlined square as 길찾기 and 전화 */
+:is(.expand-in, .crag-body) .dock > .dock-ic { flex: 0 0 52px; padding: 0; }.dock > .dock-share { flex: 0 0 52px; display: flex; margin: 0; } /* the map card's 공유: the same outlined square as 길찾기 and 전화 */
 .dock-share > .icon-btn { width: 100%; height: auto; min-height: 48px; border-radius: var(--r-base); background: var(--sunken); color: var(--fg); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); }
 .dock-share svg { width: 22px; height: 22px; }
 .dock > .dock-ic svg { width: 22px; height: 22px; }
@@ -2382,7 +2397,7 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-tap { margin-top: var(--sp-8); min-height: 7rem; }
 .tap-msg { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .tap-btns { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin-top: var(--sp-8); }
-.tap-btn { min-height: var(--tap); padding: 0 var(--sp-14); min-width: calc(var(--tap) * 1.4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--fg); font: inherit; white-space: nowrap; }
+.tap-btn { min-height: var(--tap); padding: 0 var(--sp-14); min-width: calc(var(--tap) * 1.4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--fg); font: inherit; font-weight: 600; white-space: nowrap; }
 .tap-btn.sub { border-color: transparent; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .tap-msg.err { color: var(--warn); font-weight: 600; }
 .tap-btns:empty { display: none; }
@@ -2889,9 +2904,9 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 @media (prefers-reduced-transparency: reduce) { .row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 /* the 예약하기 band under the dock (card-parts.js reserveBand): 44px, a sun tint; a must-reserve wall (.required) gets a yellow ! badge and a deeper tint */
 .reserve-band { display: flex; align-items: center; gap: var(--sp-8); min-height: 44px; margin-top: var(--sp-8); padding: 0 var(--sp-12); border-radius: var(--r-base); background: var(--sunken); color: var(--fg); text-decoration: none; font-size: var(--fs-sm); }
-.reserve-band.required { background: var(--sunken); box-shadow: inset 3px 0 0 var(--fg); }
+.reserve-band.required { background: var(--sunken); box-shadow: inset 3px 0 0 var(--warn); } /* 예약 필수: a --warn bar, no black fill (black fill is 길찾기's) */
 .reserve-band svg { width: 18px; height: 18px; flex: none; }
-.rb-badge { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); color: var(--bg); font-style: normal; font-size: var(--fs-xs); font-weight: 800; line-height: 1; }
+.rb-badge { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--warn); color: var(--warn); font-style: normal; font-size: var(--fs-xs); font-weight: 800; line-height: 1; }
 .reserve-band b { flex: none; font-weight: 700; white-space: nowrap; }
 .reserve-band span { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reserve-band:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2903,10 +2918,15 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .row.has-photo.is-open .rmeta { font-weight: 600; } /* the region line over a bright sky */
 /* one frame for the camera / share row, with or without a photo (--icon-row: how far the icons' tap boxes stand off the foot of the photo or the block; the dock covers the lowest 30px,
    the photo's credit takes the strip under the camera). The camera is always at the left, share at the right, on one horizontal line. */
-.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 38px; width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: .6875rem; line-height: 1.2; pointer-events: auto; }
+.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 38px; padding: var(--sp-16) var(--sp-8); margin: calc(var(--sp-16) * -1) calc(var(--sp-8) * -1); width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: .6875rem; line-height: 1.2; pointer-events: auto; }
 .ph-hero { flex-direction: column; align-items: flex-start; justify-content: flex-end; }
 .ph-hero :is(.rhero-add, .photo-tools) { color: color-mix(in srgb, var(--accent) 70%, var(--fg)); }
-.ph-hero > .rhero-add { position: absolute; left: calc(var(--pad) - 10px); bottom: var(--icon-row); margin: 0; }
+.ph-hero > .rhero-add { position: absolute; left: calc(var(--pad) - 2px); bottom: var(--icon-row); margin: 0; } /* the same box as the photo's: its disc edge lands on the gutter */
+.ph-hero > .photo-tools { right: calc(var(--pad) - 2px); }
+.ph-hero :is(.rhero-add, .photo-tools .icon-btn) { isolation: isolate; }
+.ph-hero .photo-tools .icon-btn { position: relative; }
+.ph-hero :is(.rhero-add, .photo-tools .icon-btn)::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: color-mix(in srgb, var(--fg) 8%, transparent); border: 1px solid var(--line); } /* the photo card's round buttons, in the block's own quiet colours (no glass: nothing to blur) */
+.rhero:not(.ph-hero) .rhero-cap b.hero-unk { color: inherit; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); } /* on a photo: the photo's white, not --muted grey */
 .rhero-cap b.hero-unk { font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; color: var(--muted); margin-right: var(--sp-16); } /* "운영시간을 아직 몰라요": a plain line, not the big hero number */
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: var(--muted); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat; cursor: pointer; } /* the browser's blue clear ✕ → a muted one */
 .fees .f-free { margin: 0; padding: var(--sp-6) 0; font-size: var(--fs-sm); }
