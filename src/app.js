@@ -2661,10 +2661,7 @@ for (const k of tabs) {
     dropBackToCrag();
     showTab(k);
     if (k !== 'list') document.dispatchEvent(new CustomEvent(`stats:tab-${k}`)); // stats.js counts map and log by name
-    // the tab's content lands right under the sticky date/slider/tab bar (never up at the filter row, never behind it)
-    const panel = $(`panel-${ui.tab}`); // showTab has just set --stick-h; reading the rect lays the page out first
-    const top = panel.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stick-h') || '0') - 8;
-    scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
+    scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }); // pressing a tab (even the open one) goes to the very top
   });
 }
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
