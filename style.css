@@ -372,10 +372,18 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 /* the map card is the list row's own header (rowHead) opened: chips and the line into the sheet under it */
 #pin-card { --pad: 16px; background: var(--surface); width: min(440px, calc(100% - 16px)); margin-inline: auto; } /* a phone's width at most: on a wide map the wide 길찾기 would stretch across 600px */
 #pin-card .pin-row { border-bottom: 0; }
+#pin-card :is(.pin-row, .expand), #pin-card .row-btn:not(:active) { background: var(--surface); } /* one surface: the list's header/body tones only hide the hour grid, which the map has none of */
 #pin-card .row-btn { padding-right: calc(var(--pad) + 36px); } /* room for the close button */
 #pin-card .row-go { display: none; }
 #pin-card :is(.pin-row, .row-btn, .l1, .expand, .expand-in, .dock, .chip-bar, .sheet-row) { min-width: 0; max-width: 100%; } /* a narrow card (320px, big text) shrinks its rows instead of scrolling sideways */
-#pin-card .chip-bar { margin: var(--sp-4) 0 0; }
+/* the map card's variation of the wall card: three groups (state · actions · info), 16px between them and 8px inside; 길찾기 is the one filled button, 전화·공유 the quiet squares; the line into the sheet is a full-width row under a hairline */
+#pin-card .dock { margin-top: var(--sp-2); padding: 0; } /* no side inset: the buttons start on the same line as the ♥, the chips and 암장 정보 자세히 */
+#pin-card .dock > a.dock-go:not(.dock-ic) { background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-seg); font-weight: 800; } /* the accent fill 다녀왔어요 has on the wall card: the map card has no 다녀왔어요, so 길찾기 takes it */
+#pin-card .dock > .dock-ic, #pin-card .dock-share > .icon-btn { box-shadow: inset 0 0 0 1px var(--line-strong); }
+#pin-card .chip-bar { margin: var(--sp-16) 0 0; }
+#pin-card .sheet-row { margin-top: var(--sp-8); border-top: 1px solid var(--hair); }
+#pin-card .sheet-line { flex: 1 1 auto; width: 100%; min-height: 44px; }
+#pin-card .sheet-line i { margin-left: auto; }
 #pin-card {
   position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; max-height: 85%; overflow: auto; overscroll-behavior: contain; /* the card is short now; the scroll only guards huge text sizes */
   border-radius: var(--r-base); box-shadow: var(--shadow-float);
@@ -495,7 +503,11 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .sh-toggle.sd-yes { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .sh-toggle.sd-yes:focus-visible { outline-color: var(--fg); } /* the filled button's own ring would be the same green */
 .sd-wall { clear: both; margin-bottom: var(--sp-10); }
+.sd-wallh.end { justify-content: flex-end; } /* 암장 시트: 이름은 머리에 이미 있어 삭제만 */
 .sd-wallh { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); margin-bottom: var(--sp-4); }
+.sd-adder { clear: both; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-8); } /* 암장 추가: ♥ 칩 · 검색 · 결과 · 닫기 (기록 추가 시트의 부품) */
+.sd-adder .la-chips { margin-bottom: 0; }
+.sd-adder .la-field, .sd-adder .la-picks { align-self: stretch; margin-top: 0; }
 .card.no-photo { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: no-preference) {
   #pin-card.enter .card { animation: pin-in var(--dur-ui) var(--ease-out); }
@@ -958,6 +970,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 :root[data-theme="dark"] .k-shade { --sc-sky0: #1a2434; --sc-sky1: #2a3d5c; --sc-ground: #223149; --sc-wall: #0b1019; --sc-body: #e6ebf5; --sc-ink: #a9bfdc; --sc-acc: #a9bfdc; --sc-text: #dbe6f5; --sc-gtext: #e6ebf5; }
 /* the box: sky on top (chip, hours, picture bled to the edges), ground colour below (the sentence and notes) */
 .sunbox.sc { display: block; padding: 0; overflow: hidden; background: none; }
+.row .sunbox.sc { margin-top: var(--sp-24); } /* the info rows end, then the sun card begins */
 .sunbox.sc .sb-sky { padding: var(--sp-14) var(--sp-14) 0; background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
 .sunbox.sc .sb-sky :is(.dwhen, .dw-k, .dw-r) { color: var(--sc-text); }
 /* the chip and the sun's window sit in a row of their own above the picture (rows 2 and 3): the numerals never cover the sun */
@@ -1109,17 +1122,16 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .f-disc { margin: var(--sp-8) 0 0; font-size: var(--fs-xs); color: var(--muted); }
 .g-segrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-12); margin-bottom: var(--sp-8); }
 .g-segrow .g-seg { margin-bottom: 0; flex: 1 1 100%; }
-.g-seg { display: flex; gap: var(--sp-6); margin-bottom: var(--sp-8); }
+.g-seg { display: flex; gap: var(--sp-8); margin: 0 0 var(--sp-8) calc(var(--sp-12) * -1); border-bottom: 1px solid var(--line); } /* the app's underline tabs, as .hd-tabs (내 정보: 나 | 설정): muted words, the chosen one bold with a 3px accent line */
 .g-seg button {
-  flex: 1; min-height: var(--tap); padding: 0 var(--sp-8); border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--surface);
-  font-size: var(--fs-sm); white-space: nowrap; transition: background-color var(--dur-ui) var(--ease-out), color var(--dur-ui) var(--ease-out);
+  display: inline-flex; align-items: center; gap: var(--sp-6); min-height: var(--tap); padding: 0 var(--sp-12); border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; background: none; color: var(--muted);
+  font: inherit; font-size: var(--fs-md); font-weight: 600; line-height: 1.25; white-space: nowrap; cursor: pointer;
 }
-.g-seg button[aria-pressed="true"] { background: var(--surface); color: var(--accent); border-color: var(--accent); box-shadow: var(--shadow-seg); font-weight: 700; }
-.g-seg button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding-block: var(--sp-6); line-height: 1.25; } /* 하계 / 4~9월 on two lines */
+.g-seg button[aria-pressed="true"] { color: var(--fg); font-weight: 700; border-bottom-color: var(--accent); }
 .g-seg .sw-m { font-size: var(--fs-xs); font-weight: 500; opacity: .8; }
 .g-seg button.shut:not([aria-pressed="true"]) { color: var(--warn); }
 .g-seg button.shut:not([aria-pressed="true"]) .sw-m { font-weight: 700; opacity: 1; }
-.g-seg button[aria-pressed="true"] .sw-k::before { content: "✓ "; }
+.g-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .g-lead { font-size: var(--fs-sm); margin-bottom: var(--sp-4); }
 .g-lead b { color: var(--warn); } /* only drawn for a closed day: the closure reads in the closed colour, not the open one */
 .g-lead.preview { color: var(--warn); font-weight: 600; }
@@ -1130,15 +1142,15 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent); font-weight: 700; z-index: 4; }
 .g-body { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); }
 .g-plot { position: absolute; top: 0; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
-.g-plot .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); z-index: 1; }
+.g-plot .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--hair) 55%, transparent); z-index: 1; } /* the hour lines stay in the back */
 .g-plot .nowl { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--now); box-shadow: 0 0 0 1px var(--surface); z-index: 3; }
 .g-row { display: flex; min-height: 44px; border-top: 1px solid var(--hair); }
 .g-lab { width: var(--lab); flex: none; display: flex; flex-direction: column; justify-content: center; font-size: var(--fs-sm); line-height: 1.2; }
 .g-lab small { font-size: var(--fs-xs); font-weight: 700; color: var(--open); }
 .g-wrap { display: contents; }
 .g-trk { position: relative; display: block; flex: 1; min-width: 0; }
-.g-row.g-today { box-shadow: inset 2px 0 0 var(--accent); background: color-mix(in srgb, var(--open-past) 45%, transparent); } /* today: a 2px edge, a bold label and the same pale tint as the current season row under it */
-.g-row.g-today .g-lab { font-weight: 700; padding-left: var(--sp-8); } /* clear of the 2px edge */
+.g-row.g-today { background: color-mix(in srgb, var(--open-past) 45%, transparent); } /* today: a 2px edge, a bold label and the same pale tint as the current season row under it */
+.g-row.g-today .g-lab { font-weight: 700; padding-left: var(--sp-8); }
 /* the week's bars are the list's bar (.bar .seg): 8px, the same radius and tones, the part before the time line paler with a 1px edge */
 .g-bar { position: absolute; bottom: 10px; height: 8px; border-radius: var(--r-sm); background: var(--open); z-index: 2; }
 .g-bar.past { background: var(--open-past); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--open) 70%, transparent); }
@@ -1149,6 +1161,7 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 }
 .g-brk { position: absolute; bottom: 8px; height: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); z-index: 2; }
 .g-off { position: absolute; left: 0; right: 0; bottom: 6px; height: 16px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.g-row:not(.g-today) .g-txt { color: var(--muted); } /* only today's hours are in full colour; the other days' hours are quiet */
 .g-closed { position: absolute; left: 6px; bottom: 6px; line-height: 16px; padding: 0 var(--sp-4); border-radius: 3px; background: var(--surface); font-size: var(--fs-xs); font-weight: 600; z-index: 4; white-space: nowrap; }
 .g-closed.none { left: 0; font-weight: 400; color: var(--muted); background: none; }
 .g-txt { position: absolute; bottom: 20px; padding: 0 3px; border-radius: var(--r-xs); background: var(--surface); font-size: var(--fs-xs); line-height: 1.25; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 4; } /* one line over its bar */
@@ -1208,13 +1221,12 @@ html[data-text="xlarge"] .g-axis .sub { display: none; } /* 가장 큰 글씨: 0
 .pk-word.muted { color: var(--muted); font-weight: 400; }
 .pv-go { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); min-height: var(--tap); width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .pv-t { min-width: 0; }
-.pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-lg); }
+.pv-t:has(.tr) { color: var(--muted); } /* 운영: today's hours lead, the rest (휴무 요일) is quiet */
+.pv-t .tr { color: var(--fg); font-weight: 600; }
+.pv-t:not(:has(.tr, .pv-none)) { font-weight: 600; } /* 이용·게시판: one value, so it carries the weight */
+.pv-arrow { flex: none; color: var(--muted); font-size: var(--fs-md); opacity: .55; }
 .pv-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
 .pv-none { color: var(--muted); }
-.ws-contact { margin: 0; padding: 0; list-style: none; }
-.ws-contact-link { display: flex; align-items: center; min-height: var(--tap); color: var(--fg); text-decoration: none; border-top: 1px solid var(--hair); }
-.ws-contact li:first-child .ws-contact-link { border-top: 0; }
-.ws-contact-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pv-go:has(.pv-none) .pv-arrow { font-size: var(--fs-sm); white-space: nowrap; } /* 아직 몰라요 · 알려 주기 › */
 /* 휴무안내: a quiet line (a weather condition) or a red one (an admin-entered closing); the report button sits at the right, under the words when the line is narrow */
 .irow.notice { padding: var(--sp-6) 0; }
@@ -1566,17 +1578,18 @@ dialog::backdrop { background: var(--scrim); }
 
 /* 내 지역 (sheet checkboxes by 권역, ≤5, in 조건 and 내 정보) and 구분 */
 #regionClear { margin: 0 0 var(--sp-8); }
-.sh-row .segs + .sh-hint { margin: var(--sp-8) 0 0; }
-.rg-list { clear: both; display: flex; flex-wrap: wrap; gap: var(--sp-6); } /* the legend floats in a .sh-row: start below it */
+.sh-row :is(.segs, #regionOptsC) + .sh-hint { margin: var(--sp-8) 0 0; }
+.rg-list { clear: both; display: flex; flex-wrap: wrap; gap: var(--sp-8); } /* the legend floats in a .sh-row: start below it */
 .rg-n { margin-left: var(--sp-6); font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
 .rg-list label:has(:checked) .rg-n { color: inherit; opacity: .75; }
 .rg-list label {
-  position: relative; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--sp-14);
-  border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); font-size: var(--fs-sm); font-weight: 600;
+  position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--sp-12);
+  border: 1px solid transparent; border-radius: var(--r-pill); background: var(--sunken); font-size: var(--fs-xs); font-weight: 600; /* 면 칩: 정렬·구분 세그먼트와 같은 --sunken 면, 선택만 색으로 채운다 */
   white-space: nowrap; cursor: pointer;
   transition: background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out), border-color var(--dur-press) var(--ease-out);
 }
 .rg-list input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.rg-list label::after { content: ""; position: absolute; inset: -4px 0; } /* 36px chip, 44px touch target */
 /* on = fill + a check mark, not only the colour */
 .rg-list label:has(:checked) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .rg-list label:has(:checked)::before { content: "✓"; content: "✓" / ""; margin-right: var(--sp-4); }
@@ -1584,7 +1597,7 @@ dialog::backdrop { background: var(--scrim); }
 /* indoor-only: the word 실내 in place of 양달/응달, a solid edge (방향 모름 is dashed) */
 .sunnow.indoor { background: transparent; border: 1px solid var(--line-strong); padding: 0 5px; }
 .basis { font-size: var(--fs-xs); font-weight: 600; color: var(--fg); white-space: nowrap; } /* darker than the region beside it: which hours these are matters */
-@media (hover: hover) and (pointer: fine) { .rg-list label:hover { border-color: var(--fg); } }
+@media (hover: hover) and (pointer: fine) { .rg-list label:not(:has(:checked)):hover { background: var(--line); } }
 
 /* report sheet (reuses .sheet / .segs) */
 .rp-field { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-10) 0; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
@@ -1615,7 +1628,7 @@ dialog::backdrop { background: var(--scrim); }
 .pf-rank-list b { display: inline-block; min-width: 2.2em; color: var(--accent); }
 .rp-chat-name { user-select: all; -webkit-user-select: all; color: var(--fg); min-width: 0; overflow-wrap: break-word; } /* one tap selects the whole name, to copy */
 /* the foot of a card: 정보가 달라요 · 오픈채팅방 알려주기, quiet text links (the 44px height is the tap area) */
-.help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-16); margin-top: var(--sp-12); } /* right-aligned and apart from the sun card above: the card's last, quiet line */
+.help-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-16); margin-top: var(--sp-14); } /* right-aligned and apart from the sun card above: the card's last, quiet line */
 .help-link { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 /* the two 제보 links under the card's buttons stay quiet: small, a pale underline (the tap area stays 44px) */
 .help-row .help-link { display: inline-flex; align-items: center; gap: var(--sp-4); font-size: var(--fs-xs); text-decoration: none; } /* a small icon and the words, no underline: quiet, not a web link */
@@ -1645,11 +1658,30 @@ button.pf-link { width: 100%; padding: 0; border: 0; background: none; font: inh
 .pf-ios { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .pf-link span { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); text-align: right; }
 .pf-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.pf-sec { margin: var(--sp-16) 0 0; font-size: var(--fs-base); font-weight: 700; }
+/* 시트 머리의 글자 탭(나 | 설정): 본문의 면 세그먼트와 달리 밑줄 탭, 화면 전체가 바뀐다 */
+.sh-head:has(> .hd-tabs) { flex-wrap: wrap; align-content: flex-start; padding-bottom: 0; }
+.hd-tabs { order: 9; flex: 1 0 100%; display: flex; gap: var(--sp-8); margin: var(--sp-4) calc(var(--sp-12) * -1) 0; } /* 눌림 영역을 글자 밖으로 넓히고 첫 글자는 본문 왼쪽 줄에 맞춘다 */
+.hd-tabs [role="tab"] { min-height: var(--tap); min-width: var(--tap); padding: 0 var(--sp-12); border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); font: inherit; font-size: var(--fs-md); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.hd-tabs [aria-selected="true"] { color: var(--fg); font-weight: 700; border-bottom-color: var(--accent); }
+.hd-tabs [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pf-stack { display: grid; }
+.pf-pane { display: grid; grid-area: 1 / 1; align-content: start; overflow-x: clip; } /* 두 패널이 한 칸을 겹쳐 쓴다: 시트 높이가 탭마다 바뀌어 탭 막대가 튀지 않는다 */
+.pf-pane.off { visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .pf-pane.from-r { animation: pane-from-r var(--dur-ui) var(--ease-out); }
+  .pf-pane.from-l { animation: pane-from-l var(--dur-ui) var(--ease-out); }
+}
+@keyframes pane-from-r { from { transform: translateX(24px); opacity: 0; } }
+@keyframes pane-from-l { from { transform: translateX(-24px); opacity: 0; } }
 .pf-region { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.sh-note { display: flex; align-items: center; gap: var(--sp-8); margin: var(--sp-8) 0 0; } /* a status line + its retry, under a control */
+.sh-note[hidden] { display: none; }
+.sh-note .sh-hint { flex: 1; }
 .pf-region .sh-label { white-space: nowrap; }
 .pf-region #regionSum { flex: 1; font-weight: 600; }
-.pf-region .pf-link { flex: none; width: auto; padding: 0 var(--sp-8); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; text-decoration: underline; }
+.pf-region .pf-link, .sh-note .pf-link { flex: none; width: auto; padding: 0 var(--sp-8); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; text-decoration: underline; }
+html[data-text="xlarge"] .sh-note { flex-wrap: wrap; align-items: flex-start; } /* 가장 큰 글씨: 문구는 전폭, 다시 찾기는 그 아래 */
+html[data-text="xlarge"] .sh-note .sh-hint { flex: 1 1 100%; }
 
 /* ---- 기록 추가 sheet ---- */
 .la-pick legend { margin-bottom: var(--sp-8); }
@@ -1831,8 +1863,9 @@ p.setnew { margin-top: var(--sp-8); }
 .dock > .dock-ic svg { width: 22px; height: 22px; }
 .dock > :active { transform: scale(.98); }
 /* the one line of chips (card-parts.js chipBar): pale pills, 30px to look at and 44px to tap; each opens the sheet where its detail is */
-.chip-bar { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-12) 0 var(--sp-4); }
+.chip-bar { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin: var(--sp-6) 0 var(--sp-4); padding-bottom: var(--sp-10); } /* the chips belong to the dock above; the air under them splits them from the rows */
 .cchip-cell { display: inline-flex; max-width: 100%; }
+.chip-bar .cchip { margin-left: 0; } /* a 유료/무료 chip (.fee) carries a 6px left margin of its own: the row starts on the card's line */
 .cchip { display: inline-flex; align-items: center; gap: var(--sp-4); min-height: 30px; padding: 0 var(--sp-10); border: 0; border-radius: var(--r-pill); background: var(--sunken); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; max-width: 100%; min-width: 0; }
 .cchip > span:not(.sr-only) { overflow: hidden; text-overflow: ellipsis; }
 .cchip svg { width: 16px; height: 16px; flex: none; }
@@ -2311,15 +2344,25 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .is-wall .sh-sky { --arc: 40px; --ground: 10px; --slab-h: 52px; --d-max: 24px; position: relative; isolation: isolate; flex: none; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: var(--sp-8); min-height: 140px;
   padding: calc(var(--sp-24) + env(safe-area-inset-top)) var(--sp-8) calc(var(--ground) + var(--arc) + var(--d-max) / 2 + var(--sp-8)) var(--sp-16); /* the words stop above the sun's highest point, so the band grows with 큰 글씨 instead of colliding */
   background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
-.is-wall .sk-txt { min-width: 0; max-width: calc(100% - 4.5rem); display: grid; gap: var(--sp-2); } /* leaves the slab its corner of the ground */
+.is-wall .sk-txt { min-width: 0; max-width: calc(100% - 4.5rem); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
+.is-wall .sk-txt > .sk-title { flex: 0 0 100%; } /* leaves the slab its corner of the ground */
 .is-wall .sk-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: break-word; }
 .is-wall .sk-title:focus { outline: none; }
+.is-wall .sk-contact { display: flex; flex-wrap: wrap; gap: var(--sp-6); flex: 0 0 100%; margin: calc(var(--sp-2) * -1) 0 0 -2px; } /* its own line under name and region, left-aligned (the disc's 2px inset is cancelled so it lines up with the text) */
+.is-wall .sk-ct { position: relative; isolation: isolate; display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; color: #fff; text-decoration: none; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.is-wall .sk-ct::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: rgb(20 22 24 / .32); border: 1px solid rgb(255 255 255 / .28); box-shadow: 0 2px 8px rgb(0 0 0 / .2), inset 0 1px 0 rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); } /* the dark glass disc of the card's 카메라·공유 (40px inside the 44px target) */
+@media (prefers-reduced-transparency: reduce) { .is-wall .sk-ct::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.is-wall .sk-ct.txt { width: auto; padding: 0 var(--sp-12); }
+.is-wall .sk-ct.txt::before { border-radius: var(--r-pill); }
+.is-wall .sk-ct svg { width: 22px; height: 22px; }
+.is-wall .sk-ct:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; border-radius: 50%; }
+.is-wall .sk-contact[hidden] { display: none; }
 .is-wall .sk-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-6); margin: 0; font-size: var(--fs-sm); font-weight: 500; }
 .is-wall .sk-chip { display: inline-block; padding: 0 var(--sp-8); border-radius: var(--r-pill); background: color-mix(in srgb, currentColor 14%, transparent); font-size: var(--fs-xs); font-weight: 700; line-height: 1.7; white-space: nowrap; }
 .is-wall .bd-hero { display: none; } /* the board's banner is the sky: the head is the same on every tab */
 .is-wall .sk-act { display: flex; align-items: center; gap: var(--sp-4); margin-top: calc(-1 * var(--sp-10)); }
 .is-wall .sk-rep::after { content: ""; position: absolute; inset: -6px -2px; } /* the look stays 32px; the touch target is 44px */
-.is-wall .sk-rep { position: relative; min-height: 32px; padding: 0 var(--sp-12); border: 1px solid color-mix(in srgb, currentColor 40%, transparent); border-radius: var(--r-pill); background: none; color: inherit; font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.is-wall .sk-rep { position: relative; min-height: 32px; padding: 0 var(--sp-8); border: 0; border-radius: var(--r-pill); background: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .is-wall .sk-ok { width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .is-wall .sk-ok svg { width: 22px; height: 22px; }
 .is-wall .sk-ok:active { background: color-mix(in srgb, currentColor 12%, transparent); }
@@ -2367,6 +2410,11 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .pf-grade { clear: both; display: flex; align-items: center; gap: var(--sp-8); }
 .pf-grade select { min-height: var(--tap); padding: 0 var(--sp-10); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font: inherit; }
 .pf-grade select:disabled { color: var(--muted); }
+/* 내 정보·조건 시트: 외곽선 대신 --sunken 면(정렬·지역 칩과 같은 말). 켜진 토글만 색으로 채운다 */
+#profile .sh-toggle:not([aria-pressed="true"]), #conditions .sh-toggle:not([aria-pressed="true"]) { background: var(--sunken); border-color: transparent; }
+#profile .rp-field input, #profile .pf-grade select { background: var(--sunken); border-color: transparent; }
+#profile-title:focus-visible { outline: none; } /* 시트가 제목에 포커스를 두고 열린다: 키보드로 고른 것이 아니라 링을 그리지 않는다 */
+@media (hover: hover) and (pointer: fine) { #profile .sh-toggle:not([aria-pressed="true"]):hover, #conditions .sh-toggle:not([aria-pressed="true"]):hover { background: var(--line); border-color: transparent; } }
 .bd-thread { margin: var(--sp-6) 0 0 3px; padding: var(--sp-2) 0 var(--sp-4) var(--sp-14); border-left: 2px solid var(--line); }
 .bd-replies { list-style: none; margin: 0; padding: 0; }
 .bd-reply { padding: var(--sp-10) 0 var(--sp-6); }
@@ -2759,6 +2807,11 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .ph-hero + .dock { position: relative; z-index: 2; margin-top: -30px; }
 /* focus over a photo: a white ring (the photo tokens), the group's dark drop-shadow lifts it off a bright sky */
 .row.has-photo.is-open :is(.row-fav, .rhero-add, .photo-tools .icon-btn):focus-visible { outline: 2px solid var(--on-photo); outline-offset: -4px; border-radius: 50%; }
+/* camera / share over a photo: a dark glass disc (40px) inside the 44px target, so a bright photo does not swallow the white icon. The group's drop-shadow is dropped: a filter on the parent would blank the backdrop blur */
+.row.has-photo.is-open .photo-tools { filter: none; }
+.row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn) { position: relative; isolation: isolate; color: var(--on-photo); opacity: 1; }
+.row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: rgb(20 22 24 / .32); border: 1px solid rgb(255 255 255 / .28); box-shadow: 0 2px 8px rgb(0 0 0 / .2), inset 0 1px 0 rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); }
+@media (prefers-reduced-transparency: reduce) { .row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 /* the 예약하기 band under the dock (card-parts.js reserveBand): 44px, a sun tint; a must-reserve wall (.required) gets a yellow ! badge and a deeper tint */
 .reserve-band { display: flex; align-items: center; gap: var(--sp-8); min-height: 44px; margin-top: var(--sp-8); padding: 0 var(--sp-12); border-radius: var(--r-base); background: var(--sunken); color: var(--fg); text-decoration: none; font-size: var(--fs-sm); }
 .reserve-band.required { background: var(--sunken); box-shadow: inset 3px 0 0 var(--fg); }

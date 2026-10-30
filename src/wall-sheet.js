@@ -9,7 +9,7 @@ import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 
 let build = null; // (wallName) => { head: { tone, sunT, region, chip, ok }, tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
 let onClose = null;
-let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, ok = null, rep = null;
+let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null;
 let opener = null; // the button that opened it: focus goes back there
 let wall = '';
 let pushed = false; // did we push a history entry that closing has to undo?
@@ -51,11 +51,12 @@ function goTo(n, { focus = false, instant = false } = {}) {
 function make() {
   title = el('h2', { id: 'ws-title', class: 'sk-title ws-title', tabindex: '-1' });
   sub = el('p', { class: 'sk-sub' });
+  contact = el('div', { class: 'sk-contact', role: 'group', 'aria-label': '연락' }); // 전화 / 공지 …: only the ones this wall has; empty = hidden
   ok = el('button', { type: 'button', class: 'sk-ok', 'aria-label': '닫기' });
   ok.addEventListener('click', () => dlg.close());
   rep = el('button', { type: 'button', class: 'sk-rep' }, '제보하기'); // on the name line: the report sheet opens on the kinds of the tab in view
   rep.addEventListener('click', () => { const k = TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k } })); });
-  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub), el('div', { class: 'sk-act' }, rep, ok),
+  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, ok),
     el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
@@ -100,6 +101,8 @@ function paintHead(h) {
   setSky(h);
   ok.replaceChildren(...(h?.ok ? [h.ok] : []));
   rep.hidden = !h?.report;
+  contact.replaceChildren(...(h?.contacts ?? []));
+  contact.hidden = !contact.childElementCount;
   sky.classList.remove('is-opening');
   void sky.offsetWidth; // restart the rise on every open, even when another wall replaces the one in view
   if (!reduced()) sky.classList.add('is-opening');

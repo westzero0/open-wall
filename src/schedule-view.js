@@ -2,6 +2,7 @@
 // 내 정보 sheet's rows (a wall and the weekdays it is trained on). DOM; the numbers come from schedule.js, the parts from the 이번 주말 추천 card.
 import { el } from './dom.js';
 import { DAY_KO } from './time.js';
+import { searchPicks } from './viewmodel.js';
 import { NEAR_KM, addWall, alternatives, hintOf, nextDryDay, removeWall, toggleDay, MAX_SCHEDULE } from './schedule.js';
 
 const sel = new Map(); // wall name → the picked day's time (ms; the strip moves with today, so an index would not hold); the first rainy 운동 요일 until a tap
@@ -90,42 +91,94 @@ function detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay }) {
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // 월 … 일
 
+// one scheduled wall: its name, 삭제 (undoable) and the seven weekdays; `set(next, opts)` saves and draws again
+function wallRow(e, { schedule, walls, set, toast, showName = true }) {
+  const shown = walls.find((w) => w.name === e.wall)?.short_name || e.wall; // the short name, as on the home card
+  const del = el('button', { type: 'button', class: 'sh-toggle', 'aria-label': `${shown} 스케줄 삭제` }, '삭제');
+  del.addEventListener('click', () => {
+    set(removeWall(schedule, e.wall), { focus: 'sd-add-btn' });
+    toast(`${shown} 스케줄을 삭제했어요`, () => set(current.length >= MAX_SCHEDULE || current.some((x) => x.wall === e.wall) ? current : [...current, e]), '되돌리기'); // adds this wall back to what is there now
+  });
+  const cells = WEEK_ORDER.map((dow) => {
+    const input = el('input', { type: 'checkbox', class: 'sr-only', 'data-focus': `sdt-${e.wall}-${dow}` });
+    input.checked = e.days.includes(dow);
+    input.addEventListener('change', () => set(toggleDay(schedule, e.wall, dow), { focus: `sdt-${e.wall}-${dow}` }));
+    return el('label', { class: 'sd-day sd-tog' }, input, el('b', {}, DAY_KO[dow]));
+  });
+  return el('div', { class: 'sd-wall' }, el('div', { class: `sd-wallh${showName ? '' : ' end'}` }, ...(showName ? [el('span', { class: 'pick-name' }, shown)] : []), del), el('div', { class: 'sd-week', role: 'group', 'aria-label': `${shown} 운동 요일` }, ...cells));
+}
+
+/**
+ * renderScheduleWall(body, { wall, schedule, walls, onChange(next), toast })
+ * The wall sheet's 운동 스케줄 section: this wall's weekdays when it is on the schedule, else one button that adds it (the 내 정보 rows stay the place to manage all).
+ */
+export function renderScheduleWall(body, { wall, schedule, walls, onChange, toast }, { focus = null } = {}) {
+  const set = (next, opts) => { onChange(next); renderScheduleWall(body, { wall, schedule: next, walls, onChange, toast }, opts); };
+  const e = schedule.find((x) => x.wall === wall.name);
+  if (e) { current = schedule; body.replaceChildren(wallRow(e, { schedule, walls, set, toast, showName: false }), el('p', { class: 'sh-hint' }, '운동하는 요일에 비 예보가 있으면 홈에 알려 줘요. 내 정보에서 모아 볼 수 있어요.')); }
+  else if (schedule.length >= MAX_SCHEDULE) body.replaceChildren(el('p', { class: 'sh-hint' }, '스케줄은 최대 5곳이에요. 내 정보에서 하나를 삭제하면 넣을 수 있어요.'));
+  else {
+    const add = el('button', { type: 'button', class: 'sh-toggle', 'data-focus': 'sd-add-btn' }, '+ 이 암장 스케줄에 넣기');
+    add.addEventListener('click', () => set(addWall(schedule, wall.name), { focus: `sdt-${wall.name}-${WEEK_ORDER[0]}` }));
+    body.replaceChildren(add, el('p', { class: 'sh-hint' }, wall.venue === 'indoor' ? '운동하는 요일을 정하면 기록 달력에 표시돼요(실내는 비 알림이 없어요). ' : '운동하는 요일에 비 예보가 있으면 홈에 알려 줘요. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
+  }
+  if (focus) body.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus();
+}
+
 /**
  * renderScheduleRows(body, { schedule, walls, favs, onChange(next), toast })
  * The 내 정보 sheet's rows: each wall with its seven weekdays, 삭제 (undoable), and 암장 추가 (a picker of outdoor walls, ♥ first).
  */
-export function renderScheduleRows(body, { schedule: stored, walls, favs, onChange, toast }, { focus = null, adding = false } = {}) {
+export function renderScheduleRows(body, { schedule: stored, walls, favs, onChange, toast, getOrigin = () => null }, { focus = null, adding = false } = {}) {
   const known = (e) => walls.some((w) => w.name === e.wall);
   const schedule = walls.length ? stored.filter(known) : stored; // a wall that is gone from the list (or a stored id that matches none) would show as a bare id: dropped at the first change
   current = schedule;
-  const again = (opts) => renderScheduleRows(body, { schedule, walls, favs, onChange, toast }, opts);
-  const set = (next, opts) => { onChange(next); renderScheduleRows(body, { schedule: next, walls, favs, onChange, toast }, opts); };
-  const rows = schedule.map((e) => {
-    const shown = walls.find((w) => w.name === e.wall)?.short_name || e.wall; // the short name, as on the home card
-    const del = el('button', { type: 'button', class: 'sh-toggle', 'aria-label': `${shown} 스케줄 삭제` }, '삭제');
-    del.addEventListener('click', () => {
-      set(removeWall(schedule, e.wall), { focus: 'sd-add-btn' });
-      toast(`${shown} 스케줄을 삭제했어요`, () => set(current.length >= MAX_SCHEDULE || current.some((x) => x.wall === e.wall) ? current : [...current, e]), '되돌리기'); // adds this wall back to what is there now
-    });
-    const cells = WEEK_ORDER.map((dow) => {
-      const input = el('input', { type: 'checkbox', class: 'sr-only', 'data-focus': `sdt-${e.wall}-${dow}` });
-      input.checked = e.days.includes(dow);
-      input.addEventListener('change', () => set(toggleDay(schedule, e.wall, dow), { focus: `sdt-${e.wall}-${dow}` }));
-      return el('label', { class: 'sd-day sd-tog' }, input, el('b', {}, DAY_KO[dow]));
-    });
-    return el('div', { class: 'sd-wall' }, el('div', { class: 'sd-wallh' }, el('span', { class: 'pick-name' }, shown), del), el('div', { class: 'sd-week', role: 'group', 'aria-label': `${shown} 운동 요일` }, ...cells));
-  });
+  const deps = { walls, favs, onChange, toast, getOrigin };
+  const again = (opts) => renderScheduleRows(body, { schedule, ...deps }, opts);
+  const set = (next, opts) => { onChange(next); renderScheduleRows(body, { schedule: next, ...deps }, opts); };
+  const rows = schedule.map((e) => wallRow(e, { schedule, walls, set, toast }));
   const free = walls.filter((w) => !schedule.some((e) => e.wall === w.name));
   let adder = null;
   if (schedule.length < MAX_SCHEDULE && free.length) {
     if (adding) {
-      const opt = (w) => el('option', { value: w.name }, w.short_name || w.name);
-      const mine = free.filter((w) => favs.includes(w.name));
-      const rest = free.filter((w) => !favs.includes(w.name)).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-      const pick = el('select', { id: 'sdAdd', 'data-focus': 'sd-add' }, el('option', { value: '', selected: '', disabled: '' }, '암장 고르기'),
-        ...(mine.length ? [el('optgroup', { label: '즐겨찾기' }, ...mine.map(opt))] : []), el('optgroup', { label: '전체' }, ...rest.map(opt)));
-      pick.addEventListener('change', () => set(addWall(schedule, pick.value), { focus: 'sd-add-btn' }));
-      adder = el('div', { class: 'pf-grade' }, el('label', { class: 'sr-only', for: 'sdAdd' }, '운동할 암장'), pick);
+      // the 기록 추가 sheet's picker: ♥ chips (one tap), and a search by name or region (nearest first when the position is known); picking lands on the new row's first day
+      const addIt = (name) => set(addWall(schedule, name), { focus: `sdt-${name}-${WEEK_ORDER[0]}` });
+      const chips = favs.map((n) => free.find((w) => w.name === n)).filter(Boolean).map((w) => { // in the order they were ♥'d, all of them (the row wraps)
+        const b = el('button', { type: 'button', class: 'la-chip', 'aria-label': `${w.name} 스케줄에 추가` }, heart(), ' ', w.short_name || w.name);
+        b.addEventListener('click', () => addIt(w.name));
+        return b;
+      });
+      const q = el('input', { type: 'search', id: 'sdAdd', 'data-focus': 'sd-add', placeholder: '암장 이름이나 지역으로 찾기', autocomplete: 'off' });
+      const picks = el('ul', { class: 'la-picks' });
+      picks.hidden = true;
+      let shown = []; // the hit buttons now listed
+      const drawHits = () => {
+        const k = q.value.trim();
+        picks.hidden = !k;
+        shown = [];
+        if (!k) return picks.replaceChildren();
+        const hits = searchPicks(free, k, { origin: getOrigin() }).slice(0, 30);
+        picks.replaceChildren(...(hits.length ? hits.map(({ wall: w }) => {
+          const b = el('button', { type: 'button', class: 'la-hit' },
+            el('span', { class: 'pn' }, favs.includes(w.name) ? heart() : null, favs.includes(w.name) ? ' ' : null, w.name),
+            el('span', { class: 'pr' }, [w.venue === 'indoor' ? '실내' : null, w.region].filter(Boolean).join(' · ')));
+          b.addEventListener('click', () => addIt(w.name));
+          shown.push(b);
+          return el('li', {}, b);
+        }) : [el('li', { class: 'none' }, '맞는 암장이 없어요. 이름 일부로 찾아보세요.')]));
+      };
+      q.addEventListener('input', drawHits);
+      q.addEventListener('keydown', (e) => { // Enter picks only when one wall matches; a Korean IME's committing Enter must not pick early
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (e.isComposing) return;
+        if (shown.length === 1) shown[0].click();
+      });
+      const close = el('button', { type: 'button', class: 'sh-toggle' }, '닫기');
+      close.addEventListener('click', () => again({ focus: 'sd-add-btn' }));
+      adder = el('div', { class: 'sd-adder' },
+        ...(chips.length ? [el('div', { class: 'la-chips', role: 'group', 'aria-label': '즐겨찾기 암장' }, ...chips)] : []),
+        el('label', { class: 'la-field' }, el('span', { class: 'sr-only' }, '운동할 암장 찾기'), q), picks, close);
     } else {
       adder = el('button', { type: 'button', class: 'sh-toggle', 'data-focus': 'sd-add-btn' }, '+ 암장 추가');
       adder.addEventListener('click', () => again({ adding: true, focus: 'sd-add' }));
@@ -134,7 +187,7 @@ export function renderScheduleRows(body, { schedule: stored, walls, favs, onChan
   const empty = schedule.some((e) => !e.days.length);
   body.replaceChildren(...rows, ...(adder ? [adder] : []),
     ...(empty ? [el('p', { class: 'sh-hint' }, '요일을 눌러 주세요')] : []),
-    el('p', { class: 'sh-hint' }, '운동하는 요일을 누르면, 그 날 비 예보가 있을 때 홈에 알려 줘요(실내 암장은 비와 무관해 알리지 않아요). 최대 5곳. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
+    el('p', { class: 'sh-hint' }, '운동하는 요일을 누르면, 그 날 비 예보가 있을 때 홈에 알려 줘요(실내 암장은 비와 무관해 알리지 않아요). ', schedule.length >= MAX_SCHEDULE ? '5곳이 가득 찼어요. 하나를 삭제하면 다른 암장을 넣을 수 있어요. ' : '최대 5곳. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
   if (focus) body.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus();
 }
 

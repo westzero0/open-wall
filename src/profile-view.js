@@ -107,6 +107,24 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     showGrade();
   };
 
+  // 나 / 설정: two screens under tabs in the header; the pane slides in from the side the tab sits on
+  const tabs = [$('pfTabMe'), $('pfTabSet')];
+  const panes = [$('pfPaneMe'), $('pfPaneSet')];
+  const showTab = (i, slide = true) => {
+    const was = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+    tabs.forEach((t, k) => { t.setAttribute('aria-selected', String(k === i)); t.tabIndex = k === i ? 0 : -1; });
+    panes.forEach((p, k) => { p.inert = k !== i; p.classList.toggle('off', k !== i); p.classList.remove('from-r', 'from-l'); }); // not [hidden]: it stays in the stack so the sheet keeps the taller pane's height
+    if (slide && was !== i) panes[i].classList.add(i > was ? 'from-r' : 'from-l');
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => showTab(i));
+    t.addEventListener('keydown', (e) => {
+      const to = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? 0 : -1;
+      if (to < 0) return;
+      e.preventDefault(); showTab(to); tabs[to].focus();
+    });
+  });
+
   $('meBtn').addEventListener('click', () => {
     if (mode !== 'off') showNick();
     showGrade();
@@ -119,6 +137,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     $('pfInstall').hidden = how !== 'prompt';
     $('pfInstallIos').hidden = how !== 'ios';
     $('pfInstallOpen').hidden = how !== 'inapp';
+    showTab(0, false);
     dlg.showModal();
   });
   dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // the backdrop
