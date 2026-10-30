@@ -7,10 +7,15 @@ const atMin = (d, min) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0
 export function inWinter(wall, date) {
   const w = wall.winter;
   if (!w || !w.type || w.type === 'none') return false;
-  const m = date.getMonth() + 1;
-  return w.from_month <= w.to_month
-    ? m >= w.from_month && m <= w.to_month
-    : m >= w.from_month || m <= w.to_month;
+  return inSpan(w, date);
+}
+
+// from_month/from_day .. to_month/to_day, both ends included; a missing day is the 1st / the month's end (31 compares as the end).
+// A span whose start is after its end (12월→2월) wraps over New Year.
+export function inSpan(s, date) {
+  const md = (date.getMonth() + 1) * 100 + date.getDate();
+  const from = s.from_month * 100 + (s.from_day ?? 1), to = s.to_month * 100 + (s.to_day ?? 31);
+  return from <= to ? md >= from && md <= to : md >= from || md <= to;
 }
 
 // Hours value of a weekday key, or 'hol' (public holiday), in or out of the winter season:
@@ -19,8 +24,7 @@ export function inWinter(wall, date) {
 // `date` (optional): a wall.seasons entry covering its month replaces the default/winter hours (a winter closure still wins).
 export function slotOf(wall, key, winter, date) {
   if (winter && wall.winter?.type === 'closed') return null;
-  const m = date && date.getMonth() + 1;
-  const season = m && wall.seasons?.find((s) => (s.from_month <= s.to_month ? m >= s.from_month && m <= s.to_month : m >= s.from_month || m <= s.to_month));
+  const season = date && wall.seasons?.find((s) => inSpan(s, date));
   const src = season ? season.hours : winter && wall.winter?.type === 'changed' ? wall.winter.hours ?? {} : wall.hours;
   if (key === 'hol') return wall.holiday === 'closed' ? null : wall.holiday === 'weekend' ? src?.sat : undefined;
   return src?.[key];

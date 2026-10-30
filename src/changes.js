@@ -39,17 +39,25 @@ function closedRuns(dates, today, days) {
   return runs;
 }
 
-// What changed for the walls in `favs` (names) or in `regions` (area names). Neither chosen: nothing (a first visit sees no line).
-// → [{ key, name, kind: 'suspended' | 'closed' | 'winter' (+ season 'start' | 'end'), from, to, note }], the suspended ones first, then by date. `key` is stable per change,
+// What changed for the walls in `favs` (names), plus `found` (syncFound: walls newly added or opened) for `favs` or `regions` (area names).
+// A suspension shows only when it starts within the week (a long one is news again only when the wall opens); closed dates and winter are for ♥ walls.
+// Neither chosen: nothing (a first visit sees no line).
+// → [{ key, name, kind: 'suspended' | 'closed' | 'winter' (+ season 'start' | 'end') | 'added' | 'opened', from, to, note }], the suspended/found ones first, then by date. `key` is stable per change,
 // so a dismissed one stays dismissed and a changed reason comes back.
-export function weekChanges(walls, today, { favs = [], regions = [] } = {}) {
+export function weekChanges(walls, today, { favs = [], regions = [], found = [] } = {}) {
   if (!favs.length && !regions.length) return [];
-  const out = [];
+  const out = [], from = ymd(addDays(today, -WINDOW_DAYS)), until = ymd(addDays(today, WINDOW_DAYS));
+  const byName = new Map((walls ?? []).map((w) => [w.name, w]));
+  for (const f of found) {
+    const w = byName.get(f.name);
+    if (w && f.at >= from && (favs.includes(w.name) || regions.includes(areaOf(w.region)))) out.push({ key: f.key, name: f.name, kind: f.kind, from: f.at, to: null, note: '' });
+  }
   for (const w of walls ?? []) {
-    if (!favs.includes(w.name) && !regions.includes(areaOf(w.region))) continue;
-    if (w.suspended) {
-      const since = w.suspended.since ?? null, note = w.suspended.note ?? '';
-      out.push({ key: `${w.name}|s|${since ?? ''}|${note}`, name: w.name, kind: 'suspended', from: since, to: null, note });
+    if (!favs.includes(w.name)) continue;
+    const since = w.suspended?.since;
+    if (w.suspended && isDateStr(since) && since >= from && since <= until) {
+      const note = w.suspended.note ?? '';
+      out.push({ key: `${w.name}|s|${since}|${note}`, name: w.name, kind: 'suspended', from: since, to: null, note });
     }
     for (const r of closedRuns(w.exceptions?.closed_dates, today, WINDOW_DAYS)) {
       out.push({ key: `${w.name}|c|${r.from}|${r.to}`, name: w.name, kind: 'closed', from: r.from, to: r.to, note: '' });
@@ -59,8 +67,30 @@ export function weekChanges(walls, today, { favs = [], regions = [] } = {}) {
       out.push({ key: `${w.name}|w|${e.date}|${e.season}`, name: w.name, kind: 'winter', season: e.season, from: e.date, to: null, note });
     }
   }
-  const rank = (c) => (c.kind === 'suspended' ? 0 : 1);
+  const rank = (c) => (c.kind === 'closed' || c.kind === 'winter' ? 1 : 0);
   return out.sort((a, b) => rank(a) - rank(b) || (a.from ?? '').localeCompare(b.from ?? '') || a.name.localeCompare(b.name, 'ko'));
+}
+
+// New and re-opened walls: this device remembers each wall's name and whether it was suspended; a name it has not seen is `added`, a suspended one
+// that is not any more is `opened`. The first visit only records (every wall would be "new"). → the found list (kept 30 days) to give weekChanges.
+export const KNOWN_KEY = 'open-wall:changes-known';
+export function syncFound(storage, walls, today) {
+  let prev = null;
+  try { prev = JSON.parse(storage.getItem(KNOWN_KEY)); } catch { /* unreadable: a fresh baseline */ }
+  const keep = ymd(addDays(today, -30)), at = ymd(today);
+  const found = Array.isArray(prev?.found) ? prev.found.filter((f) => f && typeof f.key === 'string' && typeof f.name === 'string' && ['added', 'opened'].includes(f.kind) && typeof f.at === 'string' && f.at >= keep).slice(-50) : [];
+  if (!walls?.length) return found; // not loaded: nothing to compare
+  const known = prev && typeof prev.w === 'object' && prev.w ? prev.w : null;
+  const now = Object.fromEntries(walls.map((w) => [w.name, w.suspended ? 1 : 0]));
+  if (known) {
+    for (const w of walls) {
+      const kind = !(w.name in known) ? 'added' : known[w.name] === 1 && !w.suspended ? 'opened' : null;
+      const key = `${w.name}|${kind === 'added' ? 'a' : `o|${at}`}`;
+      if (kind && !found.some((f) => f.key === key)) found.push({ key, name: w.name, kind, at });
+    }
+  }
+  try { storage.setItem(KNOWN_KEY, JSON.stringify({ w: now, found })); } catch { /* blocked: found for this visit only */ }
+  return found;
 }
 
 // The ones not yet dismissed.

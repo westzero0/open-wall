@@ -31,7 +31,7 @@ import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekPlan } from './schedule.js';
 import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, weekPicker } from './schedule-view.js';
-import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
+import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, syncFound, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
@@ -780,44 +780,92 @@ function paintStar(btn) {
 const mdOf = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`;
 const sinceText = (d) => (Date.now() - new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)) > 60 * 864e5 ? `${+d.slice(5, 7)}월부터` : `${mdOf(d)}부터`); // a long-ago start: the month only
 function changeText(c) {
+  if (c.kind === 'added' || c.kind === 'opened') return `${c.kind === 'added' ? '새 암장' : '개장'} · ${mdOf(c.from)}`;
   if (c.kind === 'winter') return [c.season === 'start' ? '동절기 시작' : '동절기 끝', `${mdOf(c.from)}${c.season === 'start' ? '부터' : ''}`, c.note].filter(Boolean).join(' · ');
   const when = c.kind === 'closed' ? (c.from === c.to ? mdOf(c.from) : `${mdOf(c.from)}~${mdOf(c.to)}`) : c.from ? sinceText(c.from) : '';
   return [c.kind === 'closed' ? '임시 휴무' : '이용 어려움', when, c.note].filter(Boolean).join(' · ');
 }
-const changesList = () => unseen(weekChanges(state.walls, new Date(), { favs, regions: ui.regions }), changesSeen);
+// 소식 표기 둘: 모든 암장의 행·카드에 붙는 알약(newsPill: 즐겨찾기와 상관없이 그 암장을 보는 사람이 본다)과, 홈에서 ♥ 암장의 소식을 밀어서 치우는 카드(#changesStrip)
+let newsMemo = { walls: null, day: '', found: [], map: new Map() };
+const newsChip = (c) => (c.kind === 'closed' ? `휴무 ${mdOf(c.from)}` : c.kind === 'winter' ? (c.season === 'start' ? `동절기 ${mdOf(c.from)}` : '동절기 끝') : c.kind === 'added' ? '새 암장' : c.kind === 'opened' ? '개장' : null); // an ongoing 휴관 is the card's own pill already
+function newsState() {
+  const now = new Date(), day = now.toDateString();
+  if (newsMemo.walls !== state.walls || newsMemo.day !== day) {
+    const found = syncFound(storage, state.walls, now), map = new Map();
+    for (const c of weekChanges(state.walls, now, { favs: state.walls.map((w) => w.name), found })) if (newsChip(c) && !map.has(c.name)) map.set(c.name, c);
+    newsMemo = { walls: state.walls, day, found, map };
+  }
+  return newsMemo;
+}
+const newsPill = (name, tag = 'span') => { const c = newsState().map.get(name); return c && (tag === 'p' || c.kind !== 'winter') ? el(tag, { class: 'newspill', title: changeText(c) }, tag === 'p' ? changeText(c) : newsChip(c)) : null; };
+const changesList = () => unseen(weekChanges(state.walls, new Date(), { favs, found: newsState().found }), changesSeen);
 function dismissChanges(keys) {
   changesSeen = [...changesSeen, ...keys];
   saveChangesSeen(storage, changesSeen);
   renderChanges();
 }
-function fillChanges(list) {
-  $('changes-list').replaceChildren(...list.map((c) => {
-    const w = state.walls.find((x) => x.name === c.name);
-    const label = w ? shortName(w) : c.name;
-    const notice = /^https?:\/\//.test(w?.contact?.notice_url ?? '') ? el('a', { href: w.contact.notice_url, target: '_blank', rel: 'noopener noreferrer' }, ' 공지 보기') : null;
-    const name = el('button', { type: 'button', class: 'ch-name', 'aria-label': `${label} 자세히 보기` }, label);
-    name.addEventListener('click', () => { $('changes').close(); openWallSheet(c.name, $('changesLine').hidden ? null : $('changesLine')); }); // to the wall's own sheet (hours, use, notice)
-    const ok = el('button', { type: 'button', class: 'ch-ok', 'aria-label': `${label} 변경 읽음` }, '읽음');
-    ok.addEventListener('click', () => dismissChanges([c.key]));
-    return el('li', {}, el('span', {}, name, el('small', {}, changeText(c), notice)), ok);
-  }));
-  $('changes-all').hidden = list.length < 2;
+// A card leaves with a swipe (the finger carries it 1:1, a flick throws it) or with its ×; a short drag springs back.
+function swipeAway(li, done) {
+  let id = null, x0 = 0, y0 = 0, dx = 0, v = 0, lx = 0, lt = 0, drag = false;
+  li.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.cs-x') || (e.pointerType === 'mouse' && e.button)) return;
+    id = e.pointerId; x0 = lx = e.clientX; y0 = e.clientY; lt = e.timeStamp; dx = v = 0; drag = false;
+  });
+  li.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== id) return;
+    if (!drag) {
+      if (Math.abs(e.clientX - x0) < 10 || Math.abs(e.clientX - x0) < Math.abs(e.clientY - y0)) return; // sideways on purpose, not a tap or a scroll
+      drag = true; li.setPointerCapture(id); li.classList.add('dragging');
+    }
+    dx = e.clientX - x0;
+    if (e.timeStamp > lt) v = (e.clientX - lx) / (e.timeStamp - lt); // px/ms
+    lx = e.clientX; lt = e.timeStamp;
+    li.style.transform = `translateX(${dx}px)`;
+    li.style.opacity = String(1 - Math.min(Math.abs(dx) / li.offsetWidth, 1) * 0.6);
+  });
+  const up = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    if (!drag) return;
+    li.classList.remove('dragging');
+    const rest = dx + v * 200; // where the flick is heading
+    if (Math.abs(rest) > li.offsetWidth * 0.4) { li.style.transform = `translateX(${rest > 0 ? 110 : -110}%)`; li.style.opacity = '0'; setTimeout(done, 200); }
+    else { li.style.transform = ''; li.style.opacity = ''; }
+  };
+  li.addEventListener('pointerup', up);
+  li.addEventListener('pointercancel', up);
+}
+function changeItem(g) { // one card per wall: its changes, one line each
+  const w = state.walls.find((x) => x.name === g.name);
+  const label = w ? shortName(w) : g.name;
+  const main = el('button', { type: 'button', class: 'cs-main' }, el('b', {}, label), ...g.texts.map((t) => el('small', {}, t)));
+  main.addEventListener('click', () => { openWallSheet(g.name, main); dismissChanges(g.keys); }); // to the wall's own sheet (hours, use, notice): opening it reads the news
+  const x = el('button', { type: 'button', class: 'cs-x', 'aria-label': `${label} 소식 읽음` }, icon('close'));
+  x.addEventListener('click', () => dismissChanges(g.keys));
+  const li = el('li', { class: 'cs-item' }, main, x);
+  swipeAway(li, () => dismissChanges(g.keys));
+  return li;
 }
 function renderChanges() {
-  const line = $('changesLine');
-  if (!line || !$('changes')) return; // an older cached page has neither
-  const list = changesList();
-  line.hidden = !list.length;
-  if (list.length) line.replaceChildren(`내 암장 소식 ${list.length}건 `, el('span', { 'aria-hidden': 'true' }, '›'));
-  if ($('changes').open) {
-    if (list.length) fillChanges(list);
-    else { $('changes').close(); $('tab-list')?.focus(); } // the line is gone with the last one: focus goes to the list tab, not to nowhere
-  }
+  const box = $('changesStrip');
+  if (!box) return; // an older cached page has none
+  const list = changesList(), keys = list.map((c) => c.key).join('\n');
+  box.hidden = !list.length;
+  if (box.dataset.keys === keys + stripAll) return; // the same cards: not redrawn under a finger
+  box.dataset.keys = keys + stripAll;
+  const focused = box.contains(document.activeElement);
+  const groups = [];
+  for (const c of list) { const g = groups.find((x) => x.name === c.name) ?? (groups.push({ name: c.name, keys: [], texts: [] }), groups[groups.length - 1]); g.keys.push(c.key); g.texts.push(changeText(c)); }
+  $('changes-list').replaceChildren(...groups.slice(0, stripAll ? groups.length : STRIP_MAX).map(changeItem));
+  $('changes-more').hidden = stripAll || groups.length <= STRIP_MAX;
+  $('changes-more').textContent = `소식 ${groups.length - STRIP_MAX}곳 더 보기`;
+  $('changes-all').hidden = groups.length < 2;
+  if (focused) (list.length ? $('changes-list').querySelector('.cs-main') : $('tab-list'))?.focus(); // a dismissed card took the focus with it
 }
-if ($('changesLine') && $('changes')) {
-  $('changesLine').addEventListener('click', () => { fillChanges(changesList()); $('changes').showModal(); });
-  $('changes-all').addEventListener('click', () => dismissChanges(changesList().map((c) => c.key)));
-}
+let stripAll = false; // the home shows two walls' news first: the strip stays short
+const STRIP_MAX = 2;
+if ($('changesStrip')) $('changes-more').addEventListener('click', () => { stripAll = true; renderChanges(); $('changes-list').querySelectorAll('.cs-main')[STRIP_MAX]?.focus(); });
+if ($('changesStrip')) $('changes-all').addEventListener('click', () => dismissChanges(changesList().map((c) => c.key)));
 function syncFavs() {
   for (const b of document.querySelectorAll('[data-fav]')) paintStar(b);
   for (const m of document.querySelectorAll('[data-favmark]')) m.hidden = !favs.includes(m.dataset.favmark);
@@ -1367,6 +1415,7 @@ function rowDetails(m, wall, at) {
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
         // a photo card: the link strip hangs right under the photo (before the visit: 길찾기, 전화), the 다녀왔어요 line comes after
+        newsPill(m.name, 'p'), // what changes this week comes first
         ...crowdBox(m), // before the visit (길찾기 · 전화), then 다녀왔어요
         m.holiday ? el('p', { class: 'hol-note' }, m.holiday) : null,
         m.staleNote ? el('p', { class: 'stale-note' }, m.staleNote) : null,
@@ -1814,6 +1863,7 @@ function rowHead(row, at, m, isOpen) {
       // the row says the name and the region only: the extra chip card-model rowExtra offers (새 세팅 · 혼잡) is not drawn for now
       // (it is still in the model; the region wraps out of sight whole when it does not fit, style.css .rsub)
       el('span', { class: 'rsub' },
+        newsPill(m.name), // 휴무·동절기·새 암장·개장: anyone looking at the wall sees it, ♥ or not
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
       el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.warn ? [el('span', { class: 'warn-left' }, '확인 중')] : m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
@@ -2068,7 +2118,7 @@ function renderCrags(at, now, isNow) {
   $('locateMsg').hidden = !msg;
   $('pick').hidden = true; // the wall picks and changes are for the wall list; render() draws them again when it comes back
   for (const id of ['sched', 'schedAsk']) if ($(id)) $(id).hidden = true;
-  $('changesLine').hidden = true;
+  if ($('changesStrip')) $('changesStrip').hidden = true;
   syncCragFilterUi(n, isNow, !!myGrade, cv);
   const active = document.activeElement;
   const forced = cragRefocus !== null; // a tap on a row
@@ -2506,7 +2556,7 @@ $('date').addEventListener('click', () => { try { $('date').showPicker?.(); } ca
 
 // 완료 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
 // the only way out besides the backdrop, Esc and the back button; what is changed there is saved as it is changed, so there is no second button to read. The 조건 sheet also says how many walls its choices leave (updated in render).
-for (const id of ['conditions', 'profile', 'safety-sheet', 'changes', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet', 'invite']) {
+for (const id of ['conditions', 'profile', 'safety-sheet', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet', 'invite']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
   const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('close'));

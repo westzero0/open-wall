@@ -88,7 +88,7 @@ export function goRow(mk, kids, opens, onClick, label = null, arrow = '›') {
   const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
     el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, arrow));
   b.addEventListener('click', onClick);
-  return el('div', { class: 'irow' }, el('span', { class: 'mk' }, mk), b);
+  return el('div', { class: mk.length <= 3 ? 'irow irow-s' : 'irow' }, el('span', { class: 'mk' }, mk), b); // 세 글자 이하 이름은 3em 칸에 양쪽 정렬
 }
 
 // The three rows under the chips (운영 · 이용 · 게시판), each opening its tab of the wall sheet. `row` is card-model's {text} | {empty: true} (value not known:
