@@ -2094,7 +2094,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .seal.first { box-shadow: inset 0 0 0 1.5px var(--bg), inset 0 0 0 3px var(--open); } /* a second rim inside: the stamp keeps its size */
 .seal > .stamp { position: absolute; inset: 18%; transform: rotate(8deg); } /* every stamp leans the same way: pressed a little clockwise */
 .seal > .sun { position: absolute; width: 22%; height: 22%; min-width: 7px; min-height: 7px; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid var(--open); }
-.seal > .sun.lit { background: var(--open); box-shadow: 0 0 0 1.5px var(--bg); }
+.seal > .sun.lit { background: var(--open); box-shadow: 0 0 0 2px var(--bg); }
 .seal > .sun.shade { background: var(--bg); }
 .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .lg-band { display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); margin: 0; overflow: hidden; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); }
@@ -2355,6 +2355,29 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-info { display: grid; gap: var(--sp-8); } /* 외벽 제원 · 시설: its lists in one card */
 .ws-empty-sub { color: var(--muted); font-size: var(--fs-sm); }
+/* 빈칸 채우기 (src/fill-view.js): the rows of the 이용 tab's last section; the inputs take the report sheet's field look */
+.fill-sec .ws-empty-sub { margin: var(--sp-4) 0 0; }
+.fill-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); padding: var(--sp-12) 0 0; margin-top: var(--sp-12); border-top: 1px solid var(--line); }
+.fill-k { font-weight: 600; }
+.fill-row p { margin: 0; }
+.fill-form { display: flex; gap: var(--sp-8); align-items: center; }
+.fill-form .ws-ask { margin-top: 0; }
+.fill-in { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 var(--sp-12); font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg); }
+.fill-msg { color: var(--warn); font-size: var(--fs-sm); }
+.fill-msg:empty { display: none; }
+.fill-note { color: var(--muted); font-size: var(--fs-sm); }
+.fill-note:empty { display: none; }
+.fill-pick { justify-self: start; margin-top: 0; }
+/* 지도에서 고르기 (src/pin-picker.js): the map under a fixed cross; the sheet is the usual bottom sheet */
+.pp-stage { position: relative; margin: var(--sp-8) 0; }
+.pp-map { height: min(46vh, 420px); border-radius: var(--r-base); overflow: hidden; }
+.pp-cross { position: absolute; inset: 0; pointer-events: none; z-index: 500; }
+.pp-cross::before, .pp-cross::after { content: ""; position: absolute; background: var(--accent); box-shadow: 0 0 0 1.5px var(--bg); }
+.pp-cross::before { left: 50%; top: calc(50% - 18px); width: 2px; height: 36px; transform: translateX(-1px); }
+.pp-cross::after { top: 50%; left: calc(50% - 18px); height: 2px; width: 36px; transform: translateY(-1px); }
+.pp-actions { display: flex; flex-wrap: wrap; gap: var(--sp-8); align-items: center; }
+.pp-actions .ws-ask, .pp-actions .btn, .pp-actions .sh-close { margin-top: 0; }
+.fill-state, .fill-done { color: var(--muted); font-size: var(--fs-sm); }
 /* ===== wall sheet head (외벽 시트 머리; from docs/superpowers/mockups/2026-10-22-sheet-system-v2.html). Scoped to .wall-sheet.is-wall. ===== */
 @property --sun-t { syntax: "<number>"; inherits: true; initial-value: .5; }
 /* the head: the sun card's sky (--sc-*, from .k-lit/.k-shade/.k-night; .k-none = no sun math: the sunken paper), the name, one line, the ✓, and on its ground the logo's slab and the sun */

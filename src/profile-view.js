@@ -1,6 +1,6 @@
 // src/profile-view.js — the 내 정보 sheet: 닉네임, 화면 (자동/라이트/다크), 기록 백업, 제보 폼 링크, 앱 정보 link (opens the 앱 정보 sheet).
 // 내 지역 sits in this sheet too, but app.js draws and handles it (it is a list filter).
-import { config } from './config.js';
+import { config, fillOn } from './config.js';
 import { buildLabel } from './build-label.js';
 import { backupLine, loadBackupAt } from './backup.js';
 import { currentInstallMode, promptInstall } from './install.js';
@@ -10,6 +10,7 @@ import { GRADES, gradeLabel } from './grades.js';
 import { loadMyGrade, saveMyGrade } from './my-grade.js';
 import { safeStorage, getStr, setStr, removeStr } from './storage.js';
 import { loadTapCount } from './tap.js';
+import { filledWallCount } from './fill-store.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -136,6 +137,9 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     form.elements.textSize.value = getTextSize();
     const store = safeStorage(); // blocked: no backup date
     status.textContent = backupLine(getLogCount(), loadBackupAt(store)); // the next export or import replaces it with its own message
+    const filled = fillOn() ? filledWallCount({ get: getStr }) : 0; // 빈칸 채우기: only once it is on and this device filled something
+    $('pfFills').hidden = !filled;
+    $('pfFills').textContent = filled ? `내가 채운 암장 ${filled}곳` : '';
     const how = currentInstallMode();
     $('pfInstallRow').hidden = how === 'none';
     $('pfInstall').hidden = how !== 'prompt';

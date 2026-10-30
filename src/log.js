@@ -6,6 +6,7 @@
 
 import { GRADES, cleanCounts, totalOf } from './grades.js';
 import { wallPageId } from './share-id.js';
+import { cleanContrib } from './fill-store.js';
 
 export const LOG_KEY = 'open-wall:log';
 export const MAX_RECORDS = 2000;
@@ -356,9 +357,10 @@ export const recentFor = (log, wall, n = 3) => log.filter((r) => r.wall === wall
 export const recentVisits = (log, limit = 50) => [...log].sort(newestFirst).slice(0, limit);
 
 // ---- backup file ----
-export function exportLog(log, now = new Date()) {
+// contrib (optional, src/fill-store.js exportContrib): this device's authorId and the blanks it filled, so a new phone keeps the credit
+export function exportLog(log, now = new Date(), contrib = null) {
   const at = `${dateOf(now.getFullYear(), now.getMonth() + 1, now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`; // local time
-  return JSON.stringify({ app: 'open-wall', kind: 'log', version: 1, exported_at: at, records: log }, null, 2);
+  return JSON.stringify({ app: 'open-wall', kind: 'log', version: 1, exported_at: at, records: log, ...(contrib ? { contrib } : {}) }, null, 2);
 }
 
 /**
@@ -378,7 +380,8 @@ export function parseImport(text, today, nowMin = null) {
   if (!Array.isArray(list)) return { ok: false, error: '해벽 기록 백업 파일이 아니에요.' };
   const records = normalizeLog(list, today, nowMin);
   if (!records.length) return { ok: false, error: '가져올 수 있는 기록이 없어요.' };
-  return { ok: true, records, dropped: list.length - records.length };
+  const contrib = Array.isArray(data) ? null : cleanContrib(data.contrib); // a file from before 빈칸 채우기 has none: the result has no such key
+  return { ok: true, records, dropped: list.length - records.length, ...(contrib ? { contrib } : {}) };
 }
 
 /** mergeLog(log, incoming) → {log, added}: same id, or the same wall+date+time+memo as a record already in the log, is not added twice (twins within the incoming file are both kept). */

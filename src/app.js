@@ -3,7 +3,7 @@ import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, toMin, ymd } from './time.js';
 import { fetchNational, fetchCrags, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
-import { config, boardOn, tapOn } from './config.js';
+import { config, boardOn, tapOn, fillOn } from './config.js';
 import { idByName, wallPageId } from './share-id.js';
 import { safeStorage, getStr, setStr } from './storage.js';
 import { idOf, nameOf, setWalls } from './wall-ids.js';
@@ -64,6 +64,11 @@ import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, fore
 import { boardBox } from './board-view.js';
 import { createBoardApi } from './board-api.js';
 import { agoText, warningOf } from './closure-warning.js';
+import { createFillApi } from './fill-api.js';
+import { applyFills } from './fill-fields.js';
+import { fillSection } from './fill-view.js';
+import { addFillSent } from './fill-store.js';
+import { NICK_KEY, loadNick } from './report.js';
 import { createBoardNotice } from './board-summary.js';
 import { openWallSheet, registerWallSheet, updateWallHead } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
@@ -1263,6 +1268,17 @@ function veilText(m, wall, at) {
 // The three pieces under a wall's photo on the list card: the dock (길찾기 · 다녀왔어요), the chips, the line into the wall sheet. (The map card is the simple one: it takes only the line, sheetRowOf.)
 // 한 줄 타임라인 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
 const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }), idOf, nameOf, storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
+// 빈칸 채우기 제보 (src/fill-view.js): off (no request) unless config.fill and boardUrl are both set
+const fillApi = fillOn() ? createFillApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }) : null;
+function fillPane(m, wall) {
+  if (!fillApi || canEdit) return null; // ?edit shows the saved list as it is: a report's value is never mixed into it
+  return fillSection({ wall, onSubmit: async ({ field, value }) => {
+    const { fill } = await fillApi.submit({ wall: m.name, field, value, nick: loadNick(getStr(NICK_KEY)) });
+    addFillSent({ get: getStr, set: setStr }, { wall_id: fill.wall_id, field, at: Date.now() });
+    if (fill.status === 'pending' || fill.status === 'confirmed') { state.walls = applyFills(state.walls, [{ ...fill, nick: fill.nick ?? '' }]); render(); }
+    return { status: fill.status };
+  } });
+}
 const openBoardOf = (name) => (b) => openWallSheet(name, b, { tab: 'board' });
 boardNotice?.onChange(() => document.querySelectorAll('.irow[data-board]').forEach((row) => setBoardRow(row, boardNotice.notice(row.dataset.board))));
 const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b)); // no 한 줄 타임라인 pill on the map card: 암장 정보 자세히 is its one way into the sheet
@@ -1541,7 +1557,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'time' && featureOn('schedule') ? scheduleSection(wall) : null), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'time' && featureOn('schedule') ? scheduleSection(wall) : null, t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
     }))],
   };
 }
@@ -2798,6 +2814,8 @@ render();
 loadCrowd();
 boardNotice?.load();
 loadTapSummary();
+// 빈칸 채우기: the shown reports go over the blank fields once, after the first draw; a failure leaves the list as it is (no retry, no cache)
+if (fillApi && !canEdit) fillApi.list().then((fills) => { if (fills.length) { state.walls = applyFills(state.walls, fills); render(); } }).catch(() => {});
 document.addEventListener('wall:open-board', (e) => { if (typeof e.detail?.name === 'string') openWallSheet(e.detail.name, null, { tab: 'board' }); }); // from the 기록 toast: 타임라인에도 남기기
 if (sharedWall) {
   if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list

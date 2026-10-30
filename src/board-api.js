@@ -1,27 +1,12 @@
 // src/board-api.js — fetch adapter for the 한 줄 타임라인 Worker (worker/API.md). Empty url = feature off: no request is ever made.
 import { PAGE, parseBoard, parseReplies, parseToken, parseTotal } from './board.js';
-
-const fail = (code) => Object.assign(new Error(code), { code });
-const codeOf = (status) => (status === 429 ? 'rate_limited' : status >= 400 && status < 500 ? 'bad_request' : 'server');
+import { createCaller, fail } from './worker-call.js';
 
 // idOf(name) → the wall's id or null (src/wall-ids.js); getAuthorId() → this device's authorId or null (src/author-id.js). Both are only
 // asked once a request is really going out, so an empty url never makes an id.
 export function createBoardApi({ url, fetchFn = (...a) => fetch(...a), timeoutMs = 8000, idOf = () => null, getAuthorId = () => null }) {
   const base = String(url || '').replace(/\/+$/, '');
-  async function call(path, init = {}) {
-    if (!base) throw fail('network');
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeoutMs);
-    try {
-      const r = await fetchFn(base + path, { ...init, credentials: 'omit', signal: ctl.signal });
-      if (!r.ok) throw fail(codeOf(r.status));
-      return r.status === 204 ? null : await r.json();
-    } catch (e) {
-      throw e.code ? e : fail('network'); // fetch rejection, abort (timeout) or unreadable body
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+  const call = createCaller({ url, fetchFn, timeoutMs });
   return {
     async list(wall, { before } = {}) {
       if (!base) return { posts: [], total: null };

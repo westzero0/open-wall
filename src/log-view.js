@@ -21,6 +21,7 @@ import { canSaveMonth } from './record-image.js';
 import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
 import { getStr, setStr } from './storage.js';
+import { exportContrib, restoreContrib } from './fill-store.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, reconcileLog, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
@@ -614,7 +615,7 @@ export function createLogView({
 
   // ---- backup ----
   function exportFile() {
-    const url = URL.createObjectURL(new Blob([exportLog(log)], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([exportLog(log, new Date(), exportContrib({ get: getStr, set: setStr }))], { type: 'application/json' }));
     const a = el('a', { href: url, download: `haebyeok-log-${today()}.json` });
     document.body.append(a);
     a.click();
@@ -629,6 +630,7 @@ export function createLogView({
     if (file.size > MAX_IMPORT_BYTES) return '가져오지 못했어요: 파일이 너무 커요(1MB까지).';
     const res = parseImport(await file.text(), today(), nowMin());
     if (!res.ok) return `가져오지 못했어요: ${res.error}`;
+    restoreContrib({ get: getStr, set: setStr }, res.contrib); // the authorId only on a device that has none
     const merged = mergeLog(log, res.records);
     log = merged.log;
     persist();

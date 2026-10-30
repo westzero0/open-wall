@@ -25,6 +25,7 @@ export const config = {
   scheduleAlert: true,
   closureWarning: false, // 닫힘·단축 제보 경고(docs/superpowers/specs/2026-10-29-closure-warning-design.md): report-tap의 GET /v1/tap-summary를 읽는다. Worker에 그 경로가 배포된 뒤 켠다
   singlePitch: false,
+  fill: false, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.
   data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportTap: false, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
@@ -40,3 +41,6 @@ export const config = {
 export const boardOn = () => Boolean(config.boardUrl);
 // 탭 제보가 켜졌는가(reportTap과 boardUrl 둘 다). 꺼지면 줄도 요청도 없다.
 export const tapOn = () => Boolean(config.reportTap && config.boardUrl);
+
+// 빈칸 채우기가 켜졌는가: config.fill과 게시판(boardUrl) 둘 다 있어야 한다. 꺼지면 요청도 가지 않는다.
+export const fillOn = () => Boolean(config.fill) && boardOn();
