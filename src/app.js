@@ -16,6 +16,7 @@ import { dialModel, sunHeadOf } from './dial.js';
 import { dayWindow } from './sun.js';
 import { renderScene, sceneTone } from './sun-scene.js';
 import { getStatus, hasHours, openIntervals } from './hours.js';
+import { isHoliday } from './holidays.js';
 import { buildTap, bumpTapCount, loadTapped, saveTapped, shownFromIntervals, tappedKey } from './tap.js';
 import { createTapApi } from './tap-api.js';
 import { tapRow } from './tap-view.js';
@@ -28,8 +29,8 @@ import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
-import { addSkipped, askYesterday, loadSchedule, loadSkipped, plannedOn, rainAlerts, saveSchedule, saveSkipped } from './schedule.js';
-import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, renderScheduleWall } from './schedule-view.js';
+import { MAX_SCHEDULE, addSkipped, addWall, closureAlerts, toggleDay, askYesterday, loadSchedule, loadSkipped, plannedOn, rainAlerts, saveSchedule, saveSkipped } from './schedule.js';
+import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, weekPicker } from './schedule-view.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
@@ -53,7 +54,7 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 function setSub(at, extra = '') {
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
-import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
+import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -952,7 +953,8 @@ function renderSched() {
     const next = $('sched');
     if (next && !next.hidden) next.querySelector('summary')?.focus();
   }
-  const alerts = wanted ? rainAlerts(schedule, { walls: state.walls, forecasts: wxPick.byName, today }) : [];
+  const shut = wanted ? closureAlerts(schedule, { walls: state.walls, today }) : [];
+  const alerts = wanted ? [...shut, ...rainAlerts(schedule, { walls: state.walls, forecasts: wxPick.byName, today }).filter((a) => !shut.some((s) => s.wall === a.wall))] : []; // a wall that is shut says so alone: its rain would offer the same walls twice
   renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body'), live: $('sched-live') }, {
     alerts, walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
     onOpen: (wall, date) => { goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
@@ -966,17 +968,11 @@ function drawScheduleRows() {
   if (row.hidden) return;
   renderScheduleRows($('scheduleBody'), { schedule, walls: state.walls, favs, toast, onChange: scheduleChange, getOrigin: () => vs.origin });
 }
-function scheduleChange(next) { // the 내 정보 rows and the wall sheet's section save through here
+function scheduleChange(next, focusDow = null) { 
   const y = new Date(); y.setDate(y.getDate() - 1); // a weekday switched on now is not asked about for yesterday: the visitor has just made the schedule
   for (const e of next) if (e.days.includes(y.getDay()) && !schedule.find((x) => x.wall === e.wall)?.days.includes(y.getDay())) skipped = addSkipped(skipped, e.wall, ymd(y), new Date());
   saveSkipped(storage, skipped, new Date());
-  schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); if (ui.tab === 'log') logView.render(); // the 기록 달력's dots follow
-}
-// the wall sheet's 시간 tab ends in this wall's 운동 스케줄 (a way in for a visitor who has not opened 내 정보)
-function scheduleSection(wall) {
-  const body = el('div', {});
-  renderScheduleWall(body, { wall, schedule, walls: state.walls, onChange: scheduleChange, toast });
-  return el('section', { class: 'ws-sec', 'aria-label': '운동 스케줄', 'data-sec': 'schedule' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '운동 스케줄')), body);
+  schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); refreshScheduleChips(focusDow); if (ui.tab === 'log') logView.render(); // the 기록 달력's dots follow
 }
 $('meBtn')?.addEventListener('click', drawScheduleRows);
 planOf = (date) => {
@@ -1296,6 +1292,29 @@ function cardRows(m) {
   ];
 }
 const mapShare = (name) => { const w = shareBtn(name); w.classList.add('dock-share'); return w; }; // the share button (inside its wrapper) drawn as an outlined square like 길찾기 and 전화 (style.css .dock-share)
+let schedOpen = null; // the wall whose 매주 가요 popover is open (a redraw of the chips keeps it)
+function wallScheduleChip(wall) { // 매주 가요: the weekdays at this wall, picked in a popover under the chip (the card's one way in)
+  if (!featureOn('schedule')) return null;
+  const entry = schedule.find((e) => e.wall === wall.name);
+  const open = schedOpen === wall.name;
+  const pop = open ? weekPicker(entry ?? { wall: wall.name, days: [] }, state.walls, (dow) => {
+    const next = toggleDay(addWall(schedule, wall.name), wall.name, dow);
+    scheduleChange(next.filter((e) => e.wall !== wall.name || e.days.length), dow);
+  }) : null;
+  const chip = scheduleChip(wall, entry, { full: schedule.length >= MAX_SCHEDULE, open, pop, onTap: () => { schedOpen = open ? null : wall.name; refreshScheduleChips(null, true); if (schedOpen) document.querySelector('.sched-pop')?.scrollIntoView({ block: 'nearest' }); } }); // a popover under the tab bar scrolls up into view (.sched-pop scroll-margin)
+  return chip;
+}
+function refreshScheduleChips(focusDow = null, focusChip = false) { // the cards behind the sheet and the popover follow a change without a render() (which would drop the focus)
+  for (const c of document.querySelectorAll('[data-sched-wall]')) {
+    const w = state.walls.find((x) => x.name === c.dataset.schedWall);
+    const cell = c.closest('[role="listitem"]');
+    const fresh = w && wallScheduleChip(w);
+    if (fresh) cell.replaceWith(fresh); else cell.remove();
+    if (fresh) (focusDow !== null ? fresh.querySelector(`[data-focus="sdt-${w.name}-${focusDow}"]`) : focusChip ? fresh.querySelector('[data-sched-wall]') : null)?.focus({ preventScroll: true }); // the redraw replaced the focused element: focus goes to the toggled weekday, or back to the chip
+  }
+}
+document.addEventListener('click', (e) => { if (schedOpen && !e.target.closest?.('[data-sched-wall], .sched-pop')) { schedOpen = null; refreshScheduleChips(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && schedOpen) { const w = schedOpen; schedOpen = null; refreshScheduleChips(); document.querySelector(`[data-sched-wall="${CSS.escape(w)}"]`)?.focus(); e.stopPropagation(); } }, true);
 function cardActions(m, wall, onMap = false) { // onMap: 공유 stands where 다녀왔어요 does (a map card has no visit to log)
   const pos = wallPosition(wall);
   const nav = m.links.find((l) => l.primary); // 길찾기: the same map-app dialog as the link strip's cell (the strip itself is not drawn on the card for now)
@@ -1304,7 +1323,7 @@ function cardActions(m, wall, onMap = false) { // onMap: 공유 stands where 다
   return {
     dock: dock(go, onMap ? mapShare(m.name) : beenBtn(m), telButton(m.name, m.links.find((x) => x.label === '전화'), icon)),
     reserve: reserveBand(m.reserve, { icon }),
-    chips: chipBar(onMap ? m.chips?.slice(0, 3).map((c) => ({ ...c, to: null })) : m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to) }),
+    chips: chipBar(onMap ? m.chips?.slice(0, 3).map((c) => ({ ...c, to: null })) : m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to), extra: [onMap ? null : wallScheduleChip(wall)] }),
     notice: noticeLine(m.notice, { lit: rainComing(m), report: (b) => reportFrom(m.name, '임시휴무', ['임시휴무'], b), icon }),
     rows: cardRows(m),
   };
@@ -1506,11 +1525,15 @@ function contactPills(m) {
   });
 }
 
-// 시간 tab, under 운영시간: "오늘 이 시간이 맞나요?" 맞아요/달라요 (src/tap-view.js). Today only, a wall with a timetable, and only while config.reportTap is on.
+// 시간 tab, under 운영시간: "오늘 이 시간이 맞나요?" 맞아요/달라요 (src/tap-view.js). Today only, a wall with a timetable, only while config.reportTap is on,
+// and only where the hours are unsure: never checked, checked over TAP_STALE_DAYS ago, or a public holiday the wall's holiday rule doesn't cover.
 // The row is told what the sheet shows for the day (shownFromIntervals) so the report says what the user was looking at.
+const TAP_STALE_DAYS = 14;
 function tapSection(wall, at) {
   const date = ymd(at);
   if (!tapOn() || !hasHours(wall) || date !== ymd(new Date())) return null;
+  const age = wall.checked_at ? (at - new Date(`${wall.checked_at}T00:00:00`)) / 864e5 : Infinity;
+  if (age <= TAP_STALE_DAYS && !(isHoliday(at) && !wall.holiday)) return null;
   const tapApi = createTapApi({ url: config.boardUrl });
   const st = safeStorage();
   const tapped = st ? loadTapped(st, date) : {};
@@ -1557,7 +1580,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'time' && featureOn('schedule') ? scheduleSection(wall) : null, t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
     }))],
   };
 }
@@ -2302,6 +2325,7 @@ const tabs = TABS; // 목록 | 지도 | 기록
 const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): no 지도 tab
 function showTab(key, focus = false) {
   if (wide.matches && key === 'map') key = 'list';
+  if (key !== ui.tab) scrollTo(0, 0); // a tab always starts at its top (the page is one scroll: 기록 used to open where 목록 had been left)
   ui.tab = key;
   saveUi();
   const split = wide.matches && key === 'list';

@@ -13,10 +13,12 @@
 //   placeholderHero(…) the block that stands where a photo would: hours cap, camera (left), share (right), laid out as a photo card's foot (style.css --icon-row)
 //   sheetLine(name, f) the 48px line into the wall sheet
 //   reserveBand(r, …)  the 예약하기 band (예약 필수 when required), only with a reservation link
-//   chipBar(chips, …)  one line of chips from card-model `chips` [{kind, text, icon, tone, to}]
+//   chipBar(chips, …)  one line of chips from card-model `chips` [{kind, text, icon, tone, to}]; `extra` chips (scheduleChip) lead the line
+//   scheduleChip(…)    '+ 매주 가요' / '월·수 ✓': the visitor's own weekdays at this wall (opens the 요일 picker); none when the schedule is full and this wall is not on it
 import { el } from './dom.js';
 import { AXIS, axisFrac, fmtMin } from './viewmodel.js';
 import { boardText } from './card-model.js';
+import { DAY_KO } from './time.js';
 
 export const axisX = (min) => `${axisFrac(min) * 100}%`;
 export const span = (cls, a, b) => {
@@ -185,9 +187,9 @@ export function reserveBand(reserve, { icon }) {
 
 // One line of chips (card-model `chips`). icon(name) draws the glyph; pick(to, button) opens the sheet at `to`. A chip with no `to` is plain text.
 // A chip says one fact in a few words: the detail is behind it.
-export function chipBar(chips, { icon, pick }) {
-  if (!chips?.length) return null;
-  return el('div', { class: 'chip-bar', role: 'list', 'aria-label': '요약' }, ...chips.map((c) => {
+export function chipBar(chips, { icon, pick, extra = [] }) {
+  if (!chips?.length && !extra.some(Boolean)) return null;
+  return el('div', { class: 'chip-bar', role: 'list', 'aria-label': '요약' }, ...extra, ...(chips ?? []).map((c) => {
     const kids = [c.icon ? icon(c.icon) : null, el('span', {}, c.text), c.note ? el('span', { class: 'sr-only' }, ` (${c.note})`) : null];
     const cls = `cchip ${c.kind} ${c.tone}`;
     if (!c.to) return el('span', { class: cls, role: 'listitem', title: c.note ?? null }, ...kids);
@@ -195,6 +197,21 @@ export function chipBar(chips, { icon, pick }) {
     b.addEventListener('click', () => pick(c.to, b));
     return el('span', { role: 'listitem', class: 'cchip-cell' }, b);
   }));
+}
+
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // 월 … 일
+export const scheduleChipText = (days) => (days?.length ? `${WEEK_ORDER.filter((d) => days.includes(d)).map((d) => DAY_KO[d]).join('·')} ✓` : '+ 매주 가요');
+// entry: this wall's schedule entry or null; full: the schedule already holds the most walls. `pop` (open): the weekday picker under the chip (schedule-view weekPicker's cells + why);
+// onTap toggles it. data-sched-wall lets app.js redraw the chip after a change. Outlined until the weekdays are set, then filled.
+export function scheduleChip(wall, entry, { full, open, pop, onTap }) {
+  if (full && !entry) return null; // the 5-wall limit is told on the 내 정보 row, not on every card
+  const set = !!entry?.days.length;
+  const b = el('button', { type: 'button', class: `cchip sched${set ? ' on' : ''}`, 'data-sched-wall': wall.name, 'aria-expanded': String(!!open), 'aria-label': set ? `매주 ${scheduleChipText(entry.days).replace(' ✓', '')} 가요, 요일 바꾸기` : '매주 가요, 요일 정하기' }, el('span', {}, scheduleChipText(entry?.days)));
+  b.addEventListener('click', onTap);
+  const close = el('button', { type: 'button', class: 'sh-toggle' }, '닫기');
+  close.addEventListener('click', onTap);
+  const panel = open && pop ? el('div', { class: 'sched-pop', role: 'group', 'aria-label': `${wall.name} 매주 가는 요일` }, el('div', { class: 'sched-pop-h' }, el('p', { class: 'pick-basis' }, '운동 스케줄'), close), el('div', { class: 'sd-week' }, ...pop.cells), pop.why ? el('p', { class: 'sh-hint' }, pop.why) : null, el('p', { class: 'sh-hint' }, '고른 요일에 비 예보가 있으면 홈에 알려 줘요. 이 기기에만 저장돼요.')) : null;
+  return el('span', { role: 'listitem', class: 'cchip-cell' }, b, panel);
 }
 
 // 오늘 운영 · 08:00~22:00 on a photo (or on the placeholder block). `hoursOnGauge` (card-model): the gauge says the hours, so the photo stays clean;

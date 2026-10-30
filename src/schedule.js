@@ -1,9 +1,9 @@
 // src/schedule.js — 운동 스케줄 비 알림 (docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md): the walls and weekdays a visitor
 // trains on, the week's rain for them, and where else to go on a wet day. In this browser only. No DOM.
 import { staleness } from './card-model.js';
-import { hasHours, openIntervals } from './hours.js';
+import { dayRule, hasHours, openIntervals } from './hours.js';
 import { wallPageId } from './share-id.js';
-import { DAY_KO, ymd } from './time.js';
+import { DAY_KEYS, DAY_KO, ymd } from './time.js';
 import { distanceKm, wallPosition } from './viewmodel.js';
 import { dayKey, dayWeather } from './weather.js';
 
@@ -53,6 +53,17 @@ export function saveSchedule(storage, schedule, walls = []) {
 export function addWall(schedule, name) {
   const n = nfc(String(name));
   return !n || schedule.length >= MAX_SCHEDULE || schedule.some((e) => e.wall === n) ? schedule : [...schedule, { wall: n, days: [] }];
+}
+
+const NTH_KO = ['첫째', '둘째', '셋째', '넷째', '다섯째'];
+/**
+ * closedWeekdays(wall) → { days: [dow], nth: [{ dow, words: ['둘째', '넷째'] }] } — the weekly closing weekdays (hours.js: a weekday whose hours are null)
+ * and the nth-of-month ones, which close a day only some weeks. A wall with no hours (or hours without a null day) closes nothing.
+ */
+export function closedWeekdays(wall) {
+  const days = hasHours(wall) ? DAY_KEYS.flatMap((k, dow) => (wall.hours?.[k] === null ? [dow] : [])) : [];
+  const nth = (wall.exceptions?.nth_closed ?? []).map((n) => ({ dow: DAY_KEYS.indexOf(n.day), words: (n.nth ?? []).filter((i) => i > 0).map((i) => NTH_KO[i - 1]).filter(Boolean) })).filter((n) => n.dow >= 0 && n.words.length && !days.includes(n.dow));
+  return { days, nth };
 }
 
 export const removeWall = (schedule, name) => schedule.filter((e) => e.wall !== name);
@@ -123,13 +134,36 @@ export function rainAlerts(schedule, { walls, forecasts, today }) {
   return out;
 }
 
-/** hintOf(alerts) → the folded card's line: the first wall, its first rainy day and the words, "외 N곳" for the rest; '' without alerts. */
+/**
+ * closureAlerts(schedule, { walls, today }) → one per scheduled wall that is shut on a 운동 요일 in the next seven days: { kind: 'closed', entry, wall, date, pick, suspended },
+ * the first such day (pick: its index from today). 임시휴무 (exceptions.closed_dates) or 임시 휴관 with no end date (suspended; it shuts every day, so the first 운동 요일 is it);
+ * a weekly or nth-of-month closing is the timetable, not news. Walls not in the list or with no days say nothing.
+ */
+export function closureAlerts(schedule, { walls, today }) {
+  const out = [];
+  for (const entry of schedule) {
+    const wall = walls.find((w) => w.name === entry.wall);
+    if (!wall || !entry.days.length) continue;
+    for (let pick = 0; pick < STRIP_DAYS; pick++) {
+      const date = dayAt(today, pick);
+      const why = entry.days.includes(date.getDay()) ? dayRule(wall, date).why : null;
+      if (why === 'suspended' || why === 'closed_date') { out.push({ kind: 'closed', entry, wall, date, pick, suspended: why === 'suspended' }); break; }
+    }
+  }
+  return out;
+}
+
+export const dayWord = (date, pick) => (pick === 0 ? '오늘' : pick === 1 ? '내일' : `${DAY_KO[date.getDay()]}요일`);
+
+/** hintOf(alerts) → the folded card's line: the first wall, its first rainy (or shut) day and the words, "외 N곳" for the rest; '' without alerts. */
 export function hintOf(alerts) {
   if (!alerts.length) return '';
   const [a] = alerts;
+  const name = a.wall.short_name || a.wall.name;
+  const more = alerts.length > 1 ? ` 외 ${alerts.length - 1}곳` : '';
+  if (a.kind === 'closed') return `${name} · ${a.suspended ? '휴관 중이에요' : `${dayWord(a.date, a.pick)} 임시휴무`}${more}`;
   const d = a.strip[a.pick];
-  const day = a.pick === 0 ? '오늘' : a.pick === 1 ? '내일' : `${DAY_KO[d.dow]}요일`;
-  return `${a.wall.short_name || a.wall.name} · ${day} ${d.text}${alerts.length > 1 ? ` 외 ${alerts.length - 1}곳` : ''}`;
+  return `${name} · ${dayWord(d.date, a.pick)} ${d.text}${more}`;
 }
 
 // ---- 어제 다녀왔어요? (spec 2단계): once a 운동 요일 has passed with no record, ask for it the next time the app opens. Never records by itself:

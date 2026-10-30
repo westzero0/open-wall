@@ -3,7 +3,7 @@
 import { el } from './dom.js';
 import { DAY_KO } from './time.js';
 import { searchPicks } from './viewmodel.js';
-import { NEAR_KM, addWall, alternatives, hintOf, nextDryDay, removeWall, toggleDay, MAX_SCHEDULE } from './schedule.js';
+import { NEAR_KM, addWall, alternatives, closedWeekdays, hintOf, nextDryDay, removeWall, toggleDay, MAX_SCHEDULE } from './schedule.js';
 
 const sel = new Map(); // wall name → the picked day's time (ms; the strip moves with today, so an index would not hold); the first rainy 운동 요일 until a tap
 let current = []; // the sheet rows' list as last drawn, for 되돌리기
@@ -25,10 +25,11 @@ export function renderScheduleCard(dom, args, { focus = false, key = null } = {}
   box.hidden = !alerts.length;
   if (!alerts.length) return;
   hint.textContent = hintOf(alerts);
-  chip.replaceChildren(el('span', { class: 'sd-rain' }, icon('sky-rain')));
+  chip.replaceChildren(el('span', { class: 'sd-rain' }, icon(alerts[0].kind === 'closed' ? 'alert' : 'sky-rain')));
 
   const redraw = (key = null) => renderScheduleCard(last[0], last[1], { focus: true, key });
   const groups = alerts.map((a) => {
+    if (a.kind === 'closed') return closedGroup(a, { walls, favs, forecasts, today, onOpen });
     const name = a.wall.name;
     const at = a.strip.findIndex((d) => +d.date === sel.get(name));
     const i = at >= 0 ? at : a.pick;
@@ -54,6 +55,30 @@ export function renderScheduleCard(dom, args, { focus = false, key = null } = {}
   if (keep) body.querySelector(`[data-focus="${CSS.escape(keep)}"]`)?.focus({ preventScroll: true });
 }
 
+// the walls to go to instead on `date` (schedule.js alternatives): the nearest large, two more under it; or one line when there is none
+function altKids(wall, date, { walls, favs, forecasts, today, onOpen, shut = false }) {
+  const alts = alternatives(wall, date, { walls, favs, forecasts, now: today });
+  const why = (r) => [r.wall.venue === 'indoor' ? '실내' : shut ? '열어요' : '비 없음', r.km === null ? null : `${Math.round(r.km)}km`, r.fav && !(r.km <= NEAR_KM) ? '즐겨찾기' : null].filter(Boolean).join(' · ');
+  if (!alts.length) return [el('p', { class: 'pick-empty' }, '갈 만한 암장이 근처에 없어요')];
+  const btn = (r, cls) => {
+    const b = el('button', { type: 'button', class: cls }, el('span', { class: 'pick-name' }, ...(r.fav ? [heart()] : []), r.wall.short_name || r.wall.name), el('span', { class: 'pick-why' }, why(r)));
+    b.addEventListener('click', () => onOpen(r.wall, date));
+    return b;
+  };
+  const [lead, ...rest] = alts;
+  return [btn(lead, 'pick-lead'), ...(rest.length ? [el('div', { class: 'pick-rest' }, ...rest.map((r) => btn(r, 'pick-next')))] : [])];
+}
+
+// a shut 운동 요일: its head ("휴관 중이에요" / the day and 임시휴무) and the walls to go to instead
+function closedGroup(a, ctx) {
+  const name = a.wall.name;
+  const head = el('div', { class: 'pick-dh wet' }, el('span', {}, a.suspended ? '휴관 중이에요' : `${DAY_KO[a.date.getDay()]}요일${a.pick === 0 ? ' · 오늘' : ''}`), el('em', {}, a.suspended ? '휴관' : '임시휴무'));
+  return [
+    el('p', { class: 'pick-basis' }, `${a.wall.short_name || name} · ${a.entry.days.map((d) => DAY_KO[d]).join('·')} 운동`),
+    el('div', { class: 'pick-cols' }, el('div', { class: 'pick-col' }, head, ...altKids(a.wall, a.date, { ...ctx, shut: true }))),
+  ];
+}
+
 // the picked day's box: its head, the nearest dry wall large, two more under it, and the next dry day for the scheduled wall
 function detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay }) {
   const d = a.strip[i];
@@ -62,23 +87,7 @@ function detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay }) {
   if (!d.known) kids.push(el('p', { class: 'pick-empty' }, '이 날은 아직 예보가 없어요'));
   else if (!d.rain) kids.push(el('p', { class: 'pick-empty' }, `이 날은 ${a.wall.short_name || a.wall.name}에 비 예보가 없어요`));
   else {
-    const alts = alternatives(a.wall, d.date, { walls, favs, forecasts, now: today });
-    const why = (r) => [r.wall.venue === 'indoor' ? '실내' : '비 없음', r.km === null ? null : `${Math.round(r.km)}km`, r.fav && !(r.km <= NEAR_KM) ? '즐겨찾기' : null].filter(Boolean).join(' · ');
-    const open = (r) => () => onOpen(r.wall, d.date);
-    if (!alts.length) kids.push(el('p', { class: 'pick-empty' }, '비 없는 암장이 근처에 없어요'));
-    else {
-      const [lead, ...rest] = alts;
-      const lb = el('button', { type: 'button', class: 'pick-lead' }, el('span', { class: 'pick-name' }, ...(lead.fav ? [heart()] : []), lead.wall.short_name || lead.wall.name), el('span', { class: 'pick-why' }, why(lead)));
-      lb.addEventListener('click', open(lead));
-      kids.push(lb);
-      if (rest.length) {
-        kids.push(el('div', { class: 'pick-rest' }, ...rest.map((r) => {
-          const b = el('button', { type: 'button', class: 'pick-next' }, el('span', { class: 'pick-name' }, ...(r.fav ? [heart()] : []), r.wall.short_name || r.wall.name), el('span', { class: 'pick-why' }, why(r)));
-          b.addEventListener('click', open(r));
-          return b;
-        })));
-      }
-    }
+    kids.push(...altKids(a.wall, d.date, { walls, favs, forecasts, today, onOpen }));
     const j = nextDryDay(a.strip, i);
     if (j !== null) {
       const nb = el('button', { type: 'button', class: 'pick-next pick-alt' }, el('span', { class: 'pick-altk' }, '날짜'), el('span', { class: 'pick-name' }, `${DAY_KO[a.strip[j].dow]}요일은 비 없어요`));
@@ -91,38 +100,30 @@ function detail(a, i, { walls, favs, forecasts, today, onOpen, pickDay }) {
 
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // 월 … 일
 
+/** weekPicker(e, walls, onPick(dow)) → { cells, why }: the seven weekday toggles of a schedule entry (a closing weekday of the wall is off, with its reason in `why`). Shared by the rows and the card's 매주 가요 popover. */
+export function weekPicker(e, walls, onPick) {
+  const { days: closed, nth } = closedWeekdays(walls.find((w) => w.name === e.wall) ?? {});
+  const cells = WEEK_ORDER.map((dow) => {
+    const input = el('input', { type: 'checkbox', class: 'sr-only', 'data-focus': `sdt-${e.wall}-${dow}` });
+    input.checked = e.days.includes(dow);
+    if (closed.includes(dow) && !input.checked) input.disabled = true; // a closing day cannot be added; one already saved stays shown (and can be taken off)
+    input.addEventListener('change', () => onPick(dow));
+    return el('label', { class: `sd-day sd-tog${dow === 6 ? ' sat' : dow === 0 ? ' sun' : ''}` }, input, el('b', {}, DAY_KO[dow]));
+  });
+  const why = [closed.length && `${closed.map((d) => DAY_KO[d]).join('·')}요일은 쉬는 날이에요`, ...nth.map((n) => `${n.words.join('·')} ${DAY_KO[n.dow]}요일은 쉬어요`)].filter(Boolean).join(' · ');
+  return { cells, why };
+}
+
 // one scheduled wall: its name, 삭제 (undoable) and the seven weekdays; `set(next, opts)` saves and draws again
-function wallRow(e, { schedule, walls, set, toast, showName = true }) {
+function wallRow(e, { schedule, walls, set, toast, showName = true, draft = false }) {
   const shown = walls.find((w) => w.name === e.wall)?.short_name || e.wall; // the short name, as on the home card
   const del = el('button', { type: 'button', class: 'sh-toggle', 'aria-label': `${shown} 스케줄 삭제` }, '삭제');
   del.addEventListener('click', () => {
     set(removeWall(schedule, e.wall), { focus: 'sd-add-btn' });
     toast(`${shown} 스케줄을 삭제했어요`, () => set(current.length >= MAX_SCHEDULE || current.some((x) => x.wall === e.wall) ? current : [...current, e]), '되돌리기'); // adds this wall back to what is there now
   });
-  const cells = WEEK_ORDER.map((dow) => {
-    const input = el('input', { type: 'checkbox', class: 'sr-only', 'data-focus': `sdt-${e.wall}-${dow}` });
-    input.checked = e.days.includes(dow);
-    input.addEventListener('change', () => set(toggleDay(schedule, e.wall, dow), { focus: `sdt-${e.wall}-${dow}` }));
-    return el('label', { class: 'sd-day sd-tog' }, input, el('b', {}, DAY_KO[dow]));
-  });
-  return el('div', { class: 'sd-wall' }, el('div', { class: `sd-wallh${showName ? '' : ' end'}` }, ...(showName ? [el('span', { class: 'pick-name' }, shown)] : []), del), el('div', { class: 'sd-week', role: 'group', 'aria-label': `${shown} 운동 요일` }, ...cells));
-}
-
-/**
- * renderScheduleWall(body, { wall, schedule, walls, onChange(next), toast })
- * The wall sheet's 운동 스케줄 section: this wall's weekdays when it is on the schedule, else one button that adds it (the 내 정보 rows stay the place to manage all).
- */
-export function renderScheduleWall(body, { wall, schedule, walls, onChange, toast }, { focus = null } = {}) {
-  const set = (next, opts) => { onChange(next); renderScheduleWall(body, { wall, schedule: next, walls, onChange, toast }, opts); };
-  const e = schedule.find((x) => x.wall === wall.name);
-  if (e) { current = schedule; body.replaceChildren(wallRow(e, { schedule, walls, set, toast, showName: false }), el('p', { class: 'sh-hint' }, '운동하는 요일에 비 예보가 있으면 홈에 알려 줘요. 내 정보에서 모아 볼 수 있어요.')); }
-  else if (schedule.length >= MAX_SCHEDULE) body.replaceChildren(el('p', { class: 'sh-hint' }, '스케줄은 최대 5곳이에요. 내 정보에서 하나를 삭제하면 넣을 수 있어요.'));
-  else {
-    const add = el('button', { type: 'button', class: 'sh-toggle', 'data-focus': 'sd-add-btn' }, '+ 이 암장 스케줄에 넣기');
-    add.addEventListener('click', () => set(addWall(schedule, wall.name), { focus: `sdt-${wall.name}-${WEEK_ORDER[0]}` }));
-    body.replaceChildren(add, el('p', { class: 'sh-hint' }, wall.venue === 'indoor' ? '운동하는 요일을 정하면 기록 달력에 표시돼요(실내는 비 알림이 없어요). ' : '운동하는 요일에 비 예보가 있으면 홈에 알려 줘요. ', el('span', { class: 'sent' }, '이 기기에만 저장돼요.')));
-  }
-  if (focus) body.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus();
+  const { cells, why } = weekPicker(e, walls, (dow) => set(toggleDay(schedule, e.wall, dow), { focus: `sdt-${e.wall}-${dow}` }));
+  return el('div', { class: 'sd-wall' }, el('div', { class: `sd-wallh${showName ? '' : ' end'}` }, ...(showName ? [el('span', { class: 'pick-name' }, shown)] : []), ...(draft ? [] : [del])), el('div', { class: 'sd-week', role: 'group', 'aria-label': `${shown} 운동 요일` }, ...cells), ...(why ? [el('p', { class: 'sh-hint' }, why)] : []));
 }
 
 /**
