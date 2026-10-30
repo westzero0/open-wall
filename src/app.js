@@ -50,7 +50,7 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 function setSub(at, extra = '') {
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
-import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span, whyBubble } from './card-parts.js';
+import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -60,6 +60,7 @@ import { bumpCrowd } from './rank.js';
 import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, skyKind, weatherFresh, weekendForecastUrl, windy } from './weather.js';
 import { boardBox } from './board-view.js';
 import { createBoardApi } from './board-api.js';
+import { agoText, warningOf } from './closure-warning.js';
 import { createBoardNotice } from './board-summary.js';
 import { openWallSheet, registerWallSheet, updateWallHead } from './wall-sheet.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
@@ -1316,6 +1317,7 @@ function rowDetails(m, wall, at) {
       el('div', { class: 'm-head' },
         el('h3', { class: 'x-name' }, m.name), // the name is on the row's own line (read aloud here)
         (m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place !== m.meta && m.place : !m.photo && m.sub) ? el('p', { class: 'x-sub' }, m.state === 'open' || m.state === 'unknown' || m.suspended ? m.place : m.sub) : null, // a wall with no hours says so once, in the hero (not again here, nor in the row's chip: style.css hides it while open) // (the region is already on the row's own line: not said twice) // a suspended wall says 임시 휴관 중 once, in the pill (or the photo's chip) // a closed photo card: the pill on the photo already says when it opens
+        m.warn ? el('div', { class: 'warn-line' }, warnPill(m.warn), warnNote(m.warn, agoText(m.warn.ago), warnHow(m))) : null,
         // (no 휴게 chips on the card: the hours already split around the break, the list bar and the wall sheet's table show it)
         addrLine(m)), // the address right under 오늘 운영
       el('div', { class: 'm-info' },
@@ -1695,7 +1697,21 @@ function crowdBox(m) {
     c.chip.bars ? el('span', { class: 'crowd-meter', 'aria-hidden': 'true' }, el('i'), el('i'), el('i')) : null,
     c.chip.text)];
 }
+// 닫힘·단축 제보 (closure-warning.js): report-tap's tap-summary, read once after load; off without config.closureWarning + boardUrl, and a failed read leaves the cards as they were
+let tapSummary = null;
+const warningFor = (row, at) => (tapSummary ? warningOf({ tap: tapSummary, name: row.wall.name, status: row.status, at, now: new Date() }) : null);
+async function loadTapSummary() {
+  if (!config.closureWarning || !boardOn()) return;
+  try {
+    const r = await fetch(`${config.boardUrl.replace(/\/+$/, '')}/v1/tap-summary`, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return;
+    tapSummary = await r.json();
+    renderForWx();
+  } catch { /* no summary: no warning */ }
+}
+const warnHow = (m) => (m.links.some((l) => l.label === '전화') ? '가기 전에 전화로 확인해 주세요' : m.links.some((l) => l.label === '공지 보기') ? '가기 전에 공지를 확인해 주세요' : '가기 전에 확인해 주세요');
 const modelOf = (row, at) => cardModel(row, at, {
+  warning: warningFor(row, at),
   visits: logView.recordsFor(row.wall.name), crowd: crowdCtx(row.wall.name, at), settingNew: settingChanged(row.wall, favs, seen),
   weather: weatherCtx(row.wall.name, at), weatherAhead: weatherAheadOf(row.wall.name, at), ropeM: Number(ui.ropeM) || 0, stayHours: Number(ui.minHours) || undefined, // the parking cost is told for the stay the filter asks (3/5/8시간+), else the default
 });
@@ -1723,7 +1739,7 @@ function rowHead(row, at, m, isOpen) {
       // (it is still in the model; the region wraps out of sight whole when it does not fit, style.css .rsub)
       el('span', { class: 'rsub' },
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
-      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
+      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.warn ? [el('span', { class: 'warn-left' }, '확인 중')] : m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
       el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
     bar ? gaugeBar(bar) : null,
     bar ? gaugeEnds(bar) : null); // drawn on every row, shown by css only while the card is open (style.css .gauge-ends)
@@ -1737,7 +1753,7 @@ function timeRow(row, at) {
   const { btn, heart, id, cls } = rowHead(row, at, m, isOpen);
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
-  const li = el('li', { class: `row ${cls}${m.photo ? ' has-photo' : ''}` });
+  const li = el('li', { class: `row ${cls}${m.warn ? ' warned' : ''}${m.photo ? ' has-photo' : ''}` });
   li.append(btn, heart, ...(m.photo ? [rowPhoto(m, li, { corner: photoTools(shareBtn(m.name)) })] : []), el('div', { class: 'expand', id }, inner)); // DOM order = tab order: the row, its ♥, the photo's camera and share, then the card (the grid places them by area, not by order)
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
@@ -2751,6 +2767,7 @@ render();
 }
 loadCrowd();
 boardNotice?.load();
+loadTapSummary();
 document.addEventListener('wall:open-board', (e) => { if (typeof e.detail?.name === 'string') openWallSheet(e.detail.name, null, { tab: 'board' }); }); // from the 기록 toast: 타임라인에도 남기기
 if (sharedWall) {
   if (invite && !invite.past) goToMoment(new Date(`${invite.date}T00:00`), invite.min); // that moment, on the list

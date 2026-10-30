@@ -23,6 +23,7 @@ export const config = {
   noticeReport: false,
   climberTest: true,
   scheduleAlert: true,
+  closureWarning: false, // 닫힘·단축 제보 경고(docs/superpowers/specs/2026-10-29-closure-warning-design.md): report-tap의 GET /v1/tap-summary를 읽는다. Worker에 그 경로가 배포된 뒤 켠다
   singlePitch: false,
   data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',

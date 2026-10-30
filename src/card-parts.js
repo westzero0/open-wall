@@ -4,6 +4,7 @@
 //   gaugeBar(bar)      the day's bar: open stretches, sun bands, the pin at the picked time
 //   gaugeEnds(bar)     open time (left) and close time (right) under the bar's ends
 //   remainPill(left)   "10시간" / "10시간 가능", "곧 마감", "3시간 뒤 휴게" (the closing time is the gauge's right end): the wording is picked by css width (.lf-s / .lf-l)
+//   warnPill(warn, call) / warnNote(warn)  closure-warning: "닫혔을 수 있어요 · 확인 중" in the place of remainPill, and its line ("12분 전 제보 · …") in the expanded card
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
 //   dock(go, been, tel) the actions under the photo: 길찾기 · 전화 (icons only; no 전화 without a number) and 다녀왔어요
 //   goRow(mk, kids, …) a tappable info line (이름 칸 · 내용 · ›) that opens a sheet
@@ -62,6 +63,21 @@ export function remainPill(left) {
   if (!left) return null;
   // the short wording is hidden from screen readers; the long one is always read (css only clips it on a narrow screen)
   return el('span', { class: 'lf-card' }, el('span', { class: 'lf-s', 'aria-hidden': 'true' }, left.short), el('span', { class: 'lf-l' }, left.long));
+}
+
+// 닫힘·단축 제보 (closure-warning.js `warn`): amber pill in the place of remainPill. `call` is the phone button the app built (null: no number).
+// The pill has the words, so colour is never the only signal; the phone beside it is how the visitor checks before going.
+export function warnPill(warn, call = null) {
+  if (!warn) return null;
+  return el('span', { class: 'warn-wrap' },
+    el('span', { class: 'warn-pill', 'aria-label': `제보로 ${warn.phrase}, 확인 중` }, el('span', { class: 'wp-t' }, warn.phrase), el('span', { class: 'wp-s', 'aria-hidden': 'true' }, ' · 확인 중')),
+    call);
+}
+
+// The expanded card's line under the name: when it was reported and what to do about it.
+export function warnNote(warn, agoWord, how) {
+  if (!warn) return null;
+  return el('p', { class: 'warn-note' }, [warn.onsite ? '현장 제보' : null, warn.onsite ? agoWord?.replace(/ 제보$/, '') : agoWord || null, how || null].filter(Boolean).join(' · '));
 }
 
 // 누르는 .irow (주차·근처·어프로치 줄): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳.

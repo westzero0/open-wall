@@ -630,7 +630,7 @@ export function useRowOf(wall, now = new Date()) {
   return note ? { text: withWon(note) } : { empty: true };
 }
 
-export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0 } = {}) {
+export function cardModel(row, at, { now = new Date(), visits = null, crowd = null, settingNew = false, weather = null, weatherAhead = [], stayHours = DEFAULT_STAY_H, ropeM = 0, warning = null } = {}) {
   const { wall, status } = row;
   const tags = wall.tags ?? [];
   const fee = entryFee(wall, now);
@@ -692,11 +692,12 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     where,
     place, // expanded row
     state: status.state,
-    soon: endingSoon(row),
+    warn: warning, // closure-warning.js: a closed / short report covers the "열림" words (leftCard, left) with 확인 중; the hours themselves stay
+    soon: !warning && endingSoon(row),
     short: Boolean(row.short),
     statusText: text,
-    left: rowLeft(status, at, wall),
-    leftCard: leftCard(status),
+    left: warning ? '확인 중' : rowLeft(status, at, wall),
+    leftCard: warning ? null : leftCard(status),
     hoursOnGauge: Boolean(bar?.open.length), // the gauge's ends say the hours: the photo does not repeat them
     sub: [where, plain ? text : statusText(status, at, wall, { dropClose: true })].filter(Boolean).join(' · '),
     sun: sunTag(row),

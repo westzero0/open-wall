@@ -667,6 +667,8 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 /* light bars (closed, the legend's past swatch) get an edge with 3:1 against the sheet, so their length stays readable */
 .row.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .row.soon .bar .seg { background: var(--soon); }
+/* 닫힘·단축 제보(closure-warning): the green "열림" fill gives way to an amber outline, so the bar does not say 열림 over a warning; the passed grey stays */
+.row.warned .bar .seg:not(.past), .card.warned .bar .seg:not(.past) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warn); }
 .row.soon .bar .seg.past, .card.soon .bar .seg.past { background: var(--gone); } /* gone is grey on a closing-soon bar too: only the time left is pink */
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
 .sunband.cap-l, .g-sunon.cap-l { border-top-left-radius: var(--r-sm); border-bottom-left-radius: var(--r-sm); } /* the orange that starts at the bar's start keeps its round end */
@@ -775,6 +777,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) :is(.sunnow.shade, .sunnow.unknown, .sunnow.indoor).pic { color: var(--muted-on-white); }
 .row.has-photo.is-open .bar .seg { background: var(--on-photo); box-shadow: none; }
 .row.has-photo.is-open.soon .bar .seg { background: var(--soon-on-white); box-shadow: 0 0 0 1px #fff; } /* closing soon over a photo: pink with a white edge */
+.row.has-photo.is-open.warned .bar .seg:not(.past) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--on-photo); } /* the warning's outline over a photo */
 .row.has-photo.is-open .bar .seg.past, .row.has-photo.is-open.soon .bar .seg.past { background: rgb(255 255 255 / .55); box-shadow: 0 0 0 1px rgb(0 0 0 / .3); } /* gone: still visible over a bright sky, edged like the sun band */
 /* the pin (thicker on an open card) and the time-left chip say where now is: the grey/colour split is not the only cue */
 .row.is-open .tick, .card .tick { width: 3px; margin-left: -1.5px; }
@@ -817,6 +820,13 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 /* the decision line: today's hours one step larger */
 .susp-pill { display: inline-block; padding: 0 var(--sp-10); border-radius: var(--r-pill); background: var(--warn); color: var(--on-accent); font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
 .today-row .today b.susp-pill, .rhero-cap b.susp-pill { display: inline-block; width: fit-content; margin-top: var(--sp-4); font-size: var(--fs-sm); line-height: 1.8; letter-spacing: 0; text-shadow: none; } /* a small pill, not the 2rem hours of an open day */
+/* 닫힘·단축 제보: an amber pill in the place of the remaining-time pill, the phone beside it (44px target); the words carry it, colour only helps */
+.warn-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); vertical-align: middle; }
+.warn-pill { display: inline-block; padding: 0 var(--sp-10); border-radius: var(--r-pill); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); font-weight: 700; font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
+.warn-left { color: var(--warn); font-weight: 700; white-space: nowrap; }
+.warn-line { margin-top: var(--sp-6); }
+.warn-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--warn); }
+.row.is-open.warned .row-btn .left { display: none; } /* the open card says it in its own pill */
 .g-lead.susp { color: var(--warn); font-weight: 600; }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
@@ -1426,7 +1436,7 @@ html[data-text] .segs :is(label, button) { flex: 1 1 auto; padding: 0 var(--sp-8
 }
 .card > :not(.thumb):not(.head) { grid-column: 1 / -1; }
 .card.open { border-left-color: var(--open); }
-.card.open.short { border-left-color: var(--warn); }
+.card.open.short, .card.open.warned { border-left-color: var(--warn); }
 .card.unknown { border-left-color: var(--line-strong); color: var(--muted); }
 
 .thumb { width: 72px; height: 72px; border-radius: var(--r-md); object-fit: cover; background: var(--sunken); display: block; }
