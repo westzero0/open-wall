@@ -29,7 +29,7 @@ import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
-import { MAX_SCHEDULE, addSkipped, addWall, closureAlerts, toggleDay, askYesterday, loadSchedule, loadSkipped, plannedOn, rainAlerts, saveSchedule, saveSkipped } from './schedule.js';
+import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekPlan } from './schedule.js';
 import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, weekPicker } from './schedule-view.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
@@ -751,6 +751,7 @@ function addrLine(m) {
 const allWalls = () => [...state.walls, ...state.crags]; // the lists a ♥ is read against (names in memory, ids in the store)
 let favs = loadFavs(storage); // ids until the lists load; resolved to names right after (see the line after state.crags)
 let schedule = loadSchedule(storage); // 운동 스케줄 (src/schedule.js): ids until the lists load, names after (next to favs)
+let moves = loadMoves(storage, [], new Date()); // 이번 주만 옮긴 운동일 [{wall, from, to}] (ids until the lists load, names after)
 let skipped = loadSkipped(storage, new Date()); // 안 갔어요 answers of the last two weeks ([{wall, date}]): not asked again
 let changesSeen = loadChangesSeen(storage); // 이번 주 변경: the ones a visitor already dismissed
 // 세팅일이 바뀌었어요 (setting.js): the setting.last seen per ♥ wall; a first look only records it
@@ -924,7 +925,7 @@ const syncWxCredit = () => { if ($('wxCredit')) $('wxCredit').hidden = !wxList.b
 const paintListWx = syncWxCredit;
 const pickWeather = (wall, date) => dayWeather(wxPick.byName.get(wall.name)?.get(dayKey(date)));
 const rainsOn = (it) => !!it.wx?.rain && it.wall.venue !== 'indoor';
-// 운동 스케줄 비 알림 (docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md): a card above the weekend picks, only when a 운동 요일 of the
+// 내 운동 스케줄 (docs/superpowers/specs/2026-10-30-week-schedule-card-design.md): a card above the weekend picks whenever a 운동 요일 is set (folded: weekHint; opened: the week strip and the picked day) —
 // week has rain. It asks for no forecast of its own: the weekend picks' one request (every outdoor wall, 7 days) answers it too.
 let askFocus = false; // 기록하기 was pressed: when the row goes after the save, move the focus on
 function renderSched() {
@@ -933,7 +934,7 @@ function renderSched() {
   if (wanted) loadWeekendWeather();
   const today = new Date();
   if ($('schedAsk')) { // 어제 다녀왔어요?: asked once; 기록하기 opens the 기록 추가 sheet with the wall and the day filled in, and the record itself ends the question (onChange → render)
-    const ask = featureOn('schedule') && state.walls.length ? askYesterday({ schedule, walls: state.walls, recordsFor: logView.recordsFor, skipped, today }) : null;
+    const ask = featureOn('schedule') && state.walls.length ? askYesterday({ schedule, walls: state.walls, recordsFor: logView.recordsFor, skipped, today, moves }) : null;
     renderScheduleAsk({ box: $('schedAsk') }, {
       ask,
       onRecord: (a, btn) => { askFocus = true; logView.openAdd({ wall: a.wall.name, date: a.date, from: btn }); },
@@ -953,10 +954,8 @@ function renderSched() {
     const next = $('sched');
     if (next && !next.hidden) next.querySelector('summary')?.focus();
   }
-  const shut = wanted ? closureAlerts(schedule, { walls: state.walls, today }) : [];
-  const alerts = wanted ? [...shut, ...rainAlerts(schedule, { walls: state.walls, forecasts: wxPick.byName, today }).filter((a) => !shut.some((s) => s.wall === a.wall))] : []; // a wall that is shut says so alone: its rain would offer the same walls twice
   renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body'), live: $('sched-live') }, {
-    alerts, walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
+    plan: wanted ? weekPlan(schedule, moves, { walls: state.walls, forecasts: wxPick.byName, today }) : null, moves, onMove, onClear: (wall, from, msg) => moveChange(clearMove(moves, wall, from), msg), walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
     onOpen: (wall, date) => { goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
   });
 }
@@ -968,17 +967,25 @@ function drawScheduleRows() {
   if (row.hidden) return;
   renderScheduleRows($('scheduleBody'), { schedule, walls: state.walls, favs, toast, onChange: scheduleChange, getOrigin: () => vs.origin });
 }
+function onMove(wall, from, to, msg) { moveChange(setMove(moves, { wall, from, to }), msg); }
+function moveChange(next, msg) { // 이번 주만 옮기기: saved like the schedule; the 기록 달력's dots, 어제 다녀왔어요? and the rain words all read `moves`; 되돌리기 puts the earlier list back
+  const before = moves;
+  const put = (list) => { moves = liveMoves(schedule, list, new Date()); saveMoves(storage, moves, allWalls(), new Date()); renderSched(); if (ui.tab === 'log') logView.render(); };
+  put(next);
+  toast(msg, () => put(before), '되돌리기');
+}
 function scheduleChange(next, focusDow = null) { 
   const y = new Date(); y.setDate(y.getDate() - 1); // a weekday switched on now is not asked about for yesterday: the visitor has just made the schedule
   for (const e of next) if (e.days.includes(y.getDay()) && !schedule.find((x) => x.wall === e.wall)?.days.includes(y.getDay())) skipped = addSkipped(skipped, e.wall, ymd(y), new Date());
   saveSkipped(storage, skipped, new Date());
+  moves = liveMoves(next, moves, new Date()); saveMoves(storage, moves, allWalls(), new Date()); // a wall or weekday taken out takes its moves along
   schedule = next; saveSchedule(storage, schedule, allWalls()); renderSched(); refreshScheduleChips(focusDow); if (ui.tab === 'log') logView.render(); // the 기록 달력's dots follow
 }
 $('meBtn')?.addEventListener('click', drawScheduleRows);
 planOf = (date) => {
   if (!featureOn('schedule')) return [];
   if (schedule.some((e) => e.days.length)) loadWeekendWeather(); // the home may not have asked for the forecast (the 기록 tab can be the first screen); it asks once, and is quiet when fresh
-  return plannedOn(schedule, { walls: state.walls, forecasts: wxPick.byName, date, today: new Date() });
+  return plannedOn(schedule, { walls: state.walls, forecasts: wxPick.byName, date, today: new Date(), moves });
 };
 function renderPick() {
   const box = $('pick');
@@ -2808,6 +2815,7 @@ setWalls(state.walls);
 if (cragOn) state.crags = await fetchCrags().catch(() => []);
 favs = loadFavs(storage, allWalls());
 schedule = loadSchedule(storage, allWalls());
+moves = liveMoves(schedule, loadMoves(storage, allWalls(), new Date()), new Date());
 logView.reconcile(allWalls());
 if (cragOn) loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}); // the save totals are asked again with the topos
 showLoadError(!first);

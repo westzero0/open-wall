@@ -477,7 +477,8 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .pick-note { margin: 0; padding: var(--sp-4) 0 var(--sp-12); color: var(--muted); font-size: var(--fs-xs); }
 /* 운동 스케줄 비 알림 (src/schedule-view.js): the home card reuses .pick; its week is seven tappable days, and the 내 정보 sheet's weekdays are the same cells as toggles */
 .sd-rain { display: inline-flex; padding: var(--sp-2) var(--sp-6); color: var(--soon); }
-.sd-rain svg { width: 24px; height: 24px; }
+.sd-rain svg, .sd-ok svg { width: 24px; height: 24px; }
+.sd-ok { display: inline-flex; padding: var(--sp-2) var(--sp-6); color: var(--accent); } /* a folded card with nothing wrong: the same chip, without the pink */
 .sd-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--sp-2); margin: 0 0 var(--sp-6); padding: 0; list-style: none; }
 .sd-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); width: 100%; min-height: var(--tap); padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--muted); font: inherit; font-size: var(--fs-xs); }
 .sd-day b { font-weight: 600; }
@@ -492,6 +493,20 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .sd-day[aria-pressed="true"] b, .sd-day[aria-pressed="true"] svg, .sd-tog:has(:checked) b { color: var(--on-accent); }
 .sd-tog:has(:checked) b { font-weight: 700; }
 .sd-day:focus-visible, .sd-tog:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sd-day:disabled { opacity: .45; } /* a day with no 운동: same dimming as a closing weekday */
+.sd-day .pick-altk { line-height: 1; font-weight: 400; } /* 옮김: a wall left this day (a small label in the cell) */
+.sd-day[aria-pressed="true"] .pick-altk { color: var(--on-accent); }
+.sd-line { flex-direction: row; justify-content: space-between; align-items: baseline; gap: var(--sp-8); border-top: 1px solid var(--line); } /* a wall of the picked day: a row, the picked one a step sunken */
+.pick-dh + .sd-line { border-top: 0; }
+.sd-line[aria-expanded="true"] { background: var(--sunken); }
+.sd-line .pick-why { flex: none; font-size: var(--fs-xs); }
+.sd-move { padding: var(--sp-6) var(--sp-12) var(--sp-12); background: var(--sunken); } /* under the picked wall: move it a day; continues the sunken line */
+.sd-moveb { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+.sd-move .sh-toggle, .sd-out .sh-toggle { white-space: nowrap; }
+.sd-move .sh-toggle:disabled { opacity: .45; cursor: default; } /* the same dimming as a closing weekday */
+.sd-move .pick-altk { margin-left: var(--sp-4); } /* 맑음 inside the button */
+.sd-move .sh-hint { margin-top: var(--sp-6); }
+.sd-out { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-8); }
 .sd-tog { cursor: pointer; }
 .sd-tog:has(:disabled) { opacity: .45; cursor: default; } /* a closing weekday of the wall: same dimming as the other disabled buttons */
 .sd-tog b { color: var(--fg); font-size: var(--fs-sm); }

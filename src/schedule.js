@@ -78,12 +78,12 @@ const dayAt = (today, i) => new Date(today.getFullYear(), today.getMonth(), toda
  * weekStrip(entry, forecast, today) → seven days from today: { date, dow, label (오늘 / 월…일), mine (a 운동 요일), known (the forecast has the day),
  * rain, text ('비 예보 70%' or null), p }. forecast: Map 'YYYY-MM-DD' → { mm, p, g } for the entry's wall (weather.js parseDaily); the rain is dayWeather's.
  */
-export function weekStrip(entry, forecast, today) {
+export function weekStrip(entry, forecast, today, moves = []) {
   return Array.from({ length: STRIP_DAYS }, (_, i) => {
     const date = dayAt(today, i);
     const f = forecast?.get(dayKey(date)) ?? null;
     const wx = dayWeather(f);
-    return { date, dow: date.getDay(), label: i === 0 ? '오늘' : DAY_KO[date.getDay()], mine: entry.days.includes(date.getDay()), known: !!f, rain: !!wx?.rain, text: wx?.rainText ?? null, p: f?.p ?? null };
+    return { date, dow: date.getDay(), label: i === 0 ? '오늘' : DAY_KO[date.getDay()], mine: isPlanned(entry, date, moves), known: !!f, rain: !!wx?.rain, text: wx?.rainText ?? null, p: f?.p ?? null };
   });
 }
 
@@ -94,11 +94,11 @@ export function nextDryDay(strip, i) {
 }
 
 /**
- * alternatives(wall, date, { walls, favs, forecasts, now }) → up to three walls to go to instead, [{ wall, km, fav }]: dry that day (an indoor wall is dry by itself and needs no forecast), open that day
+ * alternatives(wall, date, { walls, favs, forecasts, now }) → up to `limit` (MAX_ALTS) walls to go to instead, [{ wall, km, fav }]: dry that day (an indoor wall is dry by itself and needs no forecast), open that day
  * (today: still open after `now`; a timetable that is out of date does not count, as in the weekend picks), within NEAR_KM of `wall`, nearest first;
  * what is missing is filled with dry ♥ walls at any distance. forecasts: Map wall name → parseDaily's day Map.
  */
-export function alternatives(wall, date, { walls, favs = [], forecasts, now = null }) {
+export function alternatives(wall, date, { walls, favs = [], forecasts, now = null, limit = MAX_ALTS }) {
   const key = dayKey(date);
   const origin = wallPosition(wall);
   const nowMin = now && dayKey(now) === key ? now.getHours() * 60 + now.getMinutes() : 0;
@@ -113,57 +113,70 @@ export function alternatives(wall, date, { walls, favs = [], forecasts, now = nu
   const row = (w) => ({ wall: w, km: km(w), fav: favs.includes(w.name) });
   const byKm = (a, b) => (a.km ?? Infinity) - (b.km ?? Infinity);
   const pool = walls.filter(ok).map(row);
-  const near = pool.filter((r) => r.km !== null && r.km <= NEAR_KM).sort(byKm).slice(0, MAX_ALTS);
-  const fill = pool.filter((r) => r.fav && !near.includes(r)).sort(byKm).slice(0, MAX_ALTS - near.length);
+  const near = pool.filter((r) => r.km !== null && r.km <= NEAR_KM).sort(byKm).slice(0, limit);
+  const fill = pool.filter((r) => r.fav && !near.includes(r)).sort(byKm).slice(0, limit - near.length);
   return [...near, ...fill];
 }
 
 /**
- * rainAlerts(schedule, { walls, forecasts, today }) → one per scheduled outdoor wall that has rain on a 운동 요일 this week:
- * { entry, wall, strip, pick } with pick the strip index of the first such day. Walls not in the list, with no days or indoors say nothing.
+ * weekPlan(schedule, moves, { walls, forecasts, today }) → seven cells from today, the home card's week (spec 2026-10-30-week-schedule-card-design §2·§3):
+ * { date, dow, label (오늘 / 월…일), items, out, bad, text, icon }. items: the walls trained on that day (moves applied), shut and rainy first, then the schedule's order,
+ * each { entry, wall, indoor, state: 'suspended' | 'closed' | 'rain' | 'dry' | 'unknown', text, moved }; a shut wall says nothing of its rain, an indoor wall is dry.
+ * out: the walls moved away from the day, [{ wall, to: Date }]. bad: a shut or rainy item. text: the worst item's words, icon: 'alert' | 'sky-rain' | 'check' | 'dash'.
+ * A weekly or nth-of-month closing is the timetable, not news, so it is no state. Walls not in the list are left out.
  */
-export function rainAlerts(schedule, { walls, forecasts, today }) {
-  const out = [];
-  for (const entry of schedule) {
-    const wall = walls.find((w) => w.name === entry.wall);
-    if (!wall || wall.venue === 'indoor' || !entry.days.length) continue;
-    const strip = weekStrip(entry, forecasts.get(wall.name), today);
-    const pick = strip.findIndex((d) => d.mine && d.rain);
-    if (pick >= 0) out.push({ entry, wall, strip, pick });
-  }
-  return out;
-}
-
-/**
- * closureAlerts(schedule, { walls, today }) → one per scheduled wall that is shut on a 운동 요일 in the next seven days: { kind: 'closed', entry, wall, date, pick, suspended },
- * the first such day (pick: its index from today). 임시휴무 (exceptions.closed_dates) or 임시 휴관 with no end date (suspended; it shuts every day, so the first 운동 요일 is it);
- * a weekly or nth-of-month closing is the timetable, not news. Walls not in the list or with no days say nothing.
- */
-export function closureAlerts(schedule, { walls, today }) {
-  const out = [];
-  for (const entry of schedule) {
-    const wall = walls.find((w) => w.name === entry.wall);
-    if (!wall || !entry.days.length) continue;
-    for (let pick = 0; pick < STRIP_DAYS; pick++) {
-      const date = dayAt(today, pick);
-      const why = entry.days.includes(date.getDay()) ? dayRule(wall, date).why : null;
-      if (why === 'suspended' || why === 'closed_date') { out.push({ kind: 'closed', entry, wall, date, pick, suspended: why === 'suspended' }); break; }
+export function weekPlan(schedule, moves, { walls, forecasts, today }) {
+  const rank = { suspended: 0, closed: 0, rain: 1, dry: 2, unknown: 2 };
+  return Array.from({ length: STRIP_DAYS }, (_, i) => {
+    const date = dayAt(today, i);
+    const key = ymd(date);
+    const items = [];
+    const out = [];
+    for (const entry of schedule) {
+      const wall = walls.find((w) => w.name === entry.wall);
+      if (!wall) continue;
+      if (isPlanned(entry, date, moves)) {
+        const why = dayRule(wall, date).why;
+        const indoor = wall.venue === 'indoor';
+        const wx = indoor ? null : dayWeather(forecasts.get(wall.name)?.get(dayKey(date)));
+        const [state, text] = why === 'suspended' ? ['suspended', '휴관 중이에요'] : why === 'closed_date' ? ['closed', '임시휴무']
+          : indoor ? ['dry', '실내'] : !wx ? ['unknown', '예보 없어요'] : wx.rain ? ['rain', wx.rainText] : ['dry', '비 없어요'];
+        const mv = moves.find((m) => m.wall === entry.wall && m.to === key);
+        items.push({ entry, wall, indoor, state, text, moved: !!mv, ...(mv && { from: mv.from }) });
+      } else {
+        const m = moves.find((x) => x.wall === entry.wall && x.from === key);
+        if (m) out.push({ wall, to: new Date(+m.to.slice(0, 4), +m.to.slice(5, 7) - 1, +m.to.slice(8)) });
+      }
     }
-  }
-  return out;
+    items.sort((a, b) => rank[a.state] - rank[b.state]);
+    const states = items.map((x) => x.state);
+    const worst = states[0];
+    const bad = rank[worst] < 2 && items.length > 0;
+    const text = !items.length ? '' : worst === 'suspended' ? '휴관' : worst === 'closed' ? '임시휴무' : worst === 'rain' ? items[0].text : states.includes('dry') ? '비 없어요' : '예보 없어요';
+    const icon = !items.length ? null : bad ? (worst === 'rain' ? 'sky-rain' : 'alert') : states.includes('dry') ? 'check' : 'dash';
+    return { date, dow: date.getDay(), label: i === 0 ? '오늘' : DAY_KO[date.getDay()], items, out, bad, text, icon };
+  });
 }
 
 export const dayWord = (date, pick) => (pick === 0 ? '오늘' : pick === 1 ? '내일' : `${DAY_KO[date.getDay()]}요일`);
 
-/** hintOf(alerts) → the folded card's line: the first wall, its first rainy (or shut) day and the words, "외 N곳" for the rest; '' without alerts. */
-export function hintOf(alerts) {
-  if (!alerts.length) return '';
-  const [a] = alerts;
-  const name = a.wall.short_name || a.wall.name;
-  const more = alerts.length > 1 ? ` 외 ${alerts.length - 1}곳` : '';
-  if (a.kind === 'closed') return `${name} · ${a.suspended ? '휴관 중이에요' : `${dayWord(a.date, a.pick)} 임시휴무`}${more}`;
-  const d = a.strip[a.pick];
-  return `${name} · ${dayWord(d.date, a.pick)} ${d.text}${more}`;
+/**
+ * weekHint(plan) → { text, icon } for the folded card, '' / null without a 운동일. The earliest day with a shut or rainy wall, its first wall and words ("외 N곳" for the other
+ * walls with trouble that week); without trouble the nearest 운동일 ("비 없어요", or just "운동" when there is no forecast; "외 N곳" for the walls of that day).
+ */
+export function weekHint(plan) {
+  const name = (it) => it.wall.short_name || it.wall.name;
+  const i = plan.findIndex((c) => c.bad);
+  if (i >= 0) {
+    const [first] = plan[i].items;
+    const others = new Set(plan.flatMap((c) => c.items.filter((it) => it.state !== 'dry' && it.state !== 'unknown')).map(name));
+    others.delete(name(first));
+    return { text: `${dayWord(plan[i].date, i)} ${name(first)} · ${first.text}${others.size ? ` 외 ${others.size}곳` : ''}`, icon: plan[i].icon };
+  }
+  const j = plan.findIndex((c) => c.items.length);
+  if (j < 0) return { text: '', icon: null };
+  const [first, ...rest] = plan[j].items;
+  return { text: `${dayWord(plan[j].date, j)} ${name(first)}${first.state === 'unknown' ? ' 운동' : ` · ${first.text}`}${rest.length ? ` 외 ${rest.length}곳` : ''}`, icon: 'check' };
 }
 
 // ---- 어제 다녀왔어요? (spec 2단계): once a 운동 요일 has passed with no record, ask for it the next time the app opens. Never records by itself:
@@ -209,12 +222,12 @@ export const addSkipped = (skipped, wall, date, today) => cleanSkipped([...skipp
  * askYesterday({ schedule, walls, recordsFor(name), skipped, today }) → { wall, date, label } for the first scheduled wall that had yesterday as a 운동 요일,
  * has no record for that day and was not answered 안 갔어요; else null. One at a time, and only yesterday: an older day is not asked about.
  */
-export function askYesterday({ schedule, walls, recordsFor, skipped, today }) {
+export function askYesterday({ schedule, walls, recordsFor, skipped, today, moves = [] }) {
   const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
   const date = ymd(day);
   for (const e of schedule) {
     const wall = walls.find((w) => w.name === e.wall);
-    if (!wall || !e.days.includes(day.getDay())) continue;
+    if (!wall || !isPlanned(e, day, moves)) continue;
     if (recordsFor(wall.name).some((r) => r.date === date) || skipped.some((x) => x.wall === wall.name && x.date === date)) continue;
     return { wall, date, label: `어제(${DAY_KO[day.getDay()]})` };
   }
@@ -223,16 +236,113 @@ export function askYesterday({ schedule, walls, recordsFor, skipped, today }) {
 
 // ---- 기록 달력의 운동 예정 (spec 2단계): the dot on a day to come and the line under the picked day
 /**
- * plannedOn(schedule, { walls, forecasts, date, today }) → [{ name, rain }] for the scheduled walls whose 운동 요일 is `date` ('YYYY-MM-DD', today or later);
+ * plannedOn(schedule, { walls, forecasts, date, today, moves }) → [{ name, rain, moved? }] for the scheduled walls whose 운동 요일 is `date` ('YYYY-MM-DD', today or later);
  * rain is the 비 예보 words when the forecast has the day and it is wet (an indoor wall: null), else null. Walls not in the list are left out.
  */
-export function plannedOn(schedule, { walls, forecasts, date, today }) {
+export function plannedOn(schedule, { walls, forecasts, date, today, moves = [] }) {
   if (!realDay(date) || date < ymd(today)) return [];
-  const dow = new Date(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8)).getDay();
-  return schedule.filter((e) => e.days.includes(dow)).flatMap((e) => {
+  const day = new Date(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8));
+  return schedule.filter((e) => isPlanned(e, day, moves)).flatMap((e) => {
     const wall = walls.find((w) => w.name === e.wall);
     if (!wall) return [];
     const wx = wall.venue === 'indoor' ? null : dayWeather(forecasts.get(wall.name)?.get(date));
-    return [{ name: wall.name, short: wall.short_name || wall.name, rain: wx?.rainText ?? null }];
+    return [{ name: wall.name, short: wall.short_name || wall.name, rain: wx?.rainText ?? null, ...(moves.some((m) => m.wall === e.wall && m.to === date) && { moved: true }) }];
+  });
+}
+
+// ---- 이번 주만 옮기기 (spec 2026-10-30-week-schedule-card-design §6): one 운동일 of one wall moved a day or so; the weekly `days` stay as they are
+export const SCHEDULE_MOVES_KEY = 'open-wall:schedule-moves';
+export const MAX_MOVES = 20;
+export const MOVE_KEEP_DAYS = 14; // a move whose days are both older than this is forgotten
+export const MOVE_SPAN = 6; // a day is moved at most this far from where it was
+
+const dayNo = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8)) / 864e5;
+
+/** cleanMoves(v, today) → [{ wall, from, to }]: real, different days at most MOVE_SPAN apart, not both older than MOVE_KEEP_DAYS; one per (wall, from) and (wall, to), the later wins; the newest MAX_MOVES. */
+export function cleanMoves(v, today) {
+  if (!Array.isArray(v)) return [];
+  const oldest = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() - MOVE_KEEP_DAYS));
+  let out = [];
+  for (const e of v) {
+    if (!e || typeof e !== 'object' || typeof e.wall !== 'string' || !realDay(e.from) || !realDay(e.to) || e.from === e.to) continue;
+    const wall = nfc(e.wall);
+    if (!wall || wall.length > MAX_NAME || Math.abs(dayNo(e.to) - dayNo(e.from)) > MOVE_SPAN || (e.from < oldest && e.to < oldest)) continue;
+    out = out.filter((x) => x.wall !== wall || (x.from !== e.from && x.to !== e.to));
+    out.push({ wall, from: e.from, to: e.to });
+  }
+  return out.slice(-MAX_MOVES);
+}
+
+// Stored with the wall's id like the schedule; without `walls` an id stays as it is, with them a wall that is not in the list is dropped.
+export function loadMoves(storage, walls = [], today = new Date()) {
+  try {
+    const byId = new Map(walls.map((w) => [wallPageId(w), w.name]));
+    const raw = JSON.parse(storage.getItem(SCHEDULE_MOVES_KEY));
+    const list = cleanMoves(Array.isArray(raw) ? raw.map((e) => (e && typeof e === 'object' ? { ...e, wall: byId.get(e.wall) ?? e.wall } : e)) : raw, today);
+    return walls.length ? list.filter((m) => walls.some((w) => w.name === m.wall)) : list;
+  } catch {
+    return [];
+  }
+}
+
+export function saveMoves(storage, moves, walls = [], today = new Date()) {
+  try {
+    const byName = new Map(walls.map((w) => [w.name, wallPageId(w)]));
+    storage.setItem(SCHEDULE_MOVES_KEY, JSON.stringify(cleanMoves(moves, today).map((m) => ({ ...m, wall: byName.get(m.wall) ?? m.wall }))));
+  } catch { /* storage full or blocked: keep in memory */ }
+}
+
+const dowOf = (s) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8)).getDay();
+
+/** liveMoves(schedule, moves, today) → the moves that still mean something: the wall is scheduled, `from` is one of its 운동 요일 and `to` is not, no two onto one day. Stored as they are. */
+export function liveMoves(schedule, moves, today) {
+  const out = [];
+  for (const m of cleanMoves(moves, today)) {
+    const e = schedule.find((x) => x.wall === m.wall);
+    if (e && e.days.includes(dowOf(m.from)) && !e.days.includes(dowOf(m.to)) && !out.some((x) => x.wall === m.wall && x.to === m.to)) out.push(m);
+  }
+  return out;
+}
+
+/** isPlanned(entry, date, moves) → is `date` a 운동 day of the entry's wall: moved onto, or its weekday and not moved away. moves: liveMoves'. The one place that decides it. */
+export function isPlanned(entry, date, moves = []) {
+  const key = ymd(date);
+  const mine = moves.filter((m) => m.wall === entry.wall);
+  return mine.some((m) => m.to === key) || (entry.days.includes(date.getDay()) && !mine.some((m) => m.from === key));
+}
+
+/** setMove(moves, { wall, from, to }) → the list with that day moved (the same (wall, from) is moved again; two onto one day keep the later); to === from is the day put back. */
+export function setMove(moves, { wall, from, to }) {
+  const rest = moves.filter((m) => m.wall !== wall || (m.from !== from && m.to !== to));
+  return from === to ? rest : [...rest, { wall, from, to }].slice(-MAX_MOVES);
+}
+
+export const clearMove = (moves, wall, from) => moves.filter((m) => m.wall !== wall || m.from !== from);
+
+export const keyDay = (s) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8));
+
+/**
+ * moveTargets(item, date, { today, moves, forecasts }) → the two moves of a weekPlan item on `date`, [{ dir: -1 | 1, date, disabled, reason, sunny }]: a day before and a day after.
+ * disabled with `reason` (a line to show): a past day, beyond the strip's last day, a day the wall is already trained on, a closing day (dayRule slot null), too far from where the day started (MOVE_SPAN).
+ * sunny: the item is rainy or shut and this day has a forecast without rain (an indoor wall never; no forecast is no tip).
+ */
+export function moveTargets(item, date, { today, moves = [], forecasts }) {
+  const { entry, wall } = item;
+  const first = ymd(today);
+  const last = ymd(dayAt(today, STRIP_DAYS - 1));
+  const from = item.from ?? ymd(date); // where this day started: a moved day goes on from its first place
+  const bad = item.state === 'suspended' || item.state === 'closed' || item.state === 'rain';
+  return [-1, 1].map((dir) => {
+    const to = new Date(date.getFullYear(), date.getMonth(), date.getDate() + dir);
+    const key = ymd(to);
+    const word = `${DAY_KO[to.getDay()]}요일`;
+    const reason = key < first ? '지난 날이에요'
+      : key > last ? '이번 주 줄 밖이에요'
+      : isPlanned(entry, to, moves) ? `${word}에 이미 있어요`
+      : key !== from && entry.days.includes(to.getDay()) ? `${word}은 옮겨 둔 날이에요`
+      : dayRule(wall, to).slot === null ? `${word}은 쉬는 날이에요`
+      : Math.abs(dayNo(key) - dayNo(from)) > MOVE_SPAN ? '너무 멀리 옮길 수 없어요' : null;
+    const wx = item.indoor ? null : dayWeather(forecasts.get(wall.name)?.get(dayKey(to)));
+    return { dir, date: to, disabled: !!reason, reason, sunny: bad && !item.indoor && !reason && !!wx && !wx.rain };
   });
 }
