@@ -9,6 +9,7 @@ import { MAX_NICK, NICK_KEY, cleanNick, loadNick, nickLocked, nickMode } from '.
 import { GRADES, gradeLabel } from './grades.js';
 import { loadMyGrade, saveMyGrade } from './my-grade.js';
 import { safeStorage, getStr, setStr, removeStr } from './storage.js';
+import { loadTapCount } from './tap.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -74,6 +75,9 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     });
     showNick = () => { // also run when the sheet opens
       nickIn.value = readNick();
+      const tc = safeStorage() ? loadTapCount(safeStorage()) : 0; // 제보자 · N회: a count only, no rank or badge (tap reports; this device)
+      $('pfTapCount').hidden = !tc;
+      $('pfTapCount').textContent = tc ? `제보자 · ${tc}회` : '';
       const locked = nickLocked(mode, nickIn.value);
       nickIn.readOnly = locked;
       $('pfNickLabel').textContent = locked ? '닉네임 (이벤트 중에는 바꿀 수 없어요)' : `닉네임 (${MAX_NICK}자까지)`;

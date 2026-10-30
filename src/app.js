@@ -3,7 +3,7 @@ import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, toMin, ymd } from './time.js';
 import { fetchNational, fetchCrags, loadWalls } from './store.js';
 import { state, storage, onChange, canEdit } from './state.js';
-import { config, boardOn } from './config.js';
+import { config, boardOn, tapOn } from './config.js';
 import { idByName, wallPageId } from './share-id.js';
 import { safeStorage, getStr, setStr } from './storage.js';
 import { idOf, nameOf, setWalls } from './wall-ids.js';
@@ -15,7 +15,10 @@ import { createMap } from './map.js';
 import { dialModel, sunHeadOf } from './dial.js';
 import { dayWindow } from './sun.js';
 import { renderScene, sceneTone } from './sun-scene.js';
-import { getStatus } from './hours.js';
+import { getStatus, hasHours, openIntervals } from './hours.js';
+import { buildTap, bumpTapCount, loadTapped, saveTapped, shownFromIntervals, tappedKey } from './tap.js';
+import { createTapApi } from './tap-api.js';
+import { tapRow } from './tap-view.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
   scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, summaryParts, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
@@ -1486,6 +1489,33 @@ function contactPills(m) {
     return a;
   });
 }
+
+// 시간 tab, under 운영시간: "오늘 이 시간이 맞나요?" 맞아요/달라요 (src/tap-view.js). Today only, a wall with a timetable, and only while config.reportTap is on.
+// The row is told what the sheet shows for the day (shownFromIntervals) so the report says what the user was looking at.
+function tapSection(wall, at) {
+  const date = ymd(at);
+  if (!tapOn() || !hasHours(wall) || date !== ymd(new Date())) return null;
+  const tapApi = createTapApi({ url: config.boardUrl });
+  const st = safeStorage();
+  const tapped = st ? loadTapped(st, date) : {};
+  const key = tappedKey('wall', wall.name, 'hours', date);
+  const shownV = shownFromIntervals(openIntervals(wall, at));
+  return el('section', { class: 'ws-sec ws-tap', 'aria-label': '운영시간 확인' }, tapRow({
+    prior: tapped[key]?.a ?? null,
+    send: async ({ answer, claim }) => {
+      const body = buildTap({ wall: wall.name, answer, claim, forDate: date, shown: shownV });
+      if (!body) throw new Error('bad tap');
+      const id = await tapApi.send(body);
+      if (st) { // the same day's tap again overwrites on the server: it counts once in 제보자 · N회
+        if (!(key in tapped)) bumpTapCount(st);
+        tapped[key] = { a: answer, t: Date.now() };
+        saveTapped(st, tapped);
+      }
+      return id;
+    },
+    onsite: (id, v) => tapApi.setOnsite(id, v),
+  }));
+}
 function buildWallSheet(wallName) {
   const row = allRows.find((r) => r.wall.name === wallName);
   const at = shown.at ?? new Date();
@@ -1511,7 +1541,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).map((s) => sheetSection(m, s, content[s.key])), t.key === 'time' && featureOn('schedule') ? scheduleSection(wall) : null), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'time' && featureOn('schedule') ? scheduleSection(wall) : null), // 시간 or 이용
     }))],
   };
 }

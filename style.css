@@ -2344,6 +2344,14 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-empty p { margin: 0; }
 .ws-ask.pri { background: var(--accent); color: var(--on-accent); }
 .ws-ask.sub { border-color: transparent; text-decoration: underline; text-underline-offset: 3px; }
+/* 시간 tab: 맞아요 / 달라요 (src/tap-view.js). Quiet neutral pills: one answer is not a guarantee, so no green. */
+.ws-tap { margin-top: var(--sp-8); min-height: 7rem; }
+.tap-msg { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.tap-btns { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin-top: var(--sp-8); }
+.tap-btn { min-height: var(--tap); padding: 0 var(--sp-14); min-width: calc(var(--tap) * 1.4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--fg); font: inherit; white-space: nowrap; }
+.tap-btn.sub { border-color: transparent; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.tap-msg.err { color: var(--warn); font-weight: 600; }
+.tap-btns:empty { display: none; }
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-14); border: 1px solid var(--accent); border-radius: var(--r-pill); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-info { display: grid; gap: var(--sp-8); } /* 외벽 제원 · 시설: its lists in one card */
 .ws-empty-sub { color: var(--muted); font-size: var(--fs-sm); }

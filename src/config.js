@@ -27,6 +27,7 @@ export const config = {
   singlePitch: false,
   data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
+  reportTap: false, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
   reportNickEntry: 'entry.1516503630', nickRequired: true,
   statsCode: 'haebyeok', // GoatCounter 사이트 코드(src/stats.js); 비우면 통계를 보내지 않는다
@@ -37,3 +38,5 @@ export const config = {
 
 // 게시판(Worker)이 켜졌는가. boardUrl이 비면 꺼진 것이고 요청도 가지 않는다. 화면은 boardUrl 대신 이것을 묻는다.
 export const boardOn = () => Boolean(config.boardUrl);
+// 탭 제보가 켜졌는가(reportTap과 boardUrl 둘 다). 꺼지면 줄도 요청도 없다.
+export const tapOn = () => Boolean(config.reportTap && config.boardUrl);
