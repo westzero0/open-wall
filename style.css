@@ -672,7 +672,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 .left .lf-pre { display: none; } /* 가능: only on the open card's pill */
 .row.is-open .left .lf-pre { display: inline; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
 .l1 .rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 400px) { html[data-text="xlarge"] .l1 .rname { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; min-width: 4em; flex: 1 1 4em; } html[data-text="xlarge"] .row.unknown .l1 .left { display: none; } html[data-text="xlarge"] .l1 { flex-wrap: wrap; } html[data-text="xlarge"] .l1 .left { margin-left: auto; } } /* 운영시간을 아직 몰라요 is the group's own title above: the row gives the width to the name */ /* the biggest text on a narrow phone: the name may take two lines before it is cut */
+@media (max-width: 400px) { .l1 .rname { min-width: 4em; flex: 1 1 4em; } .l1 { flex-wrap: wrap; } .l1 .left { margin-left: auto; } html[data-text="xlarge"] .l1 .rname { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; } html[data-text="xlarge"] .row.unknown .l1 .left { display: none; } } /* a narrow phone: the name keeps four characters and the time-left pill drops to the next line before it squeezes the name; xlarge may also wrap the name to two lines */ /* 운영시간을 아직 몰라요 is the group's own title above: the row gives the width to the name */ /* the biggest text on a narrow phone: the name may take two lines before it is cut */
 .rmeta { font-size: var(--fs-xs); color: var(--muted); height: 1.5rem; overflow: hidden; } /* wraps at spaces inside its one-line box: "서울 광진구" shows "서울" before it would show half a word */
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; color: var(--open); } /* the value is the same on most rows: light; .few (3 hours or less) is bold */
 .left.few, :is(.row, .crag-row).is-open .left { font-weight: 700; }
@@ -790,6 +790,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .rhero .credit { position: static; flex: 0 1 auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); opacity: .85; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: rgb(255 255 255 / .8); text-shadow: 0 1px 3px rgb(0 0 0 / .6); } /* a licensed photo: its credit as quiet text */
 :is(.row, .crag-row).has-photo.is-open > :is(.row-btn, .crag-head) { position: relative; z-index: 1; align-self: start; color: var(--on-photo); text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) :is(.rname, .rmeta, .basis, .fee, .been, .setnew, .newspill) { color: var(--on-photo); }
+:is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) :is(.setnew, .newspill) { background: transparent; border-color: currentColor; } /* over a photo there is no paper to fill: the outline keeps it legible */
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head):focus-visible { outline-color: var(--on-photo); box-shadow: inset 0 0 0 4px rgb(0 0 0 / .45); } /* a ring that shows on a photo: white inside a dark edge */
 .row.has-photo.is-open .row-btn .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-edge); color: var(--open-on-white); text-shadow: none; } /* a white pill in both themes: its text keeps the light theme's dark colours */
 .row.susp .rname { min-width: 4em; } /* the name never gives way to the reason */
@@ -849,6 +850,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .warn-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); vertical-align: middle; }
 .warn-pill { display: inline-block; padding: 0 var(--sp-10); border-radius: var(--r-pill); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); font-weight: 700; font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
 .warn-left { color: var(--warn); font-weight: 700; white-space: nowrap; }
+.has-photo.is-open .warn-left { color: var(--soon-on-white); } /* it sits on the white glass pill in both themes */
 .warn-line { margin-top: var(--sp-6); }
 .warn-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--warn); }
 .row.is-open.warned .row-btn .left { display: none; } /* the open card says it in its own pill */
@@ -875,7 +877,7 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .wxb-top .wxb-d { flex: 0 1 auto; min-width: 0; }
 .sunbox.sc .wx-box .wx-pill { background: var(--soon-on-white); color: #fff; } /* readable on every sky, light or dark */
 .wx-pill.cold { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; color: var(--muted); } /* 기온 낮음 is a condition, not a harm: muted like the row badge (--warn stays for rain and wind) */
-.sunbox.sc .wx-box .wx-pill.cold { background: rgb(0 0 0 / .4); color: #fff; }
+.sunbox.sc .wx-box .wx-pill.cold { background: rgb(0 0 0 / .62); color: #fff; } /* .62 (the photo credit's dark): 4.5:1+ for white even on the palest sky; was .4 = ~3:1 */
 .wxb-hrs { flex: 0 1 auto; list-style: none; display: flex; margin: 0; padding: 0; }
 .wxb-hrs li { flex: none; min-width: 2.6rem; display: grid; justify-items: center; font-size: var(--fs-xs); color: var(--muted); border-left: 1px solid var(--hair); }
 .wxb-hrs li:first-child { border-left: 0; }
@@ -1573,7 +1575,7 @@ dialog::backdrop { background: var(--scrim); }
 }
 .foot { display: grid; gap: var(--sp-6); padding-top: var(--sp-8); padding-bottom: var(--sp-40); color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
 .foot p { text-wrap: pretty; }
-.foot a { color: var(--accent); padding-block: 13px; } /* inline padding: a taller touch area, same line layout */
+.foot a { color: var(--accent); display: inline-block; padding-block: 13px; margin-block: -13px; } /* 44px tap area, same line layout */
 .foot .brand { margin-top: 0; }
 .foot-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); margin: 0; }
 .foot-link { min-height: var(--tap); padding: 0 var(--sp-4); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -1868,7 +1870,7 @@ div.la-crowd { flex-wrap: wrap; justify-content: flex-start; gap: var(--sp-8); }
 /* ---- 다녀왔어요 / 내 기록 (open card) and "✓ 다녀옴 N번" (list row) ---- */
 .been { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
 /* 세팅일이 바뀌었어요 (♥ walls, setting.js): words + ✦ in an outlined pill, not colour alone */
-.setnew, .newspill { flex: none; display: inline-block; width: fit-content; padding: 0 var(--sp-8); border: 1px solid currentColor; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 600; color: var(--accent); white-space: nowrap; }
+.setnew, .newspill { flex: none; display: inline-block; width: fit-content; padding: 0 var(--sp-8); border: 1px solid transparent; border-radius: var(--r-pill); background: var(--sunken); font-size: var(--fs-xs); font-weight: 600; color: var(--accent); white-space: nowrap; } /* information is a filled chip like 무료/주차 (outline = tappable); on a photo the outline stays, see below */
 .rsub:has(.newspill) { flex-wrap: nowrap; min-width: 6em; } /* the pill and the region on one line: the region is the one that gives way */
 .rsub:has(.newspill) .rmeta { flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
 .rsub > .newspill { line-height: calc(1.5rem - 2px); } /* inside the 1.5rem line with its border */
@@ -1921,7 +1923,7 @@ p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(-
 .cchip svg { width: 16px; height: 16px; flex: none; }
 @media (max-width: 400px) { .cchip { font-size: var(--fs-xs); padding: 0 var(--sp-8); } } /* three chips stay on one line on a phone */
 button.cchip { position: relative; cursor: pointer; }
-:is(button, a).cchip::after { content: ""; position: absolute; inset: -7px -2px; } /* looks 30px, taps like 44px */
+:is(button, a).cchip::after { content: ""; position: absolute; inset: -9px -2px; } /* looks 30px, taps like 48px */
 :is(button, a).cchip:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 :is(button, a).cchip:active { transform: scale(.97); }
 .cchip svg { color: var(--muted); } /* every chip reads the same; only a warning (정기휴무, short rope) takes a colour */
@@ -2918,7 +2920,7 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .row.has-photo.is-open .rmeta { font-weight: 600; } /* the region line over a bright sky */
 /* one frame for the camera / share row, with or without a photo (--icon-row: how far the icons' tap boxes stand off the foot of the photo or the block; the dock covers the lowest 30px,
    the photo's credit takes the strip under the camera). The camera is always at the left, share at the right, on one horizontal line. */
-.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 38px; padding: var(--sp-16) var(--sp-8); margin: calc(var(--sp-16) * -1) calc(var(--sp-8) * -1); width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: .6875rem; line-height: 1.2; pointer-events: auto; }
+.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 38px; padding: var(--sp-16) var(--sp-8); margin: calc(var(--sp-16) * -1) calc(var(--sp-8) * -1); width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: var(--fs-xs); line-height: 1.2; pointer-events: auto; }
 .ph-hero { flex-direction: column; align-items: flex-start; justify-content: flex-end; }
 .ph-hero :is(.rhero-add, .photo-tools) { color: color-mix(in srgb, var(--accent) 70%, var(--fg)); }
 .ph-hero > .rhero-add { position: absolute; left: calc(var(--pad) - 2px); bottom: var(--icon-row); margin: 0; } /* the same box as the photo's: its disc edge lands on the gutter */

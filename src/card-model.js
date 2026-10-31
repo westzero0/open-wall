@@ -52,15 +52,15 @@ function rowLeft(status, at, wall) {
 }
 
 // The chip on every open row: how long you can stay, in a short and a long wording (css picks by width): "10시간" / "10시간 가능".
-// The status word survives the short form: closing within the hour says 곧 마감 / 40분 뒤 마감 (never 가능), a break ahead says 3시간 뒤 휴게 / 곧 휴게.
+// The status word survives the short form: closing within the hour says how long ("40분 뒤", the pill's red and the gauge end say 마감; never 가능; 곧 마감 only under a minute), a break ahead says 3시간 뒤 휴게 / 곧 휴게.
 // null unless the wall is open. The closing time itself is the gauge's right end.
 function leftCard(status) {
   if (status.state !== 'open') return null;
   const r = status.remainingMin, h = Math.floor(r / 60), m = r % 60;
   const dur = `${h ? `${h}시간 ` : ''}${m || !h ? `${m}분` : ''}`.trim();
   const soon = r <= 60;
-  if (status.endKind === 'break') return { short: soon ? '곧 휴게' : `${h}시간 뒤 휴게`, long: `${dur} 뒤 휴게` };
-  return soon ? { short: '곧 마감', long: `${dur} 뒤 마감` } : { short: `${h}시간`, long: `${dur} 가능` }; // whole hours, like the list row; the long wording has the minutes
+  if (status.endKind === 'break') return { short: soon ? (r < 1 ? '곧 휴게' : `${dur} 뒤 휴게`) : `${h}시간 뒤 휴게`, long: `${dur} 뒤 휴게` };
+  return soon ? { short: r < 1 ? '곧 마감' : `${dur} 뒤`, long: `${dur} 뒤 마감` } : { short: `${h}시간`, long: `${dur} 가능` }; // whole hours, like the list row; the long wording has the minutes
 }
 
 // ---- sun ----
