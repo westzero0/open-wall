@@ -15,7 +15,7 @@ import { createMap } from './map.js';
 import { dialModel, sunHeadOf } from './dial.js';
 import { dayWindow } from './sun.js';
 import { renderScene, sceneTone } from './sun-scene.js';
-import { getStatus, hasHours, openIntervals } from './hours.js';
+import { getStatus, hasHours, inWinter, openIntervals } from './hours.js';
 import { isHoliday } from './holidays.js';
 import { buildTap, bumpTapCount, loadTapped, saveTapped, shownFromIntervals, tappedKey } from './tap.js';
 import { createTapApi } from './tap-api.js';
@@ -908,7 +908,7 @@ let pickRefocus = null;
 const wxPick = { byName: new Map(), entry: null, busy: false };
 async function loadWeekendWeather() {
   if (wxPick.busy || weatherFresh(wxPick.entry, Date.now())) return;
-  const spots = listSpots(); // indoor walls: no forecast
+  const spots = listSpots(); // indoor and closed (임시 휴관, 동절기 휴관) walls: no forecast
   if (!spots.length) return;
   wxPick.busy = true;
   let days = null;
@@ -931,7 +931,9 @@ async function loadWeekendWeather() {
 // answer is not retried for 5 minutes. A row shows the temperature at the picked arrival hour; indoor walls have none.
 const WXL_KEY = 'open-wall:wx-list';
 const wxList = { byName: new Map(), entry: null, busy: false };
-const listSpots = () => state.walls.filter((w) => w.venue !== 'indoor').map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
+// no forecast for a wall that is closed whatever the weather: 임시 휴관 중, or today inside a 동절기 휴관 (winter type closed)
+const noWeather = (w) => w.venue === 'indoor' || !!w.suspended || (w.winter?.type === 'closed' && inWinter(w, new Date()));
+const listSpots = () => state.walls.filter((w) => !noWeather(w)).map((w) => [w, wallPosition(w)]).filter(([, p]) => p);
 // names and coordinates (2 decimals, what is sent): a wall added, removed or moved while the page is open asks again
 const listKey = (spots) => spots.map(([w, p]) => `${w.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join('|');
 function useWxList(spots, json, at) {
@@ -1733,7 +1735,7 @@ const crowdCtx = (name, at) => (!config.crowdCsvUrl ? null : {
 const wx = { byWall: new Map(), busy: new Set() };
 async function loadWeather(wall) {
   const pos = wallPosition(wall); // location, else the sun coordinates; none → no request
-  if (!pos || wall.venue === 'indoor' || wx.busy.has(wall.name)) return; // an indoor wall has no weather to plan for
+  if (!pos || noWeather(wall) || wx.busy.has(wall.name)) return; // an indoor or closed wall has no weather to plan for
   const known = wx.byWall.get(wall.name);
   if (weatherFresh(known, Date.now()) && !(known.current && Date.now() - known.at > CURRENT_MS)) return; // 실황 is asked again after 15 minutes
   wx.busy.add(wall.name);

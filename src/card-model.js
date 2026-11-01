@@ -467,10 +467,10 @@ export function settingText(setting, today) {
 // The chip on a photo: '사진 · 이름 · 라이선스' (a crag's photo uses it too, crag-model.js). null for no credit.
 export const photoCredit = (c) => (c ? { text: `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`, url: c.url || null } : null);
 
-// ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
+// ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 3m, rounded up to a length people carry) ----
 // The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
 // Conservative on purpose; change it here and every card follows.
-export const ROPE_MARGIN_M = 5;
+export const ROPE_MARGIN_M = 3;
 export function ropeNeeded(heightM) {
   if (!(heightM > 0)) return null; // no height known: say nothing
   const need = heightM * 2 + ROPE_MARGIN_M;
@@ -487,7 +487,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   const mine = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
   const ask = r.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${r.m}m 이상`;
   const own = !mine ? null : mine >= r.need ? { text: `내 ${mine}m 충분`, tone: 'ok' } : { text: `내 ${mine}m 부족`, tone: 'short' };
-  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `벽 높이 ${heightM}m×2+여유 ${ROPE_MARGIN_M}m 기준 · 참고용` };
+  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `높이×2+${ROPE_MARGIN_M}m 기준 · 참고용` };
 }
 
 // ---- chips: the card's one line under the photo ----

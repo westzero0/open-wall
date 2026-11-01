@@ -245,6 +245,16 @@ const cleanSunNote = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim
 
 const isMonth = (m) => Number.isInteger(m) && m >= 1 && m <= 12;
 
+// from_day / to_day (optional): a day beyond the month's length becomes the month's end (2월 30 → 29; the year is not known, so 2월 29 stays); bad values are dropped.
+const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const cleanDays = (v) => {
+  const out = {};
+  for (const [k, m] of [['from_day', v.from_month], ['to_day', v.to_month]]) {
+    if (Number.isInteger(v[k]) && v[k] >= 1 && v[k] <= 31) out[k] = Math.min(v[k], MONTH_DAYS[m - 1]);
+  }
+  return out;
+};
+
 function getWinter(v) {
   if (!isPlainObject(v) || !['closed', 'changed'].includes(v.type)) return { type: 'none' };
   if (!isMonth(v.from_month) || !isMonth(v.to_month)) return { type: 'none' }; // a season with no valid months would never apply
@@ -253,6 +263,7 @@ function getWinter(v) {
     type: v.type,
     from_month: v.from_month,
     to_month: v.to_month,
+    ...cleanDays(v),
     ...(v.hours === undefined ? {} : { hours: cleanHours(v.hours) }),
     ...(note ? { indoor_note: note } : {}),
   };
@@ -303,7 +314,7 @@ export function cleanSuspended(v) {
 function cleanSeasons(v) {
   if (!Array.isArray(v)) return [];
   return v.filter((s) => isPlainObject(s) && isMonth(s.from_month) && isMonth(s.to_month) && isPlainObject(s.hours))
-    .map((s) => ({ from_month: s.from_month, to_month: s.to_month, hours: cleanHours(s.hours) }))
+    .map((s) => ({ from_month: s.from_month, to_month: s.to_month, ...cleanDays(s), hours: cleanHours(s.hours) }))
     .filter((s) => Object.keys(s.hours).length);
 }
 
