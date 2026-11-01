@@ -6,7 +6,7 @@
 //   remainPill(left)   "10시간" / "10시간 가능", "곧 마감", "3시간 뒤 휴게" (the closing time is the gauge's right end): the wording is picked by css width (.lf-s / .lf-l)
 //   warnPill(warn, call) / warnNote(warn)  closure-warning: "닫혔을 수 있어요 · 확인 중" in the place of remainPill, and its line ("12분 전 제보 · …") in the expanded card
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
-//   dock(go, been, tel) the actions under the photo: 길찾기 · 전화 (icons only; no 전화 without a number) and 다녀왔어요
+//   dock(go, been, tel, share) the actions under the photo: 길찾기 · 전화 · 공유 (icons only; no 전화 without a number) and 다녀왔어요 last, wide
 //   goRow(mk, kids, …) a tappable info line (이름 칸 · 내용 · ›) that opens a sheet
 //   photoTools(…)      round buttons (share) in the photo's corner
 //   cameraBtn(…)       the camera that sends a photo (on a photo: one more; on the placeholder: the first)
@@ -48,15 +48,17 @@ export function gaugeBar(bar) {
 
 // Open and close time under the ends of the stretch the viewed time is in (with a lunch break: that stretch's own start and end).
 // Hidden from screen readers: the bar's own label already reads the hours. Drawn on every row; css shows it once a list card is open (not in a folded row, not on the map card).
-export function gaugeEnds(bar) {
+// `axis` [from, to] minutes: the span the bar is drawn over (a wall's day axis by default; a 싱글피치 card's bar runs sunrise to sunset: its ends say 일출 · 일몰).
+export function gaugeEnds(bar, axis = AXIS) {
+  const frac = (m) => (Math.min(Math.max(m, axis[0]), axis[1]) - axis[0]) / (axis[1] - axis[0]);
   if (!bar?.open?.length) return null; // (a later day's bar says that day's hours too: the card keeps its hours in one place, under the bar)
   // a lunch break splits the day: the labels belong to the stretch of the viewed time (else the next one, else the last)
   const seg = bar.open.find(([x, y]) => bar.nowMin >= x && bar.nowMin < y) ?? bar.open.find(([x]) => x > bar.nowMin) ?? bar.open.at(-1);
   const a = seg[0], b = seg[1];
   const short = b - a < 240; // under 4 hours the two labels would touch: one label over the stretch
   const box = el('span', { class: 'gauge-ends', 'aria-hidden': 'true' }, ...(short ? [el('span', {}, `${fmtMin(a)}–${fmtMin(b)}`)] : [el('span', {}, fmtMin(a)), el('span', {}, fmtMin(b))]));
-  box.style.paddingLeft = short ? `min(${axisX(a)}, calc(100% - 6.6em))` : axisX(a); // one label over the stretch: never past the bar's right end, even in big type
-  box.style.paddingRight = `${(1 - axisFrac(b)) * 100}%`;
+  box.style.paddingLeft = short ? `min(${frac(a) * 100}%, calc(100% - 6.6em))` : `${frac(a) * 100}%`; // one label over the stretch: never past the bar's right end, even in big type
+  box.style.paddingRight = `${(1 - frac(b)) * 100}%`;
   return box;
 }
 
@@ -121,14 +123,15 @@ export function setBoardRow(row, board) {
 
 // 휴무안내: one line under the chips, only when the card has a closing to tell (card-model `notice`). 'sure' (an admin-entered closing) is red and final;
 // 'maybe' (a weather condition) is quiet, blue when rain is coming (lit), and asks for a report (report(button) opens the 임시휴무 sheet).
-export function noticeLine(n, { lit = false, report = null, icon = null } = {}) {
+// `mk`: the name column's word (휴무 for a wall; a 싱글피치 card says 주의 with tone 'sure').
+export function noticeLine(n, { lit = false, report = null, icon = null, mk = '휴무' } = {}) {
   if (!n) return null;
   const on = n.tone === 'maybe' && n.rain && lit;
   const ask = n.tone === 'maybe' && report
     ? el('button', { type: 'button', class: 'nt-go', 'aria-label': '오늘 휴무 제보하기' }, icon ? icon('megaphone') : null, '제보하기') : null;
   ask?.addEventListener('click', () => report(ask));
   return el('div', { class: `irow irow-s notice ${n.tone}${on ? ' rain' : ''}`, role: 'note' }, // 2-letter label in the 3em column: the value lines up with 운영·이용·게시판
-    el('span', { class: 'mk' }, '휴무'), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
+    el('span', { class: 'mk' }, mk), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
 }
 
 // The dock's icon buttons (길찾기, 전화): no words on them, the label and title say it; the same 48px square. `icon` draws the glyph.
@@ -138,10 +141,10 @@ export const telButton = (name, link, icon) => (link ? dockIcon('dock-tel', `${n
 
 // The two actions under the photo, the same for every kind of place: [길찾기 | 다녀왔어요], side by side. Both buttons come ready-made (they belong to the
 // app: the map-app dialog, the log sheet); a place with no position has no 길찾기 and the other fills the row.
-export const dock = (go, been, tel = null) => el('div', { class: 'dock' }, go, tel, been);
+export const dock = (go, been, tel = null, share = null) => el('div', { class: 'dock' }, go, tel, share, been); // the square icons first, the card's own action (been) last and wide; the map card has no been
 
-// ♥ and share as round buttons in the photo's top-right corner (or the placeholder block's); the app passes its own buttons.
-export const photoTools = (...buttons) => el('div', { class: 'photo-tools' }, ...buttons);
+// Round buttons in the photo's corner (or the placeholder block's); the app passes its own buttons. (share lives in the dock now: nothing but a future camera goes here)
+export const photoTools = (...buttons) => (buttons.some(Boolean) ? el('div', { class: 'photo-tools' }, ...buttons) : null); // no button, no corner
 
 // The camera: opens the 제보 sheet on 암장 사진 for this wall. `more`: the card already has a photo ("one more"), else it is the first one.
 // The caller decides whether to draw it at all (it needs the board Worker); `icon` is the app's own icon helper.
@@ -219,6 +222,7 @@ export function scheduleChip(wall, entry, { full, open, pop, onTap }) {
 // 오늘 운영 · 08:00~22:00 on a photo (or on the placeholder block). `hoursOnGauge` (card-model): the gauge says the hours, so the photo stays clean;
 // a suspended or closed day has no gauge ends and keeps its words.
 export function heroCap(m) {
+  if (m.hero && !m.hoursOnGauge) return el('div', { class: 'rhero-cap' }, el('small', {}, m.hero.lead), el('b', {}, ...rangesKept(m.hero.text))); // a 싱글피치 card has its own lead and text (the day's sun window), no hours
   if (m.hoursOnGauge) return null;
   return el('div', { class: 'rhero-cap' }, m.suspended || m.state === 'unknown' ? null : el('small', {}, m.today.lead), el('b', { class: m.suspended ? 'susp-pill' : m.state === 'unknown' ? 'hero-note hero-unk' : 'hero-note' }, m.today.text));
 }

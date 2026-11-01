@@ -3,6 +3,7 @@
 // What is on screen but not saved (picked moment, open row, position) is view-state.js.
 import { normalizeAreas } from './areas.js';
 import { sharePageUrl, wallShareId } from './share-id.js';
+import { CRAG_SHEET_TABS } from './crag-sheet-model.js';
 
 export const UI_KEY = 'open-wall:ui';
 const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall' };
@@ -171,6 +172,9 @@ export function wallFromSearch(walls, search) {
   const name = new URLSearchParams(search).get('wall')?.normalize('NFC').trim();
   return name ? walls.find((w) => w.name.normalize('NFC') === name) ?? null : null;
 }
+
+/** The tab a ?crag=<name>&<tab> link asks for (cond / way / routes / board), or null: the card opens alone. */
+export const cragSheetTabFromSearch = (search) => { const q = new URLSearchParams(search); return q.has('crag') ? CRAG_SHEET_TABS.find((k) => q.has(k)) ?? null : null; };
 
 /** The crag a ?crag=<name> link names: exact (NFC) name match in the loaded crags, else null (wallFromSearch's shape). */
 export function cragFromSearch(crags, search) {

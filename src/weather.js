@@ -84,7 +84,7 @@ export const weekendForecastUrl = (points) => 'https://api.open-meteo.com/v1/for
   + '&daily=precipitation_sum,precipitation_probability_max,wind_gusts_10m_max&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=7';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-/** parseDaily(json, n) → n Maps ('YYYY-MM-DD' → {mm, p (null when unknown), g}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
+/** parseDaily(json, n) → n Maps ('YYYY-MM-DD' → {mm, p (null when unknown), g, + c WMO code and tmax when the response has them}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
 export function parseDaily(json, n) {
   const list = Array.isArray(json) ? json : [json];
   if (list.length !== n || n < 1) return null;
@@ -95,10 +95,14 @@ export function parseDaily(json, n) {
     const { time, precipitation_sum: mm, precipitation_probability_max: p, wind_gusts_10m_max: g } = d;
     if (!time.length || time.length > 16 || ![mm, p, g].every((a) => Array.isArray(a) && a.length === time.length)) return null;
     const days = new Map();
+    // optional sky code / max temperature (crag request only): both arrays, same length, all in range, else neither key (old caches, wall requests)
+    const { weather_code: wc, temperature_2m_max: tx } = d;
+    const sky = Array.isArray(wc) && Array.isArray(tx) && wc.length === time.length && tx.length === time.length
+      && wc.every((v) => within(v, 0, 99)) && tx.every((v) => within(v, -80, 80));
     for (let i = 0; i < time.length; i++) {
       if (typeof time[i] !== 'string' || !DAY_RE.test(time[i])) return null;
       if (!within(mm[i], 0, 1000) || !within(g[i], 0, 100) || !(p[i] === null || within(p[i], 0, 100))) return null;
-      days.set(time[i], { mm: mm[i], p: p[i], g: g[i] });
+      days.set(time[i], { mm: mm[i], p: p[i], g: g[i], ...(sky && { c: wc[i], tmax: tx[i] }) });
     }
     out.push(days);
   }
@@ -106,7 +110,7 @@ export function parseDaily(json, n) {
 }
 
 /** cragForecastUrl([{lat, lng}, ...]) → the weekend request plus the seven days before today: a crag's wet-or-dry state needs the rain that already fell. Only coordinates (2 decimals) vary. */
-export const cragForecastUrl = (points) => `${weekendForecastUrl(points)}&past_days=7`;
+export const cragForecastUrl = (points) => `${weekendForecastUrl(points).replace('wind_gusts_10m_max&', 'wind_gusts_10m_max,weather_code,temperature_2m_max&')}&past_days=7`;
 
 /** local YYYY-MM-DD, the key of parseDaily's maps. */
 export const dayKey = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
@@ -168,3 +172,33 @@ export function forecastTrusted(at, now, days = 1) {
   return diff >= 0 && diff <= days;
 }
 export const weatherLine = (h) => `예보 · 기온 ${Math.round(h.t)}° · 바람 ${Math.round(h.w)}m/s · 돌풍 ${Math.round(h.g)}m/s`;
+
+/** wetnessForecastUrl([{lat, lng}, ...]) → 싱글피치 젖음 계산용: 지난 7일 + 예보 7일의 시간별 강수·기온·습도·풍속·일사·강수확률. 기존 요청은 그대로 두고 암장 좌표(소수 둘째 자리)만 다르다. */
+export const wetnessForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
+  + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + '&hourly=precipitation,temperature_2m,relative_humidity_2m,wind_speed_10m,shortwave_radiation,precipitation_probability'
+  + '&wind_speed_unit=ms&timezone=Asia/Seoul&past_days=7&forecast_days=7';
+
+/** parseWetnessHours(json, n) → n개 [{at: Date, r, t, rh, v, s, p}] (요청 순서). 어긋나면 null. 한 곳은 객체, 여러 곳은 배열로 온다. */
+export function parseWetnessHours(json, n) {
+  const list = Array.isArray(json) ? json : [json];
+  if (list.length !== n || n < 1) return null;
+  const out = [];
+  for (const item of list) {
+    const h = item?.hourly;
+    if (!h || !Array.isArray(h.time) || !h.time.length || h.time.length > 400) return null;
+    const cols = [h.precipitation, h.temperature_2m, h.relative_humidity_2m, h.wind_speed_10m, h.shortwave_radiation, h.precipitation_probability];
+    if (!cols.every((a) => Array.isArray(a) && a.length === h.time.length)) return null;
+    const hours = [];
+    for (let i = 0; i < h.time.length; i++) {
+      if (typeof h.time[i] !== 'string' || !HOUR_RE.test(h.time[i])) return null;
+      const [r, t, rh, v, s, p] = cols.map((a) => a[i]);
+      if (!within(t, -60, 60)) continue; // 기온이 없는 시간은 건너뛴다
+      if (!within(r ?? 0, 0, 500) || !within(rh ?? 70, 0, 100) || !within(v ?? 0, 0, 100) || !within(s ?? 0, -50, 1500) || !(p == null || within(p, 0, 100))) return null;
+      const [y, mo, d] = h.time[i].slice(0, 10).split('-').map(Number);
+      hours.push({ at: new Date(y, mo - 1, d, Number(h.time[i].slice(11, 13))), r: r ?? 0, t, rh: rh ?? 70, v: v ?? 0, s: Math.max(0, s ?? 0), p: p ?? null });
+    }
+    out.push(hours);
+  }
+  return out;
+}

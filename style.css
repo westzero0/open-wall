@@ -573,7 +573,7 @@ details[open] > summary.band > span:first-child::before { content: "▾"; }
 #label-open .sortnote { color: var(--fg); font-weight: 800; }
 :is(.tgroup, .crag-board) .empty { position: relative; margin: 10px var(--pad); background: var(--sheet); } /* covers the grid lines */
 .rows { list-style: none; margin: 0; padding: 0; }
-.row { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); } /* isolate: the ♥, the dock and the photo's tools stack inside the row, never over the sticky time axis and group band */
+:is(.row, .crag-row) { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); } /* isolate: the ♥, the dock and the photo's tools stack inside the row, never over the sticky time axis and group band */
 :is(.row-btn, .crag-head) {
   display: block; width: 100%; min-height: 56px; padding: 13px var(--pad) 14px; text-align: left; line-height: 1.35; --rowbg: var(--surface);
   border: 0; background: none; scroll-margin-top: calc(2.125rem + 2rem); /* html's scroll-padding-top already clears the sticky bars; the margin only leaves room for the axis below them */ transition: background-color var(--dur-press) var(--ease-out);
@@ -809,8 +809,8 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .row.is-open .tick, .card .tick { width: 3px; margin-left: -1.5px; }
 /* open and close time under the bar's ends, on every row: pulled up into the bar box's empty lower half, so a row grows by little more than the text */
 .gauge-ends { display: none; } /* a folded row and the map card keep the bar clean: the times show once a list card is open */
-.row.is-open .gauge-ends { display: flex; justify-content: space-between; gap: var(--sp-8); margin-top: calc(var(--sp-4) * -1); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
-.row.has-photo.is-open .gauge-ends { color: var(--on-photo); text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); } /* the same edge as the photo credit: the end times stay readable on a bright sky, where the scrim has faded */
+:is(.row, .crag-row).is-open .gauge-ends { display: flex; justify-content: space-between; gap: var(--sp-8); margin-top: calc(var(--sp-4) * -1); font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+:is(.row, .crag-row).has-photo.is-open .gauge-ends { color: var(--on-photo); text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); } /* the same edge as the photo credit: the end times stay readable on a bright sky, where the scrim has faded */
 /* time-left chip on every open row, folded or open: "10h" on a narrow phone, "10시간 가능" with room (a shut row keeps its rowLeft words) */
 .lf-card .lf-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* narrow: clipped, not display:none, so a screen reader still hears the long wording */
 @media (min-width: 421px) { .lf-card .lf-s { display: none; } .lf-card .lf-l { position: static; width: auto; height: auto; overflow: visible; clip: auto; } }
@@ -884,8 +884,8 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 .wxb-hrs b { font-size: var(--fs-md); color: var(--fg); }
 .wxb-hrs small { font-size: var(--fs-xs); color: #2f62b0; }
 .wxb-rain { flex: 1 0 100%; margin: 0; font-size: var(--fs-sm); font-weight: 600; color: #2f62b0; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.wxb-hrs small, .wxb-rain, .crag-rain) { color: #8db4ee; } }
-:root[data-theme="dark"] :is(.wxb-hrs small, .wxb-rain, .crag-rain) { color: #8db4ee; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.wxb-hrs small, .wxb-rain) { color: #8db4ee; } }
+:root[data-theme="dark"] :is(.wxb-hrs small, .wxb-rain) { color: #8db4ee; }
 .wx-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-6); margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--muted); }
 .wx-k { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
 .wx-chip { color: var(--fg); white-space: nowrap; }
@@ -1112,6 +1112,10 @@ button.lb-item { border: 0; background: none; font: inherit; font-size: var(--fs
 .blog-list[hidden] { display: none; }
 .blog-list a { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); min-height: var(--tap); padding: 0 var(--sp-2); color: var(--fg); text-decoration: none; border-top: 1px solid var(--hair); font-size: var(--fs-sm); }
 .blog-list .bt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blog-wrap .blog-list .bt { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; padding: var(--sp-8) 0; } /* a long title takes two lines, then an ellipsis */
+html[data-text="xlarge"] .blog-wrap .blog-list a { flex-wrap: wrap; row-gap: 0; } /* the date drops under the title */
+html[data-text="xlarge"] .blog-wrap .blog-list .bt { flex-basis: 100%; -webkit-line-clamp: 3; line-clamp: 3; }
+html[data-text="xlarge"] .blog-wrap .blog-list .bd { padding-bottom: var(--sp-8); }
 .blog-list .bd { flex: none; font-size: var(--fs-xs); color: var(--muted); }
 .pf-go { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: var(--sp-4); color: var(--accent); vertical-align: -4px; }
 .pf-go::after { content: ""; position: absolute; inset: -12px; } /* taps like 44px */
@@ -1912,6 +1916,8 @@ p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(-
 :is(.expand-in, .crag-body) .dock > .dock-ic { flex: 0 0 52px; padding: 0; }.dock > .dock-share { flex: 0 0 52px; display: flex; margin: 0; } /* the map card's 공유: the same outlined square as 길찾기 and 전화 */
 .dock-share > .icon-btn { width: 100%; height: auto; min-height: 48px; border-radius: var(--r-base); background: var(--sunken); color: var(--fg); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); }
 .dock-share svg { width: 22px; height: 22px; }
+.dock-share > .icon-btn:focus-visible { outline-offset: 2px; } /* the ring stands outside the square like the other dock buttons' (.dock > :focus-visible) */
+@media (max-width: 360px) { :is(.expand-in, .crag-body) .dock > .dock-ic, .dock > .dock-share { flex-basis: 48px; } } /* four buttons (길찾기 · 전화 · 공유 · 다녀왔어요) on a narrow screen: the squares give 12px back so 다녀왔어요 is not clipped in big type */
 .dock > .dock-ic svg { width: 22px; height: 22px; }
 .dock > :active { transform: scale(.98); }
 /* the one line of chips (card-parts.js chipBar): pale pills, 30px to look at and 44px to tap; each opens the sheet where its detail is */
@@ -2453,8 +2459,8 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .is-wall .sk-chip { display: inline-block; padding: 0 var(--sp-8); border-radius: var(--r-pill); background: color-mix(in srgb, currentColor 14%, transparent); font-size: var(--fs-xs); font-weight: 700; line-height: 1.7; white-space: nowrap; }
 .is-wall .bd-hero { display: none; } /* the board's banner is the sky: the head is the same on every tab */
 .is-wall .sk-act { display: flex; align-items: center; gap: var(--sp-4); margin-top: calc(-1 * var(--sp-10)); }
-.is-wall .sk-rep::after { content: ""; position: absolute; inset: -6px -2px; } /* the look stays 32px; the touch target is 44px */
-.is-wall .sk-rep { position: relative; min-height: 32px; padding: 0 var(--sp-8); border: 0; border-radius: var(--r-pill); background: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.is-wall .sk-rep::after { content: ""; position: absolute; inset: 0 min(0px, calc((100% - 44px) / 2)); } /* a label under 44px wide (제보) is padded out to a 44px target without moving it; one rule for the wall sheet and the 싱글피치 sheet (wall-sheet.js builds both) */
+.is-wall .sk-rep { position: relative; min-height: var(--tap); margin-block: -6px; /* 44px tall target; the 12px extra is pulled back so the name line keeps its height */ padding: 0 var(--sp-8); border: 0; border-radius: var(--r-pill); background: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .is-wall .sk-ok { width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .is-wall .sk-ok svg { width: 22px; height: 22px; }
 .is-wall .sk-ok:active { background: color-mix(in srgb, currentColor 12%, transparent); }
@@ -2769,41 +2775,93 @@ body[data-mode="crag"] :is(#venueRow, #minRow, #tempRow, #breakRow, #parkRow, #r
 .crag-row .l1 { flex-wrap: wrap; } /* 긴 컨디션 글자는 375px에서 다음 줄 오른쪽으로 (외벽의 남은 시간은 짧아 줄바꿈하지 않는다) */
 .crag-row .left { color: var(--fg); } /* 오른쪽 값은 컨디션 글자: 운영 초록이 아니다 */
 .crag-row .left.is-rain, .crag-cond-text.is-rain { color: var(--soon); }
+.crag-row .left:is(.is-wet, .is-frozen), .crag-cond-text:is(.is-wet, .is-frozen) { color: var(--soon); } /* 젖음 계산의 젖음·얼음도 비 예보처럼 조심 색 */
 .crag-row .left:is(.is-unknown, .is-out) { color: var(--muted); font-weight: 400; }
 .sunband.shade { background: var(--shade-bar); } /* 크랙 막대만: 일출~일몰 전체를 양달/응달로 칠하므로 응달 조각이 있다 */
 .crag-head > .crag-nodir { display: block; margin-top: var(--sp-8); } /* 막대 자리: 방향 정보 없음 */
 /* 사진을 입은 열린 줄(외벽 .row.has-photo 규칙을 넓혀 같이 씀): 컨디션은 외벽 남은 시간처럼 흰 알약, 글자는 라이트 값 고정(초록 없음, 비는 와인, 모름은 회색) */
 .crag-row.has-photo.is-open .crag-head .left { padding: 2px var(--sp-10); border-radius: var(--r-pill); background: rgb(255 255 255 / .95); color: var(--fg-on-white); text-shadow: none; }
 .crag-row.has-photo.is-open .crag-head .left.is-rain { color: var(--soon-on-white); }
+.crag-row.has-photo.is-open .crag-head .left:is(.is-wet, .is-frozen) { color: var(--soon-on-white); }
 .crag-row.has-photo.is-open .crag-head .left:is(.is-unknown, .is-out) { color: var(--muted-on-white); }
 .crag-row.has-photo.is-open .crag-head .crag-nodir { color: var(--on-photo); }
 .crag-row .rhero-line { flex-wrap: wrap; } /* 해 시각(일출–일몰, 외벽 운영시간보다 길 수 있음)이 한 줄에 안 들어가면 사진 출처가 그 아래 줄로(시각이 두 줄로 꺾이지 않게) */
 .crag-row.is-open .l1 { flex-wrap: nowrap; } /* 열린 카드의 머리는 외벽 열린 줄처럼 한 줄: 좁으면 지역(.rsub)이 숨고 알약은 내려가지 않는다(사진 위 머리가 아래 '오늘 해'와 겹치지 않게) */
 .crag-nodir { font-size: var(--fs-xs); color: var(--muted); }
 .crag-body { padding: 0 var(--pad) var(--sp-16); }
-.crag-body > .linkbar { margin: 0 calc(var(--pad) * -1); border-top: 0; } /* 외벽 .row.is-open > .expand .linkbar의 크랙판: 카드 폭 끝까지 */
 .crag-cond-text { margin: 0; font-weight: 700; }
+/* 컨디션 탭(src/crag-cond-pane.js, 시안 docs/superpowers/mockups/2026-10-22-crag-cond-tab.html). 색은 기존 토큰 + 이미 쓰는 파랑(.crag-rain의 비)·청록(.row.windy의 돌풍 배지)뿐: 새 토큰 없이 이 탭 안에서만 이름을 붙인다. icon()의 svg는 크기가 없어 em으로 맞춘다. */
+.crag-cond-pane svg { width: 1em; height: 1em; flex: none; }
+.crag-cond { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--sp-12); align-items: center; }
+.crag-cond .badge { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; }
+.crag-cond .state { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; }
+/* the head's colour says the state: good = sun, wet (마르는 중·비·최근 비) = wine (조심), unknown = quiet. Never --open: green means 운영 중 only */
+.crag-cond.is-good .badge { background: var(--panel); color: var(--fg); } /* 해 색은 양달 뜻에만 */
+.crag-cond.is-good .state { color: var(--fg); }
+.crag-cond.is-wet .badge { background: color-mix(in srgb, var(--soon) 14%, transparent); color: var(--soon); }
+.crag-cond.is-wet .state { color: var(--soon); }
+.crag-cond.is-unknown .badge { background: var(--panel); color: var(--muted); }
+.crag-cond.is-unknown .state { color: var(--fg); }
+.crag-cond .when { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+.crag-dry { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--sp-8); margin: var(--sp-4) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.crag-dry .segs { flex: 1; display: flex; gap: var(--sp-4); }
+.crag-dry .seg { flex: 1; height: 8px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1.5px var(--open); }
+.crag-dry .seg.on { background: var(--open); }
+.crag-dry b { color: var(--fg); white-space: nowrap; }
+.crag-sec { margin-top: var(--sp-16); padding-top: var(--sp-12); border-top: 1px solid var(--hair); }
+.crag-sec-h { display: flex; align-items: center; gap: var(--sp-8); margin: 0 0 var(--sp-10); font-size: var(--fs-md); font-weight: 700; }
+.crag-sec-h > svg { font-size: 20px; color: var(--muted); }
+.crag-sec-h .end { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--fg); background: var(--panel); padding: var(--sp-2) var(--sp-8); border-radius: var(--r-pill); white-space: nowrap; }
+.crag-sec-h .end.wind { background: color-mix(in srgb, var(--wind) 16%, transparent); color: var(--fg); } .crag-sec-h .end.wind svg { color: var(--wind); } /* text in --fg: the teal tint alone, 4.5:1 */
+.crag-sec-h .end svg { vertical-align: -2px; }
+.crag-rain2 { display: flex; gap: var(--sp-4); align-items: stretch; color: var(--rain); }
+.crag-rain2 .col { flex: 1; min-width: 0; display: grid; grid-template-rows: auto 56px auto auto; justify-items: center; align-items: end; font-size: var(--fs-xs); }
+.crag-rain2 .mm { font-weight: 700; line-height: 1.6; min-height: 1.6em; }
+.crag-rain2 .rbar { display: block; width: 100%; height: var(--h); background: currentColor; border-radius: var(--r-xs); min-height: 2px; }
+.crag-rain2 .is-fc .rbar { background: color-mix(in srgb, currentColor 28%, transparent); box-shadow: inset 0 0 0 1.5px currentColor; } /* 예보: 옅은 채움 + 윤곽 (다가올 비가 지난 비보다 약해 보이지 않게) */
+.crag-rain2 .rbar.is-none { background: var(--hair); box-shadow: none; } /* 비 없음(1mm 미만): 파랑이 아니다 */
+.crag-rain2 .d { margin-top: var(--sp-4); color: var(--muted); line-height: 1.4; }
+.crag-rain2 .is-today .d { color: var(--fg); font-weight: 700; box-shadow: 0 2px 0 var(--fg); }
+.crag-rain2 .sk { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: var(--sp-2); color: var(--muted); line-height: 1.2; } /* 요일 밑: 하늘 아이콘 + 최고기온 */
+.crag-rain2 .sk svg { font-size: 16px; }
+/* 하늘 아이콘은 일별(.sk)과 시간별(td.sky)이 같은 색: 맑음·구름 조금 = 해, 비 = 파랑, 나머지 = 흐린 회색 */
+:is(.crag-hours td.sky, .crag-rain2 .sk).rain { color: var(--rain); }
+.crag-rain2 .split { flex: none; width: 1px; background: var(--hair); } /* 지난 날과 오늘·예보 사이 */
+.crag-rain-cap { display: flex; margin: var(--sp-4) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.crag-rain-cap span { flex: 1 1 0; }
+.crag-rain-cap span:last-child { padding-left: var(--sp-4); }
+.crag-legend { display: flex; gap: var(--sp-12); margin: var(--sp-8) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.crag-legend i { display: inline-block; width: 10px; height: 10px; margin-right: var(--sp-4); border-radius: 2px; vertical-align: -1px; background: var(--rain); }
+.crag-legend i.is-fc { background: color-mix(in srgb, var(--rain) 28%, transparent); box-shadow: inset 0 0 0 1.5px var(--rain); }
+.crag-hours { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; text-align: center; }
+.crag-hours th, .crag-hours td { padding: var(--sp-6) 0; font-weight: 400; }
+.crag-hours thead th { font-size: var(--fs-xs); color: var(--muted); padding-bottom: var(--sp-2); }
+.crag-hours tbody th { width: 1.9em; text-align: left; color: var(--muted); font-size: 18px; }
+.crag-hours tbody th .unit { display: block; font-size: var(--fs-xs); line-height: 1; color: var(--muted); } /* 돌풍 줄의 단위 */
+.crag-hours td.sky { font-size: 28px; line-height: 1; color: var(--muted); }
+.crag-hours td.t { font-size: var(--fs-xl); font-weight: 700; line-height: 1.2; }
+.crag-hours td.g { font-size: var(--fs-md); border-top: 1px solid var(--hair); }
+.crag-hours td.g.strong { background: color-mix(in srgb, var(--wind) 18%, transparent); color: var(--fg); font-weight: 700; }
+.crag-hours th.at, .crag-hours td.at { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.crag-hours thead th.at { font-weight: 700; color: var(--fg); border-radius: var(--r-xs) var(--r-xs) 0 0; }
+.crag-note { display: flex; align-items: center; gap: var(--sp-6); margin: var(--sp-16) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.crag-note svg { font-size: 16px; }
+.crag-cond-pane { --rain: #2f62b0; --wind: #1f7a70; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .crag-cond-pane { --rain: #8db4ee; --wind: #2f9a8c; } }
+:root[data-theme="dark"] .crag-cond-pane { --rain: #8db4ee; --wind: #2f9a8c; }
 /* 비 막대: 컨디션 줄의 값 칸 안(.pv, 외벽 .irow). 색은 외벽 날씨 상자의 비 글자(.wxb-rain의 파랑, 다크 규칙도 같이 넓힘)라 응달 막대(--shade-bar)와 겹치지 않는다.
    지난 날은 채움, 오늘과 예보 날은 윤곽, 오늘은 아래 점(비가 0이라 막대가 거의 없어도 보인다) */
-.crag-rain { display: flex; align-items: flex-end; gap: var(--sp-2); height: 36px; margin: var(--sp-6) 0 var(--sp-8); color: #2f62b0; }
-.crag-rain-day { position: relative; flex: 1; height: var(--h); background: currentColor; border-radius: var(--r-xs); }
-.crag-rain-day.is-fc { background: transparent; box-shadow: inset 0 0 0 1px currentColor; } /* 예보는 윤곽만: 이미 내린 비와 구분 */
-.crag-rain-day.is-today::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--fg); }
 /* 해 박스는 외벽 .sunbox(app.js cragSunBox) 그대로: 안에 하루 막대는 없다(막대는 줄 머리에). 하늘 첫 줄 날씨의 비는 외벽 .sunbox.sc .wx-pill(와인 = 곧 끝남·조심할 것) */
 .crag-body > .sunbox { margin-bottom: var(--sp-10); } /* 아래 후기·다녀왔어요와 붙지 않게(위 간격은 .sunbox의 margin-top) */
 .crag-text { margin: var(--sp-6) 0 0; white-space: pre-line; }
 .crag-quiet { color: var(--muted); font-weight: 400; } /* 모르는 값(도보 시간 미상): 줄의 '마르는 시간 모름'처럼 조용히 */
-/* 카드는 외벽 카드 부품(.linkbar, .meta-row/.chip.rope, .irow/.pv-go, .blog)을 그대로 쓴다. 여기는 크랙 것만:
+/* 카드는 외벽 카드 부품(.dock, .meta-row/.chip.rope, .irow/.pv-go, .blog)을 그대로 쓴다. 여기는 크랙 것만:
    모르는 값(.crag-quiet) · 주의(와인 윤곽, 접지 않음). 주차 값은 외벽 주차 줄의 .pk-word(good/warn/muted) */
-.crag-caution { margin: 0 0 var(--sp-10); font-size: var(--fs-sm); padding: var(--sp-10) var(--sp-12); border: 1px solid var(--soon); border-radius: var(--r-base); background: color-mix(in srgb, var(--soon) 8%, var(--surface)); white-space: pre-line; }
-/* 싱글피치 어프로치 시트(src/approach-sheet.js): 머리 · 길 띠(누르면 그 단계로) · 사진 또는 큰 글 · 방향 · 와인 줄 · 이전/다음.
+/* 싱글피치 어프로치 탭(src/approach-sheet.js, 암장 시트 .ws-panel 안): 저장 칩 · 길 띠(누르면 그 단계로) · 사진 또는 큰 글 · 방향 · 와인 줄 · 이전/다음.
    진행(갈 길·걸어 온 길·지금 정지점·방향 화살표·저장됨) = --accent(외벽 시트의 눌린 칩·다음 버튼과 같은 색), 와인(--soon) = 가면 안 되는 쪽. 초록(--open)은 '운영 중'에만 쓴다. 새 색은 없다. */
-.approach-sheet form { gap: var(--sp-10); } /* the padding, grabber, height and scrolling are .sheet's: the dialog itself has no padding, so a click on it is the backdrop */
-.ap-head { gap: var(--sp-8); }
-.ap-head h2 { flex: 1; min-width: 0; }
+.approach-pane { display: grid; gap: var(--sp-10); padding-top: var(--sp-8); } /* 어프로치 탭: the side padding, height and scrolling are .ws-panel's */
 .ap-chipbox { flex: none; }
 .ap-chip { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--sp-10); border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
-.ap-chip.is-icon { justify-content: center; min-width: var(--tap); padding: 0; }
 button.ap-chip { cursor: pointer; color: var(--accent); }
 .ap-chip.is-saved { border-color: var(--accent); color: var(--accent); }
 .ap-chip.is-fail { border-color: var(--soon); color: var(--soon); }
@@ -2819,9 +2877,9 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .ap-min { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .ap-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-md); }
 .ap-where { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
-.ap-view { position: relative; overflow: hidden; border-radius: var(--r-base); background: var(--sunken); }
+.ap-view { position: relative; overflow: hidden; border-radius: var(--r-base); background: var(--sunken); touch-action: pan-y; } /* a sideways drag here steps the photo, not the sheet's tabs */
 .ap-view[hidden] { display: none; }
-.ap-view.is-photo { cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.ap-view.is-photo { cursor: pointer; user-select: none; -webkit-user-select: none; }
 .ap-view img { display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 48dvh; object-fit: cover; }
 .ap-view.is-text, .ap-view.is-fail { display: grid; align-content: center; gap: var(--sp-8); min-height: 160px; padding: var(--sp-16); }
 .ap-fail { display: grid; gap: var(--sp-4); color: var(--muted); font-size: var(--fs-sm); }
@@ -2832,6 +2890,7 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .ap-dir { display: flex; align-items: center; gap: var(--sp-12); }
 .ap-dir[hidden] { display: none; }
 .ap-dir b { font-size: var(--fs-md); }
+.ap-dir .pk-word { flex: none; white-space: nowrap; } /* 노지 · 무료 stays on one line next to the parking text */
 .ap-dir.is-big b { font-size: var(--fs-xl); }
 .ap-arrow { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: var(--r-base); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
 .ap-arrow svg { width: 28px; height: 28px; }
@@ -2845,27 +2904,37 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .ap-clear { justify-self: center; min-height: var(--tap); padding: 0 var(--sp-12); border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); text-decoration: underline; white-space: nowrap; cursor: pointer; }
 .ap-clear[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .ap-stop.is-cur .ap-dot { transform: none; } }
-/* 싱글피치 개념도·루트 시트(src/routes-sheet.js): 머리 · 개념도 칩(외벽 시트의 .rt-chips/.rt-chip 그대로) · 개념도(누르면 크게, 스크롤) · 출처 · 루트 표. 새 색은 없다. */
-.routes-sheet form { gap: var(--sp-10); } /* padding, grabber and scrolling: .sheet */
-.rs-head h2 { flex: 1; min-width: 0; }
+/* 싱글피치 루트 탭(src/routes-sheet.js, 암장 시트 .ws-panel 안): 개념도 칩(외벽 시트의 .rt-chips/.rt-chip 그대로) · 개념도(누르면 크게, 스크롤) · 출처 · 루트 표. 새 색은 없다. */
+.routes-pane { display: grid; gap: var(--sp-10); padding-top: var(--sp-8); } /* 루트 탭: padding and scrolling are .ws-panel's */
 .rs-topo { overflow: auto; border-radius: var(--r-base); background: var(--sunken); }
 .rs-topo[hidden], .rs-credit[hidden] { display: none; }
 .rs-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .rs-zoom img { display: block; width: 100%; max-height: 48dvh; object-fit: contain; }
-.rs-topo.is-zoom { max-height: 70dvh; }
+.rs-topo.is-zoom { max-height: 70dvh; overscroll-behavior-x: contain; } /* a pan at its edge does not switch the sheet tab */
 .rs-topo.is-zoom .rs-zoom { width: 200%; cursor: zoom-out; }
 .rs-topo.is-zoom .rs-zoom img { max-height: none; }
 .rs-topo.is-fail { display: grid; place-items: center; min-height: 120px; padding: var(--sp-16); }
 .rs-fail { margin: 0; color: var(--muted); font-size: var(--fs-sm); font-weight: 600; }
 .rs-credit { margin: 0; color: var(--muted); font-size: var(--fs-xs); }
-.rs-tablebox { overflow-x: auto; }
+.rs-tablebox { overflow-x: auto; overscroll-behavior-x: contain; }
 .rs-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .rs-table th, .rs-table td { padding: var(--sp-8) var(--sp-6); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .rs-table thead th { color: var(--muted); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
 .rs-table tbody th { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rs-table td:not(:nth-child(2)) { white-space: nowrap; }
+.rs-tablewrap { position: relative; } /* the ! bubble opens over the table */
+.rs-pioneer-why { text-align: right; } /* 초등자 정보: one ! at the top right of the table */
+.rs-pl { display: block; }
+.rs-pl + .rs-pl { margin-top: var(--sp-8); padding-top: var(--sp-8); border-top: 1px solid var(--line); }
+.rs-prs { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-12); margin-top: var(--sp-4); color: var(--muted); } /* each route stays whole, groups wrap between them */
+.rs-pr { white-space: nowrap; }
+.rs-pl b { display: block; font-weight: 700; }
+.rs-pioneer-why .sun-limit { max-height: 40dvh; overflow-y: auto; overscroll-behavior: contain; } /* 50 routes: the bubble scrolls */
+/* 큰 글씨: 표가 옆으로 밀리지 않게 숫자 칸 여백을 줄이고, 장비·길이는 줄바꿈, 이름은 필요하면 글자 사이에서 끊는다 */
+html[data-text="xlarge"] :is(.rs-table th, .rs-table td) { padding-inline: var(--sp-4); }
+html[data-text="xlarge"] .rs-table :is(thead th, td:not(:nth-child(2), :nth-child(3))) { white-space: normal; }
+html[data-text="xlarge"] .rs-table td:nth-child(2) { overflow-wrap: anywhere; }
 .rs-name { display: block; font-weight: 600; }
-.rs-pioneer { display: block; color: var(--muted); font-size: var(--fs-xs); }
 .rs-sum, .rs-mine { margin: var(--sp-6) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 .rs-mine { color: var(--fg); font-weight: 700; }
 .rs-table tr.is-mine { background: color-mix(in srgb, var(--accent) 10%, transparent); } /* same meaning as .gy-list li.mine: tokens only, so all three themes follow */
@@ -2881,29 +2950,29 @@ button.ap-chip { cursor: pointer; color: var(--accent); }
 .row-fav { position: absolute; z-index: 3; left: calc(var(--pad) + 35px); top: 8px; width: 44px; height: 44px; color: var(--muted); opacity: .6; } /* 44px, not --tap (that grows with the text size and would push the icon off the name's line); the icon stays where the 32px box put it */
 .row-fav svg { width: 20px; height: 20px; }
 .row-fav.on { opacity: 1; }
-.row:not(:has(.l1 .sunnow)) .row-fav { left: calc(var(--pad) - 11px); top: 6px; } /* a row with no sun chip starts its name at the edge */
-.row.has-photo.is-open .row-fav { color: var(--on-photo); opacity: 1; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .55)); }
-.row.has-photo.is-open .row-fav.on { color: var(--fav); }
+:is(.row, .crag-row):not(:has(.l1 .sunnow)) .row-fav { left: calc(var(--pad) - 11px); top: 6px; } /* a row with no sun chip starts its name at the edge */
+:is(.row, .crag-row).has-photo.is-open .row-fav { color: var(--on-photo); opacity: 1; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .55)); }
+:is(.row, .crag-row).has-photo.is-open .row-fav.on { color: var(--fav); }
 /* the dock floats over the photo's foot: the card's opening part rises 30px over the photo (its top 30px is clear, so the photo shows through), and the photo's own foot lifts to stay above it */
-.row.has-photo.is-open > .expand { position: relative; z-index: 2; margin-top: -30px; background: linear-gradient(to bottom, transparent 30px, var(--sheet) 30px); }
-.row.has-photo.is-open .expand-in > .dock:first-child { margin-top: 0; }
-.row.has-photo:not(.is-open) > .expand { transition-duration: 0s; transition-delay: 0s; } /* closing: the photo leaves first, so the dock and chips must not linger for the exit time */
-.row.has-photo > .expand { opacity: 1; } /* the dock lies over the photo: a fading card would show the photo through it. The card opens by its height alone (the closed one is hidden by visibility) */
-.row.has-photo.is-open .rhero-foot { bottom: calc(var(--icon-row) + 44px + var(--sp-4)); } /* the hours cap sits above the camera / share row */
-.row.has-photo.is-open .rhero-tools { left: calc(var(--pad) - 2px); right: calc(var(--pad) - 2px); bottom: var(--icon-row); height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; pointer-events: none; }
-.row.has-photo.is-open .rhero-tools > * { pointer-events: auto; }
-.row.has-photo.is-open .rhero-tools .rhero-add { grid-column: 1; grid-row: 1; justify-self: start; width: 44px; height: 44px; }
-.row.has-photo.is-open .rhero-tools .rhero-add svg { width: 24px; height: 24px; }
-.row.has-photo.is-open .rhero-tools .rhero-dots { grid-column: 2; grid-row: 1; }
+:is(.row, .crag-row).has-photo.is-open > .expand { position: relative; z-index: 2; margin-top: -30px; background: linear-gradient(to bottom, transparent 30px, var(--sheet) 30px); }
+:is(.row, .crag-row).has-photo.is-open .expand-in > .dock:first-child { margin-top: 0; }
+:is(.row, .crag-row).has-photo:not(.is-open) > .expand { transition-duration: 0s; transition-delay: 0s; } /* closing: the photo leaves first, so the dock and chips must not linger for the exit time */
+:is(.row, .crag-row).has-photo > .expand { opacity: 1; } /* the dock lies over the photo: a fading card would show the photo through it. The card opens by its height alone (the closed one is hidden by visibility) */
+:is(.row, .crag-row).has-photo.is-open .rhero-foot { bottom: calc(var(--icon-row) + 44px + var(--sp-4)); } /* the hours cap sits above the camera / share row */
+:is(.row, .crag-row).has-photo.is-open .rhero-tools { left: calc(var(--pad) - 2px); right: calc(var(--pad) - 2px); bottom: var(--icon-row); height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; pointer-events: none; }
+:is(.row, .crag-row).has-photo.is-open .rhero-tools > * { pointer-events: auto; }
+:is(.row, .crag-row).has-photo.is-open .rhero-tools .rhero-add { grid-column: 1; grid-row: 1; justify-self: start; width: 44px; height: 44px; }
+:is(.row, .crag-row).has-photo.is-open .rhero-tools .rhero-add svg { width: 24px; height: 24px; }
+:is(.row, .crag-row).has-photo.is-open .rhero-tools .rhero-dots { grid-column: 2; grid-row: 1; }
 .ph-hero { padding-bottom: calc(var(--icon-row) + 44px + var(--sp-4)); }
 .ph-hero + .dock { position: relative; z-index: 2; margin-top: -30px; }
 /* focus over a photo: a white ring (the photo tokens), the group's dark drop-shadow lifts it off a bright sky */
-.row.has-photo.is-open :is(.row-fav, .rhero-add, .photo-tools .icon-btn):focus-visible { outline: 2px solid var(--on-photo); outline-offset: -4px; border-radius: 50%; }
+:is(.row, .crag-row).has-photo.is-open :is(.row-fav, .rhero-add, .photo-tools .icon-btn):focus-visible { outline: 2px solid var(--on-photo); outline-offset: -4px; border-radius: 50%; }
 /* camera / share over a photo: a dark glass disc (40px) inside the 44px target, so a bright photo does not swallow the white icon. The group's drop-shadow is dropped: a filter on the parent would blank the backdrop blur */
-.row.has-photo.is-open .photo-tools { filter: none; right: calc(var(--pad) - 2px); } /* the glass disc is inset 2px: its outer edge lands on the gutter */
-.row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn) { position: relative; isolation: isolate; color: var(--on-photo); opacity: 1; }
-.row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: rgb(20 22 24 / .32); border: 1px solid rgb(255 255 255 / .28); box-shadow: 0 2px 8px rgb(0 0 0 / .2), inset 0 1px 0 rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); }
-@media (prefers-reduced-transparency: reduce) { .row.has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+:is(.row, .crag-row).has-photo.is-open .photo-tools { filter: none; right: calc(var(--pad) - 2px); } /* the glass disc is inset 2px: its outer edge lands on the gutter */
+:is(.row, .crag-row).has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn) { position: relative; isolation: isolate; color: var(--on-photo); opacity: 1; }
+:is(.row, .crag-row).has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: rgb(20 22 24 / .32); border: 1px solid rgb(255 255 255 / .28); box-shadow: 0 2px 8px rgb(0 0 0 / .2), inset 0 1px 0 rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); }
+@media (prefers-reduced-transparency: reduce) { :is(.row, .crag-row).has-photo.is-open :is(.rhero-tools .rhero-add, .photo-tools .icon-btn)::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 /* the 예약하기 band under the dock (card-parts.js reserveBand): 44px, a sun tint; a must-reserve wall (.required) gets a yellow ! badge and a deeper tint */
 .reserve-band { display: flex; align-items: center; gap: var(--sp-8); min-height: 44px; margin-top: var(--sp-8); padding: 0 var(--sp-12); border-radius: var(--r-base); background: var(--sunken); color: var(--fg); text-decoration: none; font-size: var(--fs-sm); }
 .reserve-band.required { background: var(--sunken); box-shadow: inset 3px 0 0 var(--warn); } /* 예약 필수: a --warn bar, no black fill (black fill is 길찾기's) */

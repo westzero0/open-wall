@@ -3,7 +3,7 @@
 // 시간 = when (the hours table and, with sun math, the seasonal sun on the same axis); 이용 = what and how (시설, 요금, 주차).
 
 // the report kinds each tab offers, so 정보 제보 lists only what that tab shows (a tab not listed offers all)
-export const TAB_KINDS = { time: ['운영시간', '임시휴무', '공지'], use: ['시설', '요금', '주차'], routes: ['루트 분포', '전경 사진', '세팅일'], board: ['오픈채팅방', '기타'] };
+export const TAB_KINDS = { cond: ['컨디션'], way: ['주차', '어프로치'], time: ['운영시간', '임시휴무', '공지'], use: ['시설', '요금', '주차'], routes: ['루트 분포', '전경 사진', '세팅일'], board: ['오픈채팅방', '기타'] };
 
 const TIME = [
   { key: 'hours', title: '운영시간', kind: '운영시간' }, // `kind` is the report form's 종류 the section's 수정 요청 pre-fills

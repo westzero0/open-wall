@@ -90,13 +90,13 @@ const metricOf = (m, pref) => (pref === 'shade' ? m.shadeMin : pref === 'sun' ? 
 export function weekendPicks(walls, now, { pref = 'auto', regions = [], venue = 'any', limit = 3, weather = null, favs = [] } = {}) {
   const days = weekendDays(now);
   const resolved = pref === 'auto' ? seasonPref(days[0].date) : pref;
-  const scoped = scopeRows(walls.map((w) => ({ wall: viewOf(w, venue) })), { regions, venue }).map((r) => r.wall);
+  const scoped = scopeRows(walls.map((w) => ({ wall: viewOf(w, venue, now) })), { regions, venue }).map((r) => r.wall);
   const picks = (pool, day) => pool.map((w) => measure(w, day, now))
     .map((m) => m && { ...m, wx: weather?.(m.wall, day.date) ?? null })
     .filter((m) => m && metricOf(m, resolved) !== null && (resolved === 'any' || metricOf(m, resolved) >= MIN_PREF))
     .sort((a, b) => rainyOutdoor(a) - rainyOutdoor(b) || metricOf(b, resolved) - metricOf(a, resolved) || b.openMin - a.openMin || balanceOf(b) - balanceOf(a)
       || b.longestMin - a.longestMin || a.wall.name.localeCompare(b.wall.name, 'ko'));
-  const mineWalls = favs.length ? scopeRows(walls.filter((w) => favs.includes(w.name)).map((w) => ({ wall: viewOf(w, venue) })), { venue }).map((r) => r.wall) : [];
+  const mineWalls = favs.length ? scopeRows(walls.filter((w) => favs.includes(w.name)).map((w) => ({ wall: viewOf(w, venue, now) })), { venue }).map((r) => r.wall) : [];
   const byDay = days.map((day) => {
     const ranked = picks(scoped, day);
     const mineRanked = picks(mineWalls, day);

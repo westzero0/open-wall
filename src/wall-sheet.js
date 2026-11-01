@@ -7,10 +7,15 @@
 import { el } from './dom.js';
 import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 
-let build = null; // (wallName) => { head: { tone, sunT, region, chip, ok }, tabs: [{ key, label, icon?, pane }], onClose?: () => void } | null; pane: an element, or a function made when the tab is first shown (the board loads only then)
+// one builder per kind of place ('wall'; a 싱글피치 crag brings its own): (name) => { head: { tone, sunT, region, chip, ok, report }, tabs: [{ key, label, icon?, pane, kinds? }], onClose?, addr?, focusBack?, reportCrag? } | null
+// pane: an element, or a function made when the tab is first shown (the board loads only then); kinds: the report kinds that tab offers (else TAB_KINDS[key])
+// addr: { param, flag } the address keys of this kind (the wall's ?wall=&info, a crag's ?crag=&<tab>); flag may be a function of the tab's key. focusBack(): the button to focus when the opener is gone. reportCrag: 제보하기 sends a crag report
+const builders = {};
+let built = null; // what the open sheet was built from (its report and address keys)
 let onClose = null;
 let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null;
 let opener = null; // the button that opened it: focus goes back there
+let focusBack = null; // built.focusBack of the open sheet
 let wall = '';
 let pushed = false; // did we push a history entry that closing has to undo?
 let tabEls = [], panels = [], lazy = [];
@@ -18,7 +23,7 @@ let flashTimer = 0;
 let tabKeys = [];
 let cur = 0; // the tab in view
 
-export const registerWallSheet = (fn) => { build = fn; };
+export const registerWallSheet = (fn, kind = 'wall') => { builders[kind] = fn; };
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -55,7 +60,7 @@ function make() {
   ok = el('button', { type: 'button', class: 'sk-ok', 'aria-label': '닫기' });
   ok.addEventListener('click', () => dlg.close());
   rep = el('button', { type: 'button', class: 'sk-rep' }, '제보하기'); // on the name line: the report sheet opens on the kinds of the tab in view
-  rep.addEventListener('click', () => { const k = TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k } })); });
+  rep.addEventListener('click', () => { const k = built?.tabs[cur]?.kinds ?? TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k, ...(built.reportCrag ? { crag: true } : {}) } })); });
   sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, ok),
     el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
@@ -76,8 +81,10 @@ function make() {
     onClose = null;
     // back to the button that opened it; opened by a link (or the card was re-drawn): the card's own 자세히 › for this wall
     // (the list card's 운영·이용·게시판 rows are .pv-go, the map card's is [data-sheet-open]; a news card is gone by now: the wall's own row, then the first news card)
-    const row = [...document.querySelectorAll('.row')].find((r) => r.wallName === wall && r.classList.contains('is-open')) ?? [...document.querySelectorAll('.row')].find((r) => r.wallName === wall);
-    const own = [...document.querySelectorAll('.row.is-open [data-sheet-open]')].find((b) => b.dataset.name === wall) ?? row?.querySelector('[data-sheet-open], .pv-go') ?? row?.querySelector('.row-btn') ?? document.querySelector('.cs-main');
+    // a crag's card row is .crag-row (its head is .crag-head): its sheet asks for the very row that opened it first (focusBack)
+    const rows = [...document.querySelectorAll('.row, .crag-row')].filter((r) => r.wallName === wall);
+    const row = rows.find((r) => r.classList.contains('is-open')) ?? rows[0];
+    const own = focusBack?.() ?? [...document.querySelectorAll('.row.is-open [data-sheet-open]')].find((b) => b.dataset.name === wall) ?? row?.querySelector('[data-sheet-open], .pv-go') ?? row?.querySelector('.row-btn, .crag-head') ?? document.querySelector('.cs-main');
     const o = opener?.isConnected ? opener : own;
     opener = null;
     o?.focus();
@@ -109,12 +116,14 @@ function paintHead(h) {
   void sky.offsetWidth; // restart the rise on every open, even when another wall replaces the one in view
   if (!reduced()) sky.classList.add('is-opening');
 }
-/** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `tab`: the key of the tab to start on (an unknown key = the first). `section`: a section key of that tab to scroll to and mark. */
-export function openWallSheet(wallName, from = null, { push = true, tab = null, section = null } = {}) {
-  const built = build?.(wallName);
-  if (!built?.tabs.length) return; // not registered, or an unknown wall
+/** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `kind`: which registered builder ('wall', or a crag's). `tab`: the key of the tab to start on (an unknown key = the first). `section`: a section key of that tab to scroll to and mark. Returns true when it opened. */
+export function openWallSheet(wallName, from = null, { push = true, tab = null, section = null, kind = 'wall' } = {}) {
+  const made = builders[kind]?.(wallName);
+  if (!made?.tabs.length) return false; // not registered, or an unknown wall
   if (!dlg) make();
-  if (dlg.open) return;
+  if (dlg.open) return false; // a sheet is already open: the caller must not think this one is
+  built = made;
+  focusBack = built.focusBack ?? null;
   wall = wallName;
   const split = nameBreak(wallName); // a long name with no space breaks ahead of its kind of place (인공암벽장 …), not inside a word
   if (split) title.replaceChildren(split[0], document.createElement('wbr'), split[1]);
@@ -140,15 +149,16 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   bar.hidden = !several; // one tab: just its content
   onClose = built.onClose ?? null;
   opener = from;
+  const first = Math.max(0, built.tabs.findIndex((t) => t.key === tab));
   if (push) {
+    const { param = 'wall', flag = 'info' } = built.addr ?? {};
     const u = new URL(location.href);
-    u.searchParams.set('wall', wallName);
-    u.searchParams.set('info', '');
+    u.searchParams.set(param, wallName);
+    u.searchParams.set(typeof flag === 'function' ? flag(built.tabs[first].key) : flag, '');
     history.pushState({ info: wallName }, '', u);
     pushed = true;
   }
   dlg.showModal();
-  const first = Math.max(0, built.tabs.findIndex((t) => t.key === tab));
   show(first);
   paint(first);
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
@@ -165,4 +175,5 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
     clearTimeout(flashTimer); // a reopen within the 1.6 s must not have its mark wiped by the earlier timer
     flashTimer = setTimeout(() => sec.classList.remove('flash'), 1600);
   }
+  return true;
 }

@@ -1,5 +1,5 @@
-// 싱글피치 어프로치 시트(docs/superpowers/specs/2026-10-21-crag-approach-design.md, 시안 mockups/2026-10-21-crag-approach.html).
-// 머리: 이름 · 저장 버튼(기기에 저장) · 완료 ✓. 위 길 띠(지금 정지점 강조, 걸어 온 구간 채움, 원을 누르면 그 단계로), 사진(왼쪽·오른쪽 절반 = 이전·다음,
+// 싱글피치 어프로치 탭(docs/superpowers/specs/2026-10-21-crag-approach-design.md, 시안 mockups/2026-10-21-crag-approach.html): 암장 시트(wall-sheet.js)의 한 탭.
+// 위 줄: 저장 칩(기기에 저장). 길 띠(지금 정지점 강조, 걸어 온 구간 채움, 원을 누르면 그 단계로), 사진(왼쪽·오른쪽 절반 = 이전·다음,
 // 가로로 밀기), 방향 글자(turn 화살표 + text), wrong이면 와인 줄, 아래 이전/다음. 사진이 안 뜨면 글·띠·방향은 그대로 둔다.
 // 첫 정지점은 주차(park.chip·line), 마지막은 암장 도착. DOM은 el()과 텍스트 노드만 쓴다.
 import { el } from './dom.js';
@@ -18,31 +18,21 @@ function chipOf(st, busy) {
 }
 
 /**
- * openApproachSheet(crag, { saved, saveState, onSave, onClear, onClose, icon }) → { close(), setSaved(st) }
- * saved: { saved, total, failed? } (routeState, plus the last save's failures). saveState(name): the current state (read at open and by setSaved()); onSave(name): the save button was pressed (app.js saves,
- * then calls setSaved). onClear(): 기기에서 지우기. onClose(): after the sheet closed. icon(name): app.js's icon() (optional).
+ * approachPane(crag, { saveState, onSave, onClear, icon }) → { node, setSaved(st?) } | null (null: approachModel(crag) has nothing to show).
+ * The 어프로치 tab of the crag sheet (src/wall-sheet.js holds the head, ✓/닫기 and the dialog). node: the save chip on top, the strip,
+ * the place line, the photo, the direction, the wrong-way line, 이전/다음 and 기기에서 사진 지우기.
+ * saveState(name): { saved, total, failed? } | null (read at build and by setSaved()); onSave(name): the chip was pressed (app.js saves,
+ * then calls setSaved). onClear(): 기기에서 지우기. icon(name): app.js's icon() (optional).
  */
-// the sheet's one form, filled anew on each open; the grab bar src/sheet-gestures.js prepended on the first open is kept (it is added once per dialog)
-export function sheetForm(dlg, ...kids) {
-  const form = dlg.querySelector(':scope > form') ?? dlg.appendChild(el('form', { method: 'dialog' }));
-  form.replaceChildren(...[form.querySelector(':scope > .sheet-grab'), ...kids].filter(Boolean)); // replaceChildren would write null as text
-  return form;
-}
-
-export function openApproachSheet(crag, { saved = null, saveState = null, onSave = () => {}, onClear = () => {}, onClose = () => {}, icon = null } = {}) {
+export function approachPane(crag, { saveState = null, onSave = () => {}, onClear = () => {}, icon = null } = {}) {
   const m = approachModel(crag);
-  if (!m) return { close() {}, setSaved() {} };
+  if (!m) return null;
   const pic = (name) => (icon ? icon(name) : null);
-  const dlg = document.getElementById('approach-sheet')
-    ?? document.body.appendChild(el('dialog', { id: 'approach-sheet', class: 'sheet approach-sheet', 'aria-labelledby': 'ap-title' }));
-  const opener = document.activeElement;
   const len = m.stops.length;
   let cur = 0;
-  let st = saveState?.(crag.name) ?? saved;
+  let st = saveState?.(crag.name) ?? null;
   let busy = false;
 
-  const done = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, pic('close') ?? '✕'); // the sheets' ✓ (app.js .sh-ok)
-  done.addEventListener('click', () => dlg.close());
   const chipBox = el('span', { class: 'ap-chipbox', 'aria-live': 'polite' });
   const fill = el('span', { class: 'ap-fill', 'aria-hidden': 'true' });
   const dots = m.stops.map((s, i) => {
@@ -87,11 +77,11 @@ export function openApproachSheet(crag, { saved = null, saveState = null, onSave
     clear.hidden = !(st?.saved > 0) || busy;
     if (!c) return chipBox.replaceChildren();
     const g = c.glyph ? pic(c.glyph) : null; // no icon (tests, old callers): the words
-    const kids = g ? [g] : [c.text];
-    const attrs = { class: `ap-chip is-${c.kind}${g ? ' is-icon' : ''}`, ...(g ? { 'aria-label': c.text } : {}) };
+    const kids = g ? [g, c.text] : [c.text]; // the icon with its words: an icon alone says nothing
+    const attrs = { class: `ap-chip is-${c.kind}` };
     const chip = c.kind === 'no' || c.kind === 'fail'
       ? el('button', { type: 'button', ...attrs }, ...kids) // 못 받은 사진이 있으면 다시 누를 수 있다
-      : el('span', { ...attrs, ...(g ? { role: 'img' } : {}), tabindex: '-1' }, ...kids);
+      : el('span', { ...attrs, tabindex: '-1' }, ...kids);
     if (chip.tagName === 'BUTTON') chip.addEventListener('click', () => { busy = true; paintChip(); onSave(crag.name); });
     chipBox.replaceChildren(chip);
     if (had && (clear.hidden || document.activeElement !== clear)) chip.focus();
@@ -163,26 +153,18 @@ export function openApproachSheet(crag, { saved = null, saveState = null, onSave
     paint();
   }
 
-  sheetForm(dlg, // .sheet form: the padding; the grab bar src/sheet-gestures.js put in it stays (the dialog is reused)
-    el('div', { class: 'sh-head ap-head' }, el('h2', { id: 'ap-title' }, crag.name), el('div', { class: 'sh-okw' }, chipBox, done)),
-    strip, where, view, dir, wrong,
-    el('div', { class: 'ap-nav' }, prev, next), clear);
-  dlg.onkeydown = (e) => {
+  // the save chip sits at the end of the step caption (.ap-cap): no line of its own
+  const node = el('div', { class: 'approach-pane' }, strip,
+    el('div', { class: 'ap-cap' }, where, chipBox), view, dir, wrong, el('div', { class: 'ap-nav' }, prev, next), clear);
+  // ←/→ step only inside the pane: on the tab bar the same keys move between tabs (src/wall-sheet.js)
+  node.addEventListener('keydown', (e) => {
     const d = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
     if (d && !e.target.closest?.('input, textarea')) { e.preventDefault(); go(stepTo(cur, d, len)); }
-  };
-  dlg.onclose = () => {
-    dlg.onclose = null;
-    const back = opener?.isConnected ? opener : document.querySelector('.crag-row.is-open [data-opens="approach"]'); // the card may have been drawn again: its 어프로치 row
-    back?.focus();
-    onClose();
-  };
+  });
   paintChip();
   paint();
-  dlg.showModal();
-  done.focus();
   return {
-    close: () => { if (dlg.open) dlg.close(); },
+    node,
     setSaved(next) { st = next === undefined ? (saveState?.(crag.name) ?? st) : next; busy = false; paintChip(); },
   };
 }

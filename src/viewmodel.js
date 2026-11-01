@@ -46,12 +46,16 @@ const VENUE_OK = { indoor: ['indoor', 'both'], outdoor: ['outdoor', 'both'] };
 // outdoor timetable. With 실내 picked, a 'both' wall uses its indoor_hours/indoor_winter and no sun
 // (venue becomes 'indoor'); without indoor hours it has none (→ 미입력 group, "실내 시간 미입력").
 // timeBasis: 'outdoor' marks a 'both' wall read on its outdoor hours ("실외 시간 기준"), else null.
-export function viewOf(wall, venue = 'any') {
+// `at` (optional): while the outdoor side is shut for the winter (winter 'closed') a 'both' wall with indoor hours is the indoor wall: its icon, hours and
+// filter follow, and `seasonIndoor` (the months) tells the card why.
+export function viewOf(wall, venue = 'any', at = null) {
   if (wall.venue !== 'both') return { ...wall, timeBasis: null };
-  if (venue !== 'indoor') return { ...wall, timeBasis: 'outdoor' };
   const has = Object.keys(wall.indoor_hours ?? {}).length > 0;
+  const shut = has && at && wall.winter?.type === 'closed' && inWinter(wall, at);
+  if (venue !== 'indoor' && !shut) return { ...wall, timeBasis: 'outdoor' };
   return {
     ...wall,
+    ...(shut ? { seasonIndoor: wall.winter.from_month && wall.winter.to_month ? `${wall.winter.from_month}~${wall.winter.to_month}월` : '이번 계절' } : {}),
     venue: 'indoor',
     hours: has ? wall.indoor_hours : {},
     winter: has ? wall.indoor_winter ?? { type: 'none' } : { type: 'none' },

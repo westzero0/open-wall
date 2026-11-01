@@ -36,7 +36,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, cragSheetTabFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { cleanMode, effectiveMode } from './ui-state.js'; // 싱글피치: 보기 종류
@@ -45,16 +45,19 @@ import { loadCragWeather } from './crag-weather.js';
 import { cragSky, renderCragBoard } from './crag-view.js';
 import { approachModel } from './crag-approach.js';
 import { saveRoute, routeState, clearRoute } from './crag-photos.js';
-import { openApproachSheet } from './approach-sheet.js';
+import { approachPane } from './approach-sheet.js';
 import { loadCragRoutes } from './crag-routes.js';
-import { openRoutesSheet } from './routes-sheet.js';
+import { routesPane } from './routes-sheet.js';
+import { condPane } from './crag-cond-pane.js';
+import { cragRow, cragModel, blogLinks } from './crag-model.js';
+import { cragSheetTabs, cragBoardListed, skyChip, sunT, CRAG_SHEET_TABS, CRAG_TAB_ICON } from './crag-sheet-model.js';
 import { crossfadeRows, el, tightParens } from './dom.js';
 
 // "10월 27일 화요일" above the slider; the weekday is its own span so the largest text size can drop it (style.css .dow) and keep the line to one row
 function setSub(at, extra = '') {
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
-import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, photoTools, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
+import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -123,6 +126,7 @@ const ICONS = {
   pencil: ['M12 20h9', 'M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'], // 정보 수정 요청
   calendar: ['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18'],
   ticket: ['M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z', 'M13 5v2', 'M13 11v2', 'M13 17v2'],
+  wind: ['M17.5 8a2.5 2.5 0 1 1 2 4H2', 'M12.8 19.6A2 2 0 1 0 14 16H2'], // the 컨디션 tab's gust pill
   clock: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 7v5l3 2'], // the wall sheet's tabs: 시간 (this), 이용 (ticket), 루트 (route), 게시판 (chat)
   route: ['M3 19l6-10 4 6 3-4 5 8z'],
   alert: ['m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3', 'M12 9v4', 'M12 17h.01'], // ! in a triangle: my rope is too short for the wall (the rope chip)
@@ -1378,7 +1382,7 @@ function cardActions(m, wall, onMap = false) { // onMap: 공유 stands where 다
   const go = nav ? navButton(nav, m.navAddress ?? m.address, pos ? { lat: pos.lat.toFixed(5), lng: pos.lng.toFixed(5), name: m.name } : null) : null;
   if (onMap && go) { go.classList.remove('dock-ic'); go.append(el('span', {}, '길찾기')); } // the map card's main action: wide and worded, 전화 and 공유 stay squares
   return {
-    dock: dock(go, onMap ? mapShare(m.name) : beenBtn(m), telButton(m.name, m.links.find((x) => x.label === '전화'), icon)),
+    dock: dock(go, onMap ? null : beenBtn(m), telButton(m.name, m.links.find((x) => x.label === '전화'), icon), mapShare(m.name)),
     reserve: reserveBand(m.reserve, { icon }),
     chips: chipBar(onMap ? m.chips?.slice(0, 3).map((c) => ({ ...c, to: null })) : m.chips, { icon, pick: (to, b) => openWallSheet(m.name, b, to), extra: [onMap ? null : wallScheduleChip(wall)] }),
     notice: noticeLine(m.notice, { lit: rainComing(m), report: (b) => reportFrom(m.name, '임시휴무', ['임시휴무'], b), icon }),
@@ -1401,7 +1405,7 @@ function rowDetails(m, wall, at) {
   // (linkBar and m.links stay for the wall sheet's 연락 section; until then the phone / 공지 / 오픈채팅 links are not on the card)
   return [
     // no photo: a plain block takes the photo's place (hours on its foot, the camera at its corner), so both cards have the same layout
-    m.photo ? null : placeholderHero(m, photoAsk, shareBtn(m.name)),
+    m.photo ? null : placeholderHero(m, photoAsk, null),
     actions,
     reserve,
     chips,
@@ -1647,7 +1651,7 @@ registerWallSheet(buildWallSheet);
 // 희노애Rock 후기: a small list (newest first, 3 shown, "외 N개" unfolds the rest in place); the map card keeps one link.
 // Titles and dates only via textContent; the urls were checked in normalizeWall (BLOG_URL_RE).
 const BLOG_SHOWN = 3;
-function blogBox(blog, withList = true) {
+function blogBox(blog, withList = true, note = '참고용 · 운영시간은 앱 정보가 기준', wrap = false) {
   if (!blog) return null;
   const { posts, first } = blog;
   if (!withList) {
@@ -1666,8 +1670,8 @@ function blogBox(blog, withList = true) {
     more.textContent = on ? '접기' : `외 ${rest.length}개 더 보기`;
     restList.hidden = !on;
   });
-  return el('div', { class: 'blog' },
-    el('p', { class: 'blog-h' }, el('b', {}, '희노애Rock 후기'), el('span', {}, '참고용 · 운영시간은 앱 정보가 기준')),
+  return el('div', { class: wrap ? 'blog blog-wrap' : 'blog' }, // wrap: a long title takes lines instead of one ellipsis line (싱글피치 게시판 탭)
+    el('p', { class: 'blog-h' }, el('b', {}, '희노애Rock 후기'), el('span', {}, note)),
     el('ul', { class: 'blog-list' }, ...posts.slice(0, BLOG_SHOWN).map(item)),
     restList, more);
 }
@@ -1688,7 +1692,7 @@ function cragBeen(name) {
     state.crags.find((c) => c.name === name) ?? null);
 }
 // the crag card's 정보 수정 요청: the wall's report sheet, crag mode (its own kinds, no photo; src/report-view.js)
-function reportCrag(name) { document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, crag: true } })); }
+function reportCrag(name, kind) { document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, crag: true, ...(kind ? { kind } : {}) } })); }
 // the latest 3 records, small, at the foot; nothing at all without records
 function visitLog(m) {
   const v = m.visits;
@@ -1884,7 +1888,7 @@ function timeRow(row, at) {
   // Only the row that stays open across a re-render is filled now; it is created open, so no transition plays.
   const inner = el('div', { class: 'expand-in' }, ...(isOpen ? rowDetails(m, row.wall, at) : []));
   const li = el('li', { class: `row ${cls}${m.warn ? ' warned' : ''}${m.photo ? ' has-photo' : ''}` });
-  li.append(btn, heart, ...(m.photo ? [rowPhoto(m, li, { corner: photoTools(shareBtn(m.name)) })] : []), el('div', { class: 'expand', id }, inner)); // DOM order = tab order: the row, its ♥, the photo's camera and share, then the card (the grid places them by area, not by order)
+  li.append(btn, heart, ...(m.photo ? [rowPhoto(m, li)] : []), el('div', { class: 'expand', id }, inner)); // DOM order = tab order: the row, its ♥, the photo's camera and share, then the card (the grid places them by area, not by order)
   // filled on open: a fresh model, so "오늘" is judged on the clock of the click
   li.fill = () => inner.childElementCount || inner.append(...rowDetails(modelOf(row, at), row.wall, at).filter(Boolean));
   li.wallName = m.name;
@@ -1965,7 +1969,7 @@ function setBand(summary, label, n) {
 // 헤더 토글 외벽 | 싱글피치. 싱글피치 모드는 목록·카드만 다른 화면(crag-view.js)이고, 날짜·시간 조작부와 내 지역·내 로프는 그대로 쓴다.
 // 날씨는 이 모드일 때만 묻는다(crag-weather.js: 일별 강수 지난 7일 + 예보, 시간별 기온·하늘, 기기에 3시간 보관).
 const wallBoard = document.querySelector('#panel-list .board');
-const cragWx = { daily: new Map(), hourly: new Map(), ok: false, busy: false, at: 0 };
+const cragWx = { daily: new Map(), hourly: new Map(), wet: new Map(), ok: false, busy: false, at: 0 };
 let cragOpen = null; // the open crag row (by name); a rebuild keeps it
 let cragRefocus = null; // a tap on a row redraws the board, so the focus goes back to that row
 const labOn = labCrag(location.search, safeStorage() ?? { getItem: () => null }); // 이 기기에서만 켠 시범
@@ -2048,10 +2052,10 @@ function openCrag(name, behavior = reduceMotion() ? 'auto' : 'smooth') {
 const routeSaved = new Map();
 const routeAsked = new Set();
 const routeBusy = new Set();
-let approach = null; // the open 어프로치 sheet: { name, sheet }
+let cragSheet = null; // the open 암장 시트: { name, back, approach: approachPane | null } (the 가는 길 pane is made when its tab is first shown)
+let cragAt = null; // the moment the crag list was last drawn for: the sheet's head and 컨디션 tab read it
 const hasCaches = () => typeof caches !== 'undefined';
 let cragRoutes = new Map(); // 개념도·루트(data/crag-routes.json): name → { areas?, topos, routes }; 못 받으면 빈 채로 둔다(카드에 버튼 없음)
-let routesOpen = null; // the open 개념도·루트 sheet
 // 사진 저장은 어프로치 사진과 개념도 사진을 함께 담는다
 const photosOf = (name) => [...(approachModel(state.crags.find((c) => c.name === name))?.photos ?? []), ...(cragRoutes.get(name)?.topos ?? []).map((t) => t.image)];
 function askRouteStates(rows) {
@@ -2060,7 +2064,7 @@ function askRouteStates(rows) {
     if (routeAsked.has(r.name)) continue;
     routeAsked.add(r.name);
     const paths = photosOf(r.name);
-    if (paths.length) routeState(paths, { caches }).then((s) => { routeSaved.set(r.name, s); if (approach?.name === r.name) approach.sheet?.setSaved(); if (s.saved && cragMode()) render(); }, () => {});
+    if (paths.length) routeState(paths, { caches }).then((s) => { routeSaved.set(r.name, s); if (cragSheet?.name === r.name) cragSheet.approach?.setSaved(); if (s.saved && cragMode()) render(); }, () => {});
   }
 }
 async function saveCragRoute(name) {
@@ -2073,7 +2077,7 @@ async function saveCragRoute(name) {
   routeBusy.delete(name);
   const st = { ...s, failed: s.saved >= s.total ? 0 : res.failed || s.total - s.saved };
   routeSaved.set(name, st);
-  if (approach?.name === name) approach.sheet.setSaved(st);
+  if (cragSheet?.name === name) cragSheet.approach?.setSaved(st);
   else toast(st.failed ? `사진 ${st.failed}장 못 받았어요 · 다시 눌러 주세요` : `사진 ${st.saved}장을 이 기기에 저장했어요`);
   if (cragMode()) render();
 }
@@ -2083,29 +2087,61 @@ async function clearCragRoute(name) {
   await clearRoute(paths, { caches }).catch(() => {});
   const st = { saved: 0, total: paths.length };
   routeSaved.set(name, st);
-  if (approach?.name === name) approach.sheet.setSaved(st);
+  if (cragSheet?.name === name) cragSheet.approach?.setSaved(st);
   if (cragMode()) render();
 }
-function openApproach(name) {
-  const crag = state.crags.find((c) => c.name === name);
-  if (!crag || approach || !approachModel(crag)) return;
-  approach = { name, sheet: null };
-  try {
-    approach.sheet = openApproachSheet(crag, {
-      saveState: (nm) => routeSaved.get(nm) ?? (hasCaches() && photosOf(nm).length ? { saved: 0, total: photosOf(nm).length } : null),
-      onSave: (nm) => saveCragRoute(nm), onClear: () => clearCragRoute(name), onClose: () => { approach = null; }, icon });
-  } catch { approach = null; } // a sheet that did not open (showModal threw) must not block the next try
+// 암장 시트: the wall sheet's dialog (src/wall-sheet.js) with the crag's tabs 컨디션 · 가는 길 · 루트 · 게시판 (a tab only when it has something to show).
+// Every pane is made when its tab is first shown; the 컨디션 tab reads the weather as it is at that moment (closing and opening again shows a newer forecast).
+// The card rows open it on their tab; the address is ?crag=<name>&<tab> (a link opens it the same way).
+function cragSheetHead(crag, at) {
+  const tone = sceneTone(dialModel(crag, at, { isNow: vs.live, dayLabel: ymd(at) === ymd(new Date()) ? '오늘' : dayText(at) }), at);
+  return { tone: tone || 'k-none', sunT: sunT(cragModel(crag, at).day, at) ?? 0.5, region: crag.region || '', ok: icon('close'), report: Boolean(config.reportEndpoint), chip: skyChip(tone, vs.live) ?? '' };
 }
-function openRoutes(name) {
+function buildCragSheet(name) {
+  const crag = state.crags.find((c) => c.name === name);
+  if (!crag) return null;
+  const at = cragAt ?? new Date();
+  const now = new Date();
   const entry = cragRoutes.get(name);
-  if (!entry || routesOpen) return;
-  try { routesOpen = openRoutesSheet(name, entry, { onClose: () => { routesOpen = null; }, icon, mine: loadMyGrade(storage) }); } catch { routesOpen = null; }
+  const blog = blogLinks(crag);
+  const listed = boardOn() && cragBoardListed(name);
+  const tabs = cragSheetTabs({ hasWay: !!approachModel(crag), hasRoutes: !!entry?.routes?.length || !!entry?.topos?.length, hasBoard: listed || blog.length > 0 });
+  const pane = {
+    cond: () => condPane(cragRow(crag, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet }), { daily: cragWx.daily?.get(name), hourly: cragWx.hourly?.get(name), at, now, icon }),
+    way: () => {
+      const ap = approachPane(crag, {
+        saveState: (nm) => routeSaved.get(nm) ?? (hasCaches() && photosOf(nm).length ? { saved: 0, total: photosOf(nm).length } : null),
+        onSave: (nm) => saveCragRoute(nm), onClear: () => clearCragRoute(name), icon });
+      if (cragSheet?.name === name) cragSheet.approach = ap;
+      return ap?.node ?? null;
+    },
+    routes: () => routesPane(name, entry, { mine: loadMyGrade(storage) }),
+    board: () => [listed ? boardBox(name, { mode: 'full', place: '이 암장' }) : null, blog.length ? blogBox({ posts: blog }, true, '참고용', true) : null].filter(Boolean),
+  };
+  return {
+    head: cragSheetHead(crag, at),
+    tabs: tabs.map((t) => ({ ...t, icon: icon(CRAG_TAB_ICON[t.key]), pane: pane[t.key] })),
+    addr: { param: 'crag', flag: (tab) => tab },
+    reportCrag: true,
+    focusBack: () => document.querySelector(`.crag-row.is-open [data-opens="${cragSheet?.back}"]`), // the card may have been drawn again: the row that opened it
+    onClose: () => { cragSheet = null; },
+  };
+}
+registerWallSheet(buildCragSheet, 'crag');
+// open the sheet on a tab (from a card row: from = the row's button, whose data-opens is where the focus goes back to)
+function openCragSheet(name, tab, from = null) {
+  if (cragSheet || !state.crags.some((c) => c.name === name)) return; // one sheet at a time; an unknown crag opens nothing
+  cragSheet = { name, back: from?.dataset?.opens ?? null, approach: null };
+  let opened = false;
+  try { opened = openWallSheet(name, from, { kind: 'crag', tab }); } catch { opened = false; } // showModal threw
+  if (!opened) cragSheet = null; // a sheet that did not open (or another one already open) must not block the next try
 }
 function renderCrags(at, now, isNow) {
   const host = $('crag-board');
+  cragAt = at;
   const ropeM = Number(ui.ropeM) || 0;
   const myGrade = loadMyGrade(storage); // 내 그레이드 루트 많은 순 needs it; without one 'mygrade' stays as 남은 시간 순
-  const rows = cragList(state.crags, at, { regions: ui.regions, ropeM, approachMax: Number(ui.approachMax) || 0, origin: vs.origin, now, daily: cragWx.daily, hourly: cragWx.hourly, sun: ui.sun, query: $('findQ').value, sortMode: ui.sortMode, myGrade, routes: cragRoutes, favs, favOnly: ui.favOnly });
+  const rows = cragList(state.crags, at, { regions: ui.regions, ropeM, approachMax: Number(ui.approachMax) || 0, origin: vs.origin, now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, sun: ui.sun, query: $('findQ').value, sortMode: ui.sortMode, myGrade, routes: cragRoutes, favs, favOnly: ui.favOnly });
   const cv = cragFilterView(ui, { hasGrade: !!myGrade, query: $('findQ').value });
   $('findHits').hidden = true; // the search box only narrows the crag rows here (its hit list is for walls)
   askRouteStates(rows);
@@ -2135,9 +2171,10 @@ function renderCrags(at, now, isNow) {
     // a redraw that is not a tap (the weather came, the minute ticked) may move the open card in the new order: it stays where it was on screen
     const pin = !forced && cragOpen ? host.querySelector('.crag-row.is-open .crag-head') : null;
     const top = pin?.getBoundingClientRect().top;
-    renderCragBoard(host, rows, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, ropeM, openName: cragOpen, enterName: cragEnter, onOpen: (nm) => openCrag(nm), sunBox: cragSunBox,
-      icon, sunChip, showDistance: ui.sortMode === 'distance' && !!vs.origin, byMine: ui.sortMode === 'mygrade' && !!myGrade, isNow, favs, empty: cv, onOpenApproach: openApproach, near: (c) => cragNear(c, at),
-      routes: cragRoutes, mine: myGrade, onOpenRoutes: openRoutes, been: cragBeen, onReport: config.reportEndpoint ? reportCrag : null, rowPhoto: (pm, li, onFail) => rowPhoto({ ...pm, suspended: null, today: pm.hero }, li, { canAdd: false, noun: '암장', onFail }), links: (c) => linkBar(c.links, c.address ?? c.name, { start: favBtn(c.name, '즐겨찾기'), end: shareBtn(c.name, '공유', 'crag') }, c.geo) });
+    renderCragBoard(host, rows, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, ropeM, openName: cragOpen, enterName: cragEnter, onOpen: (nm) => openCrag(nm), sunBox: cragSunBox,
+      icon, sunChip, showDistance: ui.sortMode === 'distance' && !!vs.origin, byMine: ui.sortMode === 'mygrade' && !!myGrade, isNow, favs, empty: cv, onOpenSheet: (nm, tab, b) => openCragSheet(nm, tab, b), boardListed: (nm) => boardOn() && cragBoardListed(nm), near: (c) => cragNear(c, at),
+      routes: cragRoutes, mine: myGrade, been: cragBeen, onReport: config.reportEndpoint ? reportCrag : null, rowPhoto: (pm, li, onFail) => rowPhoto({ ...pm, suspended: null, today: pm.hero, hoursOnGauge: pm.bar.length > 0 }, li, { canAdd: false, noun: '암장', onFail }),
+      fav: (name) => favBtn(name), share: (name) => { const w = shareBtn(name, null, 'crag'); w.classList.add('dock-share'); return w; }, nav: (c) => { const l = c.links.find((x) => x.primary); return l ? navButton(l, c.address ?? c.name, c.geo) : null; } }); // ♥ · 공유 · 길찾기: the wall card's own buttons (dock, photo corner, row head)
     const moved = pin ? (host.querySelector('.crag-row.is-open .crag-head')?.getBoundingClientRect().top ?? top) - top : 0;
     if (moved) window.scrollBy(0, moved);
     if (focusName) [...host.querySelectorAll('.crag-head')].find((b) => b.dataset.crag === focusName)?.focus({ preventScroll: !forced });
@@ -2871,7 +2908,7 @@ favs = loadFavs(storage, allWalls());
 schedule = loadSchedule(storage, allWalls());
 moves = liveMoves(schedule, loadMoves(storage, allWalls(), new Date()), new Date());
 logView.reconcile(allWalls());
-if (cragOn) loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}); // the save totals are asked again with the topos
+const cragRoutesReady = cragOn ? loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}) : Promise.resolve(); // the save totals are asked again with the topos
 showLoadError(!first);
 // A share link (?wall=이름) opens that wall's card. The saved filters may hide it, so this visit drops them (in
 // memory only; nothing is saved until the visitor changes a filter) and starts on the list.
@@ -2914,8 +2951,10 @@ if (sharedWall) {
 if (sharedCrag) {
   openCrag(sharedCrag.name, 'auto'); // opens the row, focuses its head and brings it to the top, as revealRow does for a wall (renderCrags keeps it there when the weather re-sorts the list)
   const u = new URL(location.href);
-  u.searchParams.delete('crag');
+  const sheetTab = cragSheetTabFromSearch(location.search); // ?crag=<name>&routes: the sheet on that tab (a tab the crag lacks: its first)
+  for (const k of ['crag', ...CRAG_SHEET_TABS]) u.searchParams.delete(k);
   history.replaceState(null, '', u);
+  if (sheetTab) cragRoutesReady.then(() => { openCragSheet(sharedCrag.name, sheetTab, null); history.replaceState(null, '', u); }); // the sheet pushes its own entry, so 뒤로 closes only the sheet; the address stays clean
 }
 { // 클라이머 유형 테스트: a friend's ?type=<code> link shows that type and the way in (config.climberTest off: ignored)
   const sharedType = featureOn('climber') ? typeFromSearch(location.search) : null;

@@ -11,7 +11,7 @@ import { LEVELS as CROWD_LEVELS } from './crowd.js';
 import { RAIN_MM, rainOf, weatherLine, windy } from './weather.js';
 import { DEFAULT_STAY_H, TABLE_HOURS, feeAfter, feeBrief, lotFeeTable, pricedLots } from './parking-rate.js';
 import {
-  axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, hasRental, rentalText, shortName, unknownText, wallPosition,
+  axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, hasRental, rentalText, shortName, unknownText, viewOf, wallPosition,
 } from './viewmodel.js';
 
 // ---- status ----
@@ -601,8 +601,9 @@ export function closingNotes(lines) {
 }
 
 /** 휴무안내: { tone: 'sure' (an admin-entered closing: red) | 'maybe' (a weather condition: quiet, `rain` when the forecast can light it), text } or null. */
-export function closureNotice({ suspended, day, dayLabel, cond }) {
+export function closureNotice({ suspended, day, dayLabel, cond, winterOut = null }) {
   if (suspended) return { tone: 'sure', text: ['임시 휴관', suspended.since, suspended.note].filter(Boolean).join(' · ') };
+  if (winterOut) return { tone: 'sure', text: `동절기 외벽 휴관 · ${winterOut}` }; // the season's closing: red and final, like a 임시 휴관
   if (day.closed && day.text.startsWith('임시 휴무')) return { tone: 'sure', text: `${dayLabel} ${day.text}` }; // day.text carries the reason: "임시 휴무 (루트 세팅)"
   if (!cond.length) return null;
   const full = cond.map((l) => l.value).join(' · ');
@@ -640,8 +641,12 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const old = staleness(wall, at);
   const pos = wallPosition(wall);
   const approxNote = pos?.approx ? '위치 추정(확인 전)' : null;
-  const winterNote = status.winterNote ? (status.winterNote.startsWith('동절기') ? status.winterNote : `동절기 · ${status.winterNote}`) : null; // the note may already say 동절기
-  const rainNote = wall.exceptions?.rain_rule ? '우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
+  const day = dayLine(wall, at);
+  // outdoor shut for the winter: the 운영 row says it with the indoor side's hours, so the winter note and the rain notes (outdoor-only) are not said again
+  const winterOut = !!wall.seasonIndoor || (day.closed && day.text === '외벽 휴무' && wall.winter?.type === 'closed'); // viewOf read the wall as indoor for the season, or it is still read on its outdoor hours
+  const indoorDay = wall.seasonIndoor ? day : winterOut && wall.venue === 'both' && Object.keys(wall.indoor_hours ?? {}).length ? dayLine(viewOf(wall, 'indoor'), at) : null;
+  const winterNote = status.winterNote && !indoorDay ? (status.winterNote.startsWith('동절기') ? status.winterNote : `동절기 · ${status.winterNote}`) : null; // the note may already say 동절기
+  const rainNote = wall.exceptions?.rain_rule && !winterOut ? '우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
   // a wall with a fee table keeps its prices in the 요금 tab only: no 이용료 line in the card's text
   // a line that starts with a date ("2026-10-17(토)은 …") is a notice: the face keeps it until that day has passed
   const today = ymd(at);
@@ -663,7 +668,6 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const facilityRest = info.folded.filter((l) => !AMENITY.test(`${l.label ?? ''} ${l.value}`));
   const reserve = safeUrl(wall.contact?.reserve?.url) ? { name: wall.contact.reserve.name || null, url: wall.contact.reserve.url, required: wall.contact.reserve.required === true } : null; // the 예약 band (links keeps the same link for the sheet)
   const chipLine = chipsOf({ wall, rope, parking: parkingModel.parking, info, rental: hasRental(wall), fee });
-  const day = dayLine(wall, at);
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const closing = closingNotes(info.shown.filter((l) => l !== chipLine.closure));
   const suspendedModel = wall.suspended ? { since: wall.suspended.since ? `${+wall.suspended.since.slice(5, 7)}/${+wall.suspended.since.slice(8)}부터` : null, note: wall.suspended.note ?? null } : null;
@@ -681,7 +685,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     ? list.length ? [...list.filter((p) => p.main), ...list.filter((p) => !p.main).reverse()].map((p) => ({ src: `data/${p.src}`, credit: photoCredit(p.credit), date: p.date ?? null }))
       : [{ src: photo, credit, date: null }]
     : [];
-  const notice = closureNotice({ suspended: suspendedModel, day, dayLabel, cond: closing.cond });
+  const notice = closureNotice({ suspended: suspendedModel, day, dayLabel, cond: winterOut ? [] : closing.cond, winterOut: wall.seasonIndoor ?? (winterOut && wall.winter.from_month && wall.winter.to_month ? `${wall.winter.from_month}~${wall.winter.to_month}월` : null) });
   const nextOpen = status.nextOpenAt ? `다음 오픈 ${whenText(status.nextOpenAt, at)}` : null; // the 휴무 line names the closing: the 운영 row tells the next opening instead of saying it again
   return {
     name: wall.name,
@@ -721,7 +725,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     infoFace: info.shown.filter((l) => l !== chipLine.closure && !closesOnWord(l)), // the 안내 lines on the card: the closing lines are the 운영 row, the 휴무안내 line and the sheet's 시간 tab
     notice,
     closureNotes: closing.fixed.map((l) => ({ k: !l.label || CLOSED_LABEL.test(l.label) || l.label === '정기휴무' ? '지정휴무' : l.label, v: l.value })), // the sheet's 시간 tab
-    opsRow: plain && !day.closed ? { empty: true } : notice?.tone === 'sure' && day.closed && (nextOpen || suspendedModel) ? { text: nextOpen ?? '재개일 미정' } : { text: [`${dayLabel} ${day.text}`, !day.closed && chipLine.days.length ? `${chipLine.days.join('·')} 휴무` : null].filter(Boolean).join(' · ') },
+    opsRow: plain && !day.closed ? { empty: true } : indoorDay ? { text: `${dayLabel} 실내 ${indoorDay.closed ? '휴무' : indoorDay.text}` } : notice?.tone === 'sure' && day.closed && (nextOpen || suspendedModel) ? { text: nextOpen ?? '재개일 미정' } : { text: [`${dayLabel} ${day.text}`, !day.closed && chipLine.days.length ? `${chipLine.days.join('·')} 휴무` : null].filter(Boolean).join(' · ') },
     useRow: useRowOf(wall, now),
     chips: chipLine.chips,
     specs: specsOf(wall, rope, facts.sizes, now), // the sheet's 시설 list

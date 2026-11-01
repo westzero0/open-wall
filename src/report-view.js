@@ -206,7 +206,7 @@ if (dlg) {
     if (!wallName) return say('암장을 먼저 골라 주세요.');
     if (!files.length) return say('보낼 사진을 골라 주세요.');
     if (mode === 'required' && !nickCommit(mode, readNick(), f.elements.nick.value).nick) return say('닉네임을 적어 주세요.');
-    const memo = f.elements.body.value.replace(/s+/g, ' ').trim();
+    const memo = f.elements.body.value.replace(/\s+/g, ' ').trim();
     if ([...memo].length > MAX_NOTE) return say(`메모는 ${MAX_NOTE}자까지 적을 수 있어요.`);
     const wait = cooldownLeft(get(), Date.now());
     if (wait) return say(`${Math.ceil(wait / 1000)}초 뒤에 다시 보낼 수 있어요.`);
@@ -255,7 +255,7 @@ if (dlg) {
     picks.hidden = true; picks.replaceChildren();
     crag = isCrag === true && !!name;
     const offer = crag ? CRAG_KINDS : kinds; // a crag gets its own list; a wall never sees the crag-only kinds
-    for (const r of f.elements.kind) r.closest('label').hidden = offer ? !offer.includes(r.value) : CRAG_TOPICS.includes(r.value); // opened from a tab: only that tab's kinds
+    for (const r of f.elements.kind) r.closest('label').hidden = (r.value === NOTICE_KIND && !config.noticeReport) || (offer ? !offer.includes(r.value) : CRAG_TOPICS.includes(r.value)); // opened from a tab: only that tab's kinds
     const pick = [...f.elements.kind].find((r) => r.value === kind);
     if (pick) pick.checked = true;
     clearPicked(); clearEvidencePreview();

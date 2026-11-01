@@ -2,6 +2,7 @@
 // Pure, no DOM. Not wired to any screen yet (docs/superpowers/specs/2026-10-12-single-pitch-design.md).
 import { isSunlit, dayWindow, fmt as hhmm } from './sun.js';
 import { conditionOf } from './crag-condition.js';
+import { wetnessAt, wetnessCond } from './crag-wetness.js';
 import { pickHour } from './weather.js';
 import { ROPE_LENGTHS, ropeNeeded, photoCredit } from './card-model.js';
 import { ymd } from './time.js';
@@ -64,18 +65,27 @@ export const COND_NOTE = '예상 · 현장과 다를 수 있어요';
 export const FAR_NOTE = '예보는 바뀔 수 있어요';
 export const GEAR_BASIS = '참고용 · 개념도의 최대 루트 기준 · 현장 판단이 우선';
 
+// 일사는 좌표 지문이 확인된 곳만 켠다(설계 11-3). 확인 여부를 담은 데이터 필드가 아직 없어 모두 끈다: 근거에 "일사는 반영하지 않았어요".
+// 나무 그늘(canopy)·해안(coastal)도 필드 승인 전이라 넘기지 않는다.
+const SUN_TRUSTED = false;
+
 /**
- * cragRow(crag, at, { now, daily, hourly }) → { name, region, sun, cond: {state, daysLeft, far, text, short}, wx: {t, c}|null, crag }
- * daily / hourly: what loadCragWeather returns (Map name → Map …), or null while there is no forecast.
+ * cragRow(crag, at, { now, daily, hourly, wet }) → { name, region, sun, cond: {state, daysLeft, far, text, short}, wx: {t, c}|null, crag }
+ * daily / hourly / wet: what loadCragWeather returns (Map name → Map … / Map name → hours), or null while there is no forecast.
+ * cond: the wetness W (crag-wetness.js) when the hourly series covers the moment; else the old daily-rain conditionOf (dry_days) as the fallback.
+ * The wetness cond adds hoursLeft, ago (hours since the last rain, for the list order), basis 'wetness' and evidence lines.
  */
-export function cragRow(crag, at, { now = new Date(), daily = null, hourly = null } = {}) {
-  const c = conditionOf(daily?.get(crag.name) ?? null, crag.dry_days, at, now);
+export function cragRow(crag, at, { now = new Date(), daily = null, hourly = null, wet = null } = {}) {
+  const series = wet?.get(crag.name);
+  const calc = series?.length ? wetnessAt(series, at, { wall: crag, sunTrusted: SUN_TRUSTED, dryDays: crag.dry_days }) : null;
+  const w = calc && calc.state !== 'out' ? wetnessCond(calc, { at, now, hours: series }) : null;
+  const c = w ?? conditionOf(daily?.get(crag.name) ?? null, crag.dry_days, at, now);
   const hours = hourly?.get(crag.name);
   return {
     name: crag.name,
     region: crag.region,
     sun: sunStateOf(isSunlit(crag, at)),
-    cond: { ...c, text: condText(c), short: condShort(c) },
+    cond: w ?? { ...c, text: condText(c), short: condShort(c) },
     wx: hours ? pickHour(hours, at) : null,
     crag,
   };

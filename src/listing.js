@@ -13,7 +13,7 @@ function stayMin(wall, status, at, withBreaks) {
 
 // venue: the 구분 filter; each wall is read through viewOf (실내 → a 'both' wall's indoor hours).
 export function buildList(walls, at, { minHours = 0, sun = 'any', withBreaks = false, venue = 'any' } = {}) {
-  const rows = walls.map((w) => viewOf(w, venue)).map((wall) => {
+  const rows = walls.map((w) => viewOf(w, venue, at)).map((wall) => {
     const status = getStatus(wall, at);
     const sun = isSunlit(wall, at);
     return {
