@@ -3695,7 +3695,7 @@
         ],
         "rain_rule": false
       },
-      "checked_at": "2026-10-15",
+      "checked_at": "2026-11-03",
       "location": {
         "lat": 37.662344,
         "lng": 127.007857
@@ -3857,6 +3857,13 @@
           "step_m": 30,
           "observer_height_m": 5
         }
+      },
+      "winter": {
+        "type": "closed",
+        "from_month": 11,
+        "from_day": 14,
+        "to_month": 3,
+        "indoor_note": "외벽은 휴장하고 실내 리드월만 예약 2부제로 운영해요"
       }
     },
     {
@@ -4468,7 +4475,7 @@
       "tags": [
         "유료"
       ],
-      "memo": "정기휴무 월·화\n센터 홈페이지에서만 예약 가능(현장 접수·네이버 예약 불가, 회원가입 필수)\n실내·외 운영\n난지창작미술관 입구로 오셔야 센터 입구 및 주차장이 보임(노을공원주차장 입구 아님)\n안내 안내 데스크에서 노란 팔찌 받아 착용\n안내 8세 이하 이용 불가, 12세 미만은 보호자 동반",
+      "memo": "정기휴무 월·화, 법정공휴일 휴관(2026년 7월부터)\n센터 홈페이지에서만 예약 가능(현장 접수·네이버 예약 불가, 회원가입 필수)\n실내·외 운영\n난지창작미술관 입구로 오셔야 센터 입구 및 주차장이 보임(노을공원주차장 입구 아님)\n안내 안내 데스크에서 노란 팔찌 받아 착용\n안내 8세 이하 이용 불가, 12세 미만은 보호자 동반",
       "address": "서울 마포구 하늘공원로 112",
       "sun": {
         "facing": "NE",
@@ -4527,7 +4534,7 @@
         },
         "checked_at": "2026-10-31"
       },
-      "checked_at": "2026-10-31",
+      "checked_at": "2026-11-03",
       "contact": {
         "notice_url": "https://seoulmccenter.kr/notice.html",
         "phone": "02-303-8858",
@@ -4688,6 +4695,13 @@
             "text": "직접 촬영"
           },
           "date": "2026-10-31"
+        },
+        {
+          "src": "photos/seoulsan-holiday.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-03"
         }
       ],
       "photo": "photos/seoulsan-wall.webp",
@@ -4841,11 +4855,12 @@
           "강서한강공원 공영주차장"
         ]
       },
-      "checked_at": "2026-10-20",
+      "checked_at": "2026-11-03",
       "notice_checked_at": "2026-10-20",
       "winter": {
         "type": "closed",
-        "from_month": 1,
+        "from_month": 12,
+        "from_day": 15,
         "to_month": 2
       },
       "fees": [
@@ -5236,7 +5251,7 @@
         "무료",
         "스피드월"
       ],
-      "memo": "벽 2개: 메인벽 북향(N, 계산 기준), 서브벽 북동(NE)\n정기휴무 월\n! 공공서비스 예약제\n속도벽 폭 9m·높이 15m, 실내 연습벽 폭 7m·높이 3m\n시설 휴게실\n이용환경 어린이 놀이터·야외 체육기구\n찾아가는 길: 경의중앙선 응봉역에서 도보 10분\n문의 암벽교실 02-2286-6061(공원녹지과)",
+      "memo": "벽 2개: 메인벽 북향(N, 계산 기준), 서브벽 북동(NE)\n정기휴무 월\n! 공공서비스 예약제\n속도벽 폭 9m·높이 15m, 실내 연습벽 폭 7m·높이 3m\n시설 휴게실\n이용환경 어린이 놀이터·야외 체육기구\n찾아가는 길: 경의중앙선 응봉역에서 도보 10분\n문의 암벽교실 02-2286-6061(공원녹지과)\n안내 겨울 휴장은 12월 14일까지 오픈, 지형 특성상 앞당겨질 수 있음",
       "address": "서울 성동구 독서당로60길 13-1",
       "sun": {
         "facing": "N",
@@ -5281,7 +5296,7 @@
           "암벽장 앞(공터 포함)"
         ]
       },
-      "checked_at": "2026-10-20",
+      "checked_at": "2026-11-03",
       "contact": {
         "phone": "02-2286-5674",
         "notice_url": "https://www.sd.go.kr/main/selectBbsNttList.do?bbsNo=183&key=1472",
@@ -5391,6 +5406,12 @@
           "step_m": 30,
           "observer_height_m": 5
         }
+      },
+      "winter": {
+        "type": "closed",
+        "from_month": 12,
+        "from_day": 15,
+        "to_month": 2
       }
     },
     {
@@ -5465,7 +5486,7 @@
         "phone": "02-3780-0521",
         "notice_url": "https://sportsclub.sports.or.kr/club/ttukseomclimbers/FPOD0045M?bbsStgSqn=539"
       },
-      "checked_at": "2026-10-20",
+      "checked_at": "2026-11-03",
       "notice_checked_at": "2026-10-20",
       "photo": "photos/ttukseom.jpg",
       "photo_credit": {
@@ -5500,7 +5521,8 @@
       },
       "winter": {
         "type": "closed",
-        "from_month": 1,
+        "from_month": 12,
+        "from_day": 15,
         "to_month": 2
       },
       "shadow": {

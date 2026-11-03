@@ -13,6 +13,16 @@ import { config } from './config.js';
 const ACTIONS = { 'stats:card-open': 'card-open', 'stats:log-add': 'log-add', 'stats:share-send': 'share-send', 'stats:weather-shown': 'weather-shown', 'stats:fav-add': 'fav-add',
   'stats:sun-filter': 'sun-filter', 'stats:tab-map': 'tab-map', 'stats:tab-log': 'tab-log', 'stats:region-set': 'region-set',
   'stats:invite-make': 'invite-make', 'stats:report-send': 'report-send', 'stats:board-post': 'board-post', 'stats:gear-view': 'gear-view' };
+// 이벤트 목록(단일 출처): 새 이벤트는 여기에 이름·뜻을 먼저 적는다. test/stats.test.js가 코드가 보내는 이름이 모두 여기 있는지 검사한다.
+// 이름 규칙: 소문자-하이픈, 횟수만(암장·내용·위치 없음). 같은 뜻이면 새로 만들지 말고 기존 이름을 쓴다. 문서: docs/system/event-registry.md
+export const EVENTS = {
+  view: '페이지뷰(?beta 기기만 이벤트로)', 'share-open': '공유 링크로 들어옴', return: '하루 이상 지나 다시 옴', 'return-wx': '날씨 상자를 본 기기의 재방문',
+  'click-tel': '전화 링크', 'click-insta': '인스타 링크', 'click-route': '길찾기 링크', 'click-chat': '오픈채팅 링크', 'click-link': '그 밖의 외부 링크',
+  'climber-done': '클라이머 유형 테스트 완료', 'card-open': '카드를 엶', 'log-add': '방문 기록 저장', 'share-send': '링크 복사로 공유', 'weather-shown': '날씨 상자를 처음 봄',
+  'fav-add': '즐겨찾기 켬', 'sun-filter': '양달·응달 칩 켬', 'tab-map': '지도 탭', 'tab-log': '기록 탭', 'region-set': '내 지역 고름',
+  'invite-make': '초대 링크 만듦', 'report-send': '제보 보냄', 'board-post': '게시판 글 씀', 'gear-view': '근처 탭을 처음 봄',
+  // gear-<업체 id>(근처 탭 업체 링크 클릭)는 gearEventName이 만든다: 고정 목록이 아니라 data/partners.json의 id
+};
 const WX_SEEN = 'open-wall:wx-seen';
 export const VISITOR_KEY = 'open-wall:visitor';
 

@@ -361,6 +361,7 @@ export function seasonSun(wall, at) {
   const key = DAY_KEYS[at.getDay()];
   const m = at.getMonth() + 1;
   const cur = m >= 6 && m <= 8 ? 0 : m === 12 || m <= 2 ? 2 : 1;
+  const closedSeason = wall.winter?.type === 'closed'; // `shut`: the wall is closed for that whole season (동계 휴관), unlike `closed`, which also holds on a weekly rest day or a holiday
   return seasonWindows(wall, at.getFullYear()).map((s, i) => {
     const [, , mo, d] = SEASON_DAYS[i];
     // the picked date's own season for its row (봄·가을 spans both), else the season day's
@@ -371,7 +372,7 @@ export function seasonSun(wall, at) {
     // the other rows stay on their season's day (6/21 · 3/21 · 12/21)
     const windows = i === cur ? sunIntervals(wall, new Date(at.getFullYear(), at.getMonth(), at.getDate(), 12)) : s.windows;
     const on = overlap(open, windows);
-    return { ...s, windows, open, on, closed: v === null, unknown: v === undefined, current: i === cur, winter: inWinter(wall, day) };
+    return { ...s, windows, open, on, closed: v === null, unknown: v === undefined, current: i === cur, winter: inWinter(wall, day), shut: closedSeason && inWinter(wall, day) };
   });
 }
 

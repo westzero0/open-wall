@@ -1117,9 +1117,9 @@ html[data-text="xlarge"] .blog-wrap .blog-list a { flex-wrap: wrap; row-gap: 0; 
 html[data-text="xlarge"] .blog-wrap .blog-list .bt { flex-basis: 100%; -webkit-line-clamp: 3; line-clamp: 3; }
 html[data-text="xlarge"] .blog-wrap .blog-list .bd { padding-bottom: var(--sp-8); }
 .blog-list .bd { flex: none; font-size: var(--fs-xs); color: var(--muted); }
-.pf-go { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: var(--sp-4); color: var(--accent); vertical-align: -4px; }
-.pf-go::after { content: ""; position: absolute; inset: -12px; } /* taps like 44px */
-.pf-go svg { width: 16px; height: 16px; }
+.pf-go { position: relative; display: flex; align-items: center; gap: var(--sp-4); margin-top: var(--sp-4); color: var(--accent); font-size: var(--fs-xs); font-weight: 400; white-space: nowrap; }
+.pf-go::after { content: ""; position: absolute; inset: -12px -4px; } /* taps like 44px */
+.pf-go svg { flex: none; width: 14px; height: 14px; }
 .blog-list a svg { flex: none; width: 14px; height: 14px; margin-left: calc(var(--sp-4) * -1); color: var(--muted); } /* ↗: the link leaves the app */
 .blog-more { display: flex; align-items: center; min-height: var(--tap); width: 100%; padding: 0 var(--sp-2); border: 0; border-top: 1px solid var(--hair); background: none; color: var(--accent); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-align: left; }
 /* every "더 보기" fold ends in the same chevron: down when folded, up when open */
@@ -1311,7 +1311,6 @@ html:is([data-text="large"], [data-text="xlarge"]) .irow.notice:has(.nt-go) .nt-
 @media (max-width: 360px) { .pfee th, .pfee td { padding-left: 3px; padding-right: 3px; } .pfee tbody th { min-width: 4.5em; max-width: 5.5em; } .pfee .pf-note { min-width: 3.5em; } } /* 320px: the lot name wraps tighter so a table with four columns (은평·고양) fits the sheet instead of scrolling */
 .pfee tr.pf-has-more > * { padding-bottom: var(--sp-2, 2px); }
 .pfee tr.pf-more td { border-top: 0; padding-top: 0; text-align: left; white-space: normal; color: var(--muted); font-size: var(--fs-xs); } /* a long 비고 under its lot's row, across every column */
-.pf-walk { display: block; color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
 /* 근처 장비점 sheet (src/gear-view.js): the line from the wall to the shop is the one picture; the rest is quiet. The paid zone, when there is one, is set apart and always carries 광고·제휴. */
 .gear-body { display: grid; grid-template-columns: minmax(0, 1fr); padding-bottom: var(--sp-8); }
 /* the 근처 sheets (src/gear-view.js nearSheetBody): one place per slide, swiped sideways like the card's photos (.rhero-track); the dots sit at the sheet's
@@ -2809,7 +2808,7 @@ body[data-mode="crag"] :is(#venueRow, #minRow, #tempRow, #breakRow, #parkRow, #r
 .crag-dry .seg.on { background: var(--open); }
 .crag-dry b { color: var(--fg); white-space: nowrap; }
 .crag-sec { margin-top: var(--sp-16); padding-top: var(--sp-12); border-top: 1px solid var(--hair); }
-.crag-sec-h { display: flex; align-items: center; gap: var(--sp-8); margin: 0 0 var(--sp-10); font-size: var(--fs-md); font-weight: 700; }
+.crag-sec-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); margin: 0 0 var(--sp-10); font-size: var(--fs-md); font-weight: 700; white-space: nowrap; } /* 큰 글씨: 제목과 알약이 한 줄에 안 들면 알약이 아래 줄로 내려간다(잘리거나 제목이 두 줄로 꺾이지 않게) */
 .crag-sec-h > svg { font-size: 20px; color: var(--muted); }
 .crag-sec-h .end { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--fg); background: var(--panel); padding: var(--sp-2) var(--sp-8); border-radius: var(--r-pill); white-space: nowrap; }
 .crag-sec-h .end.wind { background: color-mix(in srgb, var(--wind) 16%, transparent); color: var(--fg); } .crag-sec-h .end.wind svg { color: var(--wind); } /* text in --fg: the teal tint alone, 4.5:1 */
@@ -2834,12 +2833,12 @@ body[data-mode="crag"] :is(#venueRow, #minRow, #tempRow, #breakRow, #parkRow, #r
 .crag-legend i { display: inline-block; width: 10px; height: 10px; margin-right: var(--sp-4); border-radius: 2px; vertical-align: -1px; background: var(--rain); }
 .crag-legend i.is-fc { background: color-mix(in srgb, var(--rain) 28%, transparent); box-shadow: inset 0 0 0 1.5px var(--rain); }
 .crag-hours { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; text-align: center; }
-.crag-hours th, .crag-hours td { padding: var(--sp-6) 0; font-weight: 400; }
-.crag-hours thead th { font-size: var(--fs-xs); color: var(--muted); padding-bottom: var(--sp-2); }
+.crag-hours th, .crag-hours td { padding: var(--sp-6) 0; font-weight: 400; white-space: nowrap; } /* 한 값은 쪼개지 않는다: 칸이 좁으면 글자를 줄인다(아래 vw 상한) */
+.crag-hours thead th { font-size: min(var(--fs-xs), 5vw); color: var(--muted); padding-bottom: var(--sp-2); }
 .crag-hours tbody th { width: 1.9em; text-align: left; color: var(--muted); font-size: 18px; }
 .crag-hours tbody th .unit { display: block; font-size: var(--fs-xs); line-height: 1; color: var(--muted); } /* 돌풍 줄의 단위 */
 .crag-hours td.sky { font-size: 28px; line-height: 1; color: var(--muted); }
-.crag-hours td.t { font-size: var(--fs-xl); font-weight: 700; line-height: 1.2; }
+.crag-hours td.t { font-size: min(var(--fs-xl), 6.2vw); font-weight: 700; line-height: 1.2; }
 .crag-hours td.g { font-size: var(--fs-md); border-top: 1px solid var(--hair); }
 .crag-hours td.g.strong { background: color-mix(in srgb, var(--wind) 18%, transparent); color: var(--fg); font-weight: 700; }
 .crag-hours th.at, .crag-hours td.at { background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -2958,8 +2957,8 @@ html[data-text="xlarge"] .rs-table td:nth-child(2) { overflow-wrap: anywhere; }
 :is(.row, .crag-row).has-photo.is-open .expand-in > .dock:first-child { margin-top: 0; }
 :is(.row, .crag-row).has-photo:not(.is-open) > .expand { transition-duration: 0s; transition-delay: 0s; } /* closing: the photo leaves first, so the dock and chips must not linger for the exit time */
 :is(.row, .crag-row).has-photo > .expand { opacity: 1; } /* the dock lies over the photo: a fading card would show the photo through it. The card opens by its height alone (the closed one is hidden by visibility) */
-:is(.row, .crag-row).has-photo.is-open .rhero-foot { bottom: calc(var(--icon-row) + 44px + var(--sp-4)); } /* the hours cap sits above the camera / share row */
-:is(.row, .crag-row).has-photo.is-open .rhero-tools { left: calc(var(--pad) - 2px); right: calc(var(--pad) - 2px); bottom: var(--icon-row); height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; pointer-events: none; }
+:is(.row, .crag-row).has-photo.is-open .rhero-foot { bottom: calc(var(--icon-row) + 48px + var(--sp-4)); } /* the hours cap sits above the camera / share row */
+:is(.row, .crag-row).has-photo.is-open .rhero-tools { left: calc(var(--pad) - 2px); right: calc(var(--pad) - 2px); bottom: calc(var(--icon-row) + var(--sp-4)); height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; pointer-events: none; }
 :is(.row, .crag-row).has-photo.is-open .rhero-tools > * { pointer-events: auto; }
 :is(.row, .crag-row).has-photo.is-open .rhero-tools .rhero-add { grid-column: 1; grid-row: 1; justify-self: start; width: 44px; height: 44px; }
 :is(.row, .crag-row).has-photo.is-open .rhero-tools .rhero-add svg { width: 24px; height: 24px; }
@@ -2989,7 +2988,7 @@ html[data-text="xlarge"] .rs-table td:nth-child(2) { overflow-wrap: anywhere; }
 .row.has-photo.is-open .rmeta { font-weight: 600; } /* the region line over a bright sky */
 /* one frame for the camera / share row, with or without a photo (--icon-row: how far the icons' tap boxes stand off the foot of the photo or the block; the dock covers the lowest 30px,
    the photo's credit takes the strip under the camera). The camera is always at the left, share at the right, on one horizontal line. */
-.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 38px; padding: var(--sp-16) var(--sp-8); margin: calc(var(--sp-16) * -1) calc(var(--sp-8) * -1); width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: var(--fs-xs); line-height: 1.2; pointer-events: auto; }
+.row.has-photo.is-open .rhero > .credit { position: absolute; z-index: 2; left: var(--pad); bottom: 34px; padding: var(--sp-16) var(--sp-8); margin: calc(var(--sp-16) * -1) calc(var(--sp-8) * -1); width: max-content; opacity: 1; color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .75), 0 1px 3px rgb(0 0 0 / .8); max-width: calc(100% - var(--pad) * 2 - 56px); font-size: var(--fs-xs); line-height: 1.2; pointer-events: auto; }
 .ph-hero { flex-direction: column; align-items: flex-start; justify-content: flex-end; }
 .ph-hero :is(.rhero-add, .photo-tools) { color: color-mix(in srgb, var(--accent) 70%, var(--fg)); }
 .ph-hero > .rhero-add { position: absolute; left: calc(var(--pad) - 2px); bottom: var(--icon-row); margin: 0; } /* the same box as the photo's: its disc edge lands on the gutter */

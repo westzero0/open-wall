@@ -542,7 +542,7 @@ function hoursGrid(wall, at) {
   const day = live ? dayLine(wall, at) : null; // a closed_date / nth closure isn't in the weekly rows: say it here
   const lead = live
     ? (day.closed ? el('p', { class: 'g-lead' }, `${dayText(at)} `, el('b', {}, day.full ?? day.text)) : null) // the day's sun is under 계절별 양달
-    : el('p', { class: 'g-lead preview' }, `${wk.season === 'winter' ? '동계' : '하계'} 미리 보기 · 지금 시각선 없이 그 계절 시간만 보여요`);
+    : el('p', { class: 'g-lead preview' }, `${wk.season === 'winter' ? '동계' : '하계'} 시간표 미리 보기`);
 
   const body = el('div', { class: 'g-body', role: 'list' });
   const plot = el('div', { class: 'g-plot', 'aria-hidden': 'true' });
@@ -591,11 +591,14 @@ function hoursGrid(wall, at) {
   }
 
   const breaks = [...new Map(wk.rows.flatMap((r) => r.breaks).map((b) => [formatRanges([b]), b])).entries()].sort(([, a], [, b]) => a[0] - b[0]).map(([t]) => t); // one of each, earliest first
-  const notes = [
-    quiet.length ? `휴무 ${quiet.map((r) => r.days).join(' · ')}` : null,
+  const row = allRows.find((r) => r.wall.name === wall.name);
+  const closedFull = row ? modelOf(row, at).closureFull : null; // the memo's whole closing line: one small note, which already says the weekdays the quiet-days note would repeat
+  const shutSeason = wk.rows.every((r) => r.key === 'winter'); // a season the wall is shut: the grid says so, no other rules apply
+  const notes = shutSeason ? [] : [
+    closedFull ? `${closedFull.k} ${closedFull.v}` : quiet.length ? `휴무 ${quiet.map((r) => r.days).join(' · ')}` : null,
     breaks.length ? `휴게 ${breaks.join(', ')}` : null,
     ...wk.rows.filter((r) => r.nth).map((r) => `${r.nth.map((n) => NTH_KO[n]).join('·')} ${r.days}요일 휴무`),
-    wall.holiday === 'weekend' ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
+    wall.holiday === 'weekend' && !closedFull ? '공휴일은 토요일 시간 · 정기휴무 요일과 겹치면 휴무로 표시' : null,
   ].filter(Boolean);
   const susp = wall.suspended ? el('p', { class: 'g-lead susp' }, '임시 휴관 중이라 아래 시간은 재개 후 기준이에요.') : null;
 
@@ -646,7 +649,6 @@ function hoursGrid(wall, at) {
     range.addEventListener('change', () => commit(Number(range.value), true));
     zone = [zoneEl];
   }
-  const row = allRows.find((r) => r.wall.name === wall.name);
   // the answer for this time, in words; the row's status was made for the list's moment, so it is read again for `at` (the sheet's own time)
   const m = live && !susp && row ? modelOf({ ...row, status: getStatus(row.wall, at) }, at) : null;
   const verdictWhy = whyBubble('눈금 사용법', '눈금을 좌우로 끌어 시각을 바꿔요. 위 그림과 요약도 그 시각으로 바뀌어요.');
@@ -675,8 +677,8 @@ function seasonSunBlock(wall, at, d, shared = false) { // shared: it sits under 
       const open = s.open.length > 0; // with open hours only the sun inside them is told; a closed / unknown day keeps the day's whole window for reference
       const openClip = clipDay(s.open);
       const shown = open ? s.on : s.windows;
-      const sunText = shown.length ? formatRanges(shown).replaceAll(', ', ' · ') : open ? '운영 중 양달 없음' : '하루 종일 응달';
-      const hint = s.closed ? ' · 휴무' : s.unknown ? ' · 시간 미입력' : '';
+      const sunText = s.closed ? '휴무' : shown.length ? formatRanges(shown).replaceAll(', ', ' · ') : open ? '운영 중 양달 없음' : '하루 종일 응달';
+      const hint = s.closed ? '' : s.unknown ? ' · 시간 미입력' : '';
       texts.push(el('li', { class: s.current ? 'cur' : null, hidden: fold && !s.current ? '' : null }, `${s.name} ${sunText}${hint}`));
       const trk = el('span', { class: 'g-trk', 'aria-hidden': 'true' },
         ...openClip.map(([a, b]) => span('g-bar', a, b)), // the same open bar as the hours grid, orange where sunny
@@ -691,13 +693,14 @@ function seasonSunBlock(wall, at, d, shared = false) { // shared: it sits under 
     el('ul', { class: 'sr-only', 'aria-label': '계절별 양달 시간, 운영 중 예상' }, ...texts),
     shared ? null : el('p', { class: 'ws-chk end' }, '계산 기준', why)); // alone (no hours grid above): the ! sits in the card's foot line
   block._d = d;
+  if (rows.every((s) => s.shut)) { block.hidden = true; block.style.display = 'none'; } // only a season the wall is shut (동계 휴관) has no sun to tell; a weekly rest day or holiday keeps the block, its rows say 휴무 (kept as a hidden node so the 하계/동계 switch can swap it back)
   return block;
 }
 
 // The one legend of the 시간 tab, at its top: it covers the hours bars and the seasonal bars under them (so neither section carries its own).
 // The hatch is named only when this wall has a break or a closed day to show.
 function timeLegend(blocks) {
-  const sun = Boolean(blocks.sun || blocks.hours?.querySelector('.g-sunon'));
+  const sun = Boolean((blocks.sun && !blocks.sun.hidden) || blocks.hours?.querySelector('.g-sunon'));
   const hatch = Boolean(blocks.hours?.querySelector('.g-brk, .g-off'));
   return el('ul', { class: 'g-key ws-legend' },
     el('li', {}, el('i', { class: 'k-bar' }), '운영'),
@@ -1529,9 +1532,10 @@ function sheetParking(m) {
       // 비고: free span + conditions. Short: in its cell. Long (NOTE_MAX): a line of its own under the row across every column.
       const note = [r.free, r.note].filter(Boolean).join(' · ');
       const long = note.length > NOTE_MAX;
-      // a small navigation icon beside the lot's name opens it in 카카오맵 (a search for the wall's name and the lot: a fixed host, the words encoded)
-      const lotGo = el('a', { class: 'pf-go', href: `https://map.kakao.com/link/search/${encodeURIComponent(`${m.name} ${r.name}`)}`, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${r.name} 카카오맵에서 길찾기 (새 창)` }, icon('nav'));
-      const name = el('th', { scope: 'row' }, r.name, lotGo, r.walk_min ? el('span', { class: 'pf-walk' }, `도보 ${r.walk_min}분`) : null);
+      // under the lot's name one link line, the same place in every row: [icon] 도보 N분 · 길찾기 › (the walk is left out when unknown). It opens 카카오맵 on a search for the wall's name and the lot: a fixed host, the words encoded
+      const lotGo = el('a', { class: 'pf-go', href: `https://map.kakao.com/link/search/${encodeURIComponent(`${m.name} ${r.name}`)}`, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${r.name}${r.walk_min ? ` 도보 ${r.walk_min}분` : ''} 카카오맵에서 길찾기 (새 창)` },
+        icon('nav'), el('span', {}, r.walk_min ? `도보 ${r.walk_min}분 · 길찾기 ›` : '길찾기 ›'));
+      const name = el('th', { scope: 'row' }, r.name, lotGo);
       // one price for any stay: everything after the name becomes one cell (the amount, its short condition after it)
       const cells = r.flat ? [el('td', { colspan: String(colCount - (solo ? 0 : 1)), class: 'pf-flat' }, r.cells.at(-1), note && !long ? el('span', { class: 'pf-cond' }, ` (${note})`) : null)]
         : [...(hasRule ? [el('td', {}, r.first?.cell ?? '–'), el('td', {}, r.step?.cell ?? '–')] : []), el('td', {}, r.cells[Math.max(0, f.cols.indexOf(f.hours))]), el('td', {}, r.cells.at(-1)), ...(hasNote ? [el('td', { class: 'pf-note' }, (long ? '' : note) || '–')] : [])];
@@ -1630,7 +1634,7 @@ function buildWallSheet(wallName) {
   // what the card's chips cut or only name, told whole here: the closing rule under the hours
   const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
-    hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, m.closureFull ? kv(m.closureFull.k, m.closureFull.v) : null, ...m.closureNotes.map((n) => kv(n.k, n.v)), blocks.sun, timeLegend(blocks)), // one card (its legend at the foot): the hours, then the seasons' sun under the same axis
+    hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, ...m.closureNotes.map((n) => kv(n.k, n.v)), blocks.sun, timeLegend(blocks)), // one card (its legend at the foot): the hours, then the seasons' sun under the same axis
     fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
     specs: specsList(m) };
