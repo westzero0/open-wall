@@ -1,10 +1,12 @@
 // src/log.js — 기록: the walls a visitor says they went to, kept in this browser only (never sent anywhere).
 // A record is {id, wall (the wall's name), date 'YYYY-MM-DD', time? 'HH:mm' (30-minute steps), memo? ≤100 chars,
-// sends? / tries? { '10a': 2 } (완등 / 시도 per grade, src/grades.js; absent when empty)}.
+// sends? / tries? { '10a': 2 } (완등 / 시도 per grade, src/grades.js; absent when empty),
+// discipline? ('boulder'|'single'|'multi'; absent = lead), multi? {route, pitches, top?, result} (multi-pitch only)}.
 // No DOM; storage and "today" are passed in.
 // Everything read (localStorage, an imported file) is untrusted and goes through normalizeLog.
 
-import { GRADES, cleanCounts, totalOf } from './grades.js';
+import { ALL_GRADES, GRADES, cleanCounts, totalOf } from './grades.js';
+import { DISCIPLINES, cleanDiscipline, cleanMulti, scaleOf } from './discipline.js';
 import { wallPageId } from './share-id.js';
 import { cleanContrib } from './fill-store.js';
 
@@ -46,10 +48,14 @@ function cleanRecord(r, today, nowMin = null) {
   if (typeof r.id !== 'string' || !ID_RE.test(r.id) ||!wall || !validDate(r.date) || r.date > today) return null;
   const wall_id = typeof r.wall_id === 'string' && WALL_ID_RE.test(r.wall_id) ? r.wall_id : '';
   const memo = cleanText(r.memo, MAX_MEMO);
-  const sends = cleanCounts(r.sends);
-  const tries = cleanCounts(r.tries);
+  const discipline = cleanDiscipline(r.discipline);
+  const multi = discipline === 'multi' ? cleanMulti(r.multi) : null;
+  if (discipline === 'multi' && !multi) return null;
+  const sends = discipline === 'multi' ? {} : cleanCounts(r.sends, scaleOf(discipline));
+  const tries = discipline === 'multi' ? {} : cleanCounts(r.tries, scaleOf(discipline));
   return {
     id: r.id, wall, ...(wall_id ? { wall_id } : {}), date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}),
+    ...(discipline !== 'lead' ? { discipline } : {}), ...(multi ? { multi } : {}),
     ...(Object.keys(sends).length ? { sends } : {}), ...(Object.keys(tries).length ? { tries } : {}),
   };
 }
@@ -155,7 +161,8 @@ export function addRecord(log, input, { today, id, nowMin = null }) {
   if (input.date > today) return { error: '오늘 이후 날짜는 기록할 수 없어요.' };
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
   if (log.length >= MAX_RECORDS) return { error: `기록은 ${MAX_RECORDS}개까지 저장돼요.` };
-  const record = cleanRecord({ id, wall, wall_id: input.wall_id, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries }, today);
+  if (input?.discipline === 'multi' && !cleanMulti(input.multi)) return { error: '피치 수를 적어 주세요.', field: 'pitches' };
+  const record = cleanRecord({ id, wall, wall_id: input.wall_id, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries, discipline: input.discipline, multi: input.multi }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: [...log, record].sort(newestFirst), record };
 }
@@ -168,7 +175,9 @@ export function updateRecord(log, id, input, { today, nowMin = null }) {
   const old = log.find((r) => r.id === id);
   if (!old) return { error: '기록을 찾지 못했어요.' };
   if (validTime(input?.time) && isAhead(old.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
-  const record = cleanRecord({ id, wall: old.wall, wall_id: old.wall_id, date: old.date, time: input?.time, memo: input?.memo, sends: input?.sends, tries: input?.tries }, today);
+  // a discipline this version does not know keeps its grades: the sheet only shows the rope wall and would clean them away
+  const keep = old.discipline && !DISCIPLINES.includes(old.discipline);
+  const record = cleanRecord({ id, wall: old.wall, wall_id: old.wall_id, date: old.date, time: input?.time, memo: input?.memo, sends: keep ? old.sends : input?.sends, tries: keep ? old.tries : input?.tries, discipline: old.discipline, multi: input?.multi ?? old.multi }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: log.map((r) => (r.id === id ? record : r)).sort(newestFirst), record };
 }
@@ -295,7 +304,7 @@ export function yearSummary(log, year) {
 }
 
 /** dayGrades(records) → { sends, tries }: the totals of a day's records (a part with none is 0). */
-export const dayGrades = (recs) => ({ sends: recs.reduce((a, r) => a + totalOf(r.sends), 0), tries: recs.reduce((a, r) => a + totalOf(r.tries), 0) });
+export const dayGrades = (recs) => ({ sends: recs.reduce((a, r) => a + totalOf(r.sends, ALL_GRADES), 0), tries: recs.reduce((a, r) => a + totalOf(r.tries, ALL_GRADES), 0) });
 
 /** yearGrades(log, year) → { counts, total }: that year's 완등 per grade over all walls (tries are not mixed in). */
 export function yearGrades(log, year) {
@@ -386,7 +395,9 @@ export function parseImport(text, today, nowMin = null) {
 
 /** mergeLog(log, incoming) → {log, added}: same id, or the same wall+date+time+memo as a record already in the log, is not added twice (twins within the incoming file are both kept). */
 export function mergeLog(log, incoming) {
-  const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}\n${JSON.stringify([r.sends ?? {}, r.tries ?? {}])}`;
+  const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}\n${JSON.stringify([r.sends ?? {}, r.tries ?? {}])}
+${r.discipline ?? ''}
+${JSON.stringify(r.multi ?? null)}`;
   const ids = new Set(log.map((r) => r.id));
   const keys = new Set(log.map(keyOf));
   const fresh = [];

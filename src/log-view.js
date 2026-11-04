@@ -10,7 +10,10 @@ import { axisFrac, formatRanges, pickChips, searchPicks } from './viewmodel.js';
 import { loadFavAsked, saveFavAsked, shouldAskFav } from './favorites.js';
 import { inkStamp, sunMark } from './stamp.js';
 import { activityStats, loadContrib, rankOf, tiersOf } from './rank.js';
-import { barRows, gradeLabel, gradeLine, totalOf } from './grades.js';
+import { barRows, gradeLabel, gradeLine, totalOf, GRADES, V_GRADES, V_ROWS, ALL_GRADES } from './grades.js';
+import { DISCIPLINE_NAME } from './discipline.js';
+import { climberStats, levelUps } from './level.js';
+import { climberCard } from './climber-parts.js';
 import { createGradeWall } from './grade-wall.js';
 import { tiersFor, newTier, logSections } from './stage.js';
 import { createMonthShare } from './month-share.js';
@@ -463,16 +466,46 @@ export function createLogView({
   // ---- 그레이드 기록: the shared wall of holds (src/grade-wall.js); a tap adds one to 완등 or 시도 (the radio above says which) ----
   const gradesBox = dlg.querySelector('.la-grades');
   const gnote = $('la-grades-note');
-  const gradeWall = createGradeWall({
-    kinds: [{ key: 'sends', word: '완등' }, { key: 'tries', word: '시도' }],
-    mode: () => form.elements.gmode.value,
-    onChange: (get) => {
-      const a = totalOf(get('sends'));
-      const t = totalOf(get('tries'));
-      gnote.textContent = a || t ? [a ? `완등 ${a}` : '', t ? `시도 ${t}` : ''].filter(Boolean).join(' · ') : '선택';
-    },
+  // 분야(config.totalClimber): 볼더링 has its own wall (V grades), 리드·싱글피치 share the rope wall, 멀티피치 is a small form instead of a wall.
+  const gradesNote = (get) => {
+    const a = totalOf(get('sends'), ALL_GRADES);
+    const t = totalOf(get('tries'), ALL_GRADES);
+    gnote.textContent = a || t ? [a ? `완등 ${a}` : '', t ? `시도 ${t}` : ''].filter(Boolean).join(' · ') : '선택';
+  };
+  let discipline = 'lead'; // declared before the walls: createGradeWall calls onChange once while it is being built
+  let lastDiscipline = 'lead'; // the next sheet starts on the last one used
+  const kinds = [{ key: 'sends', word: '완등' }, { key: 'tries', word: '시도' }];
+  const gradeWall = createGradeWall({ kinds, mode: () => form.elements.gmode.value, onChange: (get) => { if (discipline !== 'boulder') gradesNote(get); } });
+  const boulderWall = createGradeWall({ kinds, mode: () => form.elements.gmode.value, rows: V_ROWS, scale: V_GRADES, label: '볼더링 등급 고르기', onChange: (get) => { if (discipline === 'boulder') gradesNote(get); } });
+  dlg.querySelector('.la-wall').append(gradeWall.el, boulderWall.el);
+  const discRow = $('la-disc-row');
+  const gmodeRow = form.querySelector('.la-gmode').parentElement; // the 완등/시도 + wall row
+  const multiBox = form.querySelector('.la-multi');
+  const multiErr = $('la-multi-err');
+  const mtop = form.elements.mtop;
+  for (const g of GRADES) mtop.append(el('option', { value: g }, gradeLabel(g)));
+  const wallOf = () => (discipline === 'boulder' ? boulderWall : gradeWall);
+  function setDiscipline(d) {
+    discipline = d;
+    form.elements.disc.value = d;
+    gradeWall.el.hidden = d === 'boulder';
+    boulderWall.el.hidden = d !== 'boulder';
+    gmodeRow.hidden = d === 'multi';
+    multiBox.hidden = d !== 'multi';
+    multiErr.hidden = true;
+    gradesBox.querySelector('summary > span').textContent = d === 'multi' ? '멀티피치 기록' : '그레이드 기록';
+    if (d === 'multi') gnote.textContent = form.elements.mpitches.value ? `${form.elements.mpitches.value}피치` : '선택'; else gradesNote(wallOf().get);
+    if (d === 'multi') gradesBox.open = true;
+  }
+  for (const radio of form.querySelectorAll('input[name="disc"]')) radio.addEventListener('change', () => { if (radio.checked) { lastDiscipline = radio.value; setDiscipline(radio.value); } });
+  form.elements.mpitches.addEventListener('input', () => { multiErr.hidden = true; gnote.textContent = form.elements.mpitches.value ? `${form.elements.mpitches.value}피치` : '선택'; });
+  /** What the sheet says about the record besides wall/date/time/memo: the discipline and its grades or multi-pitch block. */
+  const climbed = () => ({
+    discipline,
+    sends: wallOf().get('sends'),
+    tries: wallOf().get('tries'),
+    ...(discipline === 'multi' ? { multi: { route: form.elements.mroute.value, pitches: form.elements.mpitches.value, top: form.elements.mtop.value, result: form.elements.mresult.value } } : {}),
   });
-  dlg.querySelector('.la-wall').append(gradeWall.el);
 
   /**
    * openAdd({wall, date, from, place}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today.
@@ -481,6 +514,10 @@ export function createLogView({
   function openAdd({ wall = null, date = null, from = null, place = null } = {}) {
     form.reset();
     gradeWall.clear();
+    boulderWall.clear();
+    for (const r of form.querySelectorAll('input[name="disc"]')) r.disabled = false;
+    discRow.hidden = !config.totalClimber;
+    setDiscipline(config.totalClimber ? (place ? 'single' : lastDiscipline) : 'lead');
     gradesBox.open = false;
     editing = null;
     $('log-add-title').textContent = '기록 추가';
@@ -526,9 +563,17 @@ export function createLogView({
     timeTouched = true;
     form.elements.memo.value = r.memo ?? '';
     moreBox.open = Boolean(r.memo);
-    gradeWall.set('sends', r.sends ?? {});
-    gradeWall.set('tries', r.tries ?? {});
-    gradesBox.open = Boolean(r.sends || r.tries);
+    for (const radio of form.querySelectorAll('input[name="disc"]')) radio.disabled = true; // a saved record keeps its discipline
+    setDiscipline(r.discipline ?? 'lead');
+    wallOf().set('sends', r.sends ?? {});
+    wallOf().set('tries', r.tries ?? {});
+    if (r.multi) {
+      form.elements.mroute.value = r.multi.route;
+      form.elements.mpitches.value = String(r.multi.pitches);
+      form.elements.mtop.value = r.multi.top ?? '';
+      form.elements.mresult.value = r.multi.result;
+    }
+    gradesBox.open = Boolean(r.sends || r.tries || r.multi);
     drawTime();
     setTimeOpen(false);
   }
@@ -541,7 +586,7 @@ export function createLogView({
     if (!wall) return;
     const time = visitMin == null ? '' : timeOfMin(visitMin);
     if (editing) {
-      const up = updateRecord(log, editing.id, { time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries') }, { today: today(), nowMin: nowMin() });
+      const up = updateRecord(log, editing.id, { time, memo: form.elements.memo.value, ...climbed() }, { today: today(), nowMin: nowMin() });
       if (up.field === 'time') {
         timeErr.textContent = up.error;
         timeErr.hidden = false;
@@ -555,12 +600,18 @@ export function createLogView({
       changed();
       return toast(`${wall} 기록을 고쳤어요`);
     }
-    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, sends: gradeWall.get('sends'), tries: gradeWall.get('tries'), wall_id: getWallId(wall) }, { today: today(), id: newId(), nowMin: nowMin() });
+    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, ...climbed(), wall_id: getWallId(wall) }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
       timeErr.hidden = false;
       setTimeOpen(true);
       return timeIn.focus();
+    }
+    if (res.field === 'pitches') {
+      multiErr.textContent = res.error;
+      multiErr.hidden = false;
+      gradesBox.open = true;
+      return form.elements.mpitches.focus();
     }
     if (res.error) {
       dateErr.textContent = res.error;
@@ -570,8 +621,10 @@ export function createLogView({
     // asked again at save time: the question's conditions (a week back, not later than now, not sent yet) may have moved
     const share = boardOn() && shareOn.checked ? { wall, nick: shareNickIn.value, memo: res.record.memo ?? '' } : null;
     const level = crowdLevel && crowdAsk(wall, res.record.date, time) === 'ask' ? crowdLevel : null;
+    const levelBefore = config.totalClimber ? climberStats(log) : null;
     const before = rankNow();
     log = res.log;
+    const levelSay = levelBefore ? levelUps(levelBefore, climberStats(log)).map((u) => ` · ${u.name} Lv ${u.level}`).join('') : '';
     const after = rankNow();
     rankUp = after.level > before.level;
     persist();
@@ -591,7 +644,7 @@ export function createLogView({
     rankUp = false;
     // no 실행 취소 here: an undo could drop the record but not a 혼잡도 report already sent. A mistaken record is
     // deleted from the 기록 tab (that one keeps its undo).
-    const saved = `${wall} 기록했어요${level ? ' · 혼잡도 제보 고마워요' : ''}${after.level > before.level ? ` · 등급이 올랐어요 · ${after.name}(${after.gloss})` : ''}${log.length === TIP_AT ? ` · 기록 ${TIP_AT}개 · 내 정보 › 기록 백업으로 저장해 둘 수 있어요` : ''}`;
+    const saved = `${wall} 기록했어요${levelSay}${level ? ' · 혼잡도 제보 고마워요' : ''}${after.level > before.level ? ` · 등급이 올랐어요 · ${after.name}(${after.gloss})` : ''}${log.length === TIP_AT ? ` · 기록 ${TIP_AT}개 · 내 정보 › 기록 백업으로 저장해 둘 수 있어요` : ''}`;
     // ♥ 추천: on a wall's 3rd record, once per wall — the same toast, with ♥ 추가 instead of nothing. (A 등급 goes up
     // only on a wall's 1st record, so the two never meet.)
     const asked = loadFavAsked(storage);
@@ -959,8 +1012,10 @@ export function createLogView({
           el('span', { class: 'lg-name' }, r.wall),
           regionOf(r.wall) ? el('span', { class: 'lg-region' }, regionOf(r.wall)) : null,
           recordNote(r) ? el('span', { class: 'lg-memo' }, recordNote(r)) : null, // "15:00 · 메모"
-          r.sends ? el('span', { class: 'lg-gr send' }, `완등 ${gradeLine(r.sends)}`) : null,
-          r.tries ? el('span', { class: 'lg-gr try' }, `시도 ${gradeLine(r.tries)}`) : null);
+          r.discipline && r.discipline !== 'lead' && Object.hasOwn(DISCIPLINE_NAME, r.discipline) ? el('span', { class: 'lg-region' }, DISCIPLINE_NAME[r.discipline]) : null,
+          r.multi ? el('span', { class: 'lg-gr send' }, `${r.multi.route ? `${r.multi.route} · ` : ''}${r.multi.pitches}피치${r.multi.result === 'bail' ? ' · 도중 하산' : ''}`) : null,
+          r.sends ? el('span', { class: 'lg-gr send' }, `완등 ${gradeLine(r.sends, ALL_GRADES)}`) : null,
+          r.tries ? el('span', { class: 'lg-gr try' }, `시도 ${gradeLine(r.tries, ALL_GRADES)}`) : null);
         open.addEventListener('click', () => openEdit(r, open)); // the row opens its own edit sheet; the wall's card is one tap away in 암장별
         const del = el('button', { type: 'button', class: 'lg-del', 'aria-label': `${r.wall} ${p.month}월 ${p.day}일${r.time ? ` ${r.time}` : ''} 기록 삭제` }, '삭제');
         del.addEventListener('click', () => remove(r));
@@ -1027,13 +1082,14 @@ export function createLogView({
     const parts = {
       empty, summary, wallTable, activity, yearMap, gradeYear, backup: backupNote,
       calendar: () => calendar(byDay), dayList: () => dayList(byDay),
+      climber: () => climberCard(climberStats(log)),
       strip: () => renderStrip(thumbItems, { cache: thumbCache, onOpen: openFromStrip, walls: getWalls(), today: today() }),
     };
     const tiers = tiersFor(log);
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
       tierNote(tiers),
-      ...logSections({ tiers, hasRecords: log.length > 0 }).map((k) => parts[k]()),
+      ...logSections({ tiers, hasRecords: log.length > 0, climber: Boolean(config.totalClimber) }).map((k) => parts[k]()),
     ].filter(Boolean));
   }
 

@@ -32,10 +32,10 @@ export function newTier(unlocked, seen) {
   return TIERS.find((t) => t.say && unlocked.has(t.id) && !seen.has(t.id)) ?? null;
 }
 
-/** logSections({ tiers, hasRecords }) → the 기록 tab's sections, in order. The calendar is open from the first record; the poster strip and seal still open by tier. */
-export function logSections({ tiers, hasRecords }) {
+/** logSections({ tiers, hasRecords, climber }) → the 기록 tab's sections, in order. The calendar is open from the first record; the poster strip and seal still open by tier. `climber`: the 내 클라이밍 card (config.totalClimber), right after 내 활동. */
+export function logSections({ tiers, hasRecords, climber = false }) {
   if (!hasRecords) return ['empty'];
-  const out = ['summary', 'activity', 'calendar', 'dayList', 'wallTable']; // 달력은 처음부터 펼침(2026-10-26); 날짜를 누르면 dayList가 열린다
+  const out = ['summary', 'activity', ...(climber ? ['climber'] : []), 'calendar', 'dayList', 'wallTable']; // 달력은 처음부터 펼침(2026-10-26); 날짜를 누르면 dayList가 열린다
   if (tiers.has('poster')) out.push('strip');
   if (tiers.has('seal')) out.push('yearMap', 'gradeYear');
   return [...out, 'backup'];

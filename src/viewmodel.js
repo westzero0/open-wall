@@ -20,11 +20,29 @@ export const dayText = (d) => `${d.getMonth() + 1}/${d.getDate()}(${DAY_KO[d.get
 export const summaryLead = (at, now, isNow) =>
   (isNow ? '지금 ' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}에 `);
 
+// "07:00" on the picked day, "내일 07:00" the day after today, else "11/5(목) 07:00": when a closed wall opens next.
+export const whenText = (next, at, now) => {
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const day = ymd(next) === ymd(at) ? '' : ymd(next) === ymd(tomorrow) ? '내일 ' : `${dayText(next)} `;
+  return `${day}${fmtMin(next.getHours() * 60 + next.getMinutes())}`;
+};
+
+// How many of these (open) walls are in the sun / in the shade at `at`; lit null (indoor, unknown) is not counted. litOf is injectable for tests.
+export const sunCounts = (walls, at, litOf = isSunlit) => walls.reduce((c, w) => {
+  const { lit } = litOf(w, at);
+  if (lit === true) c.sun += 1;
+  else if (lit === false) c.shade += 1;
+  return c;
+}, { sun: 0, shade: 0 });
+
 // The headline as pieces [text, strong]: "07:00에 갈 수 있는 외벽이 7곳 있어요". Only the time ("지금", "10/9(금) 14:00") and the count ("7곳") are strong;
 // the app draws strong pieces in the accent colour (a count of 0 muted). noun: '외벽' / '싱글피치'.
+// With 0곳 the headline stops there: the empty box below names the earliest wall and its opening (app.js, .soonest-go).
 export const summaryParts = (at, now, isNow, n, noun = '외벽') => {
   const time = isNow ? '지금' : `${ymd(at) === ymd(now) ? '' : `${dayText(at)} `}${fmtMin(at.getHours() * 60 + at.getMinutes())}`;
-  if (n === 0 && noun === '외벽') return [[`${time}${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} 없어요`, false]]; // nothing to count: no strong pieces, the headline is muted (#summary.none)
+  if (n === 0 && noun === '외벽') {
+    return [[`${time}${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} 없어요`, false]]; // nothing to count: no strong pieces, the headline is muted (#summary.none)
+  }
   return [[time, true], [`${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} `, false], [`${n}곳`, true], [' 있어요', false]];
 };
 
@@ -236,6 +254,16 @@ export function sunVerdict(wall, at) {
 // The timetable axis runs 06:00–24:00.
 export const AXIS = [360, 1440];
 export const axisFrac = (m) => (Math.min(Math.max(m, AXIS[0]), AXIS[1]) - AXIS[0]) / (AXIS[1] - AXIS[0]);
+
+export const AXIS_LABELS = [6, 12, 18, 24]; // the axis' numbers: the day in four (6-hour steps), read with the day-part words between them
+export const DAYPARTS = [{ from: 6, to: 12, text: '오전' }, { from: 12, to: 18, text: '오후' }, { from: 18, to: 24, text: '저녁' }];
+const LAST_PICK = 1380; // the slider's last pick is 23:00
+/** stepMinute(min, dir) → the next (dir 1) or previous (dir -1) whole hour, kept on the slider: 06:00–23:00. Not a number: 06:00. */
+export function stepMinute(min, dir) {
+  if (!Number.isFinite(min)) return AXIS[0];
+  const to = dir > 0 ? (Math.floor(min / 60) + 1) * 60 : (Math.ceil(min / 60) - 1) * 60;
+  return Math.min(Math.max(to, AXIS[0]), LAST_PICK);
+}
 
 // Open intervals cut at `nowMin` into [a, b, past] pieces on the axis; zero-width pieces are dropped.
 export function barSegments(open, nowMin) {

@@ -21,8 +21,8 @@ import { buildTap, bumpTapCount, loadTapped, saveTapped, shownFromIntervals, tap
 import { createTapApi } from './tap-api.js';
 import { tapRow } from './tap-view.js';
 import {
-  axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
-  scopeRows, searchPicks, seasonSun, shortName, sortRows, summaryLead, summaryParts, sunVerdict, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
+  AXIS_LABELS, DAYPARTS, axisFrac, barSegments, dayBar, dayLine, dayText, filterRows, fmtMin, formatRanges, groupRows, hasParking, hasRental, mapPins, NTH_KO,
+  scopeRows, searchPicks, seasonSun, shortName, sortRows, stepMinute, summaryLead, summaryParts, sunCounts, sunVerdict, whenText, groupWeekRows, timeLabel, wallPosition, weeklyHours, winterSpan, withDistance,
 } from './viewmodel.js';
 import { cardModel, entryFee, feeTable, feeWord, shortenDates } from './card-model.js';
 import { NOTE_MAX } from './parking-rate.js';
@@ -36,12 +36,13 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, cragSheetTabFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanSun, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, cragSheetTabFromSearch, boardRequested, infoRequested } from './ui-state.js';
 import { clockView, initialView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { cleanMode, effectiveMode } from './ui-state.js'; // 싱글피치: 보기 종류
 import { cragList } from './crag-list.js';
 import { loadCragWeather } from './crag-weather.js';
+import { mountScrubHint } from './scrub-hint.js';
 import { cragSky, renderCragBoard } from './crag-view.js';
 import { approachModel } from './crag-approach.js';
 import { saveRoute, routeState, clearRoute } from './crag-photos.js';
@@ -55,6 +56,7 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 
 // "10월 27일 화요일" above the slider; the weekday is its own span so the largest text size can drop it (style.css .dow) and keep the line to one row
 function setSub(at, extra = '') {
+  $('sub').parentElement.classList.toggle('is-today', ymd(at) === ymd(new Date())); // today reads quietly; another day is the one thing worth noticing
   $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
 }
 import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
@@ -112,6 +114,7 @@ const ICONS = {
   'camera-plus': ['M14.5 5h-5L7 8H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4', 'M11 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M19 1v6', 'M16 4h6'],
   'camera-swap': ['M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z', 'M15.4 11.2A3.5 3.5 0 0 0 9 12.3', 'M9 9.9v2.4h2.4', 'M8.6 15.6A3.5 3.5 0 0 0 15 14.5', 'M15 16.9v-2.4h-2.4'],
   pin: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
+  sort: ['M7 4v16', 'M3 16l4 4 4-4', 'M17 20V4', 'M13 8l4-4 4 4'], // ⇅: the list's order, on its own button
   sliders: ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
   'sky-partly': ['M12 2v2', 'm4.93 4.93 1.41 1.41', 'M20 12h2', 'm19.07 4.93-1.41 1.41', 'M15.947 12.65a4 4 0 0 0-5.925-4.128', 'M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z'],
   'sky-cloud': ['M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z'],
@@ -277,6 +280,8 @@ function openNav(choice, copyText, nav, choices) {
   if (copyText) navigator.clipboard?.writeText(copyText).catch(() => {});
   toast(`${choice.label} 열었어요${copyText ? ' · 주소도 복사했어요' : ''}`, nav ? () => pickNav(nav, choices, copyText) : null, nav ? '바꾸기' : null);
 }
+// the one 주소 복사 toast (길찾기 앱 chooser, the sheet's route row and the row card all say the same thing)
+const copyAddress = (text) => navigator.clipboard?.writeText(text ?? '').then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {});
 function pickNav(nav, choices, copyText, ask = null) { // ask: the cell's word (공지, 전화): plain links to pick from, nothing remembered or copied
   nav.parentElement.querySelector('.nav-pick')?.remove();
   const btn = (text, run, cls = null) => {
@@ -286,7 +291,7 @@ function pickNav(nav, choices, copyText, ask = null) { // ask: the cell's word (
   };
   const panel = el('div', { class: 'nav-pick', role: 'group', 'aria-label': ask ? `${ask} 고르기` : '길찾기 앱 고르기' },
     ...choices.map((c) => btn(c.label, () => (ask ? (c.href.startsWith('tel:') ? location.assign(c.href) : window.open(c.href, '_blank', 'noopener,noreferrer')) : openNav(c, copyText, nav, choices)))),
-    ask ? null : btn('주소 복사', () => navigator.clipboard?.writeText(copyText ?? '').then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}), 'plain'));
+    ask ? null : btn('주소 복사', () => copyAddress(copyText), 'plain'));
   nav.after(panel);
   panel.firstChild.focus();
   const off = (e) => { if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', off, true); } };
@@ -312,7 +317,7 @@ function openNavDialog(choices, copyText, geo) {
     const mine = choices.find((c) => c.id === navPref()) ?? choices[0];
     if (mine) window.open(mine.href, '_blank', 'noopener,noreferrer');
   };
-  const copy = () => navigator.clipboard?.writeText(copyText ?? '').then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {});
+  const copy = () => copyAddress(copyText);
   const list = el('div', { class: 'nd-list' });
   const main = () => {
     list.replaceChildren(row('지도에서 보기', view), row('복사', copy),
@@ -351,7 +356,7 @@ function linkBar(links, copyText = null, edge = null, geo = null) { // copyText:
           if (!ask) openNavDialog(choices, copyText, geo);
           else if (mine) openNav(mine, copyText, nav, choices); else pickNav(nav, choices, copyText, label);
         });
-      } else if (primary && copyText) a.addEventListener('click', () => navigator.clipboard?.writeText(copyText).then(() => toast('주소를 복사했어요 · 길찾기 앱에서 붙여 넣으세요'), () => {}));
+      } else if (primary && copyText) a.addEventListener('click', () => copyAddress(copyText));
       return a;
     }),
     edge?.end ?? null);
@@ -479,11 +484,18 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner
 function gridAxis(nowMin) {
   const ax = el('div', { class: 'g-axis', 'aria-hidden': 'true' });
   const gap = 110 * (parseFloat(getComputedStyle(document.documentElement).fontSize) / 16); // the tag widens with the text size
-  for (const h of [6, 9, 12, 15, 18, 21, 24]) {
+  for (const h of AXIS_LABELS) {
     if (nowMin != null && Math.abs(h * 60 - nowMin) < gap) continue;
-    const t = el('span', { class: h === 6 ? 'first' : h === 24 ? 'last' : h % 6 === 3 ? 'sub' : null }, String(h).padStart(2, '0'));
+    const t = el('span', { class: h === 6 ? 'first' : h === 24 ? 'last' : null }, String(h).padStart(2, '0'));
     t.style.left = axisX(h * 60);
     ax.append(t);
+  }
+  for (const d of DAYPARTS) { // 오전 · 오후 · 저녁 between the numbers (the time tag hides the one it sits on)
+    const mid = (d.from + d.to) * 30;
+    if (nowMin != null && Math.abs(mid - nowMin) < gap * 1.2) continue;
+    const w = el('span', { class: 'dp' }, d.text);
+    w.style.left = axisX(mid);
+    ax.append(w);
   }
   if (nowMin != null) {
     const tag = el('span', { class: 'nowtag' }, fmtMin(nowMin));
@@ -1786,6 +1798,7 @@ async function posterWeather(name, at) {
 // The 날씨 is the first line of the sun box's sky (one sky, no seam); a box without a picture (closed day, no sun math) keeps it right above.
 // → the nodes to put in the card (`inPlace`: the box is already there, so only the weather is added)
 function withWeather(sun, wx, inPlace = false) {
+  sun.classList.toggle('wx-hard', wx.some((n) => n.dataset?.hard)); // 등반 어려움: the weather leads, the sun picture and words step back (style.css .wx-hard)
   const sky = sun.querySelector('.sb-sky');
   if (sky) sky.prepend(...wx);
   else if (inPlace) sun.before(...wx);
@@ -1797,19 +1810,32 @@ function withWeather(sun, wx, inPlace = false) {
 let wxShownSent = false;
 function weatherBox(m, wall, at) {
   const cur = vs.live ? wx.byWall.get(wall.name)?.current : null;
-  if (!cur) return [];
+  if (!cur) return hardForecastBox(m); // not now (or no 실황 yet): a forecast that says 등반 어려움 still leads the card, in one short line
   if (!wxShownSent) { wxShownSent = true; document.dispatchEvent(new CustomEvent('stats:weather-shown')); }
   const strong = windy(cur);
   const cold = Number(ui.tempMin) > 0 && Math.round(cur.t) < Number(ui.tempMin); // 내 기준 기온 미만: the row's badge, here the same word
   const [w, g] = [Math.round(cur.w), Math.round(cur.g)];
   const words = [skyKind(cur.c).text, g > w ? `바람 ${w}–${g}m/s` : `바람 ${w}m/s`]; // wind and gust as one range: the row stays one line
-  return [el('section', { class: 'wx-box', 'aria-label': `날씨, ${cur.hhmm} 관측, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}` },
+  const hard = m.weather?.hardText ?? null;
+  return [el('section', { class: 'wx-box', ...(hard ? { 'data-hard': '1' } : {}), 'aria-label': `날씨, ${cur.hhmm} 관측, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}${hard ? `, ${hard}` : ''}` },
     el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
       el('span', { class: 'wxb-t' }, `${Math.round(cur.t)}°`),
+      hard ? el('span', { class: 'wx-pill hard' }, hard) : null,
       strong ? el('span', { class: 'wx-pill' }, '바람 셈') : null,
       cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
       el('span', { class: 'wxb-d' }, words.join(' · ')),
       el('span', { class: 'wxb-obs' }, `${cur.hhmm} 관측`)))];
+}
+// the picked moment is not now: only a forecast that says 등반 어려움 gets a box (temperature, the pill, the rain / wind words); a fair forecast keeps the card as it was
+function hardForecastBox(m) {
+  const w = m.weather;
+  if (!w?.hard) return [];
+  const words = [w.rain?.text, w.windy ? '바람 셈' : null, w.wind].filter(Boolean).join(' · ');
+  return [el('section', { class: 'wx-box', 'data-hard': '1', 'aria-label': `날씨 예보, 기온 ${w.temp.replace('°', '')}도, ${w.hardText}, ${words}` },
+    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
+      el('span', { class: 'wxb-t' }, w.temp),
+      el('span', { class: 'wx-pill hard' }, w.hardText),
+      el('span', { class: 'wxb-d' }, words)))];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -2194,14 +2220,15 @@ $('crag-board')?.addEventListener('click', (e) => {
   if (!b) return;
   if (b.classList.contains('to-national')) {
     setUi('regions', []);
-    return $('sunOnly').focus(); // the button is gone
+    return $('findQ').focus(); // the chip is gone
   }
   Object.assign(ui, { sun: 'any', favOnly: false, approachMax: '0' });
   sheetForm.elements.approachMax.value = '0';
+  sheetForm.elements.sun.value = 'any';
   $('findQ').value = '';
   saveUi();
   render();
-  $('sunOnly').focus();
+  $('findQ').focus();
 });
 $('modeSwitch')?.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-mode]');
@@ -2218,9 +2245,11 @@ function render() {
   const { date, min, at } = clockView(vs, now);
   if ($('date').value !== date) $('date').value = date;
   if ($('time').value !== String(Math.min(min, 1380))) $('time').value = String(Math.min(min, 1380)); // the slider scale is the axis (06–24) so the thumb sits on the axis; the last pick is 23:00
-  { const t = $('time'); t.style.setProperty('--fill', String((Number(t.value) - Number(t.min)) / (Number(t.max) - Number(t.min)))); } // the slider's passed stretch, from where its thumb really sits (the hour grid) (style.css #time)
+  { const t = $('time'); t.parentElement.style.setProperty('--fill', String((Number(t.value) - Number(t.min)) / (Number(t.max) - Number(t.min)))); } // the slider's passed stretch, from where its thumb really sits (the hour grid) (style.css #time)
   // An emptied date input (e.g. iOS "Clear") keeps the previous list but always offers the way back.
   $('nowBtn').hidden = vs.live && !Number.isNaN(+at);
+  $('stepBack').setAttribute('aria-disabled', String(Number($('time').value) <= Number($('time').min))); // the slider's ends: nothing further
+  $('stepFwd').setAttribute('aria-disabled', String(Number($('time').value) >= 1380)); // aria-disabled, not disabled: a disabled button drops the keyboard focus it holds
   if (Number.isNaN(+at)) return;
   if (loadFailed) { // never show "0 open" for a list that did not load
     $('summary').dataset.key = 'load-failed';
@@ -2234,8 +2263,13 @@ function render() {
   $('time').setAttribute('aria-valuetext', label);
   nowTag.textContent = t;
   nowTag.style.setProperty('--x', axisFrac(minuteOf(at)));
+  $('axis').parentElement.style.setProperty('--x', axisFrac(minuteOf(at))); // .board: the 연결 세로선 under the list follows the same time
   // an hour tick under the time tag would show half a number ("14:00" over "15"): hide the near ones
-  for (const tk of $('axis').querySelectorAll('.t')) tk.classList.toggle('under', Math.abs(tk.min - minuteOf(at)) < (tk.min === 1440 ? 160 : 110));
+  // a number or word on the axis hides when it is near the time tag: by minutes, and by where the tag really is (it widens with the text size)
+  const chip = nowTag.getBoundingClientRect();
+  const crowded = (e) => chip.width > 0 && (() => { const r = e.getBoundingClientRect(); return r.right > chip.left - 6 && r.left < chip.right + 6; })();
+  for (const tk of $('axis').querySelectorAll('.t')) tk.classList.toggle('under', Math.abs(tk.min - minuteOf(at)) < (tk.min === 1440 ? 160 : 110) || crowded(tk));
+  for (const w of $('axis').querySelectorAll('.dp')) w.classList.toggle('under', Math.abs(w.min - minuteOf(at)) < 130 || crowded(w)); // the word the time tag sits on
 
   const crag = cragMode(); // 싱글피치 모드: 외벽 목록 대신 싱글피치 목록
   if (wallBoard) wallBoard.hidden = crag;
@@ -2305,26 +2339,40 @@ function render() {
   setSheetCount(n);
   // another day names the day (the live region is read without the date input)
   const lead = summaryLead(at, now, isNow);
+  const soonestRow = n ? null : groups.closed.reduce((m, r) => { const o = r.status.nextOpenAt; return o && o > at && (!m || o < m.status.nextOpenAt) ? r : m; }, null);
+  const soonest = soonestRow?.status.nextOpenAt ?? null; // 0곳: the earliest opening, one button in the empty box
   const key = `${lead}${n}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
-    drawSummary(summaryParts(at, now, isNow, n));
+    drawSummary(summaryParts(at, now, isNow, n, '외벽'));
   }
   setSub(at); // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
-  $('label-open').replaceChildren( // the sort phrase is its own span: the largest text size drops it (style.css .sortnote) so the band stays one line
-    isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳',
-    el('span', { class: 'sortnote' }, ` · ${ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순'}`),
-    wetN || coldN ? ` · ${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : '');
+  const sortText = ui.sortMode === 'distance' && !needOrigin ? '가까운 순' : '남은 시간 순';
+  $('sortBtn').replaceChildren(icon('sort'), sortText); // a button (the 조건 sheet's 정렬 row), so the order reads as something you can change
+  $('sortBtn').setAttribute('aria-label', `정렬: ${sortText}`);
+  $('sortBtn').hidden = n === 0; // nothing to sort
+  if (n === 0) { $('sortMenu').hidden = true; $('sortBtn').setAttribute('aria-expanded', 'false'); }
+  const sc = sunCounts(open.map((r) => r.wall), at); // the product's difference, said once on the first screen: how many open walls are sunny / shady at this time
+  $('sunSum').hidden = sc.sun + sc.shade === 0;
+  $('sunSum').textContent = `양달 ${sc.sun} · 응달 ${sc.shade}`;
+  $('sunSum').setAttribute('aria-label', `양달 ${sc.sun}곳, 응달 ${sc.shade}곳. 조건에서 해 줄을 열어요`);
+  for (const b of $('sortMenu').children) b.setAttribute('aria-checked', String(b.textContent === sortText));
+  // the title is for screen readers only: the summary two lines above already says it. The rain/cold note is the one thing left to show here
+  $('label-open').textContent = isNow ? '지금 열려 있는 곳' : '이 시각에 열려 있는 곳';
+  const note = wetN || coldN ? `${[wetN && '비 오는 곳', coldN && `${tmin}° 미만`].filter(Boolean).join('·')} 아래로` : '';
+  $('bandNote').textContent = note; $('bandNote').hidden = !note;
+  $('group-open').firstElementChild.classList.toggle('bare', n === 0 && !note); // 0곳: nothing to show in the band, so it folds (the picked-time line still runs through it)
   $('countOpen').textContent = String(n);
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
   // the filters hid every open wall: offer the way back right here
   // replaceChildren(null) would print "null": only real nodes go in
-  emptyMsg.replaceChildren(...[...fv.emptyText.split(/(?<=\.) /).flatMap((s, i) => (i ? [' ', el('span', { class: 'sent' }, s)] : [el('span', { class: 'sent' }, s)])), // a sentence per line: a break never falls inside one
+  emptyMsg.replaceChildren(...[...(soonestRow && !openTotal ? [] : fv.emptyText.split(/(?<=\.) /)).flatMap((s, i) => (i ? [' ', el('span', { class: 'sent' }, s)] : [el('span', { class: 'sent' }, s)])), // a sentence per line: a break never falls inside one
     fv.national ? el('button', { type: 'button', class: 'clear-filters to-national' }, '전국으로 보기') : null,
-    fv.clear ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null].filter(Boolean));
+    fv.clear ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null,
+    soonestRow && !openTotal ? el('button', { type: 'button', class: 'soonest-go', 'data-date': ymd(soonest), 'data-min': String(soonest.getHours() * 60 + soonest.getMinutes()) }, `가장 빠른 곳 · ${shortName(soonestRow.wall)} ${whenText(soonest, at, now)} ›`) : null].filter(Boolean)); // nothing is open: the earliest wall is one tap away (it moves the slider to its opening)
   rowSeq = 0;
   const prevRows = fadeNext ? new Map([...$('rows-open').children].map((li) => [li.wallName, li])) : new Map(); // the slider moved: the rows it rebuilds fade from the old ones
   $('rows-open').replaceChildren(...open.map((r) => safeRow(r, at)));
@@ -2341,7 +2389,7 @@ function render() {
 
   if ($('group-suspended')) { // (a cached older page may not have it yet)
     $('group-suspended').hidden = !groups.suspended.length;
-    setBand($('group-suspended').querySelector('summary'), '지금은 일반 이용이 어려운 곳', groups.suspended.length);
+    setBand($('group-suspended').querySelector('summary'), '일반 이용이 어려운 곳', groups.suspended.length);
     $('rows-suspended').replaceChildren(...groups.suspended.map((r) => safeRow(r, at)));
   }
 
@@ -2496,6 +2544,7 @@ function clearFilters() {
   Object.assign(ui, CLEARED, { regions: [] });
   sheetForm.elements.minHours.value = ui.minHours;
   sheetForm.elements.venue.value = ui.venue;
+  sheetForm.elements.sun.value = ui.sun;
   render();
 }
 
@@ -2585,8 +2634,15 @@ $('mapFindQ').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('ma
 
 // ---- controls ----
 // fixed axis: hour ticks, grid lines, the chosen-time tag
-for (const h of [6, 9, 12, 15, 18, 21, 24]) {
-  const tk = el('span', { class: 't' }, String(h));
+for (let h = AXIS_LABELS[0]; h <= AXIS_LABELS.at(-1); h++) {
+  if (!AXIS_LABELS.includes(h)) { // an hour without a number: a small tick, so the slider's 1-hour step can be counted
+    const m = el('span', { class: 'm' });
+    m.style.setProperty('--x', axisFrac(h * 60));
+    $('axis').append(m);
+  }
+}
+for (const h of AXIS_LABELS) {
+  const tk = el('span', { class: 't' }, String(h).padStart(2, '0')); // 06 · 12 · 18 · 24, as the time tag writes them
   tk.min = h * 60;
   tk.style.setProperty('--x', axisFrac(h * 60));
   $('axis').append(tk);
@@ -2594,8 +2650,20 @@ for (const h of [6, 9, 12, 15, 18, 21, 24]) {
   g.style.left = axisX(h * 60);
   $('plot').append(g);
 }
+for (const d of DAYPARTS) { // 오전 · 오후 · 저녁 in the middle of each part
+  const w = el('span', { class: 'dp' }, d.text);
+  w.min = (d.from + d.to) * 30;
+  w.style.setProperty('--x', axisFrac(w.min));
+  $('axis').append(w);
+}
 const nowTag = el('span', { class: 'nowtag' });
 $('axis').append(nowTag);
+// a tap on an hour number of the axis goes to that time (pointer only: the axis is aria-hidden, the keyboard has the slider and ±1시간)
+$('axis').addEventListener('click', (e) => {
+  const tk = e.target.closest('.t');
+  if (!tk || !$('date').value) return;
+  go({ type: 'pick', date: $('date').value, min: Math.min(tk.min, 1380) });
+});
 // the date field lies invisibly over the date text: on desktop a click lands on a field segment, so it opens the calendar itself
 $('date').addEventListener('click', () => { try { $('date').showPicker?.(); } catch { /* already open, or not allowed: the field still works */ } });
 
@@ -2611,13 +2679,13 @@ for (const id of ['conditions', 'profile', 'safety-sheet', 'howto', 'about-sheet
 const sheet = $('conditions');
 const sheetForm = sheet.querySelector('form');
 const ropeForm = $('profile').querySelector('form'); // 내 로프 길이 lives in 내 정보 (a setting, not a filter)
-for (const k of ['minHours', 'sortMode', 'venue', 'approachMax', 'tempMin']) sheetForm.elements[k].value = ui[k];
+for (const k of ['sun', 'minHours', 'sortMode', 'venue', 'approachMax', 'tempMin']) sheetForm.elements[k].value = ui[k];
 ropeForm.elements.ropeM.value = ui.ropeM;
 
 const setUi = (k, v) => {
   pinnedName = null; // a filter change ends the one-wall exception
   ui[k] = v;
-  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'approachMax' || k === 'tempMin') sheetForm.elements[k].value = v;
+  if (k === 'minHours' || k === 'sortMode' || k === 'venue' || k === 'approachMax' || k === 'tempMin' || k === 'sun') sheetForm.elements[k].value = v;
   if (k === 'ropeM') ropeForm.elements.ropeM.value = v;
   if (k === 'sortMode') go({ type: 'sort' });
   saveUi();
@@ -2633,13 +2701,18 @@ $('search').addEventListener('input', (e) => {
   go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
 $('nowBtn').addEventListener('click', () => go({ type: 'now' }));
+for (const [id, dir] of [['stepBack', -1], ['stepFwd', 1]]) { // ±1시간: the next / previous whole hour, the slider's own pick
+  $(id).addEventListener('click', () => {
+    if ($(id).getAttribute('aria-disabled') === 'true') return; // at the slider's end: nothing further
+    if (!$('date').value) return render(); // a cleared date: back to the picked day, as the slider does
+    go({ type: 'pick', date: $('date').value, min: stepMinute(Number($('time').value), dir) });
+  });
+}
+// first visit only: the handle moves once and a line says to slide it; the first touch of the slider or ±1시간 ends it for good (this device)
+if (config.scrubHint) mountScrubHint({ range: $('time'), host: document.querySelector('.scrub-step'), watch: [$('time'), $('stepBack'), $('stepFwd')], hinted: ui.scrubHinted, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, onSeen: () => { ui.scrubHinted = true; saveUi(); } });
 for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.dataset.sunkey)); // the key under the list
-$('sunOnly').prepend(icon('sun')); // the filter wears the same picture as the rows
-$('shadeOnly').prepend(icon('shade'));
 $('findLoc').prepend(icon('pin')); // the search field's own 내 위치: one press = 가까운 순 (asks for the position the first time), a second = back to 남은 시간 순
 $('findLoc').addEventListener('click', () => { if ($('findLoc').classList.contains('busy')) return; chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'); }); // not while the position is being asked: the late answer would undo the press
-$('sunOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'sun' ? 'any' : 'sun'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); }); // stats.js counts it (turning on only)
-$('shadeOnly').addEventListener('click', () => { setUi('sun', ui.sun === 'shade' ? 'any' : 'shade'); if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); });
 // 정렬 (the 조건 sheet): 가까운 순 needs a position; without one, don't keep it on (and saved) while the list stays as it was; the note stays
 let locateWhy = ''; // why the last 가까운 순 failed: the sheet says it, because the sort goes back to 남은 시간 순
 function chooseSort(mode) {
@@ -2654,7 +2727,7 @@ function chooseSort(mode) {
 
 $('regionChip').addEventListener('click', () => {
   setUi('regions', []);
-  $('sunOnly').focus(); // the chip is gone
+  $('findQ').focus(); // the chip is gone
 });
 
 // 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5), in both the 조건 sheet and 내 정보 (the same choice);
@@ -2687,19 +2760,42 @@ function syncRegionCounts() {
 $('pickOn')?.addEventListener('change', (e) => setUi('hidePick', !e.target.checked));
 $('regionEdit').addEventListener('click', () => { $('profile').close(); sheet.showModal(); $('regionOptsC').querySelector('input')?.focus(); });
 $('moreFilters').addEventListener('click', () => sheet.showModal());
+// 정렬 menu: two choices under the button (the 조건 sheet keeps the same row)
+const sortMenuShow = (on) => { $('sortMenu').hidden = !on; $('sortBtn').setAttribute('aria-expanded', String(on)); if (on) ($('sortMenu').querySelector('[aria-checked="true"]') ?? $('sortMenu').firstElementChild).focus({ preventScroll: true }); };
+$('sortBtn').addEventListener('click', () => sortMenuShow($('sortMenu').hidden));
+$('sunSum').addEventListener('click', () => sheet.showModal()); // the 조건 sheet holds the 해 row
+document.addEventListener('click', (e) => { // 가장 빠른 곳: the slider goes to its opening
+  const b = e.target.closest('.empty .soonest-go');
+  if (b) go({ type: 'pick', date: b.dataset.date, min: Number(b.dataset.min) });
+});
+$('sortMenu').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (b) { chooseSort(b.dataset.sort); sortMenuShow(false); $('sortBtn').focus(); }
+});
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#sortBtn, #sortMenu')) sortMenuShow(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sortMenu').hidden) { sortMenuShow(false); $('sortBtn').focus(); } });
+document.addEventListener('focusin', (e) => { if (!e.target.closest('#sortBtn, #sortMenu')) sortMenuShow(false); }); // Tab out of the menu closes it
+$('sortMenu').addEventListener('keydown', (e) => { // a menu: ↑ ↓ Home End move between the two choices
+  const items = [...$('sortMenu').children]; const i = items.indexOf(document.activeElement);
+  const to = { ArrowDown: (i + 1) % items.length, ArrowUp: (i - 1 + items.length) % items.length, Home: 0, End: items.length - 1 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault(); items[to].focus();
+});
+addEventListener('scroll', () => { if (!$('sortMenu').hidden) sortMenuShow(false); }, { passive: true }); // scrolled away from its button: close it
 document.querySelector('#group-open .empty').addEventListener('click', (e) => {
   if (e.target.closest('.to-national')) {
     setUi('regions', []);
-    return $('sunOnly').focus(); // the button is gone
+    return $('findQ').focus(); // the chip is gone
   }
   if (!e.target.closest('.clear-filters')) return;
   Object.assign(ui, CLEARED);
   sheetForm.elements.minHours.value = '0';
   sheetForm.elements.venue.value = 'any';
   sheetForm.elements.tempMin.value = '0';
+  sheetForm.elements.sun.value = 'any';
   saveUi();
   render();
-  $('sunOnly').focus(); // the button is gone; land on the first filter
+  $('findQ').focus(); // the chip is gone; land on the first filter
 });
 
 // The date + slider stick to the top while the list scrolls (the filter row above them scrolls away: a
@@ -2722,7 +2818,7 @@ const fitSticky = () => {
   const h = box.height - off;
   const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
   const bandH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2; // the list's heading line sticks under the axis too
-  const stick = h + axisH + bandH <= innerHeight * 0.3;
+  const stick = h + axisH + bandH <= innerHeight * 0.35; // the time box holds the answer too: 35% keeps it pinned on a 640px phone even with 지금으로 showing (a 667px+ phone is already inside 33%)
   controls.classList.toggle('unstuck', !stick);
   tabbar.classList.toggle('unstuck', !stick);
   controls.style.top = stick ? `${-off}px` : '';
@@ -2744,6 +2840,10 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
   if (e.target.name === 'approachMax') setUi('approachMax', cleanApproach(e.target.value));
   if (e.target.name === 'tempMin') setUi('tempMin', cleanTemp(e.target.value));
+  if (e.target.name === 'sun') {
+    setUi('sun', cleanSun(e.target.value));
+    if (ui.sun !== 'any') document.dispatchEvent(new CustomEvent('stats:sun-filter')); // stats.js counts it (turning on only)
+  }
 });
 ropeForm.addEventListener('change', (e) => { if (e.target.name === 'ropeM') setUi('ropeM', cleanRope(e.target.value)); });
 // 내 지역 is chosen in the 조건 sheet; 내 정보 shows it as a line (profile-view.js wires the rest of it)
@@ -2969,7 +3069,7 @@ if (sharedCrag) {
     history.replaceState(null, '', u);
   }
 }
-// 화면 읽는 법 sheet: the header ? opens it. On a first visit the 투어 (tour.js, 6 spotlight steps) opens by itself once the list is
+// 화면 읽는 법 sheet: the header ? opens it. On a first visit the 투어 (tour.js, 4 spotlight steps) opens by itself once the list is
 // drawn, after the KakaoTalk notice inside KakaoTalk (that one is this sheet); a share link skips the tour but keeps the notice (inapp.js howtoDue).
 if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page has none of it
   const howto = $('howto');

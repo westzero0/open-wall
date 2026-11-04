@@ -143,7 +143,7 @@ export function inviteText({ name, date, min, n = null, kind = 'look', tags = []
   const who = [...labels, headsPhrase(count, kind)].filter(Boolean).join(' · ');
   const words = cleanNote(note);
   return [
-    `[해벽] ${name} 같이 가요`,
+    `[희노애Rock] ${name} 같이 가요`,
     `${dayText(toDate(date))} ${fmtMin(min)}`,
     caution ? '※ 운영시간 확인 필요' : null,
     sunLine,

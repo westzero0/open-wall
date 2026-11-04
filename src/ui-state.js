@@ -6,7 +6,7 @@ import { sharePageUrl, wallShareId } from './share-id.js';
 import { CRAG_SHEET_TABS } from './crag-sheet-model.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall' };
+const DEFAULTS = { scrubHinted: false, minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall' };
 export const TABS = ['list', 'map', 'log'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
@@ -16,6 +16,7 @@ export const cleanTextSize = (v) => (['large', 'xlarge'].includes(v) ? v : 'norm
 export const CLEARED = Object.freeze({ sun: 'any', minHours: '0', parkingOnly: false, rentalOnly: false, venue: 'any', favOnly: false, tempMin: '0' });
 
 const SUN_FILTERS = ['any', 'sun', 'shade'];
+export const cleanSun = (v) => (SUN_FILTERS.includes(v) ? v : 'any');
 const VENUE_FILTERS = ['any', 'indoor', 'outdoor'];
 // Minimum stay: 상관없음 / 3 / 5 / 8 hours. Older saved choices (1h, 2h) map to the nearest sensible one.
 const MIN_HOURS = ['0', '3', '5', '8'];
@@ -53,6 +54,7 @@ export function loadUi(storage) {
   if (!SUN_FILTERS.includes(ui.sun)) ui.sun = 'any';
   ui.minHours = migrateMinHours(ui.minHours); // 1h/2h choices from before 3·5·8
   if (!['time', 'distance', 'mygrade'].includes(ui.sortMode)) ui.sortMode = 'time';
+  ui.scrubHinted = ui.scrubHinted === true; // the first-visit slider hint was seen (scrub-hint.js)
   ui.parkingOnly = ui.parkingOnly === true;
   ui.rentalOnly = ui.rentalOnly === true;
   ui.withBreaks = ui.withBreaks === true;
@@ -118,16 +120,15 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
     parkOnly,
     rentalOnly,
     pressed: {
-      sunOnly: ui.sun === 'sun', shadeOnly: ui.sun === 'shade',
       parkingOnly: ui.parkingOnly, rentalOnly: ui.rentalOnly, withBreaks: ui.withBreaks, favOnly: ui.favOnly,
     },
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
-    // the sheet button counts what only the sheet shows: 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온, 내 로프 길이 (a setting: it hides no wall)
-    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance' || ui.sortMode === 'mygrade') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
+    // the sheet button counts what only the sheet shows: 양달/응달 (the 해 row), 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온, 내 로프 길이 (a setting: it hides no wall)
+    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance' || ui.sortMode === 'mygrade') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0) + Number(ui.sun !== 'any'),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
-      ? `${isNow ? '지금' : '이 시각에'} 열려 있는 곳이 없어요. 아래 닫힌 곳에서 다음 오픈 시간을 확인해 보세요.`
+      ? '아래 닫힌 곳에서 곳마다 다음 오픈 시간을 볼 수 있어요.'
       : `열린 곳 ${openTotal}곳 중 조건(${on.join(' · ')})에 맞는 곳이 없어요. 조건을 바꿔 보세요.`,
     // "전국으로 보기" when 내 지역 hid open walls; "조건 지우기" when another filter did
     national: openTotal > 0 && ui.regions.length > 0,
@@ -137,12 +138,12 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
 
 /**
  * cragFilterView(ui, { hasGrade, query }) → the 싱글피치 list's 조건 count and empty-box buttons: only what cragList uses.
- * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 어프로치 도보 — cragList drops crags by the last); 양달/응달 and the search sit outside the sheet, as for walls.
+ * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 어프로치 도보 — cragList drops crags by the last, 양달/응달 — the 해 row); the search sits outside the sheet.
  * national: 내 지역 narrows the list (전국으로 보기). clear: 양달/응달, the search, 즐겨찾기만, a set 어프로치 도보 narrows it (조건 지우기 clears those four).
  */
 export function cragFilterView(ui, { hasGrade = false, query = '' } = {}) {
   return {
-    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0),
+    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0) + Number(ui.sun !== 'any'),
     national: ui.regions.length > 0,
     clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || query.trim() !== '',
   };

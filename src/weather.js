@@ -165,6 +165,16 @@ export function skyKind(c) {
 export const skyVeils = (c) => Number.isFinite(c) && !['clear', 'partly'].includes(skyKind(c).kind);
 /** skyWet(code) → rain, snow or thunderstorm: an outdoor wall without a roof is a poor choice then. */
 export const skyWet = (c) => Number.isFinite(c) && ['rain', 'snow', 'storm'].includes(skyKind(c).kind);
+/**
+ * hardWeather(hour) → { hard, why }: the weather alone says no to an outdoor wall, so the card leads with it and the sun steps back.
+ * why: '뇌우' > '눈' > '비' > '강풍'. A forecast hour has no sky code (only the 실황 has one): the rain chance / amount says rain then; no numbers → not hard.
+ */
+export function hardWeather(h) {
+  if (!h) return { hard: false, why: null };
+  const kind = Number.isFinite(h.c) ? skyKind(h.c).kind : null;
+  const why = kind === 'storm' ? '뇌우' : kind === 'snow' ? '눈' : kind === 'rain' || rainOf(h) ? '비' : windy(h) ? '강풍' : null;
+  return { hard: why !== null, why };
+}
 /** forecastTrusted(at, now, days = 1) → `at` is today or within the next `days` days (the forecast is only said out loud that far). */
 export function forecastTrusted(at, now, days = 1) {
   const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());

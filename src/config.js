@@ -12,17 +12,21 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // 운동 스케줄 비 알림: scheduleAlert — 켜면 내 정보 시트에 '운동 스케줄' 줄·홈 알림 카드·어제 기록 묻기·기록 달력 점이 생긴다(docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md). 공개 단계(stage)와 별개: 베타 이용자 요청이라 먼저 연다. 새 외부 요청은 없다.
+// 토탈클라이머: totalClimber — 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다(docs/superpowers/specs/2026-11-03-total-climber-levels-design.md). 서버 없음(기기 안).
 // assets/climbers/에 캐릭터 8장이 다 들어가기 전에는 켜지 않는다(test/climber-assets.test.js가 켠 상태에서 확인).
 // 공지 제보 (docs/prd/notice-links-spec.md 3번, 중단): noticeReport — 켜면 제보 시트에 '공지' 선택이 생긴다. 기본은 꺼 둠(이용자 제보를 기대하지 않기로 함).
 // 공개 단계 (docs/superpowers/specs/2026-10-21-home-simplify-design.md): stage — 'beta'는 클라이머 유형 테스트와 이번 주말 추천을 숨기고, 'open'이면 연다.
 // 기록 탭(달력·카드·도장)은 stage와 무관하게 사람마다 기록 수로 열린다(docs/superpowers/specs/2026-10-21-staged-opening.md). src/stage.js가 읽는다.
 // 기록 탭 한 줄 요약의 야외 횟수: 야외가 열리기 전에는 false(코드에만 두고 화면에는 안 보인다).
+// 시간 슬라이더 첫 방문 넛지(src/scrub-hint.js): false면 손잡이 움직임과 한 줄 안내가 없다. 새 요청은 없다.
 export const config = {
+  scrubHint: true,
   showOutdoorCount: false,
   stage: 'beta',
   noticeReport: false,
   climberTest: true,
   scheduleAlert: true,
+  totalClimber: false, // 토탈클라이머 (docs/superpowers/specs/2026-11-03-total-climber-levels-design.md): 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다. 서버 없음(기기 안).
   closureWarning: false, // 닫힘·단축 제보 경고(docs/superpowers/specs/2026-10-29-closure-warning-design.md): report-tap의 GET /v1/tap-summary를 읽는다. Worker에 그 경로가 배포된 뒤 켠다
   singlePitch: false,
   fill: false, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.

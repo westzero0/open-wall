@@ -8,7 +8,8 @@ import { routeView } from './routes.js';
 export { ROPE_LENGTHS }; // (the list lives in store.js: normalizeWall cleans rope_m against it)
 import { dayParts, recordNote } from './log.js';
 import { LEVELS as CROWD_LEVELS } from './crowd.js';
-import { RAIN_MM, rainOf, weatherLine, windy } from './weather.js';
+import { RAIN_MM, hardWeather, rainOf, weatherLine, windy } from './weather.js';
+const hardOf = (w) => { const h = hardWeather(w); return { hard: h.hard, hardText: h.hard ? `등반 어려움 · ${h.why}` : null }; };
 import { DEFAULT_STAY_H, TABLE_HOURS, feeAfter, feeBrief, lotFeeTable, pricedLots } from './parking-rate.js';
 import {
   axisFrac, barSegments, dayBar, dayLine, dayText, endingSoon, fmtMin, formatRanges, hasRental, rentalText, shortName, unknownText, viewOf, wallPosition,
@@ -770,7 +771,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     beenLabel: visits?.length ? `다녀옴 ${visits.length}번` : '다녀왔어요',
     ...(visits?.length ? { visits: visitsOf(visits), beenAria: `다녀왔어요 기록 추가, 지금까지 ${visits.length}번` } : {}),
     ...(crowdModel ? { crowd: crowdModel } : {}),
-    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather), temp: `${Math.round(weather.t)}°`, wind: `바람 ${Math.round(weather.w)}m/s`, gust: `돌풍 ${Math.round(weather.g)}m/s`, rain: rainOf(weather), ahead: weatherAhead.map((a) => ({ label: a.label, temp: `${a.t}°`, rain: a.r >= RAIN_MM ? `${a.r < 10 ? Math.round(a.r * 10) / 10 : Math.round(a.r)}mm` : null })) } } : {}),
+    ...(weather ? { weather: { line: weatherLine(weather), windy: windy(weather), temp: `${Math.round(weather.t)}°`, wind: `바람 ${Math.round(weather.w)}m/s`, gust: `돌풍 ${Math.round(weather.g)}m/s`, rain: rainOf(weather), ...hardOf(weather), ahead: weatherAhead.map((a) => ({ label: a.label, temp: `${a.t}°`, rain: a.r >= RAIN_MM ? `${a.r < 10 ? Math.round(a.r * 10) / 10 : Math.round(a.r)}mm` : null })) } } : {}),
     ...(crowdModel?.chip?.level ? { crowdTag: crowdTagOf(crowd.stat) } : {}),
   };
 }

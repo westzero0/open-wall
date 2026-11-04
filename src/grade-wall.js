@@ -2,15 +2,16 @@
 // one to the active kind, and a summary of chips (each with a −) takes one back. Used by the 기록 추가 sheet (완등 / 시도) and the
 // 루트 분포 report (루트). DOM via el()/textContent only; the counts are kept clean by grades.js (bump).
 import { el } from './dom.js';
-import { GRADE_ROWS, bump, cleanCounts, gradeLabel } from './grades.js';
+import { GRADES, GRADE_ROWS, bump, cleanCounts, gradeLabel } from './grades.js';
 
 /**
  * createGradeWall({ kinds: [{ key, word }, …], mode, onChange, label }) → { el, get(key), set(key, counts), clear() }
  * kinds: what can be counted (`unit` is the counting word for screen readers, default 번; 'sends' draws a filled hold with its count; a second kind a ring, and a badge when both share a hold).
  * mode(): the key a tap adds to (default: the first kind). onChange(get): after every change and once at the start (for the caller's summary
  * line / send button); `get(key)` reads the counts, since the wall may not be assigned yet.
+ * rows / scale: the wall's holds and its grade scale (default the rope wall; 볼더링 passes V_ROWS and V_GRADES).
  */
-export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = () => {}, label = '그레이드 고르기' }) {
+export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = () => {}, label = '그레이드 고르기', rows = GRADE_ROWS, scale = GRADES }) {
   const state = Object.fromEntries(kinds.map((k) => [k.key, {}]));
   const get = (key) => state[key];
   const [first, second] = kinds;
@@ -19,12 +20,12 @@ export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = (
   const sum = el('div', { class: 'la-gsum', 'aria-live': 'polite' });
   const root = el('div', { class: 'gwall' }, wall, sum);
 
-  for (const row of GRADE_ROWS) {
+  for (const row of rows) {
     wall.append(el('div', { class: 'gr' }, el('span', { class: 'gr-l', 'aria-hidden': 'true' }, row.label), ...row.cells.map((c) => {
       const b = el('button', { type: 'button', class: 'hold', 'data-grade': c.grade }, c.text);
       b.addEventListener('click', () => {
         const key = mode();
-        state[key] = bump(state[key], c.grade, 1);
+        state[key] = bump(state[key], c.grade, 1, scale);
         draw();
       });
       holds.set(c.grade, b);
@@ -33,7 +34,7 @@ export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = (
   }
 
   function draw() {
-    for (const row of GRADE_ROWS) {
+    for (const row of rows) {
       for (const c of row.cells) {
         const b = holds.get(c.grade);
         const s = state[first.key][c.grade] ?? 0;
@@ -51,7 +52,7 @@ export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = (
       return el('p', { class: `gs ${key}` }, el('b', {}, word), ...grades.map((g) => {
         const minus = el('button', { type: 'button', class: 'gm', 'data-grade': g, 'aria-label': `${gradeLabel(g)} ${word} 하나 빼기` }, '−');
         minus.addEventListener('click', () => {
-          state[key] = bump(state[key], g, -1);
+          state[key] = bump(state[key], g, -1, scale);
           draw();
           // the chip is rebuilt: keep the focus on its − while the grade still has a count (repeated taps stay under the finger), else on its hold
           (sum.querySelector(`.gs.${key} .gm[data-grade="${g}"]`) ?? holds.get(g))?.focus({ preventScroll: true });
@@ -67,7 +68,7 @@ export function createGradeWall({ kinds, mode = () => kinds[0].key, onChange = (
   return {
     el: root,
     get,
-    set(key, counts) { state[key] = cleanCounts(counts); draw(); },
+    set(key, counts) { state[key] = cleanCounts(counts, scale); draw(); },
     clear() { for (const k of kinds) state[k.key] = {}; draw(); },
   };
 }

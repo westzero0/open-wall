@@ -33,7 +33,7 @@ export function kakaoPayload({ picture, url, imageUrl }) {
   return {
     objectType: 'feed',
     content: { title, description: clip(desc, MAX_DESC), imageUrl, imageWidth: CARD_W, imageHeight: CARD_H, link },
-    buttons: [{ title: '해벽에서 보기', link }],
+    buttons: [{ title: '희노애Rock에서 보기', link }],
   };
 }
 

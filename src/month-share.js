@@ -39,7 +39,7 @@ export function createMonthShare({ getWalls, icon = null, storage = safeStorage(
       if (mine !== token) return;
       if (!b) throw new Error('no picture');
       blob = b;
-      text = `해벽 ${pic.year}년 ${pic.month}월 기록 · ${pic.visits}번 · ${pic.walls}곳\n${new URL('.', location.href).href}`;
+      text = `희노애Rock ${pic.year}년 ${pic.month}월 기록 · ${pic.visits}번 · ${pic.walls}곳\n${new URL('.', location.href).href}`;
       file = `haebyeok-${pic.year}-${p2(pic.month)}${ratio === '4:5' ? '-feed' : '-story'}.png`;
       if (canSaveMonth(pic.year, pic.month)) go.disabled = save.disabled = false;
       else say.textContent = `이번 달은 미리보기만 볼 수 있어요. ${pic.month % 12 + 1}월 1일부터 그림으로 저장하고 공유할 수 있어요.`; // a month still going on is not final
