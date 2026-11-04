@@ -2347,7 +2347,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 
 /* loading screen: the vertical lockup (light or dark) on the app background until the first list is drawn */
 #boot { position: fixed; inset: 0; z-index: var(--z-boot); display: grid; place-items: center; background: var(--logo-paper); transition: opacity var(--dur-ui) var(--ease-out); animation: boot-out 0s 8s forwards; }
-#boot img { width: min(58vw, 290px); height: auto; transform: translateY(18.7%); animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark, and shifted so the mark (not the whole lockup) sits at screen centre where the OS splash draws it; it fades in rather than appearing */
+#boot img { width: min(58vw, 290px); height: auto; transform: translateY(14.7%); animation: boot-in 200ms var(--ease-out) both; } /* smaller and centred, like the OS start screen's mark, and shifted so the mark (not the whole lockup) sits at screen centre where the OS splash draws it; it fades in rather than appearing */
 #boot .dk { display: none; }
 :root[data-theme="dark"] #boot { background: var(--bg); }
 :root[data-theme="dark"] #boot .lt { display: none; }
