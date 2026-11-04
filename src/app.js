@@ -29,7 +29,7 @@ import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
-import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekPlan } from './schedule.js';
+import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekHint, weekPlan } from './schedule.js';
 import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, weekPicker } from './schedule-view.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, syncFound, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
@@ -57,7 +57,8 @@ import { crossfadeRows, el, tightParens } from './dom.js';
 // "10월 27일 화요일" above the slider; the weekday is its own span so the largest text size can drop it (style.css .dow) and keep the line to one row
 function setSub(at, extra = '') {
   $('sub').parentElement.classList.toggle('is-today', ymd(at) === ymd(new Date())); // today reads quietly; another day is the one thing worth noticing
-  $('sub').replaceChildren(`${at.getMonth() + 1}월 ${at.getDate()}일 `, el('span', { class: 'dow' }, `${DAY_KO[at.getDay()]}요일`), extra);
+  const today = ymd(at) === ymd(new Date()); // short on purpose: the question row also holds 지금으로 at 360px. Today is one word; another day reads 11/6(목)
+  $('sub').replaceChildren(...(today ? ['오늘'] : [`${at.getMonth() + 1}/${at.getDate()}`, el('span', { class: 'dow' }, `(${DAY_KO[at.getDay()]})`)]), extra);
 }
 import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetLine, span, warnNote, warnPill, whyBubble } from './card-parts.js';
 import { startTour } from './tour.js';
@@ -1023,9 +1024,12 @@ function renderSched() {
     const next = $('sched');
     if (next && !next.hidden) next.querySelector('summary')?.focus();
   }
+  const plan = wanted ? weekPlan(schedule, moves, { walls: state.walls, forecasts: wxPick.byName, today }) : null;
+  const note = $('schedNote'); // the list shows only the bad news; the card itself is in the 기록 tab
+  if (note) { const h = plan?.some((c) => c.bad) ? weekHint(plan) : null; note.hidden = !h; note.textContent = h ? `운동 스케줄 · ${h.text}` : ''; }
   renderScheduleCard({ box: $('sched'), chip: $('sched-chip'), hint: $('sched-hint'), body: $('sched-body'), live: $('sched-live') }, {
-    plan: wanted ? weekPlan(schedule, moves, { walls: state.walls, forecasts: wxPick.byName, today }) : null, moves, onMove, onClear: (wall, from, msg) => moveChange(clearMove(moves, wall, from), msg), walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
-    onOpen: (wall, date) => { goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
+    plan, moves, onMove, onClear: (wall, from, msg) => moveChange(clearMove(moves, wall, from), msg), walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
+    onOpen: (wall, date) => { showTab('list'); goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
   });
 }
 // the 내 정보 sheet's 운동 스케줄 rows: drawn when the sheet opens and by their own changes (never by render(): a redraw would drop the focus)
@@ -2187,7 +2191,7 @@ function renderCrags(at, now, isNow) {
   $('locateMsg').textContent = msg;
   $('locateMsg').hidden = !msg;
   $('pick').hidden = true; // the wall picks and changes are for the wall list; render() draws them again when it comes back
-  for (const id of ['sched', 'schedAsk']) if ($(id)) $(id).hidden = true;
+  for (const id of ['sched', 'schedAsk', 'schedNote']) if ($(id)) $(id).hidden = true;
   if ($('changesStrip')) $('changesStrip').hidden = true;
   syncCragFilterUi(n, isNow, !!myGrade, cv);
   const active = document.activeElement;
@@ -2356,7 +2360,7 @@ function render() {
   if (n === 0) { $('sortMenu').hidden = true; $('sortBtn').setAttribute('aria-expanded', 'false'); }
   const sc = sunCounts(open.map((r) => r.wall), at); // the product's difference, said once on the first screen: how many open walls are sunny / shady at this time
   $('sunSum').hidden = sc.sun + sc.shade === 0;
-  $('sunSum').textContent = `양달 ${sc.sun} · 응달 ${sc.shade}`;
+  $('sunSum').textContent = `양달 ${sc.sun} · 응달 ${sc.shade} ›`; // › : it opens the 조건 sheet
   $('sunSum').setAttribute('aria-label', `양달 ${sc.sun}곳, 응달 ${sc.shade}곳. 조건에서 해 줄을 열어요`);
   for (const b of $('sortMenu').children) b.setAttribute('aria-checked', String(b.textContent === sortText));
   // the title is for screen readers only: the summary two lines above already says it. The rain/cold note is the one thing left to show here
@@ -2512,6 +2516,7 @@ function syncToTop() {
   } // a tiny move (the tail of a fling) leaves both the button and its timer as they are
 }
 addEventListener('scroll', syncToTop, { passive: true });
+$('schedNote')?.addEventListener('click', () => showTab('log', true));
 $('toTop')?.addEventListener('click', () => {
   scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
   $(`tab-${ui.tab}`).focus({ preventScroll: true }); // the button hides itself: focus moves on
@@ -2709,7 +2714,7 @@ for (const [id, dir] of [['stepBack', -1], ['stepFwd', 1]]) { // ±1시간: the 
   });
 }
 // first visit only: the handle moves once and a line says to slide it; the first touch of the slider or ±1시간 ends it for good (this device)
-if (config.scrubHint) mountScrubHint({ range: $('time'), host: document.querySelector('.scrub-step'), watch: [$('time'), $('stepBack'), $('stepFwd')], hinted: ui.scrubHinted, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, onSeen: () => { ui.scrubHinted = true; saveUi(); } });
+if (config.scrubHint) mountScrubHint({ range: $('time'), host: document.querySelector('.scrub-hintbox'), watch: [$('time'), $('stepBack'), $('stepFwd')], hinted: ui.scrubHinted, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, onSeen: () => { ui.scrubHinted = true; saveUi(); } });
 for (const li of document.querySelectorAll('[data-sunkey]')) li.prepend(icon(li.dataset.sunkey)); // the key under the list
 $('findLoc').prepend(icon('pin')); // the search field's own 내 위치: one press = 가까운 순 (asks for the position the first time), a second = back to 남은 시간 순
 $('findLoc').addEventListener('click', () => { if ($('findLoc').classList.contains('busy')) return; chooseSort(ui.sortMode === 'distance' ? 'time' : 'distance'); }); // not while the position is being asked: the late answer would undo the press
@@ -2945,7 +2950,7 @@ const tick = () => {
   const li = a?.closest('.rows .row');
   const i = li ? [...li.querySelectorAll(FOCUSABLE)].indexOf(a) : -1;
   // not skipped: the 혼잡도 CSV if due, then the re-render
-  const ran = go({ type: 'tick', hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick, #sched, #schedAsk') }).length;
+  const ran = go({ type: 'tick', hidden: document.hidden || ui.tab === 'log', detailsOpen: !!document.querySelector('.more[open]'), focusHeld: !!a?.closest('#pin-card, .clear-filters, #pick, #sched, #schedAsk, #schedNote') }).length;
   if (!ran || !li) return;
   const now = [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === li.wallName);
   (now?.querySelectorAll(FOCUSABLE)[i] ?? now?.querySelector('.row-btn'))?.focus({ preventScroll: true });

@@ -127,6 +127,7 @@ export function createLogView({
   getOrigin = () => null, addFav = () => {}, getWeather = async () => null, getWallId = () => null, // getWallId(name) → the wall's id (null for a name not in the lists)
 }) {
   const panel = $('panel-log');
+  const lead = ['schedAsk', 'sched'].map((id) => $(id)).filter(Boolean); // 내 운동 스케줄 (app.js draws them): kept across redraws, so they stay in the page and keep their open state
   const monthShare = createMonthShare({ getWalls, icon });
   // the 오늘의 해벽 cards kept for records (this browser only): madeIds says which rows have one, thumbItems are the small thumbnails the rows and
   // the strip show (read together, then kept in step; a read that finds nothing new redraws nothing)
@@ -1088,6 +1089,7 @@ export function createLogView({
     const tiers = tiersFor(log);
     panel.replaceChildren(...[
       el('h2', { class: 'sr-only' }, '기록'),
+      ...lead,
       tierNote(tiers),
       ...logSections({ tiers, hasRecords: log.length > 0, climber: Boolean(config.totalClimber) }).map((k) => parts[k]()),
     ].filter(Boolean));
