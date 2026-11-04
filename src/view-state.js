@@ -4,6 +4,7 @@
 // with each event. app.js keeps one state object, sends events through `step`, runs the follow-ups and draws.
 import { ymd } from './time.js';
 import { fmtMin, isLivePick, sliderValue } from './viewmodel.js';
+import { weekendDays } from './pick.js';
 
 const minuteOf = (d) => d.getHours() * 60 + d.getMinutes();
 
@@ -13,6 +14,14 @@ const CLOSED = Object.freeze({ openName: null, openState: null, season: Object.f
 
 // date ('YYYY-MM-DD', '' when the input was cleared) and min (slider minutes) are the picked moment; read only while not live.
 export const initialView = () => ({ live: true, date: '', min: 0, ...CLOSED, origin: null, locateNote: '' });
+
+// 계획형 시작(첫 화면 설계 2-7): 월~금에 열면 다가오는 토요일 14:00에서 시작한다(‘지금으로’가 켜져 있다). 토·일은 지금(live).
+export const PLAN_MIN = 840;
+export function startView(now) {
+  const dow = now.getDay();
+  if (dow === 0 || dow === 6) return initialView();
+  return { ...initialView(), live: false, date: ymd(weekendDays(now)[0].date), min: PLAN_MIN };
+}
 
 // The open row is kept across a re-render only while a row of that wall is still shown in the same group.
 export const keepOpenRow = (rows, name, state) => rows.some((r) => r.wall.name === name && r.status.state === state);

@@ -4,8 +4,8 @@
 import { el } from './dom.js';
 import { sortRoutes, routeColumns, equipLabel } from './crag-routes.js';
 import { photoUrl } from './crag-approach.js';
-import { whyBubble } from './card-parts.js';
-import { routeSummary, routeLineText, rowMine } from './crag-grades.js';
+import { sheetCard, whyBubble } from './card-parts.js';
+import { routeSummary, gradeRows, rowMine } from './crag-grades.js';
 
 const DASH = '–';
 
@@ -16,16 +16,35 @@ function chipLabels(topos) {
   return topos.map((t, i) => (distinct ? caps[i] : String(i + 1)));
 }
 
+// the wall sheet's grade bars (.gy-list: label, track, count; 내 그레이드 rows stronger) for the ⓘ bubble: how many routes at each grade
+function gradeBars(rows) {
+  return el('ul', { class: 'gy-list' }, ...rows.map((r) => el('li', { class: r.mine ? 'mine' : null },
+    el('span', { class: 'gy-g' }, r.label), el('span', { class: 'gy-trk', 'aria-hidden': 'true' }, el('span', { class: 'gy-bar', style: `width: ${r.frac * 100}%` })), el('span', { class: 'gy-n' }, `${r.n}개`))));
+}
+
 function routeTable(routes, mine) {
   if (!routes.length) return null;
   const col = routeColumns(routes);
-  const heads = ['번호', '이름', col.grade && '난이도', col.length && '길이', col.equip && '장비'].filter(Boolean);
-  const rows = sortRoutes(routes).map((r) => el('tr', { class: rowMine(r, mine) ? 'is-mine' : null },
-    el('th', { scope: 'row' }, r.no == null ? DASH : String(r.no)),
-    el('td', {}, el('span', { class: 'rs-name' }, r.name)),
-    col.grade ? el('td', {}, r.grade ?? DASH) : null,
-    col.length ? el('td', {}, r.length_m != null ? `${r.length_m}m` : DASH) : null,
-    col.equip ? el('td', {}, equipLabel(r)) : null));
+  const sortable = { no: true, grade: col.grade, length: col.length, equip: col.equip }; // the headers that sort (이름 does not)
+  const heads = [['no', '번호'], ['name', '이름'], col.grade && ['grade', '난이도'], col.length && ['length', '길이'], col.equip && ['equip', '장비']].filter(Boolean);
+  const body = el('tbody', {});
+  let order = 'no', dir = 1;
+  const ths = heads.map(([k, label]) => {
+    if (!(sortable[k] && routes.length > 1)) return el('th', { scope: 'col' }, el('span', { class: 'rs-th' }, label)); // same box as the buttons, so every header sits on one line
+    const b = el('button', { type: 'button', class: 'rs-th' }, label); // a header that sorts: a press orders by it, a second press reverses
+    b.addEventListener('click', () => { dir = order === k ? -dir : 1; order = k; paintRows(); });
+    return el('th', { scope: 'col', 'data-sort': k }, b);
+  });
+  function paintRows() {
+    for (const th of ths) if (th.dataset.sort) th.setAttribute('aria-sort', th.dataset.sort === order ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+    body.replaceChildren(...sortRoutes(routes, order, dir).map((r) => el('tr', { class: rowMine(r, mine) ? 'is-mine' : null },
+      el('th', { scope: 'row' }, r.no == null ? DASH : String(r.no)),
+      el('td', {}, el('span', { class: 'rs-name' }, r.name)),
+      col.grade ? el('td', {}, r.grade ?? DASH) : null,
+      col.length ? el('td', {}, r.length_m != null ? `${r.length_m}m` : DASH) : null,
+      col.equip ? el('td', {}, equipLabel(r)) : null)));
+  }
+  paintRows();
   const by = new Map(); // 초등자별로 묶는다: 사람 하나에 루트 여럿
   for (const r of sortRoutes(routes)) if (col.pioneer && r.pioneer) by.set(r.pioneer, [...(by.get(r.pioneer) ?? []), r]);
   const no = (r) => (r.no == null ? DASH : r.no);
@@ -36,8 +55,8 @@ function routeTable(routes, mine) {
     ...(ones.length ? [group(`한 개씩 · ${ones.length}명`, ones.map(([who, r]) => `${no(r)} ${r.name} (${who})`))] : [])];
   const sum = groups.length ? el('div', { class: 'rs-pioneer-why' }, whyBubble('초등자 정보', ...groups)) : null;
   return el('div', { class: 'rs-tablewrap' }, sum, el('div', { class: 'rs-tablebox' }, el('table', { class: 'rs-table' },
-    el('thead', {}, el('tr', {}, ...heads.map((h) => el('th', { scope: 'col' }, h)))),
-    el('tbody', {}, ...rows))));
+    el('thead', {}, el('tr', {}, ...ths)),
+    body)));
 }
 
 /**
@@ -49,6 +68,7 @@ export function routesPane(name, entry, { mine = null } = {}) {
   const routes = entry?.routes ?? [];
   if (!topos.length && !routes.length) return null;
   const sum = routeSummary(routes, mine);
+  const rows = gradeRows(routes, mine);
   let cur = 0;
   let zoom = false;
 
@@ -77,9 +97,11 @@ export function routesPane(name, entry, { mine = null } = {}) {
   }
 
   paint();
+  const table = routeTable(routes, mine);
+  const bubble = rows.length ? whyBubble('난이도 분포', el('b', { class: 'rs-bars-h' }, `난이도별 루트 수 · 총 ${sum?.total}개`), gradeBars(rows)) : null;
   return el('div', { class: 'routes-pane' },
-    sum ? el('p', { class: 'rs-sum' }, `루트 ${routeLineText(routeSummary(routes, null))}`) : null, // no 루트 label here: the line says the word
-    sum?.mineLabel ? el('p', { class: 'rs-mine' }, `내 그레이드 ${sum.mineLabel} · ${sum.mineCount}개`) : null,
+    sum ? sheetCard('루트', sum.mineLabel ? [el('p', { class: 'rs-mine' }, `내 그레이드 ${sum.mineLabel} · ${sum.mineCount}개`)] : [], // the card's head: the title with its count beside it; the grade bars (the wall sheet's .gy-list) open from the ⓘ
+      { sub: `${sum.total}개`, end: bubble }) : null,
     chips.length ? el('div', { class: 'rt-chips', role: 'group', 'aria-label': '개념도' }, ...chips) : null,
-    view, credit, routeTable(routes, mine));
+    view, credit, table);
 }

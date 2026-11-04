@@ -11,6 +11,7 @@ import { loadMyGrade, saveMyGrade } from './my-grade.js';
 import { safeStorage, getStr, setStr, removeStr } from './storage.js';
 import { loadTapCount } from './tap.js';
 import { filledWallCount } from './fill-store.js';
+import { loadPoints, pointsSummary } from './points.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -140,6 +141,9 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     const filled = fillOn() ? filledWallCount({ get: getStr }) : 0; // 빈칸 채우기: only once it is on and this device filled something
     $('pfFills').hidden = !filled;
     $('pfFills').textContent = filled ? `내가 채운 암장 ${filled}곳` : '';
+    const pts = config.points ? pointsSummary(loadPoints(store ?? { getItem: getStr })).total : 0; // 참여 포인트: 켜졌을 때만, 랭킹 전 조용한 한 줄
+    $('pfPoints').hidden = !config.points || !pts;
+    $('pfPoints').textContent = pts ? `쌓은 포인트 ${pts}점` : '';
     const how = currentInstallMode();
     $('pfInstallRow').hidden = how === 'none';
     $('pfInstall').hidden = how !== 'prompt';

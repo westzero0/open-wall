@@ -75,6 +75,22 @@ export const weatherFresh = (entry, now) => !!entry && now - entry.at < (entry.h
 
 export const windy = (h) => h.g >= GUST_STRONG;
 
+export const COLD_MAX = 0; // °C (rounded): at or below this is 한파
+export const HEAT_MIN = 33; // °C (rounded): at or above this is 폭염
+
+/**
+ * wxKind(h, { noWet, noWind }) → 'rain' | 'snow' | 'storm' | 'wind' | 'cold' | 'heat' | null: the one weather that matters on the list's corner badge.
+ * h: {t, c?, g?}. A missing code or gust is simply not told. noWet: a roof keeps the rain off; noWind: a wall with an indoor side has a way round the wind.
+ * Order: rain · snow · storm > wind > heat > cold (a wet or windy day is decided before the temperature).
+ */
+export function wxKind(h, { noWet = false, noWind = false } = {}) {
+  const sky = Number.isFinite(h.c) ? skyKind(h.c).kind : null;
+  if (!noWet && ['rain', 'snow', 'storm'].includes(sky)) return sky;
+  if (!noWind && h.g >= GUST_STRONG) return 'wind';
+  const t = Math.round(h.t);
+  return t >= HEAT_MIN ? 'heat' : t <= COLD_MAX ? 'cold' : null;
+}
+
 export const RAIN_MM = 1; // a day with at least this much rain, or ...
 export const RAIN_PROB = 60; // ... at least this chance of it (%), is a "비 예보" day
 
@@ -163,8 +179,26 @@ export function skyKind(c) {
 
 /** skyVeils(code) → the sun is hidden: cloud, fog, rain, snow, storm ('구름 조금' still lets it through). */
 export const skyVeils = (c) => Number.isFinite(c) && !['clear', 'partly'].includes(skyKind(c).kind);
+/** sceneSky(code) → what the sun picture draws over its sky: 'cloud' (cloud, fog), 'rain' (rain, drizzle, thunderstorm), 'snow', or null (clear and 구름 조금 leave the picture as it is). */
+export function sceneSky(c) {
+  if (!Number.isFinite(c)) return null;
+  const k = skyKind(c).kind;
+  return k === 'cloud' || k === 'fog' ? 'cloud' : k === 'rain' || k === 'storm' ? 'rain' : k === 'snow' ? 'snow' : null;
+}
 /** skyWet(code) → rain, snow or thunderstorm: an outdoor wall without a roof is a poor choice then. */
 export const skyWet = (c) => Number.isFinite(c) && ['rain', 'snow', 'storm'].includes(skyKind(c).kind);
+/**
+ * rowWeather(hour, day, wall) → { wet, wetText, windy } | null: what a list row says about the weather at the picked time.
+ * The hour forecast wins; without one (a day past the 4-day hourly forecast) the day forecast (dayWeather) stands in; neither → null.
+ * A roof or an indoor side (venue 'both') keeps the rain off; only a wall with an indoor side is spared the gust too (a roof does not stop it).
+ */
+export function rowWeather(hour, day, wall) {
+  const dry = wall.venue === 'both' || !!wall.tags?.includes('지붕');
+  const open = wall.venue !== 'both';
+  if (hour) { const wet = skyWet(hour.c) && !dry; return { wet, wetText: wet ? skyKind(hour.c).text : null, windy: open && windy(hour) }; }
+  if (day) { const wet = !!day.rain && !dry; return { wet, wetText: wet ? '비' : null, windy: open && !!day.windy }; }
+  return null;
+}
 /**
  * hardWeather(hour) → { hard, why }: the weather alone says no to an outdoor wall, so the card leads with it and the sun steps back.
  * why: '뇌우' > '눈' > '비' > '강풍'. A forecast hour has no sky code (only the 실황 has one): the rain chance / amount says rain then; no numbers → not hard.

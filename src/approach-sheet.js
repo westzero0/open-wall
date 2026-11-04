@@ -3,6 +3,7 @@
 // 가로로 밀기), 방향 글자(turn 화살표 + text), wrong이면 와인 줄, 아래 이전/다음. 사진이 안 뜨면 글·띠·방향은 그대로 둔다.
 // 첫 정지점은 주차(park.chip·line), 마지막은 암장 도착. DOM은 el()과 텍스트 노드만 쓴다.
 import { el } from './dom.js';
+import { sheetCard } from './card-parts.js';
 import { approachModel, stepTo, photoUrl } from './crag-approach.js';
 
 const TURN_WORD = { left: '왼쪽', right: '오른쪽', straight: '직진', up: '오르막', down: '내리막' };
@@ -154,8 +155,8 @@ export function approachPane(crag, { saveState = null, onSave = () => {}, onClea
   }
 
   // the save chip sits at the end of the step caption (.ap-cap): no line of its own
-  const node = el('div', { class: 'approach-pane' }, strip,
-    el('div', { class: 'ap-cap' }, where, chipBox), view, dir, wrong, el('div', { class: 'ap-nav' }, prev, next), clear);
+  const node = el('div', { class: 'approach-pane' }, sheetCard(null, [strip, // one card, like the 컨디션·루트 tabs
+    el('div', { class: 'ap-cap' }, where, chipBox), view, dir, wrong, el('div', { class: 'ap-nav' }, prev, next), clear]));
   // ←/→ step only inside the pane: on the tab bar the same keys move between tabs (src/wall-sheet.js)
   node.addEventListener('keydown', (e) => {
     const d = { ArrowLeft: -1, ArrowRight: 1 }[e.key];

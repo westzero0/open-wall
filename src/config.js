@@ -27,9 +27,11 @@ export const config = {
   climberTest: true,
   scheduleAlert: true,
   totalClimber: false, // 토탈클라이머 (docs/superpowers/specs/2026-11-03-total-climber-levels-design.md): 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다. 서버 없음(기기 안).
+  points: true, // 참여 포인트 (docs/superpowers/specs/2026-11-04-streak-and-points-design.md): 켜면 글(+10)·제보(+15) 성공 시 기기 안에 적립하고, 내 정보에 "쌓은 포인트" 한 줄이 생긴다. 랭킹은 나중. 서버 없음.
   closureWarning: false, // 닫힘·단축 제보 경고(docs/superpowers/specs/2026-10-29-closure-warning-design.md): report-tap의 GET /v1/tap-summary를 읽는다. Worker에 그 경로가 배포된 뒤 켠다
   singlePitch: false,
   fill: false, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.
+  cragSubmit: false, // 새 암장 제보 (docs/superpowers/specs/2026-11-02-crag-submit-design.md): 켜면 boardUrl Worker에 암장 이름·좌표·방향·닉네임·authorId가 나간다. docs/system/permissions.md 반영 전에는 켜지 않는다.
   data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportTap: false, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
@@ -48,3 +50,5 @@ export const tapOn = () => Boolean(config.reportTap && config.boardUrl);
 
 // 빈칸 채우기가 켜졌는가: config.fill과 게시판(boardUrl) 둘 다 있어야 한다. 꺼지면 요청도 가지 않는다.
 export const fillOn = () => Boolean(config.fill) && boardOn();
+// 새 암장 제보가 켜졌는가: config.cragSubmit과 게시판(boardUrl) 둘 다 있어야 한다.
+export const cragSubmitOn = () => Boolean(config.cragSubmit) && boardOn();

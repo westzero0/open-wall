@@ -13,7 +13,7 @@ export function gradeKey(text) {
 }
 
 // order within the scale; same slot (5.5 < 5.7 < 5.8) falls back to the written number
-const rank = (t) => GRADES.indexOf(gradeKey(t)) * 100 + (Number(/^5\.(\d+)/.exec(t)[1]) <= 8 ? Number(/^5\.(\d+)/.exec(t)[1]) : 0);
+export const rank = (t) => GRADES.indexOf(gradeKey(t)) * 100 + (Number(/^5\.(\d+)/.exec(t)[1]) <= 8 ? Number(/^5\.(\d+)/.exec(t)[1]) : 0);
 
 /** routeSummary(routes, mine) → null for no routes, else { total, lo, hi, mineCount, mineLabel } (lo/hi as written, e.g. '5.5'). */
 export function routeSummary(routes, mine) {
@@ -30,12 +30,15 @@ export function routeSummary(routes, mine) {
   };
 }
 
-/** '24개 · 내 범위 10b–11a 9개' / '24개 · 5.5–5.13c' / '24개 · 5.10a' / '24개': the card's 루트 row value (its label already says 루트). */
-export function routeLineText(s) {
-  const head = `${s.total}개`;
-  if (s.mineCount !== null) return `${head} · 내 범위 ${s.mineLabel} ${s.mineCount}개`;
-  if (!s.lo) return head;
-  return `${head} · ${s.lo === s.hi ? s.lo : `${s.lo}–${s.hi}`}`;
+/** gradeRows(routes, mine) → the bars of the 분포 bubble: every grade from the easiest to the hardest present (a gap shows as 0), { label, n, frac (of the biggest), mine }. [] without a readable grade. */
+export function gradeRows(routes, mine = null) {
+  const keys = (Array.isArray(routes) ? routes : []).map((r) => gradeKey(r?.grade)).filter(Boolean);
+  if (!keys.length) return [];
+  const at = keys.map((k) => GRADES.indexOf(k));
+  const from = Math.min(...at), to = Math.max(...at);
+  const rows = GRADES.slice(from, to + 1).map((g) => ({ label: g === '8' ? '5.8 이하' : `5.${g}`, n: keys.filter((k) => k === g).length, mine: Boolean(mine) && inMyGrade(mine, g) }));
+  const top = Math.max(...rows.map((r) => r.n));
+  return rows.map((r) => ({ ...r, frac: r.n / top }));
 }
 
 /** rowMine(route, mine) → true when the route's grade sits inside the visitor's 내 그레이드 (false without a range or a readable grade). */

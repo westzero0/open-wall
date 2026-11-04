@@ -274,7 +274,7 @@ function getWinter(v) {
 export const ROPE_LENGTHS = [40, 45, 50, 60, 70];
 const cleanRope = (v) => (ROPE_LENGTHS.includes(v) ? v : null);
 
-// 자연암장 전용 선택 필드 (docs/superpowers/specs/2026-10-21-crag-ui-design.md): 접근로·주의사항 글, 비 온 뒤 마르는 일수, 개념도의 최대 볼트 수.
+// 자연암장 전용 선택 필드 (docs/superpowers/specs/2026-10-21-crag-ui-design.md): 어프로치·주의사항 글, 비 온 뒤 마르는 일수, 개념도의 최대 볼트 수.
 // 값이 없거나 잘못되면 키 자체가 없다. dry_days 0은 유효한 값이다(비 온 뒤 기다릴 필요 없음).
 export const MAX_APPROACH = 600;
 export const MAX_CAUTION = 400;

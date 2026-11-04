@@ -3,6 +3,7 @@
 import { config } from './config.js';
 import { PHOTO_RE } from './store.js';
 import { wallPageId } from './share-id.js';
+import { gradeKey, rank } from './crag-grades.js';
 
 const ID_RE = /^r[0-9]+$/;
 const MAX_ROUTES = 150;
@@ -58,7 +59,20 @@ export function cleanCragRoutes(raw) {
 }
 
 /** no 오름차순, null은 뒤, 같으면 입력 순서(sort는 안정). */
-export const sortRoutes = (routes) => [...routes].sort((a, b) => (a.no ?? Infinity) - (b.no ?? Infinity) || 0);
+const byNo = (a, b) => (a.no ?? Infinity) - (b.no ?? Infinity) || 0;
+const gradeAt = (r) => (gradeKey(r.grade) ? rank(r.grade) : Infinity); // 5.5 before 5.8 inside the 5.8-and-below slot; an unreadable grade goes last
+/** sortRoutes(routes, by = 'no', dir = 1): 'no' (default) | 'grade' | 'length' | 'equip' (quickdraws), dir 1 = ascending (easiest, shortest first), -1 = descending. A route with no value goes last either way; ties fall back to no. */
+export function sortRoutes(routes, by = 'no', dir = 1) {
+  const key = { grade: gradeAt, length: (r) => r.length_m ?? Infinity, equip: (r) => r.quickdraws ?? Infinity }[by];
+  if (!key) return [...routes].sort((a, b) => (dir < 0 ? -1 : 1) * byNo(a, b) || 0);
+  return [...routes].sort((a, b) => {
+    const x = key(a), y = key(b);
+    if (x === y) return byNo(a, b);
+    if (x === Infinity) return 1;
+    if (y === Infinity) return -1;
+    return dir * (x - y);
+  });
+}
 
 /** 그 열에 값이 하나라도 있으면 true. */
 export function routeColumns(routes) {

@@ -323,6 +323,33 @@ export const heatLevel = (n) => Math.min(n, 3);
 /** yearsOf(log) → the years that hold a record, ascending. */
 export const yearsOf = (log) => [...new Set(log.map((r) => Number(r.date.slice(0, 4))))].sort((a, b) => a - b);
 
+/** weekNum(date) → the Monday-based week number (integer) of a 'YYYY-MM-DD'; same week → same number, next week → +1. 월요일 시작. */
+export function weekNum(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  const dayIdx = Math.floor(Date.UTC(y, m - 1, d) / 864e5); // days since 1970-01-01 (a Thursday)
+  return Math.floor((dayIdx + 3) / 7); // +3: Thursday→Monday shift so each Mon–Sun week is one integer
+}
+
+/**
+ * weekStreak(log, today) → {current, best, thisWeekDone}. 주(월요일 시작)에 기록 1건↑이면 그 주는 채운 것.
+ * current: 이번 주 또는 지난 주까지 안 끊긴 연속 주 수(둘 다 비면 0). best: 역대 최장 연속 주. 한 주가 통째로 비어야 끊긴다.
+ */
+export function weekStreak(log, today) {
+  const weeks = new Set(log.map((r) => weekNum(r.date)));
+  if (!weeks.size) return { current: 0, best: 0, thisWeekDone: false };
+  const now = weekNum(today);
+  const thisWeekDone = weeks.has(now);
+  // current: 가장 최근 채운 주가 이번 주(now)나 지난 주(now-1)여야 살아 있다
+  let current = 0;
+  const start = weeks.has(now) ? now : weeks.has(now - 1) ? now - 1 : null;
+  if (start != null) for (let w = start; weeks.has(w); w -= 1) current += 1;
+  // best: 연속 주의 최장 구간
+  const sorted = [...weeks].sort((a, b) => a - b);
+  let best = 0, run = 0, prev = null;
+  for (const w of sorted) { run = prev != null && w === prev + 1 ? run + 1 : 1; prev = w; if (run > best) best = run; }
+  return { current, best, thisWeekDone };
+}
+
 /**
  * visitedCount(log, names) → {visited, total, outside}. names: the current list's wall names (the denominator).
  * A wall counts once however often it was logged; a logged name not in the list counts in `outside` only.

@@ -58,7 +58,7 @@ export function sceneLayout(m, at = null) {
   if (m.state === 'terrain' && m.horizonAtSun > 0) {
     const cx = clamp(sx, 50, W - 50), py = HY - Math.sin(rad(m.horizonAtSun)) * SH;
     L.hill = `M${r1(cx - 52)} ${HY} C${r1(cx - 26)} ${HY} ${r1(cx - 28)} ${r1(py)} ${r1(cx)} ${r1(py)} C${r1(cx + 28)} ${r1(py)} ${r1(cx + 26)} ${HY} ${r1(cx + 52)} ${HY} Z`;
-    L.hillLabel = { x: r1(clamp(sx, 70, 140)), y: r1(Math.max(sy - r - 10, CROP_Y + 12)), text: 'hill blocks sun', anchor: 'middle', cls: 'dim' }; // over the sun, clear of the climber
+    L.hillLabel = { x: r1(clamp(sx, 70, 140)), y: r1(Math.max(sy - r - 10, CROP_Y + 12)), text: '산에 가려져요', anchor: 'middle', cls: 'dim' }; // over the sun, clear of the climber
   }
   return L;
 }
@@ -69,6 +69,34 @@ export function sceneTone(m, at = null) {
   return L ? `k-${L.kind}${L.low ? ' low' : ''}` : '';
 }
 
+// 날씨 층: 흐림·비·눈이면 구름이 해 위를 덮고, 비·눈은 구름 밑에서 땅까지 내린다. 배치만 순수 계산하고(wxLayout, 테스트함) 그림은 renderScene이 그린다.
+// 구름은 작게 해 위쪽과 가장자리에 둔다: 해 밑의 고도 글씨와 벽 머리 위는 비운다. 해가 없는 밤에는 얹지 않는다.
+const CLOUD = 'M12 40 A12 12 0 0 1 12 16 A18 18 0 0 1 46 10 A22 22 0 0 1 86 16 A12 12 0 0 1 88 40 Z'; // 100 x 40 상자
+export const WX_KINDS = ['cloud', 'rain', 'snow'];
+export function wxLayout(L, kind) {
+  if (!L?.sun || !WX_KINDS.includes(kind)) return null;
+  const { x, y, r } = L.sun;
+  const wet = kind !== 'cloud';
+  // 큰 구름: 비·눈이면 해 자리를 덮는다. 단 클라이머 머리(x≈190~226, y≥94)·벽 머리(x≥256, y≥76)·땅 선 위는 비운다 — 닿을 자리면 작게 줄여 위로 올린다(ui-designer 검수)
+  let k = wet ? 1.1 : 0.95;
+  const cx = wet ? clamp(x - 56, 4, 250) : clamp(x - 46, 4, 258);
+  let cap = L.ground - 40;                                  // 낮은 해: 구름이 땅 선·벽 밑동을 덮지 않는다
+  if (cx + 100 * k > 188) { k = Math.min(k, 0.9); cap = Math.min(cap, cx + 100 * k > 256 ? L.wall.y - 2 : 90); }
+  const main = [cx, Math.max(CROP_Y, Math.min(wet ? y - 34 : y - r - 14, cap - 40 * k)), k, wet ? 1 : 0.97];
+  const side = [[4, 52, 0.7, 0.8], [226, 44, 0.75, 0.8]].filter(([sx, , sk]) => sx + 100 * sk < cx - 4 || sx > cx + 100 * k + 12); // 큰 구름과 겹쳐 뭉치지 않는다
+  const clouds = [main, ...side].map(([ccx, ccy, ck, op]) => ({ x: r1(ccx), y: r1(ccy), k: ck, op }));
+  const drops = [];
+  if (wet) for (const c of clouds) {
+    const bottom = c.y + 40 * c.k;
+    for (let j = 0, n = Math.round(88 * c.k / 7); j < n; j++) {
+      const dx = c.x + 8 * c.k + j * 7 + (j * 13) % 5;
+      drops.push({ x1: r1(dx), y1: r1(bottom - 2), x2: r1(kind === 'snow' ? dx : dx - 8), y2: r1(kind === 'snow' ? bottom - 2 : bottom + 22), delay: -(drops.length % 11) * 0.1 }); // 눈: 길이 0인 선이 둥근 끝으로 점이 된다
+    }
+  }
+  return { clouds, drops };
+}
+
+const WX_WORD = { cloud: '구름이 꼈어요', rain: '비가 와요', snow: '눈이 와요' };
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}, text = null) => {
   const e = document.createElementNS(NS, tag);
@@ -116,15 +144,27 @@ const label = (p) => {
   return t;
 };
 
-export function renderScene(model, at = null) {
+export function renderScene(model, at = null, wx = null) { // wx: 'cloud' | 'rain' | 'snow' (weather.js sceneSky) or null
   const L = sceneLayout(model, at);
   if (!L) return null;
+  const sky = wxLayout(L, wx);
   const id = `sc${seq++}`;
-  const svg = s('svg', { viewBox: `0 ${CROP_Y} ${L.w} ${CROP_H}`, class: `sun-scene k-${L.kind}`, role: 'img', 'aria-label': L.aria, focusable: 'false' });
+  const svg = s('svg', { viewBox: `0 ${CROP_Y} ${L.w} ${CROP_H}`, class: `sun-scene k-${L.kind}${sky ? ` scx-${wx}` : ''}`, role: 'img', 'aria-label': sky ? `${L.aria}, ${WX_WORD[wx]}` : L.aria, focusable: 'false' });
   const halo = s('radialGradient', { id: `${id}h` });
   halo.append(s('stop', { offset: 0, class: 'sc-h0' }), s('stop', { offset: 1, class: 'sc-h1' }));
   const defs = s('defs');
   defs.append(halo);
+  if (sky) {
+    const cg = s('linearGradient', { id: `${id}c`, x1: 0, y1: 0, x2: 0, y2: 1 });
+    cg.append(s('stop', { offset: 0, class: 'sc-c0' }), s('stop', { offset: 1, class: 'sc-c1' }));
+    const rg = s('linearGradient', { id: `${id}r`, x1: 0, y1: 0, x2: 0, y2: 1 });
+    rg.append(s('stop', { offset: 0, class: 'sc-r0', 'stop-opacity': 1 }), s('stop', { offset: 1, class: 'sc-r0', 'stop-opacity': 0.45 }));
+    const blur = s('filter', { id: `${id}b`, x: '-20%', y: '-40%', width: '140%', height: '180%' });
+    blur.append(s('feGaussianBlur', { stdDeviation: 1.8 }));
+    const clip = s('clipPath', { id: `${id}k` });
+    clip.append(s('rect', { x: 0, y: CROP_Y, width: L.w, height: L.ground - CROP_Y })); // 비는 땅에서 끝난다
+    defs.append(cg, rg, blur, clip);
+  }
   svg.append(defs);
   for (const [x, y] of L.stars) svg.append(s('circle', { cx: x, cy: y, r: (x * y) % 3 === 0 ? 1.6 : 1.1, class: 'sc-star' }));
   if (L.moon) {
@@ -134,19 +174,33 @@ export function renderScene(model, at = null) {
     svg.append(s('circle', { cx: m.x, cy: m.y, r: m.r * 2.2, fill: `url(#${id}h)` }), mask, s('circle', { cx: m.x, cy: m.y, r: m.r, class: 'sc-moon', mask: `url(#${id}m)` }));
   }
   if (L.sun) {
-    svg.append(s('circle', { cx: L.sun.x, cy: L.sun.y, r: L.sun.r * 2.2, fill: `url(#${id}h)` }), ...sunDisc(`${id}s`, L.sun));
+    svg.append(s('circle', { cx: L.sun.x, cy: L.sun.y, r: L.sun.r * 2.2, fill: `url(#${id}h)`, class: 'sc-hal' }), ...sunDisc(`${id}s`, L.sun));
   }
   if (L.hill) svg.append(s('path', { d: L.hill, class: 'sc-hill' }));
   svg.append(s('rect', { x: 0, y: L.ground, width: L.w, height: L.h - L.ground, class: 'sc-ground' }),
     s('rect', { x: 0, y: L.ground, width: L.w, height: 3, class: 'sc-band a' }), s('rect', { x: 0, y: L.ground + 14, width: L.w, height: 2, class: 'sc-band b' }), s('rect', { x: 0, y: L.ground + 28, width: L.w, height: 2, class: 'sc-band a' }));
   if (L.shadow) svg.append(s('polygon', { points: L.shadow.points.map((p) => p.join(',')).join(' '), class: 'sc-shadow' }));
   for (const r of L.rays) svg.append(s('polygon', { points: r.points.map((p) => p.join(',')).join(' '), class: 'sc-ray', opacity: r.opacity }));
+  if (sky?.drops.length) { // 장면(벽·클라이머) 뒤로 내린다
+    const rain = s('g', { class: 'sc-rain', 'clip-path': `url(#${id}k)` });
+    for (const d of sky.drops) rain.append(s('line', { x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, class: wx === 'snow' ? 'sc-drop sc-flake' : 'sc-drop', ...(wx === 'snow' ? {} : { stroke: `url(#${id}r)` }), style: `animation-delay:${d.delay}s` })); // 눈은 면 색(CSS), 길이 0 선에는 기울기 칠이 안 먹는다
+    svg.append(rain);
+  }
   const w = L.wall;
   svg.append(s('rect', { x: w.x, y: w.y, width: w.w, height: w.h, class: 'sc-wall' }), s('rect', { x: w.x, y: w.y, width: 5, height: w.h, class: 'sc-face' }));
   svg.append(climber(L.climber, L.kind === 'night'));
   if (L.arc) {
     for (const p of L.arc) svg.append(s('circle', { cx: p.x, cy: p.y, r: 1.6, class: 'sc-tick' }), label({ x: p.x, y: r1(p.y - 7), text: p.text, anchor: 'middle', cls: 'acc' }));
     if (L.now) svg.append(s('circle', { cx: L.now.x, cy: L.now.y, r: 4, class: 'sc-now' }));
+  }
+  if (sky) { // 구름은 글씨 밑, 나머지 그림 위
+    const cl = s('g', { class: 'sc-clouds' });
+    for (const c of sky.clouds) {
+      const g = s('g', { class: 'sc-drift', opacity: c.op });
+      g.append(s('path', { d: CLOUD, transform: `translate(${c.x} ${c.y}) scale(${c.k})`, fill: `url(#${id}c)`, filter: `url(#${id}b)` }));
+      cl.append(g);
+    }
+    svg.append(cl);
   }
   for (const t of [L.hillLabel, ...L.labels]) if (t) svg.append(label(t));
   return svg;

@@ -1,7 +1,9 @@
 // 싱글피치 컨디션 탭 화면 (시안: docs/superpowers/mockups/2026-10-22-crag-cond-tab.html). 구역 순서: 컨디션 → 비 → 시간별.
 // 값 계산(rainDays·lastRain·hourCells·gustWindow·dryProgress)은 순수 함수이고, condPane만 DOM을 만든다(el()과 텍스트만 쓴다).
 import { el } from './dom.js';
+import { sheetCard } from './card-parts.js';
 import { COND_HINT_NO_DRY, FAR_NOTE } from './crag-model.js';
+import { isSunlit } from './sun.js';
 import { forecastTrusted, skyKind, windy } from './weather.js';
 
 const RAIN_PAST = 5; // 마르는 데 걸리는 날이 대개 5일 안이고, 사흘 뒤 예보는 믿기 어렵다 (예전 crag-view rainBars와 같은 범위)
@@ -65,7 +67,6 @@ function pic(icon, name, label) {
 }
 const skyPic = (icon, c) => { const s = skyKind(c); return pic(icon, SKY_ICON[s.kind], s.text); };
 const rainy = (d) => d.mm >= RAIN_MIN;
-const secHead = (icon, name, label, end) => el('h3', { class: 'crag-sec-h' }, icon ? icon(name) : null, label, end);
 
 function rainSection(icon, days, now) {
   const list = rainDays(days, now);
@@ -77,21 +78,28 @@ function rainSection(icon, days, now) {
     // is-* names and .rbar: the wall's .today span / .bar rules must not reach these (they painted today's column grey)
     const bar = el('span', { class: `rbar${rainy(d) ? '' : ' is-none'}` }); // under RAIN_MIN: the no-rain line (blue means rain)
     bar.style.setProperty('--h', `${rainy(d) ? Math.max(8, Math.round((d.mm / top) * 100)) : 2}%`);
-    const sky = d.c === null && d.tmax === null ? null : el('span', { class: d.c === null ? 'sk' : `sk ${skyKind(d.c).kind}` }, d.c === null ? null : skyPic(icon, d.c), d.tmax === null ? null : el('span', { class: 'tx' }, `${d.tmax}°`));
-    const col = el('div', { class: `col${d.today ? ' is-today' : ''}${d.fc ? ' is-fc' : ''}` }, el('span', { class: 'mm' }, rainy(d) ? String(Math.round(d.mm)) : null), bar, el('span', { class: 'd' }, d.wd), sky);
+    const col = el('div', { class: `col${d.today ? ' is-today' : ''}${d.fc ? ' is-fc' : ''}` }, el('span', { class: 'mm' }, rainy(d) ? String(Math.round(d.mm)) : null), bar, el('span', { class: 'd' }, d.wd));
     return d.today && i > 0 ? [el('span', { class: 'split', 'aria-hidden': 'true' }), col] : [col];
   });
   const past = list.filter((d) => !d.fc).length;
   const capSpan = (text, n) => { const s = el('span', {}, text); s.style.setProperty('flex-grow', String(n)); return s; }; // 칸 수만큼 폭을 나눠 막대 위치와 맞춘다
   const cap = el('p', { class: 'crag-rain-cap', 'aria-hidden': 'true' }, past ? capSpan(`지난 ${RAIN_PAST}일`, past) : null, capSpan('예보', list.length - past));
   const end = el('span', { class: 'end' }, last ? `마지막 비 ${last.md} · ${last.mm}mm` : '최근 비 없음');
-  return el('section', { class: 'crag-sec' },
-    secHead(icon, 'sky-rain', '비', end),
-    el('div', { class: 'crag-rain2', role: 'img', 'aria-label': label }, ...cols), cap,
-    el('p', { class: 'crag-legend' }, el('span', {}, el('i'), '내린 비(mm)'), el('span', {}, el('i', { class: 'is-fc' }), '예보')));
+  return sheetCard('비', [
+    el('div', { class: 'crag-rain2', role: 'img', 'aria-label': label }, ...cols), cap], { icon: icon?.('sky-rain'), end });
 }
 
-function hoursSection(icon, hourly, at, now) {
+// 하늘 칸의 양달/응달 배지: 목록 칩(.sunnow.scw)처럼 하늘 그림 모서리에 앱 공용 sun/shade 아이콘 점. 밤·모름은 배지 없이 숨은 글자만. 아이콘이 없으면(DOM 없는 테스트) 글자.
+function skyCell(icon, c, l, at) {
+  const unknown = !l || l.reason === 'night' || l.lit === null;
+  const dir = unknown ? null : l.lit ? 'sun' : 'shade';
+  const word = !l ? null : unknown ? (l.reason === 'night' ? '해 없음' : '방향 모름') : l.lit ? '양달' : '응달';
+  return el('td', { class: `sky ${skyKind(c.c).kind}${l ? ' has-dir' : ''}${at ? ' at' : ''}` },
+    el('span', { class: 'sky-in' }, skyPic(icon, c.c), dir && icon ? el('span', { class: `sky-dir ${dir}`, 'aria-hidden': 'true' }, icon(dir)) : null),
+    word ? el('span', { class: 'sr-only' }, word) : null); // <td>의 aria-label은 스크린리더가 안 읽을 수 있어 숨은 글자로 말한다
+}
+
+function hoursSection(icon, hourly, at, now, crag) {
   const cells = hourCells(hourly, at, now);
   if (!cells.length) return null;
   const g = gustWindow(cells);
@@ -99,16 +107,18 @@ function hoursSection(icon, hourly, at, now) {
   const isToday = keyOf(at) === keyOf(now);
   const strong = cells.filter(windy).map((c) => Math.round(c.g));
   const end = g ? el('span', { class: 'end wind' }, icon ? icon('wind') : null, ` ${g.from === g.to ? `${g.from}시` : `${g.from}–${g.to}시`} 돌풍 ${Math.min(...strong) === g.max ? g.max : `${Math.min(...strong)}–${g.max}`}m/s`) : null;
+  // 양달/응달: 벽 방향·지형으로 계산(sun.js isSunlit). 방향을 모르는 암장은 줄을 통째로 뺀다. 밤·모름은 '–'.
+  const lit = cells.map((c) => (crag ? isSunlit(crag, new Date(at.getFullYear(), at.getMonth(), at.getDate(), c.hh)) : { lit: null }));
+  const known = lit.some((l) => l.lit !== null && l.reason !== 'night'); // 방향을 모르면 배지 없이 하늘 그림만
   const on = (c) => (c.hh === cur ? ' at' : '');
   const th = (c) => el('th', { scope: 'col', class: c.hh === cur ? 'at' : null, 'aria-current': c.hh === cur ? 'time' : null }, `${p2(c.hh)}시`);
-  return el('section', { class: 'crag-sec' },
-    secHead(icon, 'clock', isToday ? '오늘 시간별' : `${at.getMonth() + 1}월 ${at.getDate()}일 시간별`, end),
+  return sheetCard(isToday ? '오늘 시간별' : `${at.getMonth() + 1}월 ${at.getDate()}일 시간별`, [
     el('table', { class: 'crag-hours' },
       el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, el('span', { class: 'sr-only' }, '시각')), ...cells.map(th))),
       el('tbody', {},
-        el('tr', {}, el('th', { scope: 'row', 'aria-label': '하늘' }), ...cells.map((c) => el('td', { class: `sky ${skyKind(c.c).kind}${on(c)}` }, skyPic(icon, c.c)))),
+        el('tr', {}, el('th', { scope: 'row', 'aria-label': known ? '하늘, 양달 응달' : '하늘' }), ...cells.map((c, i) => skyCell(icon, c, known ? lit[i] : null, c.hh === cur))),
         el('tr', {}, el('th', { scope: 'row', 'aria-label': '기온' }), ...cells.map((c) => el('td', { class: `t${on(c)}` }, `${Math.round(c.t)}°`))),
-        el('tr', {}, el('th', { scope: 'row', 'aria-label': '돌풍, 초속 미터' }, icon ? icon('wind') : '돌풍', el('small', { class: 'unit', 'aria-hidden': 'true' }, 'm/s')), ...cells.map((c) => el('td', { class: `g${windy(c) ? ' strong' : ''}${on(c)}` }, String(Math.round(c.g))))))));
+        el('tr', {}, el('th', { scope: 'row', 'aria-label': '돌풍, 초속 미터' }, icon ? icon('wind') : '돌풍', el('small', { class: 'unit', 'aria-hidden': 'true' }, 'm/s')), ...cells.map((c) => el('td', { class: `g${windy(c) ? ' strong' : ''}${on(c)}` }, String(Math.round(c.g)))))))], { icon: icon?.('clock'), end });
 }
 
 /** condPane(row, { daily, hourly, at, now, icon }) → 컨디션 탭 한 장. row: cragRow의 결과({ cond, crag }), daily/hourly: 이 암장의 Map. */
@@ -127,10 +137,9 @@ export function condPane(row, { daily, hourly, at = new Date(), now = new Date()
     el('div', {}, el('p', { class: 'state' }, big), when ? el('p', { class: 'when' }, when) : null, wetBasis && cond.evidence[0] ? el('p', { class: 'when' }, cond.evidence[0].text) : null),
     prog ? el('div', { class: 'crag-dry', role: 'img', 'aria-label': `마르는 데 ${prog.total}일, 지금 ${prog.done}일 지남, ${prog.left}일 남음` },
       el('span', { class: 'segs' }, ...Array.from({ length: prog.total }, (_, i) => el('i', { class: `seg${i < prog.done ? ' on' : ''}` }))), el('b', {}, `${prog.left}일 남음`))
-      : wetBasis && cond.evidence.length > 1 ? el('p', { class: 'crag-dry' }, cond.evidence.slice(1).map((l) => l.text).join(' · ')) // 근거 첫 줄만 크게, 믿음 표시(일사 미반영·기준 시각·예상)는 한 줄 보조 글
       : cond.why === 'no-dry-days' ? el('p', { class: 'crag-dry' }, COND_HINT_NO_DRY) : null);
-  const hours = hoursSection(icon, hourly, at, now);
-  if (!daily?.size && !hours) return el('div', { class: 'crag-cond-pane' }, head, el('p', { class: 'crag-note' }, icon ? icon('info') : null, '예보를 받지 못했어요'));
-  return el('div', { class: 'crag-cond-pane' }, head, daily?.size ? rainSection(icon, daily, now) : null, hours,
+  const hours = hoursSection(icon, hourly, at, now, row.crag);
+  if (!daily?.size && !hours) return el('div', { class: 'crag-cond-pane' }, sheetCard(null, [head]), el('p', { class: 'crag-note' }, icon ? icon('info') : null, '예보를 받지 못했어요'));
+  return el('div', { class: 'crag-cond-pane' }, sheetCard(null, [head]), daily?.size ? rainSection(icon, daily, now) : null, hours,
     el('p', { class: 'crag-note' }, icon ? icon('info') : null, '예상이에요. 현장과 다를 수 있어요', cond.far ? ` · ${FAR_NOTE}` : null));
 }

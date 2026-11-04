@@ -20,6 +20,25 @@ import { AXIS, axisFrac, fmtMin } from './viewmodel.js';
 import { boardText } from './card-model.js';
 import { DAY_KO } from './time.js';
 
+// wxSet(chip, { wx: {t, kind}, sunWord, sunPic, icon }): the weather comes first. When a weather matters to the sun (비 · 눈 · 뇌우 · 강풍 · 한파 · 폭염, and 흐림 over a lit wall) the chip's picture
+// is that weather and the 양달/응달 picture moves to a 20px badge at the chip's top right; the chip keeps its sun / shade fill. The temperature (`14°`) hangs under the chip (in --warn
+// when the weather matters; 흐림 over a lit wall is the cloud alone, no 양달 badge). One role=img with one label ("응달 · 비 · 11도"): the weather word is only in the label. No wx → the chip as it is.
+// The 외벽 row, the map card and the 싱글피치 row all draw their chip through this.
+export const WX_WORD = { rain: '비', snow: '눈', storm: '뇌우', wind: '강풍', cold: '한파', heat: '폭염', cloud: '흐림' };
+export const WX_ICON = { rain: 'sky-rain', snow: 'snow', storm: 'sky-storm', wind: 'wind', cold: 'thermo-cold', heat: 'thermo-hot', cloud: 'sky-cloud' };
+export const wxLabel = (sunWord, wx) => [sunWord, WX_WORD[wx.kind], Number.isFinite(wx.t) ? `${wx.t}도` : null].filter(Boolean).join(' · ');
+export function wxSet(chip, { wx, sunWord = '', sunPic = 'sun', icon }) {
+  if (!chip || !wx) return chip;
+  const veiled = wx.kind === 'cloud'; // 흐림 over a lit wall: no sun is shining, so no 양달 word and no 양달 badge — the cloud alone
+  const label = wxLabel(veiled ? '' : sunWord, wx);
+  for (const a of ['role', 'aria-label', 'title']) chip.removeAttribute(a);
+  chip.setAttribute('aria-hidden', 'true');
+  if (wx.kind) { chip.classList.add(veiled ? 'scw-veil' : 'scw-on'); chip.replaceChildren(icon(WX_ICON[wx.kind])); }
+  return el('span', { class: `wxset${wx.kind ? ` is-${wx.kind}` : ''}`, role: 'img', 'aria-label': label, title: label }, chip,
+    wx.kind && !veiled ? el('span', { class: 'wx-dir', 'aria-hidden': 'true' }, icon(sunPic)) : null,
+    Number.isFinite(wx.t) ? el('span', { class: 'wx-temp', 'aria-hidden': 'true' }, `${wx.t}°`) : null);
+}
+
 export const axisX = (min) => `${axisFrac(min) * 100}%`;
 export const span = (cls, a, b) => {
   const s = el('span', { class: cls });
@@ -90,7 +109,7 @@ export function goRow(mk, kids, opens, onClick, label = null, arrow = '›') {
   const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
     el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, arrow));
   b.addEventListener('click', onClick);
-  return el('div', { class: mk.length <= 3 ? 'irow irow-s' : 'irow' }, el('span', { class: 'mk' }, mk), b); // 세 글자 이하 이름은 3em 칸에 양쪽 정렬
+  return el('div', { class: mk.replace(/\s/g, '').length <= 3 ? 'irow irow-s' : 'irow' }, el('span', { class: 'mk' }, mk), b); // 세 글자 이하 이름은 3em 칸에 양쪽 정렬
 }
 
 // The three rows under the chips (운영 · 이용 · 게시판), each opening its tab of the wall sheet. `row` is card-model's {text} | {empty: true} (value not known:
@@ -148,9 +167,10 @@ export const photoTools = (...buttons) => (buttons.some(Boolean) ? el('div', { c
 
 // The camera: opens the 제보 sheet on 암장 사진 for this wall. `more`: the card already has a photo ("one more"), else it is the first one.
 // The caller decides whether to draw it at all (it needs the board Worker); `icon` is the app's own icon helper.
-export function cameraBtn(name, { more = false, icon }) {
-  const b = el('button', { type: 'button', class: 'rhero-add', 'aria-label': more ? `${name} 사진 더 보내기` : `${name} 외벽 사진 보내기`, title: more ? '사진 더 보내기' : '사진 보내기' }, icon('camera-plus'));
-  b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: '암장 사진', kinds: ['암장 사진'] } })));
+// `noun`: 외벽 / 암장; `onPress`: a card whose 제보 flow is not open yet (싱글피치) answers its own way instead of the wall:report event.
+export function cameraBtn(name, { more = false, icon, noun = '외벽', onPress = null }) {
+  const b = el('button', { type: 'button', class: 'rhero-add', 'aria-label': more ? `${name} 사진 더 보내기` : `${name} ${noun} 사진 보내기`, title: more ? '사진 더 보내기' : '사진 보내기' }, icon('camera-plus'));
+  b.addEventListener('click', onPress ?? (() => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: '암장 사진', kinds: ['암장 사진'] } }))));
   return b;
 }
 
@@ -232,4 +252,9 @@ export function heroCap(m) {
 export function whyBubble(label, ...content) {
   const d = el('details', { class: 'sun-why inl' }, el('summary', { 'aria-label': label }), el('div', { class: 'sun-limit' }, ...content));
   return d;
+}
+
+// a sheet panel's card (the wall sheet's .ws-sec): title row (icon, h3, an optional pill at the right), then the facts. app.js sheetSection and the 싱글피치 컨디션 tab share it.
+export function sheetCard(title, kids, { icon = null, sub = null, end = null, cls = '', attrs = {} } = {}) { // sub: a quiet count (and its ⓘ) beside the title (루트 24개), text or nodes
+  return el('section', { class: `ws-sec${cls}`, 'aria-label': title, ...attrs }, title ? el('div', { class: 'ws-sec-h' }, el('h3', {}, icon, title, sub ? el('span', { class: 'ws-sec-n' }, ...[].concat(sub)) : null), end) : null, ...kids); // no title: a card of facts alone
 }

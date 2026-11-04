@@ -25,10 +25,11 @@ import { drawSeal } from './year-seal-view.js';
 import { KIND_TEXT } from './year-seal.js';
 import { getStr, setStr } from './storage.js';
 import { exportContrib, restoreContrib } from './fill-store.js';
+import { cragEntry } from './crag-submit-view.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, reconcileLog, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
-  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades,
+  timeSpeech, validDate, visitBreaks, visitDefault, visitMax, visitStats, visitedCount, yearSummary, yearsOf, dayGrades, yearGrades, weekStreak,
 } from './log.js';
 
 const $ = (id) => document.getElementById(id);
@@ -124,6 +125,7 @@ box.addEventListener('focusout', armToast);
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
   getPlan = () => [], // getPlan('YYYY-MM-DD') → [{ name, rain }]: the walls scheduled for that day (운동 스케줄; [] when none or the feature is off)
+  cragSubmit = null, // { open(), mineRows() } or null (off): the 새 암장 제보하기 line and the person's own submissions (app.js; null makes no element)
   getOrigin = () => null, addFav = () => {}, getWeather = async () => null, getWallId = () => null, // getWallId(name) → the wall's id (null for a name not in the lists)
 }) {
   const panel = $('panel-log');
@@ -751,6 +753,16 @@ export function createLogView({
     return seal;
   }
 
+  // 주간 스트릭 한 줄(월요일 시작). 기록이 있을 때만 쓰인다. 비교·순위 없이 나의 연속만.
+  function streakLine() {
+    const { current, best, thisWeekDone } = weekStreak(log, today());
+    const extra = best > current && best > 1 ? ` · 최고 ${best}주` : '';
+    const text = current > 0
+      ? el('p', { class: 'lg-act-meta' }, el('b', {}, `${current}주 연속`), ` · ${thisWeekDone ? '이번 주 완료' : '이번 주 가면 이어져요'}${extra}`)
+      : el('p', { class: 'lg-act-meta' }, '이번 주 가면 스트릭이 다시 시작돼요', best > 1 ? ` · 최고 ${best}주` : '');
+    return text;
+  }
+
   // 내 활동: the 등급 seal (decoration only), the way to the next tier, the numbers.
   // No records: one short line instead (the empty state below carries the buttons).
   function activity() {
@@ -769,6 +781,7 @@ export function createLogView({
     const crowd = loadContrib(storage).crowd;
     const info = el('button', { type: 'button', class: 'lg-info', 'aria-label': '등급 안내 보기', 'data-focus': 'rank-info' }, icon('info'));
     info.addEventListener('click', () => openRankInfo(places, total, info));
+    const streak = streakLine();
     return el('section', { class: 'lg-act', 'aria-label': '내 활동' },
       el('div', { class: 'lg-act-hd' },
         seal(rank.level),
@@ -778,6 +791,7 @@ export function createLogView({
         add),
       bar,
       el('p', { class: 'lg-bar-end', 'aria-hidden': 'true' }, el('span', {}, `${places}곳`), el('span', {}, rank.next ? `${rank.next.name} ${rank.next.at}곳` : rank.name)),
+      streak,
       crowd ? el('p', { class: 'lg-act-meta' }, `혼잡도 제보 ${crowd}번`) : null,
       outside ? el('small', {}, `지금 목록에 없는 ${outside}곳은 빠져요`) : null);
   }
@@ -1092,6 +1106,7 @@ export function createLogView({
       ...lead,
       tierNote(tiers),
       ...logSections({ tiers, hasRecords: log.length > 0, climber: Boolean(config.totalClimber) }).map((k) => parts[k]()),
+      cragEntry(cragSubmit),
     ].filter(Boolean));
   }
 

@@ -46,6 +46,22 @@ export const summaryParts = (at, now, isNow, n, noun = '외벽') => {
   return [[time, true], [`${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} `, false], [`${n}곳`, true], [' 있어요', false]];
 };
 
+// 계획형 첫 화면(설계 2-7): the question over the slider. Now or today: the old one; another day within a week names the weekday; further or past: 이날.
+const dayDiff = (at, now) => Math.round((new Date(at.getFullYear(), at.getMonth(), at.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
+export const askText = (at, now, isNow) => {
+  const d = dayDiff(at, now);
+  if (isNow || d === 0) return '몇 시에 도착해요?';
+  return d >= 1 && d <= 7 ? `${DAY_KO[at.getDay()]}요일, 몇 시에 갈까요?` : '이날, 몇 시에 갈까요?';
+};
+
+// The forecast line under the headline on another day: known = open walls with a day forecast, of those rain = with rain, windy = with strong gusts. null: nothing to say.
+export const planWxLine = (at, { known, rain, windy }) => {
+  if (!known) return null;
+  if (!rain && !windy) return `${DAY_KO[at.getDay()]}요일 비 예보 없음`;
+  const wind = windy * 2 > known ? '강풍 많음' : windy && `강풍 ${windy}곳`; // most of the open walls gusty: a count is noise
+  return [rain && `비 예보 ${rain}곳`, wind].filter(Boolean).join(' · ');
+};
+
 // ---- slider ----
 const SLIDER = { min: 360, max: 1410, step: 10 };
 const round10 = (m) => Math.round(m / 10) * 10;
