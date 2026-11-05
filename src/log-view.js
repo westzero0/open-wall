@@ -1,6 +1,7 @@
 // src/log-view.js — the 기록 tab (progress, month calendar, the picked day's records), the 기록 추가 sheet and the
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
+import { mountainBand } from './mountain-band.js';
 import { config, boardOn } from './config.js';
 import { shareNick, shareToBoard } from './board-view.js';
 import { saveBackupAt } from './backup.js';
@@ -841,6 +842,7 @@ export function createLogView({
         el('tbody', {}, ...monthGrid(p.year, p.month).weeks.map((week) => el('tr', {}, ...week.map((c) => el('td', {},
           c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day), planned.has(c.date) ? el('span', { class: 'cal-plan' }) : null) : null)))))));
     return el('div', { class: 'lg-empty' },
+      el('div', { class: 'mtn-band lg-peaks', 'aria-hidden': 'true' }, mountainBand()), // 컨셉 그림: 비어 있는 기록의 머리(도장이 쌓이면 이 자리가 밧줄이 된다)
       ghost,
       ...(planned.size ? [el('p', { class: 'lg-plan' }, '점 찍힌 날은 운동 예정이에요')] : []),
       el('h3', {}, '아직 기록이 없어요'),

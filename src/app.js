@@ -44,7 +44,7 @@ import { cleanMode, effectiveMode } from './ui-state.js'; // 싱글피치: 보�
 import { cragList } from './crag-list.js';
 import { loadCragWeather } from './crag-weather.js';
 import { mountScrubHint } from './scrub-hint.js';
-import { cragSky, renderCragBoard, appendPendingRows } from './crag-view.js';
+import { cragSky, cragRowWeather, cragSink, renderCragBoard, appendPendingRows } from './crag-view.js';
 import { pendingRows, shouldLoadSubmissions, withMine } from './crag-submit-rows.js';
 import { approachModel } from './crag-approach.js';
 import { saveRoute, routeState, clearRoute } from './crag-photos.js';
@@ -62,14 +62,14 @@ function setSub(at, extra = '') {
   const today = ymd(at) === ymd(new Date()); // short on purpose: the question row also holds 지금으로 at 360px. Today is one word; another day reads 11/6(목)
   $('sub').replaceChildren(...(today ? ['오늘'] : [`${at.getMonth() + 1}/${at.getDate()}`, el('span', { class: 'dow' }, `(${DAY_KO[at.getDay()]})`)]), extra);
 }
-import { axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetCard, sheetLine, span, warnNote, warnPill, whyBubble, wxSet } from './card-parts.js';
+import { wxBox, axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetCard, sheetLine, span, warnNote, warnPill, whyBubble, wxSet } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
 import { createSafetyView } from './safety-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { CURRENT_MS, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, sceneSky, skyKind, weatherFresh, weekendForecastUrl, windy, wxKind, rowWeather } from './weather.js';
+import { CURRENT_MS, belowTempMin, countWx, sinkBad, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, sceneSky, skyKind, weatherFresh, weekendForecastUrl, windy, wxKind, rowWeather } from './weather.js';
 import { boardBox } from './board-view.js';
 import { createBoardApi } from './board-api.js';
 import { agoText, warningOf } from './closure-warning.js';
@@ -94,6 +94,7 @@ import { createCragSubmitApi } from './crag-submit-api.js';
 import { loadMine, saveMine, cleanCragRow } from './crag-submit-store.js';
 import { openCragSubmitSheet } from './crag-submit-view.js';
 import { knownFrom } from './crag-submit-fields.js';
+import { mountainBand } from './mountain-band.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -1878,29 +1879,19 @@ function weatherBox(m, wall, at) {
   if (!cur) return hardForecastBox(m); // not now (or no 실황 yet): a forecast that says 등반 어려움 still leads the card, in one short line
   if (!wxShownSent) { wxShownSent = true; document.dispatchEvent(new CustomEvent('stats:weather-shown')); }
   const strong = windy(cur);
-  const cold = Number(ui.tempMin) > 0 && Math.round(cur.t) < Number(ui.tempMin); // 내 기준 기온 미만: the row's badge, here the same word
+  const cold = belowTempMin(cur.t, ui.tempMin); // 내 기준 기온 미만: the row's badge, here the same word
   const [w, g] = [Math.round(cur.w), Math.round(cur.g)];
   const words = [Number.isFinite(cur.c) ? skyKind(cur.c).text : null, g > w ? `바람 ${w}–${g}m/s` : `바람 ${w}m/s`].filter(Boolean); // wind and gust as one range: the row stays one line
   const hard = m.weather?.hardText ?? null;
-  return [el('section', { class: 'wx-box', ...(hard ? { 'data-hard': '1' } : {}), 'aria-label': `날씨, ${obs}, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}${hard ? `, ${hard}` : ''}` },
-    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
-      el('span', { class: 'wxb-t' }, `${Math.round(cur.t)}°`),
-      hard ? el('span', { class: 'wx-pill hard' }, hard) : null,
-      strong ? el('span', { class: 'wx-pill' }, '바람 셈') : null,
-      cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
-      el('span', { class: 'wxb-d' }, words.join(' · ')),
-      el('span', { class: 'wxb-obs' }, obs)))];
+  return [wxBox({ temp: `${Math.round(cur.t)}°`, words: words.join(' · '), hard, strong, cold, obs,
+    label: `날씨, ${obs}, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}${hard ? `, ${hard}` : ''}` })];
 }
 // the picked moment is not now: only a forecast that says 등반 어려움 gets a box (temperature, the pill, the rain / wind words); a fair forecast keeps the card as it was
 function hardForecastBox(m) {
   const w = m.weather;
   if (!w?.hard) return [];
   const words = [w.rain?.text, w.windy ? '바람 셈' : null, w.wind].filter(Boolean).join(' · ');
-  return [el('section', { class: 'wx-box', 'data-hard': '1', 'aria-label': `날씨 예보, 기온 ${w.temp.replace('°', '')}도, ${w.hardText}, ${words}` },
-    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
-      el('span', { class: 'wxb-t' }, w.temp),
-      el('span', { class: 'wx-pill hard' }, w.hardText),
-      el('span', { class: 'wxb-d' }, words)))];
+  return [wxBox({ temp: w.temp, words, hard: w.hardText, label: `날씨 예보, 기온 ${w.temp.replace('°', '')}도, ${w.hardText}, ${words}` })];
 }
 // → true once the POST went out (no-cors: the form's answer can't be read). The visit is marked as reported BEFORE the
 // request (a second tap or a reopened sheet while it is in flight is refused), and the mark is taken back if it fails.
@@ -2088,16 +2079,20 @@ function syncMode() {
 // the crag card's 날씨: the first line of the sun box's sky, in the wall .wx-box markup (docs/system/design-tokens.md, A안). The crag
 // hourly forecast has the temperature and sky only (no wind), so: N° · sky word · HH시 예보. Only a trusted forecast day.
 // The sky call is the row badge's (cragSky → skyClass: drizzle is 이슬비, not rain); rain is the wall's judgement pill (.wx-pill, wine, readable on every sky).
-function cragWxBox(wx, at, now) {
-  if (!wx || !Number.isFinite(wx.t) || !Number.isFinite(wx.c) || !forecastTrusted(at, now)) return [];
+function cragWxBox(wx, at, now, tempMin = 0) {
+  if (!wx || !Number.isFinite(wx.t) || !Number.isFinite(wx.c) || !forecastTrusted(at, now, 3)) return [];
   const t = Math.round(wx.t) || 0; // never "-0"
   const sky = cragSky(wx.c);
+  const strong = windy(wx);
+  const why = sky.rain ? sky.text : strong ? '강풍' : null; // the wall's hardWeather order: thunder / snow / rain > a gust (the crag's hours have the gust only, no rain amount)
+  if (!why && !forecastTrusted(at, now)) return []; // 2–3 days ahead: only a forecast that says 등반 어려움 gets a box (the wall's hardForecastBox); a fair forecast keeps the card as it was
   const hour = `${String(at.getHours()).padStart(2, '0')}시 예보`;
-  return [el('section', { class: 'wx-box', 'aria-label': `날씨, ${hour}, 기온 ${t}도, ${sky.text}` },
-    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
-      el('span', { class: 'wxb-t' }, `${t}°`),
-      el('span', { class: sky.rain ? 'wx-pill' : 'wxb-d' }, sky.text),
-      el('span', { class: 'wxb-obs' }, hour)))];
+  const hard = why ? `등반 어려움 · ${why}` : null; // the wall's 등반 어려움 (card-model hardOf): the weather leads the card and the sun picture steps back (withWeather)
+  const cold = belowTempMin(t, tempMin); // 내 기준 기온 미만: the row's dim, here the same word
+  const g = Math.round(wx.g);
+  const words = [sky.text, Number.isFinite(g) ? `돌풍 ${g}m/s` : null].filter(Boolean); // the crag hours have the gust only (no wind speed): one range cannot be told
+  return [wxBox({ temp: `${t}°`, words: words.join(' · '), hard, strong, cold, obs: hour,
+    label: `날씨, ${hour}, 기온 ${t}도, ${words.join(', ')}${strong ? ', 바람 셈' : ''}${cold ? ', 기온 낮음' : ''}${hard ? `, ${hard}` : ''}` })];
 }
 // the crag sun box: the wall sunBox as it is. No hours, so no verdict (no 운영 중 words). The head's 예상 양달 is the bar's 1-minute lit pieces
 // (dialModel's windows step by SUN_STEP and could be minutes off the bar); the weather is the sky's first line. No day bar inside (the wall's has none: the row head has it).
@@ -2105,7 +2100,7 @@ function cragSunBox(c, at) {
   const now = new Date();
   const dayLabel = ymd(at) === ymd(now) ? '오늘' : dayText(at);
   const d = { ...dialModel(c.crag, at, { isNow: vs.live, dayLabel }), windows: c.bar.filter((s) => s.lit).map((s) => [toMin(s.from), toMin(s.to)]) };
-  return withWeather(sunBox(d, c.name, false, null, null, at, sceneWx(c.wx?.c, at)), cragWxBox(c.wx, at, now));
+  return withWeather(sunBox(d, c.name, false, null, null, at, sceneWx(c.wx?.c, at)), cragWxBox(c.wx, at, now, ui.tempMin));
 }
 async function loadCragWx() {
   if (cragWx.busy) return;
@@ -2129,7 +2124,7 @@ function syncCragFilterUi(n, isNow, hasGrade, cv) {
   for (const box of regionBoxes()) box.checked = ui.regions.includes(box.value);
   syncRegionCounts();
   $('moreFilters').classList.toggle('on', cv.sheetCount > 0);
-  $('moreFilters').textContent = cv.sheetCount ? `조건 ${cv.sheetCount} ▾` : '조건 ▾';
+  $('moreFilters').textContent = cv.sheetCount ? `조건 ${cv.sheetCount}` : '조건';
 }
 // Opening a row works like the wall's toggleRow: the card opens with the .expand animation (enterName, this draw only), counts as a card-open
 // (stats.js: a count, no name, as for a wall), and the opened head comes to the top under the sticky bar (its scroll-margin, as the wall row's).
@@ -2242,16 +2237,18 @@ function renderCrags(at, now, isNow) {
   cragAt = at;
   const ropeM = Number(ui.ropeM) || 0;
   const myGrade = loadMyGrade(storage); // 내 그레이드 루트 많은 순 needs it; without one 'mygrade' stays as 남은 시간 순
-  const rows = cragList(state.crags, at, { regions: ui.regions, ropeM, approachMax: Number(ui.approachMax) || 0, origin: vs.origin, now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, sun: ui.sun, query: $('findQ').value, sortMode: ui.sortMode, myGrade, routes: cragRoutes, favs, favOnly: ui.favOnly });
+  const rows = cragSink(cragList(state.crags, at, { regions: ui.regions, ropeM, approachMax: Number(ui.approachMax) || 0, origin: vs.origin, now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, sun: ui.sun, query: $('findQ').value, sortMode: ui.sortMode, myGrade, routes: cragRoutes, favs, favOnly: ui.favOnly }), at, { now, daily: cragWx.daily, tempMin: ui.tempMin, openName: cragOpen }); // rain and a chill sink, like the wall list
   const cv = cragFilterView(ui, { hasGrade: !!myGrade, query: $('findQ').value });
   $('findHits').hidden = true; // the search box only narrows the crag rows here (its hit list is for walls)
   askRouteStates(rows);
   const n = rows.length;
   const lead = summaryLead(at, now, isNow);
-  const key = `crag${lead}${n}`;
+  const wxN = countWx(!isNow && ymd(at) !== ymd(now) ? rows.map((r) => cragRowWeather(r, at, cragWx.daily)) : []); // another day: the second row counts what the rows show, by the rows' own judgement (the wall headline's planWxLine)
+  const wxLine = n ? planWxLine(at, wxN) : null;
+  const key = `crag${lead}${n}${wxLine ?? ''}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
-    $('summary').replaceChildren(`${lead}갈 수 있는 싱글피치가 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요'); // the wall title's sentence
+    $('summary').replaceChildren(`${lead}갈 수 있는 싱글피치가 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요', ...(wxLine ? [' ', el('small', {}, wxLine)] : [])); // the wall title's sentence
   }
   setSub(at, vs.origin ? ' · 직선거리' : ''); // the wall's line: the order is the band's
   const msg = vs.locateNote || (labOn && !config.singlePitch ? LAB_NOTE : ''); // 시범 기기는 한 줄로 알린다
@@ -2272,7 +2269,7 @@ function renderCrags(at, now, isNow) {
     // a redraw that is not a tap (the weather came, the minute ticked) may move the open card in the new order: it stays where it was on screen
     const pin = !forced && cragOpen ? host.querySelector('.crag-row.is-open .crag-head') : null;
     const top = pin?.getBoundingClientRect().top;
-    renderCragBoard(host, rows, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, ropeM, openName: cragOpen, enterName: cragEnter, onOpen: (nm) => openCrag(nm), sunBox: cragSunBox,
+    renderCragBoard(host, rows, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, ropeM, tempMin: ui.tempMin, openName: cragOpen, enterName: cragEnter, onOpen: (nm) => openCrag(nm), sunBox: cragSunBox,
       icon, sunChip, showDistance: ui.sortMode === 'distance' && !!vs.origin, byMine: ui.sortMode === 'mygrade' && !!myGrade, isNow, favs, empty: cv, onOpenSheet: (nm, tab, b) => openCragSheet(nm, tab, b), boardListed: (nm) => boardOn() && cragBoardListed(nm), near: (c) => cragNear(c, at),
       routes: cragRoutes, mine: myGrade, been: cragBeen, onReport: config.reportEndpoint ? reportCrag : null, rowPhoto: (pm, li, onFail) => rowPhoto({ ...pm, suspended: null, today: pm.hero, hoursOnGauge: pm.bar.length > 0 }, li, { canAdd: true, noun: '암장', onFail, onAdd: cragCameraSoon }),
       camera: (name) => (boardOn() ? cameraBtn(name, { icon, noun: '암장', onPress: cragCameraSoon }) : null),
@@ -2387,20 +2384,20 @@ function render() {
   // 기온 ○°↑: an outdoor wall whose forecast at the arrival hour is below it sinks (stable), dimmed; no forecast, indoor: left where it is
   const tmin = Number(ui.tempMin) || 0; // (the open card itself is never sunk)
   let coldN = 0, wetN = 0;
-  const wx = { known: 0, rain: 0, windy: 0 }; // the open walls that have a forecast for the picked moment, and of those the ones that show rain / a gust (the headline's second row)
+  const rws = []; // the open walls that have a forecast for the picked moment (their rowWeather): countWx counts them and those with rain / a gust (the headline's second row)
   const plan = !isNow && ymd(at) !== ymd(now); // another day: the day forecast says whether it rains / blows there (설계 2-7)
   for (const r of open) {
     const h = wxEntry(r.wall, at);
     const rw = rowWeather(h, plan ? pickWeather(r.wall, at) : null, r.wall); // no hour forecast that far ahead (월·화 → 토요일): the day forecast stands in
-    if (rw && r.wall.venue !== 'indoor') { wx.known++; wx.rain += Number(rw.wet); wx.windy += Number(rw.windy); }
+    if (rw && r.wall.venue !== 'indoor') rws.push(rw);
     const away = !!rw && r.wall.venue !== 'indoor' && r.wall.name !== vs.openName;
-    r.cold = away && !!h && tmin > 0 && Math.round(h.t) < tmin;
+    r.cold = away && !!h && belowTempMin(h.t, tmin);
     r.wet = away && rw.wet; // a roof keeps the rain off, a wall with an indoor side has a dry way: they stay
     r.wetText = r.wet ? rw.wetText : null;
     r.windy = away && rw.windy; // a gust to be wary of at the arrival hour (a roof does not stop it); the chip's one badge shows the most decisive: 비 > 돌풍 > 구름
     coldN += Number(r.cold); wetN += Number(r.wet);
   }
-  if (coldN || wetN) open.sort((a, b) => Number(a.cold || a.wet || false) - Number(b.cold || b.wet || false));
+  if (coldN || wetN) open.splice(0, open.length, ...sinkBad(open, (r) => r.cold || r.wet));
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
   const rc = $('regionChip');
@@ -2413,7 +2410,7 @@ function render() {
   syncRegionCounts();
   const sheetOn = fv.sheetCount;
   $('moreFilters').classList.toggle('on', sheetOn > 0);
-  $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn} ▾` : '조건 ▾';
+  $('moreFilters').textContent = sheetOn ? `조건 ${sheetOn}` : '조건';
 
   const n = open.length;
   liveOpenCount = isNow ? n : null;
@@ -2424,7 +2421,7 @@ function render() {
   const soonestRow = n ? null : groups.closed.reduce((m, r) => { const o = r.status.nextOpenAt; return o && o > at && (!m || o < m.status.nextOpenAt) ? r : m; }, null);
   const soonest = soonestRow?.status.nextOpenAt ?? null; // 0곳: the earliest opening, one button in the empty box
   if (plan) loadWeekendWeather();
-  const wxLine = plan && n ? planWxLine(at, wx) : null; // the headline's second row counts what the rows show
+  const wxLine = plan && n ? planWxLine(at, countWx(rws)) : null; // the headline's second row counts what the rows show
   const key = `${lead}${n}${wxLine ?? ''}`;
   if ($('summary').dataset.key !== key) { // live region: only on change
     $('summary').dataset.key = key;
@@ -2888,6 +2885,7 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
 // negative sticky top), unless even that would take over a short screen (landscape phone, large text):
 // then all of it scrolls away as before. The timetable axis sticks just below.
 // The 목록/지도 bar sticks right under that part (--ctl-h), and --stick-h covers both.
+$('mtnBand').append(mountainBand()); // 두 봉우리 선화: above the time box, so it scrolls away with the search row (fitSticky pins from the time box down)
 const controls = $('search');
 const tabbar = document.querySelector('.tabbar');
 const fitSticky = () => {

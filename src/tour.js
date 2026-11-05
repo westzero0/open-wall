@@ -33,7 +33,6 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   let i = 0;
   let completed = false;
 
-  const num = el('span', { class: 'tour-num', 'aria-hidden': 'true' });
   const title = el('h2', { id: 'tour-title' });
   const body = el('p');
   const txt = el('div', { class: 'tour-txt', 'aria-live': 'polite' }, title, body); // 단계가 바뀌면 제목·본문을 읽어 준다
@@ -44,7 +43,7 @@ export const startTour = ({ onClose = () => {} } = {}) => {
   const skip = el('button', { type: 'button', class: 'tour-skip' }, '건너뛰기');
   const hole = el('div', { class: 'tour-hole', 'aria-hidden': 'true' });
   const arrow = el('span', { class: 'tour-arrow', 'aria-hidden': 'true' });
-  const tip = el('div', { class: 'tour-tip' }, arrow, el('div', { class: 'tour-top' }, num, skip), txt, el('div', { class: 'tour-foot' }, dots, count, el('span', { class: 'tour-nav' }, prev, next)));
+  const tip = el('div', { class: 'tour-tip' }, arrow, el('div', { class: 'tour-top' }, skip), txt, el('div', { class: 'tour-foot' }, dots, count, el('span', { class: 'tour-nav' }, prev, next)));
   const dlg = el('dialog', { class: 'tour', 'aria-labelledby': 'tour-title' }, hole, tip);
 
   let sampleBox = null;
@@ -93,7 +92,6 @@ export const startTour = ({ onClose = () => {} } = {}) => {
     const s = steps[i];
     title.textContent = s.title;
     body.textContent = s.body;
-    num.textContent = String(i + 1).padStart(2, '0');
     count.textContent = `${i + 1}/${steps.length}`;
     dots.childNodes.forEach((d, k) => d.classList.toggle('on', k <= i));
     txt.classList.remove('swap'); void txt.offsetWidth; txt.classList.add('swap'); // the words fade in again on every step

@@ -21,8 +21,7 @@ import { boardText } from './card-model.js';
 import { DAY_KO } from './time.js';
 
 // wxSet(chip, { wx: {t, kind}, sunWord, sunPic, icon }): the weather comes first. When a weather matters to the sun (비 · 눈 · 뇌우 · 강풍 · 한파 · 폭염, and 흐림 over a lit wall) the chip's picture
-// is that weather and the 양달/응달 picture moves to a 20px badge at the chip's top right; the chip keeps its sun / shade fill. The temperature (`14°`) hangs under the chip (in --warn
-// when the weather matters; 흐림 over a lit wall is the cloud alone, no 양달 badge). One role=img with one label ("응달 · 비 · 11도"): the weather word is only in the label. No wx → the chip as it is.
+// is that weather and the 양달/응달 picture moves to a 20px badge at the chip's top right; the chip keeps its sun / shade fill. The temperature (`14°`) hangs under the chip (always the ink colour; 흐림 over a lit wall is the cloud alone, no 양달 badge). One role=img with one label ("응달 · 비 · 11도"): the weather word is only in the label. No wx → the chip as it is.
 // The 외벽 row, the map card and the 싱글피치 row all draw their chip through this.
 export const WX_WORD = { rain: '비', snow: '눈', storm: '뇌우', wind: '강풍', cold: '한파', heat: '폭염', cloud: '흐림' };
 export const WX_ICON = { rain: 'sky-rain', snow: 'snow', storm: 'sky-storm', wind: 'wind', cold: 'thermo-cold', heat: 'thermo-hot', cloud: 'sky-cloud' };
@@ -245,6 +244,20 @@ export function heroCap(m) {
   if (m.hero && !m.hoursOnGauge) return el('div', { class: 'rhero-cap' }, el('small', {}, m.hero.lead), el('b', {}, ...rangesKept(m.hero.text))); // a 싱글피치 card has its own lead and text (the day's sun window), no hours
   if (m.hoursOnGauge) return null;
   return el('div', { class: 'rhero-cap' }, m.suspended || m.state === 'unknown' ? null : el('small', {}, m.today.lead), el('b', { class: m.suspended ? 'susp-pill' : m.state === 'unknown' ? 'hero-note hero-unk' : 'hero-note' }, m.today.text));
+}
+
+// the 날씨 상자 (the first line of the sun box's sky, withWeather): the temperature (big), the pills (등반 어려움 · 바람 셈 · 기온 낮음) beside it, the words under both, the observation / forecast time.
+// One markup for every kind of place (외벽 now and forecast, 싱글피치): `data-hard` is what withWeather reads to let the sun picture step back. `label` is the one line a screen reader gets (the box is aria-hidden inside).
+// temp: '10°'. words: 'sky · wind' (already joined, '' for none). hard: the 등반 어려움 pill's text or null. obs: '14:20 관측' / '14시 예보' or null.
+export function wxBox({ temp, label, words = '', hard = null, strong = false, cold = false, obs = null }) {
+  return el('section', { class: 'wx-box', ...(hard ? { 'data-hard': '1' } : {}), 'aria-label': label },
+    el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
+      el('span', { class: 'wxb-t' }, temp),
+      hard ? el('span', { class: 'wx-pill hard' }, hard) : null,
+      strong && !/강풍|바람/.test(hard ?? '') ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // 등반 어려움 · 강풍 already says it: one pill, not two
+      cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
+      el('span', { class: 'wxb-d' }, words),
+      obs ? el('span', { class: 'wxb-obs' }, obs) : null));
 }
 
 // the card's ! (13px ring) with its bubble, the same .sun-why / .sun-limit as the sun box; `.inl` sits in a line of text instead of the picture's corner.

@@ -9,7 +9,7 @@ import { boardRow, chipBar, dock, gaugeEnds, goRow, infoRow, noticeLine, placeho
 import { cragCard, cragModel, COND_HINT_NO_DRY, COND_NOTE, FAR_NOTE, GEAR_BASIS } from './crag-model.js';
 import { approachModel } from './crag-approach.js';
 import { routeSummary } from './crag-grades.js';
-import { forecastTrusted, skyKind, wxKind } from './weather.js';
+import { belowTempMin, dayKey, dayWeather, forecastTrusted, sinkBad, skyKind, windy, wxKind } from './weather.js';
 
 const SHORT_ROPE = '내 로프로는 모자라요'; // read out with the rope chip when my rope is too short (the chip itself shows the ! icon, as on the wall card)
 const SUN_WORD = { sun: '양달', shade: '응달', night: '해 진 시각', unknown: '방향 모름' };
@@ -58,11 +58,36 @@ export function skyClass(code) {
 }
 // 카드 해 박스 첫 줄의 하늘 말과 비 여부(app.js cragWxBox): 줄 배지와 같은 판정(skyClass)이라 이슬비는 비가 아니고 말도 '이슬비'
 export const cragSky = (code) => ({ text: code >= 51 && code <= 57 ? '이슬비' : skyKind(code).text, rain: skyClass(code) === 'wet' });
-const skyOf = (wx, at, now) => (wx && Number.isFinite(wx.c) && forecastTrusted(at, now) ? skyClass(wx.c) : null);
+// the hourly forecast reaches 3 days ahead (like the wall rows): the temperature and a rain say so there, a cloud (veil / part) only as far as today and tomorrow
+const FAR = 3;
+const skyOf = (wx, at, now) => {
+  if (!wx || !Number.isFinite(wx.c)) return null;
+  const c = skyClass(wx.c);
+  return forecastTrusted(at, now) || (c === 'wet' && forecastTrusted(at, now, FAR)) ? c : null;
+};
 const SKY_WORD = { part: '구름 조금', veil: '흐려서 해가 거의 안 나요', wet: '비 예보' };
 
 // 앞 양달 칩: 외벽 sunChip(app.js, deps로 받음)에 { tone, text }를 넘긴다. 하늘 말은 text에 붙인다(칩의 aria-label·title).
 // deps가 없으면(DOM 없는 테스트) 같은 마크업을 여기서 만든다.
+/**
+ * cragRowWeather(row, at, daily) → { wet, wetText, windy } | null: what a crag row says about the weather at the picked time (the wall's rowWeather).
+ * The hour forecast wins; past the 4-day hourly forecast the day forecast (dayWeather) stands in; neither → null. Rain is the row badge's (skyClass: drizzle is not rain).
+ */
+export function cragRowWeather(row, at, daily) {
+  const h = row.wx;
+  if (h) { const wet = skyClass(h.c) === 'wet'; return { wet, wetText: wet ? skyKind(h.c).text : null, windy: windy(h) }; }
+  const d = dayWeather(daily?.get(row.name)?.get(dayKey(at)));
+  return d ? { wet: d.rain, wetText: d.rain ? '비' : null, windy: d.windy } : null;
+}
+// 내 기준 기온 미만 (the wall row's cold): the hour forecast, as far as the chip says it
+const isCold = (row, at, now, tempMin) => !!row.wx && forecastTrusted(at, now, FAR) && belowTempMin(row.wx.t, tempMin);
+/**
+ * cragSink(rows, at, { now, daily, tempMin, openName }) → the rows, the ones under rain or below 기온 ○°↑ after the others (stable, like the wall list). The open card never sinks.
+ * Same judgement as the dim and the chip (cragRowWeather, isCold): a row that is dimmed is a row that sinks.
+ */
+export function cragSink(rows, at, { now = new Date(), daily = null, tempMin = 0, openName = null } = {}) {
+  return sinkBad(rows, (r) => r.name !== openName && (!!cragRowWeather(r, at, daily)?.wet || isCold(r, at, now, tempMin)));
+}
 const sunWord = (sun, sky) => [SUN_WORD[sun] ?? SUN_WORD.unknown, sky && SKY_WORD[sky]].filter(Boolean).join(' · ');
 // fc: {t, kind} (the 외벽 row's forecast on the chip, card-parts wxSet)
 function sunChipOf(sun, text, { sunChip, icon }, fc = null) {
@@ -192,7 +217,7 @@ function reportRow(name, onReport) {
  * Only the open row gets a card.
  */
 export function renderCragBoard(host, rows, at, deps) {
-  const { now = new Date(), daily = null, hourly = null, wet = null, ropeM = 0, openName = null, enterName = null, onOpen = () => {}, showDistance = false, byMine = false, isNow = true, empty = {}, icon = null } = deps;
+  const { now = new Date(), daily = null, hourly = null, wet = null, ropeM = 0, tempMin = 0, openName = null, enterName = null, onOpen = () => {}, showDistance = false, byMine = false, isNow = true, empty = {}, icon = null } = deps;
   const cardDeps = { now, daily, nav: deps.nav ?? null, share: deps.share ?? null, sunBox: deps.sunBox ?? null, onOpenSheet: deps.onOpenSheet ?? (() => {}), boardListed: deps.boardListed ?? null, routes: deps.routes ?? null, mine: deps.mine ?? null, been: deps.been ?? null, onReport: deps.onReport ?? null, near: deps.near ?? null, icon };
   const items = rows.map((r, i) => {
     const open = r.name === openName;
@@ -203,10 +228,13 @@ export function renderCragBoard(host, rows, at, deps) {
     const heart = deps.fav?.(r.name) ?? null;
     heart?.classList.add('row-fav'); // the wall row's ♥ button, over the room .rfav-gap leaves
     const phHero = (c) => placeholderHero({ ...c, hoursOnGauge: Boolean(ends) }, deps.camera?.(r.name) ?? null, null); // the wall card's hero block with its camera (share is in the dock); the sun window is under the bar once it has ends, so the block does not say it twice
-    const sky = skyOf(r.wx, at, now); // one weather value: the li class the wall chip rules read
+    const rw = cragRowWeather(r, at, daily);
+    const dayOnly = !r.wx && rw; // past the hourly forecast: the day forecast says rain / a gust, without a temperature (the wall's rowWeather)
+    const sky = skyOf(r.wx, at, now) ?? (dayOnly?.wet ? 'wet' : null); // one weather value: the li class the wall chip rules read
     // the wall row's grammar (.l1 > chip, name, .rsub, .left, ›; then .bar) on crag- outer classes: the wall JS never sees this row
-    const trusted = Boolean(r.wx) && Number.isFinite(r.wx.t) && forecastTrusted(at, now);
-    const fc = trusted ? { t: Math.round(r.wx.t), kind: wxKind({ t: r.wx.t, c: sky === 'wet' ? r.wx.c : NaN }) ?? (sky === 'veil' && r.sun === 'sun' ? 'cloud' : null) } : null; // 이슬비 is a 흐림 here, not a rain badge (skyClass)
+    const trusted = Boolean(r.wx) && Number.isFinite(r.wx.t) && forecastTrusted(at, now, FAR);
+    const fc = trusted ? { t: Math.round(r.wx.t), kind: wxKind({ t: r.wx.t, c: sky === 'wet' ? r.wx.c : NaN, g: r.wx.g }) ?? (sky === 'veil' && r.sun === 'sun' ? 'cloud' : null) } : dayOnly && (rw.wet || rw.windy) ? { t: NaN, kind: rw.wet ? 'rain' : 'wind' } : null; // 이슬비 is a 흐림 here, not a rain badge (skyClass)
+    const cold = r.name !== openName && isCold(r, at, now, tempMin); // dimmed (and sunk by cragSink), the open card itself never
     const sunText = sunWord(r.sun, fc?.kind ? null : sky); // the chip's weather word is the label's own
     // the row's pill carries both wordings (the wall's remainPill): the short one on a narrow screen (room for the region at 375px), the long one wide; the long one is always read
     const head = el('button', { type: 'button', class: 'crag-head', 'aria-expanded': String(open), 'aria-controls': id, 'data-crag': r.name },
@@ -215,6 +243,7 @@ export function renderCragBoard(host, rows, at, deps) {
         el('span', { class: 'rfav-gap', 'aria-hidden': 'true' }), // the room for the ♥ that sits over it (a button of its own: it cannot live inside the row's button)
         el('span', { class: 'rname', title: r.name }, r.name),
         el('span', { class: 'rsub' }, r.region ? el('span', { class: 'rmeta', title: r.region }, r.region) : null),
+        cold ? el('span', { class: 'sr-only' }, `기온 ${tempMin}도 미만`) : null,
         el('span', { class: `left is-${r.cond.state}` }, remainPill({ short: r.cond.short ?? r.cond.text, long: r.cond.text })), // the wall's pill: the short wording on a narrow screen, the long one wide (both read aloud as the wall's do)
         el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')),
       bar ?? el('span', { class: 'crag-nodir' }, '방향 정보 없음'), ends);
@@ -224,7 +253,7 @@ export function renderCragBoard(host, rows, at, deps) {
     const photo = Boolean(card?.photo && deps.rowPhoto);
     // the wall row's .expand > .expand-in (style.css widens .row.is-open > .expand to the crag row): only the open row has one
     const body = open ? el('div', { class: 'expand-in crag-body' }, photo ? null : phHero(card), ...cardEl(card, at, cardDeps)) : null;
-    const li = el('li', { class: `crag-row${open ? ' is-open' : ''}${open && r.name === enterName ? ' enter' : ''}${photo ? ' has-photo' : ''}${sky ? ` ${sky}` : ''}` });
+    const li = el('li', { class: `crag-row${open ? ' is-open' : ''}${open && r.name === enterName ? ' enter' : ''}${photo ? ' has-photo' : ''}${sky ? ` ${sky}` : ''}${cold ? ' cold' : ''}` });
     li.wallName = r.name; // src/wall-sheet.js finds the row to give the focus back to when its sheet closes
     // the first photo failed: rowPhoto took has-photo and the photo away, the hero block takes its place
     li.append(...(photo ? [deps.rowPhoto(card, li, () => body.prepend(phHero(card)))] : []), head, ...(heart ? [heart] : []), ...(body ? [el('div', { class: 'expand', id }, body)] : []));

@@ -246,3 +246,12 @@ export function parseWetnessHours(json, n) {
   }
   return out;
 }
+
+/** belowTempMin(t, tempMin) → the hour's temperature (rounded) is under the visitor's 기온 ○°↑ (tempMin: '0' / 0 = no limit). One rule for the wall and the crag: the row's dim, the card's 기온 낮음 pill, the sink. */
+export const belowTempMin = (t, tempMin) => Number(tempMin) > 0 && Math.round(t) < Number(tempMin);
+
+/** sinkBad(rows, isBad) → the rows with the bad ones (rain, below 기온 ○°↑) after the others, each group in its own order (stable). The wall list and the crag list sink the same way. */
+export const sinkBad = (rows, isBad) => rows.map((r) => [r, Number(!!isBad(r))]).sort((a, b) => a[1] - b[1]).map(([r]) => r);
+
+/** countWx(rws) → { known, rain, windy }: of the row weathers (rowWeather / cragRowWeather results; null or undefined = no forecast), how many there are, and of those with rain / a gust. planWxLine's input. */
+export const countWx = (rws) => rws.reduce((n, rw) => (rw ? { known: n.known + 1, rain: n.rain + Number(rw.wet), windy: n.windy + Number(rw.windy) } : n), { known: 0, rain: 0, windy: 0 });

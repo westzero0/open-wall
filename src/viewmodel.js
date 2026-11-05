@@ -43,7 +43,7 @@ export const summaryParts = (at, now, isNow, n, noun = '외벽') => {
   if (n === 0 && noun === '외벽') {
     return [[`${time}${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} 없어요`, false]]; // nothing to count: no strong pieces, the headline is muted (#summary.none)
   }
-  return [[time, true], [`${isNow ? ' ' : '에 '}갈 수 있는 ${noun}${noun === '외벽' ? '이' : '가'} `, false], [`${n}곳`, true], [' 있어요', false]];
+  return [[isNow ? '지금' : fmtMin(at.getHours() * 60 + at.getMinutes()), true], [` · 갈 수 있는 ${noun} `, false], [`${n}곳`, true]]; // 한 줄 답(2026-11-05): 날짜는 옆 알약이 말하므로 시각만
 };
 
 // 계획형 첫 화면(설계 2-7): the question over the slider. Now or today: the old one; another day within a week names the weekday; further or past: 이날.

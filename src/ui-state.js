@@ -143,9 +143,9 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
  */
 export function cragFilterView(ui, { hasGrade = false, query = '' } = {}) {
   return {
-    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0) + Number(ui.sun !== 'any'),
+    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0) + Number(Number(ui.tempMin) > 0) + Number(ui.sun !== 'any'),
     national: ui.regions.length > 0,
-    clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || query.trim() !== '',
+    clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || Number(ui.tempMin) > 0 || query.trim() !== '',
   };
 }
 
