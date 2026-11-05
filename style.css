@@ -2935,7 +2935,7 @@ body .tabbar { box-shadow: 0 -.5px 0 var(--mat-hair); } /* 탭바 윗선은 0.5p
 .rope-meter .s2 { stroke: var(--rope-blue); }
 .rope-meter .rope-unlit { stroke: var(--gone); stroke-width: 1.6; stroke-dasharray: 1 5; }
 .rope-meter .rope-ink { stroke: currentColor; stroke-width: 2.4; }
-.lg-sum { display: grid; }
+.lg-sum { display: grid; } .lg-sum small { margin-top: var(--sp-8); font-size: var(--fs-xs); color: var(--muted); }
 /* ---- 싱글피치 (config.singlePitch): 토글, 목록 줄, 펼친 카드 ----
    목록 줄은 외벽 줄의 규칙을 같이 쓴다(위쪽 외벽 규칙을 :is(.row, .crag-row) / :is(.row-btn, .crag-head)로 넓힘): 여기에는 크랙에만 있는 것만 둔다. 컨디션 글자는 운영 상태 색(초록·앰버)과 뜻이 겹치지 않게 중립 톤이고 비 예보만 와인(조심할 것)이다. */
 /* 조건 시트: 싱글피치 목록(cragList)이 쓰지 않는 줄은 싱글피치 모드에서 숨긴다(구분·최소 이용 시간·휴게시간·주차·장비 대여; 기온 ○°↑는 싱글피치도 쓴다; 내 지역 칩의 개수는 외벽 수라 숨김). 정렬의 첫 칸은 모드마다 말이 다르다 */

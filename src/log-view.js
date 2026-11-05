@@ -133,7 +133,7 @@ export function createLogView({
   const panel = $('panel-log');
   const lead = ['schedAsk', 'sched'].map((id) => $(id)).filter(Boolean); // 내 운동 스케줄 (app.js draws them): kept across redraws, so they stay in the page and keep their open state
   const monthShare = createMonthShare({ getWalls, icon });
-  // the 오늘의 해벽 cards kept for records (this browser only): madeIds says which rows have one, thumbItems are the small thumbnails the rows and
+  // the 오늘의 벽 cards kept for records (this browser only): madeIds says which rows have one, thumbItems are the small thumbnails the rows and
   // the strip show (read together, then kept in step; a read that finds nothing new redraws nothing)
   const posters = createPosterStore(idbBackend());
   const thumbCache = createThumbCache();
@@ -662,7 +662,7 @@ export function createLogView({
     } else {
       // the 공유 box was left off (the default): the record is on this device only. With the board on, one tap more can put a line on the wall's 타임라인 too (its form asks for the nickname when there is none)
       const toBoard = boardOn() && !share ? { label: '타임라인에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
-      toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 해벽', toBoard ? 5000 : 0, toBoard);
+      toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 벽', toBoard ? 5000 : 0, toBoard);
     }
     // a failed share never undoes the record: it is already saved
     if (share) shareToBoard(share).then((r) => toast(r.ok ? '한 줄 타임라인에도 올렸어요' : `기록은 저장했어요. 타임라인에는 올리지 못했어요 — ${r.error}.`, null, '', 4000));
@@ -1019,7 +1019,7 @@ export function createLogView({
     const recs = byDay.get(picked) ?? [];
     const future = picked > t;
     const plan = recs.length ? [] : getPlan(picked);
-    const ctaId = pickCta(recs, madeIds, t); // the one record of today that gets the big "오늘의 해벽 만들기" line
+    const ctaId = pickCta(recs, madeIds, t); // the one record of today that gets the big "오늘의 벽 만들기" line
     // several records in a day: the day's 완등 / 시도 add up in the title (one record shows its own lines)
     const dg = dayGrades(recs);
     const dayTotals = recs.length > 1 && (dg.sends || dg.tries) ? ` · ${[dg.sends ? `완등 ${dg.sends}` : '', dg.tries ? `시도 ${dg.tries}` : ''].filter(Boolean).join(' · ')}` : '';
@@ -1041,7 +1041,7 @@ export function createLogView({
         // the way into the card, by what the row is: a made card shows its thumbnail, today's newest without one gets the big line under the
         // row, any other row gets a quiet link like 삭제 (no pill: it would be a new kind of button, and shrink the wall's name)
         const day = `${p.month}월 ${p.day}일`;
-        const title = r.date === t ? '오늘의 해벽' : '그날의 해벽';
+        const title = r.date === t ? '오늘의 벽' : '그날의 벽';
         const thumb = thumbItems.find((it) => it.id === r.id)?.thumb;
         const key = { 'data-focus': `poster-${r.id}` };
         let card = null;
@@ -1052,8 +1052,8 @@ export function createLogView({
             ? el('button', { type: 'button', class: 'lg-card', ...key, 'aria-label': label }, el('img', { class: 'lg-card-img', src: thumbCache.url(r.id, thumb), alt: '' })) // the height is CSS; the width follows the card's own shape
             : el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': label }, '카드'); // made, but no thumbnail (imported)
         } else if (r.id === ctaId) {
-          cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 해벽 카드 만들기` },
-            '오늘의 해벽 카드 만들기 · 사진 한 장', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
+          cta = el('button', { type: 'button', class: 'lg-cta', ...key, 'aria-label': `${r.wall} 오늘의 벽 카드 만들기` },
+            '오늘의 벽 카드 만들기 · 사진 한 장', el('span', { class: 'lg-cta-go', 'aria-hidden': 'true' }, '›'));
         } else {
           card = el('button', { type: 'button', class: 'lg-card-link', ...key, 'aria-label': `${r.wall} ${day} 카드 만들기` }, '+ 카드'); // short on purpose: "카드 만들기" would leave a 320px phone too little room for the wall's name
         }
@@ -1067,10 +1067,11 @@ export function createLogView({
   function summary() {
     const { indoor, outdoor } = visitSplit(log, (n) => getWalls().find((w) => w.name === n)?.kind === 'crag');
     const month = monthSummary(log, now.getFullYear(), now.getMonth() + 1).visits;
-    const cells = [['인공암벽 방문', `${indoor}회`], ...(config.showOutdoorCount ? [['야외 방문', `${outdoor}회`]] : []), ['이번 달', `${month}회`], ['다녀온 곳', `${new Set(log.map((r) => r.wall)).size}곳`]];
+    const { visited, outside } = visitedCount(log, getWalls().map((w) => w.name)); // 등급·밧줄과 같은 기준: 지금 목록에 있는 암장만
+    const cells = [['인공암벽 방문', `${indoor}회`], ...(config.showOutdoorCount ? [['야외 방문', `${outdoor}회`]] : []), ['이번 달', `${month}회`], ['다녀온 곳', `${visited}곳`]];
     const band = el('dl', { class: 'lg-band', 'aria-label': '기록 요약' }, ...cells.map(([k, v], i) => el('div', { class: i ? null : 'lead' }, el('dt', {}, k), el('dd', {}, v))));
     band.style.setProperty('--n', String(cells.length));
-    return el('div', { class: 'lg-sum' }, band, ropeMeter(ropeStage(visitedCount(log, getWalls().map((w) => w.name)).visited))); // 다녀온 곳이 늘수록 밧줄이 자란다(rope-meter.js)
+    return el('div', { class: 'lg-sum' }, band, ropeMeter(ropeStage(visited)), outside ? el('small', {}, `지금 목록에 없는 ${outside}곳은 빠져요`) : null); // 다녀온 곳이 늘수록 밧줄이 자란다(rope-meter.js)
   }
 
   // 암장별: the month in view, one row per wall (tap → the wall's card)

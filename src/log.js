@@ -413,7 +413,7 @@ export function parseImport(text, today, nowMin = null) {
     return { ok: false, error: '기록 백업 파일(JSON)이 아니에요.' };
   }
   const list = Array.isArray(data) ? data : data && typeof data === 'object' && data.kind === 'log' ? data.records : null;
-  if (!Array.isArray(list)) return { ok: false, error: '해벽 기록 백업 파일이 아니에요.' };
+  if (!Array.isArray(list)) return { ok: false, error: '희노애Rock 기록 백업 파일이 아니에요.' };
   const records = normalizeLog(list, today, nowMin);
   if (!records.length) return { ok: false, error: '가져올 수 있는 기록이 없어요.' };
   const contrib = Array.isArray(data) ? null : cleanContrib(data.contrib); // a file from before 빈칸 채우기 has none: the result has no such key

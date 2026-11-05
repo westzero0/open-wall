@@ -42,7 +42,7 @@ if (dlg) {
   const say = (msg) => { status.textContent = msg; };
   const pickBox = dlg.querySelector('.rp-pick');
   const pickEl = f.elements.wall;
-  const setWall = (n) => { wallName = n; nameEl.textContent = n; chatNameEl.textContent = n ? `[해벽] ${n} 모임` : '[해벽] 암장이름 모임'; };
+  const setWall = (n) => { wallName = n; nameEl.textContent = n; chatNameEl.textContent = n ? `[희노애Rock] ${n} 모임` : '[희노애Rock] 암장이름 모임'; };
   const picks = dlg.querySelector('.rp-picks');
   let wallNames = [];
   // same search as the 방문 기록 sheet: type part of a name, tap a hit; typed text alone never counts as a wall

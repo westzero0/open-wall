@@ -50,7 +50,7 @@ export const todayStr = () => {
 
 /**
  * posterPicture(record, wall, line, { log, weather, today }) → { title, issue, name, visit, sunLine, weatherLine, line, arc, date, time }.
- * title: 오늘의 해벽 when the record is of today, else 그날의 해벽; issue: '2026.10.14 수'; visit: '3번째 방문 · 이달 6번째' (counted over the log,
+ * title: 오늘의 벽 when the record is of today, else 그날의 벽; issue: '2026.10.14 수'; visit: '3번째 방문 · 이달 6번째' (counted over the log,
  * '첫 방문' for the first); sunLine: '10:30 · 양달 · 남동쪽' ('… · 해가 없는 시간' at night, null without a time or sun data); arc: the sun's
  * place on the arc ({x, y, lit}) or null; weatherLine: only for a record of today with a time and a forecast hour (weather: {t, w}).
  * Nothing is made up: what is not known is null.
@@ -64,7 +64,7 @@ export function posterPicture(record, wall, line, { log = [], weather = null, to
   const time = record.time ?? null;
   const sunLine = !sun ? null : sun.kind === 'night' ? `${time} · 해가 없는 시간` : `${time} · ${sun.kind === 'lit' ? '양달' : '응달'} · ${compassWord(sun.az)}쪽`;
   return {
-    title: record.date === today ? '오늘의 해벽' : '그날의 해벽',
+    title: record.date === today ? '오늘의 벽' : '그날의 벽',
     issue: `${y}.${p2(m)}.${p2(d)} ${DAYS[new Date(y, m - 1, d).getDay()]}`,
     name: wall ? shortName(wall) : record.wall,
     visit: `${n === 1 ? '첫 방문' : `${n}번째 방문`} · 이달 ${k}번째`,

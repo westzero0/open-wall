@@ -1,4 +1,4 @@
-// src/poster-share.js — the sheet "오늘의 해벽": pick a photo (drag and zoom it into the card), write one line, see the card (poster-image.js), share or save it. DOM.
+// src/poster-share.js — the sheet "오늘의 벽": pick a photo (drag and zoom it into the card), write one line, see the card (poster-image.js), share or save it. DOM.
 // Made on this device; nothing is sent anywhere but by the phone's own share sheet (or a download). Sharing or saving also keeps the
 // finished card (and a small thumbnail) in this browser (poster-store.js) so the 기록 row can open it again. A record that has one opens it first.
 // For a record of today the forecast hour is asked for (getWeather, at most 2 s) after the card is first drawn, and the card is drawn again with it.

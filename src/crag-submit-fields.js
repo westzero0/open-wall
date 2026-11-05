@@ -7,7 +7,7 @@ export const KIND_LABEL = { crag: '싱글피치 자연암장', wall: '인공외�
 export const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 export const NEAR_M = 300;
 export const MAX_NAME = 20;
-const RESERVED = ['운영자', '해벽', '관리'];
+const RESERVED = ['운영자', '해벽', '희노애', '관리'];
 
 const norm = (s) => String(s ?? '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
 

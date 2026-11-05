@@ -1,4 +1,4 @@
-// src/poster-store.js — the finished 오늘의 해벽 cards, kept in this browser only (IndexedDB, never sent anywhere).
+// src/poster-store.js — the finished 오늘의 벽 cards, kept in this browser only (IndexedDB, never sent anywhere).
 // A card is {id (the record's id), v: 1, made (ISO time), wall, date, blob (JPEG, ≤ 400 KB)} in store `posters`, and it always has a row in
 // store `thumbs`: {id, made, wall, date, thumb (a small JPEG ≤ 30 KB, or null)} — the 기록 tab reads only these small rows. The newest 60 are kept.
 // Everything is best effort: a blocked or full store never throws, the card is just not kept.
