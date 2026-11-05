@@ -124,7 +124,7 @@ function drawWall(g, t) {
 export async function drawClimberCard(canvas, { type, s, m }, { width = W } = {}) {
   const t = TYPES[type];
   const words = axisWords(type, s);
-  const sample = `${t.name}${t.nick}${t.animal}FIG. 0123456789/ 희노애Rock · 지금 열린 외벽 ${words.map((x) => x.word).join('')}${routeLine(m)}`;
+  const sample = `${t.name}${t.nick}${t.animal}FIG. 0123456789/ 희노애Rock · 당신과 나를 잇는 이야기 ${words.map((x) => x.word).join('')}${routeLine(m)}`;
   await Promise.all(['700 64px', '400 40px'].map((f) => document.fonts.load(`${f} ${FONT}`, sample)));
   const pic = await image(characterSrc(type));
   canvas.width = width;
@@ -212,7 +212,7 @@ export async function drawClimberCard(canvas, { type, s, m }, { width = W } = {}
   g.fillStyle = INK;
   g.fillRect(92, 1306, W - 184, 2);
   g.font = `400 30px ${FONT}`;
-  const foot = '희노애Rock · 지금 열린 외벽';
+  const foot = '희노애Rock · 당신과 나를 잇는 이야기';
   const fw = g.measureText(foot).width;
   const gap = 14;
   const mk = 44;

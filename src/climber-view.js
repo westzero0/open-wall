@@ -136,7 +136,7 @@ export function createClimberView({ getOpenCount = () => null, isCardDone = () =
       el('p', { class: 'cr-nick' }, `"${t.nick}"`),
       triRow(r),
       el('p', { class: 'cr-route' }, routeLine(r.m)),
-      el('p', { class: 'cr-plate-foot' }, '희노애Rock · 지금 열린 외벽'));
+      el('p', { class: 'cr-plate-foot' }, '희노애Rock · 당신과 나를 잇는 이야기'));
     resultBox.replaceChildren(el('div', { class: 'climber-res' },
       plate,
       t.safety ? el('p', { class: 'cr-safe' }, t.safety) : null,
