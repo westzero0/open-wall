@@ -2,6 +2,7 @@
 // toast. Records live in this browser only (log.js); nothing here sends them anywhere.
 import { el } from './dom.js';
 import { mountainBand } from './mountain-band.js';
+import { ropeMeter, ropeStage } from './rope-meter.js';
 import { config, boardOn } from './config.js';
 import { shareNick, shareToBoard } from './board-view.js';
 import { saveBackupAt } from './backup.js';
@@ -842,7 +843,8 @@ export function createLogView({
         el('tbody', {}, ...monthGrid(p.year, p.month).weeks.map((week) => el('tr', {}, ...week.map((c) => el('td', {},
           c ? el('span', { class: c.date === today() ? 'lg-ghost-day now' : 'lg-ghost-day' }, String(c.day), planned.has(c.date) ? el('span', { class: 'cal-plan' }) : null) : null)))))));
     return el('div', { class: 'lg-empty' },
-      el('div', { class: 'mtn-band lg-peaks', 'aria-hidden': 'true' }, mountainBand()), // 컨셉 그림: 비어 있는 기록의 머리(도장이 쌓이면 이 자리가 밧줄이 된다)
+      el('div', { class: 'mtn-band lg-peaks', 'aria-hidden': 'true' }, mountainBand()),
+      ropeMeter(ropeStage(0)), // 아직 가닥이 없다: 점선으로 자리만 // 컨셉 그림: 비어 있는 기록의 머리(도장이 쌓이면 이 자리가 밧줄이 된다)
       ghost,
       ...(planned.size ? [el('p', { class: 'lg-plan' }, '점 찍힌 날은 운동 예정이에요')] : []),
       el('h3', {}, '아직 기록이 없어요'),
@@ -1068,7 +1070,7 @@ export function createLogView({
     const cells = [['인공암벽 방문', `${indoor}회`], ...(config.showOutdoorCount ? [['야외 방문', `${outdoor}회`]] : []), ['이번 달', `${month}회`], ['다녀온 곳', `${new Set(log.map((r) => r.wall)).size}곳`]];
     const band = el('dl', { class: 'lg-band', 'aria-label': '기록 요약' }, ...cells.map(([k, v], i) => el('div', { class: i ? null : 'lead' }, el('dt', {}, k), el('dd', {}, v))));
     band.style.setProperty('--n', String(cells.length));
-    return band;
+    return el('div', { class: 'lg-sum' }, band, ropeMeter(ropeStage(visitedCount(log, getWalls().map((w) => w.name)).visited))); // 다녀온 곳이 늘수록 밧줄이 자란다(rope-meter.js)
   }
 
   // 암장별: the month in view, one row per wall (tap → the wall's card)
