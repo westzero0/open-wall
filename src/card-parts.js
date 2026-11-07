@@ -4,10 +4,11 @@
 //   gaugeBar(bar)      the day's bar: open stretches, sun bands, the pin at the picked time
 //   gaugeEnds(bar)     open time (left) and close time (right) under the bar's ends
 //   remainPill(left)   "10시간" / "10시간 가능", "곧 마감", "3시간 뒤 휴게" (the closing time is the gauge's right end): the wording is picked by css width (.lf-s / .lf-l)
-//   warnPill(warn, call) / warnNote(warn)  closure-warning: "닫혔을 수 있어요 · 확인 중" in the place of remainPill, and its line ("12분 전 제보 · …") in the expanded card
+//   warnPill(warn, call) / warnNote(warn)  closure-warning: "제보: 닫혔을 수 있음 · 확인 전" in the place of remainPill, and its line ("12분 전 제보 · …") in the expanded card
 //   heroCap(m)         today's hours on a photo; dropped when the gauge already says them
 //   dock(go, been, tel, share) the actions under the photo: 길찾기 · 전화 · 공유 (icons only; no 전화 without a number) and 다녀왔어요 last, wide
 //   goRow(mk, kids, …) a tappable info line (이름 칸 · 내용 · ›) that opens a sheet
+//   lineRow({lead, title, sub, end, …}) a tappable list line (칩/그림 · 제목 위 보조 · 끝 값 또는 ›): 접힌 일정 줄, 일정 후보, 암장 추천 줄. arrow() is the one › every tappable line wears
 //   photoTools(…)      round buttons (share) in the photo's corner
 //   cameraBtn(…)       the camera that sends a photo (on a photo: one more; on the placeholder: the first)
 //   placeholderHero(…) the block that stands where a photo would: hours cap, camera (left), share (right), laid out as a photo card's foot (style.css --icon-row)
@@ -87,12 +88,12 @@ export function remainPill(left) {
   return el('span', { class: 'lf-card' }, el('span', { class: 'lf-s', 'aria-hidden': 'true' }, left.short), el('span', { class: 'lf-l' }, left.long));
 }
 
-// 닫힘·단축 제보 (closure-warning.js `warn`): amber pill in the place of remainPill. `call` is the phone button the app built (null: no number).
+// 닫힘·단축 제보 (closure-warning.js `warn`): warning-colour (--warn) pill in the place of remainPill. `call` is the phone button the app built (null: no number).
 // The pill has the words, so colour is never the only signal; the phone beside it is how the visitor checks before going.
 export function warnPill(warn, call = null) {
   if (!warn) return null;
   return el('span', { class: 'warn-wrap' },
-    el('span', { class: 'warn-pill', 'aria-label': `제보로 ${warn.phrase}, 확인 중` }, el('span', { class: 'wp-t' }, warn.phrase), el('span', { class: 'wp-s', 'aria-hidden': 'true' }, ' · 확인 중')),
+    el('span', { class: 'warn-pill', 'aria-label': `${warn.phrase}, 확인 전` }, el('span', { class: 'wp-t' }, warn.phrase), ' ', el('span', { class: 'wp-s', 'aria-hidden': 'true' }, '· 확인 전')),
     call);
 }
 
@@ -104,11 +105,26 @@ export function warnNote(warn, agoWord, how) {
 
 // 누르는 .irow (주차·근처·어프로치 줄): 이름 칸 · 내용 · ›. data-opens: 시트가 닫힐 때 카드가 다시 그려졌으면 포커스가 돌아올 곳.
 // arrow: the mark at the right end (a row with no value says `알려 주기 ›` there)
-export function goRow(mk, kids, opens, onClick, label = null, arrow = '›') {
+export const arrow = (text = '›', cls = '') => el('span', { class: ['pv-arrow', cls].filter(Boolean).join(' '), 'aria-hidden': 'true' }, text); // cls: a list row's own add-on (row-go: its width, and gone while the card is open)
+export function goRow(mk, kids, opens, onClick, label = null, end = '›') {
   const b = el('button', { type: 'button', class: 'pv pv-go', 'data-opens': opens, 'aria-label': label },
-    el('span', { class: 'pv-t' }, ...kids), el('span', { class: 'pv-arrow', 'aria-hidden': 'true' }, arrow));
+    el('span', { class: 'pv-t' }, ...kids), arrow(end));
   b.addEventListener('click', onClick);
   return el('div', { class: mk.replace(/\s/g, '').length <= 3 ? 'irow irow-s' : 'irow' }, el('span', { class: 'mk' }, mk), b); // 세 글자 이하 이름은 3em 칸에 양쪽 정렬
+}
+
+// lineRow: lead (a 40px chip or tile, or null) · title (text, a node or a list: a name and its .tg) over sub · end (a value or badge; the › by default). One button, so the whole line is the target (min 56px).
+// data: attributes such as { 'data-trip': id }; cls: more classes (.mine for a picked one). The caller adds the click.
+// tag(text, kind): the small pill beside a title or in a line's end: kind '' (quiet) | 'ok' (추천) | 'rain' (비 예보)
+export const tag = (text, kind = '') => el('span', { class: kind ? `tg ${kind}` : 'tg' }, text);
+export function lineRow({ lead = null, title, sub = null, end = arrow(), cls = '', data = {}, label = null }) {
+  return el('button', { type: 'button', class: cls ? `ln ${cls}` : 'ln', 'aria-label': label, ...data }, lead,
+    el('span', { class: 'ln-t' }, el('span', { class: 'ln-n' }, ...[].concat(title)), sub ? el('span', { class: 'ln-m' }, sub) : null), end);
+}
+
+// noteRow: the same line with nothing to open (no ›, not a button): title over sub, an optional control at the end (e.g. the 도착 시각 pill on 홈). The caller keeps the nodes it wants to update (title/sub may be nodes).
+export function noteRow({ title, sub = null, end = null, id = null }) {
+  return el('div', { class: 'ln na', id }, el('span', { class: 'ln-t' }, el('span', { class: 'ln-n' }, ...[].concat(title)), sub ? el('span', { class: 'ln-m' }, sub) : null), end);
 }
 
 // The three rows under the chips (운영 · 이용 · 게시판), each opening its tab of the wall sheet. `row` is card-model's {text} | {empty: true} (value not known:

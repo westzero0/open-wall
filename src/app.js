@@ -30,8 +30,10 @@ import { NOTE_MAX } from './parking-rate.js';
 import { feeTableEl } from './fee-table-view.js';
 import { WINDOW, evidenceOf, reasonOf, weekendPicks } from './pick.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
-import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekHint, weekPlan } from './schedule.js';
+import { MAX_SCHEDULE, addSkipped, clearMove, setMove, addWall, toggleDay, askYesterday, liveMoves, loadMoves, loadSchedule, loadSkipped, plannedOn, saveMoves, saveSchedule, saveSkipped, weekHint, weekPlan, keyDay } from './schedule.js';
 import { renderScheduleAsk, renderScheduleCard, renderScheduleRows, weekPicker } from './schedule-view.js';
+import { loadZones, saveZones, toggleZone, zoneAlerts } from './zone-watch.js';
+import { renderZoneBanner, zoneToggleButton } from './zone-watch-view.js';
 import { hintDue, loadSeen as loadChangesSeen, markHint, saveSeen as saveChangesSeen, syncFound, unseen, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
 import { parseInvite } from './invite.js';
@@ -55,14 +57,53 @@ import { condPane } from './crag-cond-pane.js';
 import { cragRow, cragModel, blogLinks } from './crag-model.js';
 import { cragSheetTabs, cragBoardListed, skyChip, sunT, CRAG_SHEET_TABS, CRAG_TAB_ICON } from './crag-sheet-model.js';
 import { crossfadeRows, el, tightParens } from './dom.js';
+import { MAX_TRIPS, ackRain, addTrip, dday, homeDays, loadTrips, moveTrip, placeChoices, removeTrip, saveTrips, skipTrip, swapPlace, tripState, backWhen } from './trips.js'; // 일정 탭 1차: 날짜형 일정 (homeDays is used by drawDays just below)
 
 // "10월 27일 화요일" above the slider; the weekday is its own span so the largest text size can drop it (style.css .dow) and keep the line to one row
 function setSub(at, extra = '') {
   $('sub').parentElement.classList.toggle('is-today', ymd(at) === ymd(new Date())); // today reads quietly; another day is the one thing worth noticing
   const today = ymd(at) === ymd(new Date()); // short on purpose: the question row also holds 지금으로 at 360px. Today is one word; another day reads 11/6(목)
   $('sub').replaceChildren(...(today ? ['오늘'] : [`${at.getMonth() + 1}/${at.getDate()}`, el('span', { class: 'dow' }, `(${DAY_KO[at.getDay()]})`)]), extra);
+  drawDays(at);
 }
-import { wxBox, axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetCard, sheetLine, span, warnNote, warnPill, whyBubble, wxSet } from './card-parts.js';
+// 홈의 날짜 칩 오늘·내일·모레 + 일정이 잡힌 날(●) + '+ 일정 잡기' (trips.js homeDays): 홈 has no calendar, the 일정 tab does (its 이 날 외벽 보기 opens any day here,
+// then no chip is pressed and the line above says the day). 일정 칩을 누르면 맨 위 카드도 그 일정으로 바뀐다(homeFocusTrip → pickHomeTop focusTripId); 오늘·내일·모레는 푼다.
+// Made again only when the chips change (the day turns, a trip is added or moved), so the minute re-render keeps the focus.
+let daysFor = '';
+let finderReady = false, finderIn = false, boardInSheet = false; // placeFinder runs once the sheet exists (end of start-up)
+let homeOpen = null; // 시안 ④: the 열린 외벽 box of a day with no trip card (placed at start-up, drawn by drawHomeOpen)
+let hasPlan = false; // renderHomeTop: a trip's card is on top, so the 외벽 시간표 lives in the 외벽 더 찾기 sheet (placeFinder)
+let homeTrips = []; // renderHomeTop copies `trips` here: this block is above where `trips` is declared
+let daysAt = new Date(); // the day the chips were last pressed against, to draw them again when the trips change
+let homeFocusTrip = null; // the trip a pressed 일정 chip put on top of 홈; null = the usual order
+let homeOffDay = false; // a pressed day chip with no trip (내일 · 모레): 홈 shows that day's list, no trip card (시안 ④)
+const chipTrip = (date, today) => homeTrips.find((t) => (t.from === date || (t.from <= today && today <= t.to && date === today)) && !t.status);
+function drawDays(at) {
+  const box = $('scrubDays');
+  if (!box) return; // a cached older page
+  daysAt = at;
+  const today = ymd(new Date());
+  const chips = homeDays(today, homeTrips);
+  const key = JSON.stringify(chips);
+  if (daysFor !== key) {
+    daysFor = key;
+    box.replaceChildren(...chips.map(({ label, date, plan, add }) => {
+      const [, m, d] = (date || '--').split('-').map(Number);
+      const b = el('button', { type: 'button', 'data-date': date, class: add ? 'day-add' : null, 'aria-label': add ? '일정 잡기' : plan ? `${label} 일정 있음` : `${label} ${m}월 ${d}일` },
+        label, plan ? el('span', { class: 'day-dot', 'aria-hidden': 'true' }) : null);
+      b.addEventListener('click', () => {
+        if (add) { openTripAdd(null, b); return; }
+        homeFocusTrip = plan ? chipTrip(date, today)?.id ?? null : null;
+        homeOffDay = !plan && date !== today;
+        go({ type: 'pick', date, min: Math.min(Number($('time').value), 1380) }); // the same time on that day, as the date field did
+        renderHomeTop(true);
+      });
+      return b;
+    }));
+  }
+  for (const b of box.children) b.setAttribute('aria-pressed', String(b.dataset.date !== '' && b.dataset.date === ymd(at)));
+}
+import { arrow, lineRow, noteRow, wxBox, axisX, boardRow, cameraBtn, dockIcon, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, scheduleChip, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetCard, sheetLine, span, warnNote, warnPill, whyBubble, wxSet } from './card-parts.js';
 import { startTour } from './tour.js';
 import { createLogView, toast, dismissToast } from './log-view.js';
 import { applyTextSize, applyTheme, createProfileView } from './profile-view.js';
@@ -94,7 +135,16 @@ import { createCragSubmitApi } from './crag-submit-api.js';
 import { loadMine, saveMine, cleanCragRow } from './crag-submit-store.js';
 import { openCragSubmitSheet } from './crag-submit-view.js';
 import { knownFrom } from './crag-submit-fields.js';
-import { mountainBand } from './mountain-band.js';
+import { dayCardOrder, firstVisit, pickHomeTop, rainChoices, rainDays, tripWx } from './home-top.js';
+import { backCard, dayCard, ddayLine, foldLine, rainCard, tripCard } from './trip-view.js';
+import { planHead } from './trip-plan.js';
+import { arriveLabel } from './home-arrive.js';
+import { homeSuggest } from './home-suggest.js';
+import { renderEmptyHome, suggestBlock } from './home-view.js';
+import { renderSchedTab } from './sched-tab-view.js';
+import { openTripSheet } from './trip-sheet.js';
+import { loadHidden, projectsAt } from './projects.js';
+import { dayParts, shiftMonth } from './log.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -155,6 +205,7 @@ const ICONS = {
   // 방향 모름: a ring drawn dashed by CSS (the first path) with a question mark; 실내: a roof over walls (no sun matters indoors)
   unknown: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8', 'M12 17h.01'],
   indoor: ['M3 12l9-9 9 9', 'M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10'],
+  list: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3.5 6h.01', 'M3.5 12h.01', 'M3.5 18h.01'], // 일정 탭: 목록 보기 (달력 보기는 calendar)
   shade: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2', 'M12 20v2', 'M2 12h2', 'M20 12h2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M3 21L21 3'],
 };
 // a glyph drawn small in its 24 grid (the megaphone is 18 x 12) is cut closer so it reads as big as its neighbours; the stroke is thinned by the same factor
@@ -232,6 +283,7 @@ const logView = createLogView({
   getFavs: () => favs,
   getPlan: (date) => planOf(date),
   onChange: () => render(),
+  onImport: () => { loadTripsNow(); renderTrips(true); }, // the file's 일정 went to storage: read them again before the next save writes the old list over them
   reveal: (name) => revealFromLog(name),
   showList: () => showTab('list', true),
   crowdAsk: (wall, date, time) => (state.walls.some((w) => w.name === wall) ? crowdAsk(wall, date, time) : null), // 혼잡도 is for walls: a crag record asks nothing
@@ -990,6 +1042,7 @@ async function loadWeekendWeather() {
     if (f?.closest?.('#pick-body') && f.dataset.focus) pickRefocus = f.dataset.focus;
     renderPick();
     renderSched(); // the 운동 스케줄 card reads the same forecast
+    renderTrips(); // and the trips (홈 맨 위, 일정 탭)
     if (!vs.live) renderForWx(); // the first screen's forecast line (another day)
   }
 }
@@ -1078,6 +1131,8 @@ function renderSched() {
     plan, moves, onMove, onClear: (wall, from, msg) => moveChange(clearMove(moves, wall, from), msg), walls: state.walls, favs, forecasts: wxPick.byName, today, icon,
     onOpen: (wall, date) => { showTab('list'); goToMoment(date, ymd(date) === ymd(today) ? today.getHours() * 60 + today.getMinutes() : 12 * 60); revealClearing(wall.name); }, // that day, now (today) or noon
   });
+  const week = $('sched').closest('.sched-week'); // 일정 탭의 매주 운동: no card and no question → no heading over nothing
+  if (week) week.hidden = $('sched').hidden && (!$('schedAsk') || $('schedAsk').hidden);
 }
 // the 내 정보 sheet's 운동 스케줄 rows: drawn when the sheet opens and by their own changes (never by render(): a redraw would drop the focus)
 function drawScheduleRows() {
@@ -1107,6 +1162,226 @@ planOf = (date) => {
   if (schedule.some((e) => e.days.length)) loadWeekendWeather(); // the home may not have asked for the forecast (the 기록 tab can be the first screen); it asks once, and is quiet when fresh
   return plannedOn(schedule, { walls: state.walls, forecasts: wxPick.byName, date, today: new Date(), moves });
 };
+// ---- 일정 (src/trips.js; docs/superpowers/specs/2026-11-06-schedule-tab-flow-design.md): 홈 맨 위 카드(home-top.js → trip-view.js), 일정 탭(sched-tab-view.js),
+// 일정 추가 시트(trip-sheet.js). 한 `trips`를 셋이 같이 읽고, 바꾸면 putTrips가 저장하고 둘 다 다시 그린다. 계산은 trips.js·home-top.js에, 여기는 연결만.
+let trips = []; // the trips whose place is in the lists now (loaded once the walls and crags are in, at the bottom)
+let tripsOff = []; // trips whose place is not listed now (the crag list failed, 싱글피치 off): kept in storage, not shown, not counted
+let schedMonth = null; // the 일정 tab's month { year, month } and picked day: this visit only
+let schedSelected = null;
+const tripToday = () => ymd(new Date());
+const tripPlaces = () => ({ zones: cragOn ? state.crags : [], walls: state.walls });
+const tripPlace = (t) => (t.place.type === 'zone' ? tripPlaces().zones : state.walls).find((p) => p.id === t.place.id) ?? null;
+const tripRecords = (t) => { const p = tripPlace(t); return p ? logView.recordsFor(p.name) : []; };
+const tripHasRecord = (t) => tripRecords(t).some((r) => r.date >= t.from);
+const tripForecasts = () => new Map([...wxPick.byName, ...cragWx.daily]); // place name → parseDaily's day Map (walls: the weekend request; crags: crag-weather.js)
+const tripMd = (date) => { const p = dayParts(date); return `${p.dow} ${p.month}/${p.day}`; }; // '토 11/14'
+function loadTripsNow() {
+  const today = tripToday();
+  const all = loadTrips(storage, today);
+  trips = loadTrips(storage, today, tripPlaces());
+  tripsOff = all.filter((t) => !trips.some((x) => x.id === t.id));
+}
+// live trips first: an off trip only fills a seat that is free, so it never pushes a shown one out of the MAX_TRIPS kept
+function putTrips(next) {
+  trips = next;
+  homeOffDay = false; // a trip was added or changed: its card comes back
+  saveTrips(storage, [...next, ...tripsOff.slice(0, Math.max(0, MAX_TRIPS - next.length))], tripToday());
+  renderTrips(true);
+}
+function tripChange(next, msg, statsEvent = null) {
+  const before = trips;
+  putTrips(next);
+  if (statsEvent) document.dispatchEvent(new CustomEvent(statsEvent));
+  toast(msg, () => putTrips(before), '되돌리기');
+}
+const tripName = (t) => tripPlace(t)?.name ?? '';
+// the card's common model (trip-view.js): no place → null (the trip is left out everywhere). wx: tripWx (the first forecast-covered day of the trip), or null when no forecast covers it (never "no rain")
+function tripModel(t, fc, today = tripToday()) {
+  const p = tripPlace(t);
+  if (!p) return null;
+  const d = dday(t, today);
+  const st = tripState(t, today, tripHasRecord(t));
+  const days = rainDays(t, fc, today, tripPlaces());
+  const rain = !t.rainAck && days.some((x) => x.rain);
+  const when = st === 'back' ? backWhen(t, today) : null; // 다녀옴 only once a record exists: before that, 어제 / N일 전
+  const [badge, badgeKind] = st === 'day' ? ['오늘', 'today'] : st === 'back' ? [when, 'back'] : st === 'logged' ? ['다녀옴', 'back'] : rain ? ['비 예보', 'rain'] : d >= 8 ? ['계절', 'season'] : [null, null];
+  return { id: t.id, title: p.name, dateText: t.from === t.to ? tripMd(t.from) : `${tripMd(t.from)} ~ ${tripMd(t.to)}`,
+    dday: d > 0 ? `D-${d}` : null, wx: tripWx(days, today), badge, badgeKind, when };
+}
+const tripById = (id) => trips.find((t) => t.id === id);
+// 정보가 달라요: the report sheet (report-view.js) with the place and a kind filled in; a crag gets its own kinds (어프로치·루트·개념도·주차·컨디션)
+function tripReport(t, kind = null) {
+  const p = tripPlace(t);
+  if (!p) return;
+  document.dispatchEvent(new CustomEvent('wall:report', { detail: t.place.type === 'zone' ? { name: p.name, kind: kind ?? '어프로치', crag: true } : { name: p.name, kind: '주차', kinds: ['운영시간', '임시휴무', '주차', '루트 분포', '세팅일', '기타'] } }));
+}
+// 오늘 한 것 남기기 / 다녀왔어요: the 기록 추가 sheet with the place and the day; trip-log counts a record saved from a trip (not the sheet opening)
+function tripLog(t, date, from = null) {
+  const p = tripPlace(t);
+  if (!p) return;
+  logView.openAdd({ wall: p.name, date, from, place: t.place.type === 'zone' ? p : null, onSaved: () => { document.dispatchEvent(new CustomEvent('stats:trip-log')); setTimeout(() => renderTrips(true)); } }); // after the sheet closes and hands the focus back into #homeTop (renderHomeTop would wait for it to leave)
+}
+function openSchedAt(t) {
+  schedSelected = t.from;
+  const { year, month } = dayParts(t.from);
+  schedMonth = { year, month };
+  showTab('sched');
+  renderSchedPanel();
+}
+const ddayLabel = () => (homeFocusTrip ? '고른 일정' : '다음 일정'); // a chip-picked trip is not necessarily the next one
+// 시안 ③ 상태 문장: `바위 마름 · 4° 맑음` (구역: 젖음 계산이 좋음이면 바위 마름, 아니면 그 상태 짧은 말) · `비 예보 없음 · 4° 맑음` (외벽). 시간별 예보가 없으면 뒷부분을 뺀다
+function dayStatus(p, zone, now) {
+  if (!now?.known) return '오늘 예보 없음';
+  if (now.text === '실내') return '실내';
+  const at = new Date();
+  const h = (zone ? cragWx.hourly : wxList.byName).get?.(p.name);
+  const e = h ? pickHour(h, at) : null;
+  const wx = e && Number.isFinite(e.t) && Number.isFinite(e.c) ? `${Math.round(e.t)}° ${skyKind(e.c).text}` : null;
+  let first;
+  if (now.rain) first = now.text || '비 예보';
+  else if (zone) { const c = cragRow(p, at, { now: at, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet }).cond; first = c.state === 'good' ? (c.basis === 'wetness' ? '바위 마름' : c.short) : c.short; }
+  else first = '비 예보 없음';
+  return [first, wx].filter(Boolean).join(' · ');
+}
+function homeTopCard(top, fc, today) {
+  const t = top.trip;
+  const m = tripModel(t, fc, today);
+  const p = tripPlace(t);
+  const zone = t.place.type === 'zone';
+  const plan = p.venue === 'indoor' ? null : planHead(t.from, fc.get(p.name)); // 날씨 머리(시안 home-v3): 실내 암장은 날씨를 말하지 않는다
+  if (top.kind === 'day') {
+    const recs = tripRecords(t);
+    const project = projectsAt(recs, p.name, loadHidden(storage))[0] ?? null;
+    const order = dayCardOrder({ hasProjectHere: !!project, firstVisit: firstVisit(recs, t.place, state.walls, tripPlaces().zones) });
+    const now = rainDays(t, fc, today, tripPlaces()).find((x) => dayKey(x.date) === today);
+    const ap = zone ? approachModel(p) : null;
+    return dayCard({ ...m, order,
+      now: { text: dayStatus(p, zone, now), sub: null },
+      approach: zone ? (ap ? { text: '길 보기', sub: Number.isFinite(ap.totalMin) ? `걸어서 ${ap.totalMin}분` : null } : null) : { text: '주차·이용 보기', sub: null },
+      project: project ? { name: project.name, sub: [project.grade, `${project.tries}번 시도`].filter(Boolean).join(' · ') } : null,
+      routes: { sub: null } }, {
+      icon,
+      onApproach: (id, b) => (zone ? (ap ? openCragSheet(p.name, 'way', b) : tripReport(t, '어프로치')) : openWallSheet(p.name, b, { tab: 'use' })),
+      onRoutes: (id, b) => (zone ? openCragSheet(p.name, 'routes', b) : openWallSheet(p.name, b, { tab: 'routes' })),
+      onProject: () => showTab('log', true),
+      onReport: () => tripReport(t),
+      onRecord: () => tripLog(t, today),
+    });
+  }
+  if (top.kind === 'back') {
+    return backCard(m, { icon, onRecord: () => tripLog(t, t.to), onSkip: () => tripChange(skipTrip(trips, t.id), `${m.title} 안 갔다고 답했어요`) });
+  }
+  if (top.kind === 'rain') {
+    const rc = rainChoices(t, { forecasts: fc, today, places: tripPlaces() });
+    const days = rainDays(t, fc, today, tripPlaces()).map((x) => ({ text: tripMd(dayKey(x.date)), rain: x.rain, wx: x.known ? { kind: x.rain ? 'rain' : null } : null }));
+    const sub = (x) => [x.reason, Number.isFinite(x.km) ? `${Math.round(x.km)}km` : null].filter(Boolean).join(' · ');
+    return [ddayLine(m, ddayLabel()), rainCard({ ...m, plan, dday: null, days, otherDay: rc.otherDay, recommend: rc.recommend,
+      otherDayLabel: rc.otherDay ? `${dayParts(rc.otherDay.from).dow}요일만 가기` : null, otherDaySub: rc.otherDay ? `같은 곳 · ${tripMd(rc.otherDay.from)} 비 예보 없음` : null,
+      instead: rc.instead.map((x) => ({ id: x.id, name: x.name, indoor: x.indoor, sub: sub(x) })), keepSub: days.find((d) => d.rain) ? `${days.find((d) => d.rain).text} 비 예보` : null }, {
+      icon,
+      onOtherDay: (id, od) => tripChange(moveTrip(trips, id, od), `${tripMd(od.from)} 하루로 바꿨어요`, 'stats:trip-move'),
+      onInstead: (id, b) => tripChange(swapPlace(trips, id, { type: 'wall', id: b.id }), `${b.name}(으)로 바꿨어요`, 'stats:trip-move'),
+      onKeep: (id) => tripChange(ackRain(trips, id), '그대로 가요. 이 일정의 비 소식은 다시 띄우지 않아요'),
+    })];
+  }
+  // 시안 ②·⑧-a: 홈의 일정 카드는 읽는 카드(옮기기·삭제는 일정 탭). 외벽이면 그날 운영 시간 한 줄 + 가기 전 확인 안내
+  const day = new Date(...t.from.split('-').map((x, i) => (i === 1 ? Number(x) - 1 : Number(x))), 12);
+  const iv = zone || !plan ? [] : openIntervals(p, day);
+  const hr = (min) => Math.floor(min / 60);
+  const sun = iv.length && p.venue !== 'indoor' ? (dayBar(p, day).sun || []).map(([a, b]) => [Math.max(a, iv[0][0]), Math.min(b, iv.at(-1)[1])]).filter(([a, b]) => b > a) : null; // 시안: 운영 한 줄에 그날 양달도(방향을 알 때만)
+  const ops = plan && !zone ? `${iv.length ? `운영 ${hr(iv[0][0])}–${hr(iv.at(-1)[1])}시${sun?.length ? ` · 예상 양달 ${formatRanges(sun).replaceAll(', ', ' · ')}` : ''}. ` : ''}운영시간은 가기 전에 확인해 주세요.` : null;
+  return [ddayLine(m, ddayLabel()), tripCard({ ...m, plan: plan && { ...plan, note: plan.note ?? ops }, dday: null, badge: m.badgeKind === 'season' ? null : m.badge }, { icon })];
+}
+// 일정 0개 홈(홈 맨 위): 일정 잡기 줄 + 추천(♥ → 기록 → 가까운 곳, home-suggest.js). The list below stays open; the 외벽 시간표 is the 외벽 더 찾기.
+function drawEmptyHome(host) {
+  if (!state.walls.length) { host.hidden = true; host.replaceChildren(); return; } // the lists are not in yet
+  host.hidden = false;
+  renderEmptyHome(host, {
+    suggest: homeSuggest({ walls: state.walls, favs, log: logView.records(), here: vs.origin, now: new Date() }), icon,
+    onAsk: (b) => openTripAdd(null, b), onOpenWall: (name, b) => openWallSheet(name, b), onLocate: () => locate(true),
+  });
+}
+const findLine = () => lineRow({ title: '외벽 더 찾기', data: { 'data-home': 'find' } });
+// 홈 맨 위: one card by pickHomeTop (당일 > 다녀옴 > 비 예보 > 평소) and the other trips folded; nothing when there is no trip. A redraw that would
+// take the focus from inside it waits (force: a change made there, which redraws on purpose)
+const FOLD_LEAD = { plan: '다음', day: '오늘' }; // a folded line's first word by the trip's state (a back trip: 어제 / N일 전)
+function renderHomeTop(force = false) {
+  const host = $('homeTop');
+  if (!host) return; // a cached older page
+  const had = host.contains(document.activeElement);
+  if (!force && had) return;
+  const today = tripToday();
+  const fc = tripForecasts();
+  homeTrips = trips;
+  drawDays(daysAt);
+  const top = trips.length && !homeOffDay ? pickHomeTop({ trips, today, hasRecordFor: tripHasRecord, forecasts: fc, places: tripPlaces(), focusTripId: homeFocusTrip }) : { kind: null, rest: [] };
+  if (!top.kind) { hasPlan = false; drawEmptyHome(host); placeFinder(); return; }
+  hasPlan = true;
+  host.hidden = false;
+  if (trips.some((t) => t.place.type === 'wall')) loadWeekendWeather(); // the walls' forecast: the weekend picks' one request (quiet when fresh)
+  if (cragOn && trips.some((t) => t.place.type === 'zone')) loadCragWx();
+  const rest = top.rest.map((t) => ({ t, m: tripModel(t, fc, today) })).filter((x) => x.m);
+  host.replaceChildren(...[homeTopCard(top, fc, today)].flat().filter(Boolean), ...rest.map(({ t, m }) => { const st = tripState(t, today, tripHasRecord(t)); return foldLine({ ...m, lead: st === 'back' ? m.when : FOLD_LEAD[st] ?? null }, () => openSchedAt(t), { icon }); }));
+  const mine = homeSuggest({ walls: state.walls, favs, log: logView.records(), here: vs.origin, now: new Date() }); // 시안 ⑤: 접힌 ♥ 내 암장(상태만), 기록·가까운 곳 추천은 일정 없는 홈 몫
+  const find = findLine(); // 시안 ⑤: the last line (in the 내 암장 box when there is one); the sheet holds search, 조건, time, sort and the list
+  host.append(mine.kind === 'fav' ? suggestBlock(mine, { icon, onOpenWall: (name, b) => openWallSheet(name, b), tail: find }) : find);
+  placeFinder();
+  if (had && !host.contains(document.activeElement)) host.querySelector('button')?.focus({ preventScroll: true }); // the pressed button went with the old card: the new card's first one
+}
+// 일정 탭: drawn into #panel-sched (also while another tab is open); the view keeps the focus on redraw
+function renderSchedPanel() {
+  const host = $('panel-sched');
+  if (!host) return;
+  const today = tripToday();
+  const fc = tripForecasts();
+  if (!schedMonth) { const { year, month } = dayParts(today); schedMonth = { year, month }; }
+  renderSchedTab($('panel-sched'), {
+    trips, backs: trips.filter((t) => tripState(t, today, tripHasRecord(t)) === 'back'), today,
+    view: ui.schedView, month: schedMonth, selected: schedSelected,
+    model: (t) => tripModel(t, fc, today),
+    picks: tripChoices().slice(0, 3).map((c) => ({ id: c.id, name: c.name, kind: c.kind, wx: null })),
+    icon,
+    onToggle: (v) => { ui.schedView = v; saveUi(); renderSchedPanel(); },
+    onMonth: (by) => { schedMonth = shiftMonth(schedMonth.year, schedMonth.month, by); renderSchedPanel(); },
+    onSelect: (date) => { schedSelected = date; renderSchedPanel(); },
+    onAdd: (preset, b) => openTripAdd(preset, b),
+    onOpenHome: () => { showTab('list'); $('homeTop')?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' }); },
+    onMove: (id, b) => openTripMove(id, b),
+    onDelete: (id) => { const t = tripById(id); tripChange(removeTrip(trips, id), `${t ? tripName(t) : ''} 일정을 지웠어요`.trim()); },
+    onWallsOfDay: (date) => { showTab('list'); goToMoment(keyDay(date), date === today ? new Date().getHours() * 60 + new Date().getMinutes() : 12 * 60); }, // that day, now (today) or noon, like the 운동 스케줄 card
+  });
+}
+function renderTrips(force = false) { renderHomeTop(force); renderSchedPanel(); }
+const tripChoices = () => placeChoices({ walls: state.walls, crags: state.crags, singlePitchOn: cragOn });
+// the add sheet's weather words: the place's forecast for that day, or nothing (the sheet then shows only the kind)
+const tripDayWx = (choice, date) => (date ? dayWeather(tripForecasts().get(choice.name)?.get(date)) : null);
+function openTripSheetFor(preset, opener, onSave, full = false, title) {
+  if (state.walls.length) loadWeekendWeather(); // quiet when fresh; a late answer shows on the next opening
+  openTripSheet({
+    dialog: $('tripAdd'), choices: tripChoices(), today: tripToday(), preset, full, icon, opener, onSave, title,
+    forecastText: (c, date) => { const w = tripDayWx(c, date); return w ? `${tripMd(date)} ${w.rainText ?? '비 예보 없음'}` : null; },
+    forecastWx: (c, date) => { const w = tripDayWx(c, date); return w ? { kind: w.rain ? 'rain' : null } : null; },
+  });
+}
+// + 일정 추가: a new trip (10 at most; the sheet says so when full). authorId: this device's id, or 'local' when storage keeps none
+function openTripAdd(preset, opener) {
+  openTripSheetFor(preset, opener, ({ place, from, to }) => {
+    const id = globalThis.crypto?.randomUUID?.() ?? `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const r = trips.length + tripsOff.length >= MAX_TRIPS ? { error: 'full' } : addTrip(trips, { place, from, to, id, authorId: getAuthorId({ get: getStr, set: setStr }) ?? 'local', now: Date.now() });
+    if (r.error) { toast(r.error === 'full' ? '일정은 10개까지 잡을 수 있어요' : '일정을 저장하지 못했어요'); return; }
+    tripChange(r.trips, '일정을 잡았어요', 'stats:trip-add');
+  }, trips.length + tripsOff.length >= MAX_TRIPS); // a trip kept aside still holds its seat: an add must not push it out of storage
+}
+// 일정 옮기기: the same sheet with the trip's place and days filled in (a range stays a range); saving moves it (and swaps the place when another one was picked)
+function openTripMove(id, opener) {
+  const t = tripById(id);
+  if (!t) return;
+  openTripSheetFor({ placeId: t.place.id, date: t.from, to: t.to }, opener, ({ place, from, to }) => {
+    let next = moveTrip(trips, id, { from, to });
+    if (place.id !== t.place.id || place.type !== t.place.type) next = swapPlace(next, id, place);
+    tripChange(next, `${tripMd(from)}(으)로 옮겼어요`, 'stats:trip-move');
+  }, false, '일정 옮기기');
+}
 function renderPick() {
   const box = $('pick');
   const wallFavs = favs.filter((n) => state.walls.some((w) => w.name === n)); // a ♥ crag (same store) is not a 내 암장 for the wall pick
@@ -1750,7 +2025,7 @@ function blogBox(blog, withList = true, note = '참고용 · 운영시간은 앱
 }
 
 // 다녀왔어요 (the open card only): a stamp square left of 자세히; opens the 기록 추가 sheet with this wall fixed.
-// Outlined until there is a record, then filled with the count; just after a save the stamp icon gives way to the 해벽 stamp, pressed once.
+// Outlined until there is a record, then filled with the count; just after a save the stamp icon gives way to the emblem stamp, pressed once.
 // place: the crag object when m is a 싱글피치 crag (not in state.walls; the sheet's time bar reads it, no hours).
 function beenBtn(m, place = null) {
   const mark = logView.justStamped(m.name) ? inkStamp(el('span', { class: 'stamp been-stamp stamp-in', 'aria-hidden': 'true' }), state.walls.find((w) => w.name === m.name)) : icon('stamp');
@@ -1851,7 +2126,7 @@ const weatherCtx = (name, at) => {
   const hours = wx.byWall.get(name)?.hours;
   return hours ? pickHour(hours, at) : null;
 };
-// 오늘의 해벽 (poster-share.js): the forecast hour for a card made now. The cache first, else one request; waits at most 2 s, then null (no line).
+// 오늘의 벽 (poster-share.js): the forecast hour for a card made now. The cache first, else one request; waits at most 2 s, then null (no line).
 async function posterWeather(name, at) {
   const wall = state.walls.find((w) => w.name === name);
   if (!wall) return null;
@@ -1960,8 +2235,8 @@ function rowHead(row, at, m, isOpen) {
       el('span', { class: 'rsub' },
         newsPill(m.name), // 휴무·동절기·새 암장·개장: anyone looking at the wall sees it, ♥ or not
         m.meta ? el('span', { class: 'rmeta', title: m.meta }, m.meta) : null),
-      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.warn ? [el('span', { class: 'warn-left' }, '확인 중')] : m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
-      el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')), // the row is a button: the arrow says so (hidden while the card is open)
+      el('span', { class: `left${row.status?.state === 'open' && row.status.remainingMin <= FEW_MIN ? ' few' : ''}` }, ...(m.warn ? [el('span', { class: 'warn-left', 'aria-label': `${m.warn.phrase}, 확인 전` }, '확인 전')] : m.leftCard ? [remainPill(m.leftCard)] : leftParts(m.left)), a11yNotes(row) ? el('span', { class: 'sr-only' }, a11yNotes(row)) : null),
+      arrow('›', 'row-go')), // the row is a button: the arrow says so (hidden while the card is open)
     bar ? gaugeBar(bar) : null,
     bar ? gaugeEnds(bar) : null); // drawn on every row, shown by css only while the card is open (style.css .gauge-ends)
   const cls = `${m.state}${m.soon ? ' soon' : ''}${isOpen ? ' is-open' : ''}${m.suspended ? ' susp' : ''}${row.cold ? ' cold' : ''}${row.wet ? ' wet' : ''}${row.windy ? ' windy' : ''}${row.veil ? ' veil' : ''}${row.part ? ' part' : ''}`;
@@ -2058,6 +2333,27 @@ function setBand(summary, label, n) {
 const wallBoard = document.querySelector('#panel-list .board');
 const cragWx = { daily: new Map(), hourly: new Map(), wet: new Map(), ok: false, busy: false, at: 0 };
 let cragOpen = null; // the open crag row (by name); a rebuild keeps it
+// 비 예보 등록 (src/zone-watch.js, config.zoneWatch): ids in this browser only; the banner reads the crag weather that is already asked for
+const zoneOn = () => config.zoneWatch && cragOn;
+let zoneIds = [];
+let zoneAt = null; // the day the screen shows (render() sets it): the banner speaks of that one day, like the headline's planWxLine
+function drawZoneBanner() {
+  const host = $('zone-banner');
+  if (!host) return; // a cached older page
+  if (!zoneOn() || !zoneIds.length) { host.hidden = true; host.replaceChildren(); return; }
+  renderZoneBanner(host, zoneAlerts(zoneIds, state.crags, cragWx.daily, zoneAt ?? new Date()));
+}
+function zoneRow(c) {
+  const id = c.crag?.id;
+  if (!zoneOn() || !id || !wallPosition(c.crag)) return null; // a crag with no id or no position (the same test the weather request uses) has no forecast to watch
+  const b = zoneToggleButton({ on: zoneIds.includes(id), onToggle: () => {
+    zoneIds = toggleZone(zoneIds, id);
+    saveZones(storage, zoneIds);
+    drawZoneBanner();
+    return zoneIds.includes(id);
+  } });
+  return b;
+}
 let cragRefocus = null; // a tap on a row redraws the board, so the focus goes back to that row
 const labOn = labCrag(location.search, safeStorage() ?? { getItem: () => null }); // 이 기기에서만 켠 시범
 if (new URLSearchParams(location.search).has('lab')) history.replaceState(null, '', withoutLab(location.href));
@@ -2108,6 +2404,8 @@ async function loadCragWx() {
   cragWx.busy = true;
   const r = await loadCragWeather(state.crags, { storage });
   Object.assign(cragWx, r, { busy: false, at: Date.now() });
+  drawZoneBanner();
+  renderTrips(); // a 싱글피치 trip reads the crag forecast
   if (cragMode()) render(); // renderCrags decides what to leave alone (a card the focus is inside)
 }
 // the filter chips render() keeps in step for the wall list (the wall block is left as it is; see the plan ledger)
@@ -2250,6 +2548,8 @@ function renderCrags(at, now, isNow) {
     $('summary').dataset.key = key;
     $('summary').replaceChildren(`${lead}갈 수 있는 싱글피치가 `, el('b', { class: n ? null : 'zero' }, String(n)), '곳 있어요', ...(wxLine ? [' ', el('small', {}, wxLine)] : [])); // the wall title's sentence
   }
+  arriveN.textContent = `이 시각에 갈 수 있는 싱글피치 ${n}곳`;
+  drawHomeCrags(rows); // 홈의 틀은 외벽과 같다: 갈 수 있는 곳 3줄 + 더 찾기(목록은 시트)
   setSub(at, vs.origin ? ' · 직선거리' : ''); // the wall's line: the order is the band's
   const msg = vs.locateNote || (labOn && !config.singlePitch ? LAB_NOTE : ''); // 시범 기기는 한 줄로 알린다
   $('locateMsg').textContent = msg;
@@ -2271,7 +2571,7 @@ function renderCrags(at, now, isNow) {
     const top = pin?.getBoundingClientRect().top;
     renderCragBoard(host, rows, at, { now, daily: cragWx.daily, hourly: cragWx.hourly, wet: cragWx.wet, ropeM, tempMin: ui.tempMin, openName: cragOpen, enterName: cragEnter, onOpen: (nm) => openCrag(nm), sunBox: cragSunBox,
       icon, sunChip, showDistance: ui.sortMode === 'distance' && !!vs.origin, byMine: ui.sortMode === 'mygrade' && !!myGrade, isNow, favs, empty: cv, onOpenSheet: (nm, tab, b) => openCragSheet(nm, tab, b), boardListed: (nm) => boardOn() && cragBoardListed(nm), near: (c) => cragNear(c, at),
-      routes: cragRoutes, mine: myGrade, been: cragBeen, onReport: config.reportEndpoint ? reportCrag : null, rowPhoto: (pm, li, onFail) => rowPhoto({ ...pm, suspended: null, today: pm.hero, hoursOnGauge: pm.bar.length > 0 }, li, { canAdd: true, noun: '암장', onFail, onAdd: cragCameraSoon }),
+      routes: cragRoutes, mine: myGrade, been: cragBeen, zone: zoneRow, onReport: config.reportEndpoint ? reportCrag : null, rowPhoto: (pm, li, onFail) => rowPhoto({ ...pm, suspended: null, today: pm.hero, hoursOnGauge: pm.bar.length > 0 }, li, { canAdd: true, noun: '암장', onFail, onAdd: cragCameraSoon }),
       camera: (name) => (boardOn() ? cameraBtn(name, { icon, noun: '암장', onPress: cragCameraSoon }) : null),
       fav: (name) => favBtn(name), share: (name) => { const w = shareBtn(name, null, 'crag'); w.classList.add('dock-share'); return w; }, nav: (c) => { const l = c.links.find((x) => x.primary); return l ? navButton(l, c.address ?? c.name, c.geo) : null; } }); // ♥ · 공유 · 길찾기: the wall card's own buttons (dock, photo corner, row head)
     appendPendingRows(host, cragPending);
@@ -2330,7 +2630,8 @@ function render() {
   const t = hhmm(at);
   const label = timeLabel(minuteOf(at), isNow);
   $('timeOut').textContent = label;
-  $('scrubQ').textContent = askText(at, now, isNow); // 계획형: another day names the weekday
+  arrivePill.textContent = arriveLabel(at, now, isNow); // the pill says what the sheet's slider is set to
+  $('scrubQ').textContent = arriveQ.textContent = askText(at, now, isNow); // 계획형: another day names the weekday
   $('time').setAttribute('aria-valuetext', label);
   nowTag.textContent = t;
   nowTag.style.setProperty('--x', axisFrac(minuteOf(at)));
@@ -2346,6 +2647,8 @@ function render() {
   if (wallBoard) wallBoard.hidden = crag;
   if ($('crag-board')) $('crag-board').hidden = !crag;
   syncMode();
+  zoneAt = at;
+  drawZoneBanner();
   if (crag) return renderCrags(at, now, isNow);
 
   // the stored flag is ignored (not deleted) while no wall has parking data
@@ -2398,6 +2701,7 @@ function render() {
     coldN += Number(r.cold); wetN += Number(r.wet);
   }
   if (coldN || wetN) open.splice(0, open.length, ...sinkBad(open, (r) => r.cold || r.wet));
+  drawHomeOpen(open, open.length);
 
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
   const rc = $('regionChip');
@@ -2447,6 +2751,7 @@ function render() {
   $('bandNote').textContent = note; $('bandNote').hidden = !note;
   $('group-open').firstElementChild.classList.toggle('bare', n === 0 && !note); // 0곳: nothing to show in the band, so it folds (the picked-time line still runs through it)
   $('countOpen').textContent = String(n);
+  arriveN.textContent = `이 시각에 열린 외벽 ${n}곳`;
   const emptyMsg = document.querySelector('#group-open .empty');
   emptyMsg.hidden = n > 0;
   // the filters hid every open wall: offer the way back right here
@@ -2487,6 +2792,7 @@ function render() {
   mapApi?.setRows(all, at);
   renderPick();
   renderSched();
+  renderTrips();
   renderChanges();
   loadListWeather();
   syncWxCredit();
@@ -2553,27 +2859,40 @@ function openMap() {
   mapApi.fitAll();
 }
 
-const tabs = TABS; // 목록 | 지도 | 기록
-const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): no 지도 tab
+const tabs = TABS; // 홈 | 일정 | 기록; 지도 is a view of 홈 (ui.homeView), not a tab
+const wide = matchMedia('(min-width: 1024px)'); // there the map sits beside the list (style.css): homeView is not used, its toggle is hidden
+const onMap = () => ui.tab === 'list' && ui.homeView === 'map' && !wide.matches; // a phone's full-screen map (the old 지도 tab)
+const tabKey = (k) => (k === 'list' ? ui.homeView : k); // the 홈 tab opens on its last view
+// key: 'list' (홈, 목록 보기) | 'map' (홈, 지도 보기) | 'sched' | 'log'
 function showTab(key, focus = false) {
-  if (wide.matches && key === 'map') key = 'list';
-  if (key !== ui.tab) scrollTo(0, 0); // a tab always starts at its top (the page is one scroll: 기록 used to open where 목록 had been left)
+  const view = key === 'map' ? 'map' : 'list';
+  if (key === 'map') key = 'list';
+  if (key !== ui.tab || (key === 'list' && view !== ui.homeView && !wide.matches)) scrollTo(0, 0); // a tab (or 홈's other view) always starts at its top (the page is one scroll: 기록 used to open where 목록 had been left)
   ui.tab = key;
+  if (key === 'list' && !wide.matches) ui.homeView = view; // side by side there is no view to pick: the phone's choice is kept
   saveUi();
-  const split = wide.matches && key === 'list';
+  const home = key === 'list', split = home && wide.matches, map = split || onMap();
   for (const k of tabs) {
-    const t = $(`tab-${k}`);
-    t.setAttribute('aria-selected', String(k === key));
-    t.tabIndex = k === key ? 0 : -1;
-    $(`panel-${k}`).hidden = k !== key && !(split && k === 'map');
+    const t = $(`tab-${k}`); // ?.: a cached older page (other tabs) degrades instead of stopping the start-up
+    t?.setAttribute('aria-selected', String(k === key));
+    if (t) t.tabIndex = k === key ? 0 : -1;
+    const p = $(`panel-${k}`);
+    if (p) p.hidden = k !== key || (k === 'list' && map && !split);
   }
-  $('summary').hidden = key === 'log'; // the open-now headline counts the list's filters; 기록 hides them, so it would read 0
-  $('find').hidden = key === 'log' || (key === 'map' && !split); // 기록 has its own wall search; the map has a floating one
-  controls.hidden = key === 'log'; // 기록 has no time/slider: the form (hidden = out of focus and the reader) keeps its state
+  $('panel-map').hidden = !map;
+  $('summary').hidden = !home; // the open-now headline counts the list's filters; 일정·기록 hide them, so it would read 0
+  $('find').hidden = !home || (map && !split); // 기록 has its own wall search; the map has a floating one
+  controls.hidden = !home; // 일정·기록 have no time/slider: the form (hidden = out of focus and the reader) keeps its state
+  const hv = $('homeView');
+  if (hv) { // 목록 ⇄ 지도: the button shows where it goes, like the 일정 tab's 달력 ⇄ 목록
+    hv.replaceChildren(icon(map ? 'list' : 'map'), el('span', { 'aria-hidden': 'true' }, map ? '목록' : '지도')); // a word next to the icon
+    hv.setAttribute('aria-label', map ? '목록으로 보기' : '지도로 보기');
+  }
+  placeFinder();
   fitSticky();
   if (key !== 'log') tick(); // back from 기록: a live clock catches up now
-  if (focus) $(`tab-${key}`).focus();
-  if (key === 'map' || split) openMap();
+  if (focus) $(`tab-${key}`)?.focus();
+  if (map) openMap();
   if (key === 'log') logView.render();
   syncToTop();
 }
@@ -2584,7 +2903,7 @@ function syncToTop() {
   if (!b) return; // (a cached older index.html has no button)
   const dy = scrollY - lastY;
   lastY = scrollY;
-  if (scrollY < innerHeight || (ui.tab === 'map' && !wide.matches) || dy > 2) { // near the top, on the map, or reading downwards: out of the way
+  if (scrollY < innerHeight || onMap() || dy > 2) { // near the top, on the map, or reading downwards: out of the way
     clearTimeout(topTimer);
     b.hidden = true;
   } else if (dy < -2) { // scrolling up: the way back to the filters, for 3 seconds after the last upward move
@@ -2594,12 +2913,18 @@ function syncToTop() {
   } // a tiny move (the tail of a fling) leaves both the button and its timer as they are
 }
 addEventListener('scroll', syncToTop, { passive: true });
-$('schedNote')?.addEventListener('click', () => showTab('log', true));
+$('schedNote')?.addEventListener('click', () => showTab('sched', true)); // 내 운동 스케줄 is on the 일정 tab
+$('homeView')?.addEventListener('click', () => {
+  arriveSheet.open && arriveSheet.close(); // the button sits in 외벽 더 찾기 on a trip day: the map opens full screen
+  const to = onMap() ? 'list' : 'map';
+  showTab(to); // (a ‹ 싱글피치로 돌아가기 toast stays: it still leads back from either view)
+  if (to === 'map') document.dispatchEvent(new CustomEvent('stats:tab-map')); // stats.js still counts the map by its old tab name
+});
 $('toTop')?.addEventListener('click', () => {
   scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
-  $(`tab-${ui.tab}`).focus({ preventScroll: true }); // the button hides itself: focus moves on
+  $(`tab-${ui.tab}`)?.focus({ preventScroll: true }); // the button hides itself: focus moves on
 });
-wide.addEventListener('change', () => showTab(ui.tab));
+wide.addEventListener('change', () => showTab(tabKey(ui.tab)));
 
 // A 기록 line opens that wall's card in the list. Filters that hide it are cleared for this visit (not saved), and a
 // toast says so; a name no longer in the list only gets the toast.
@@ -2669,7 +2994,7 @@ function pickOnMap(w) {
   mapApi?.select(w.name, true);
 }
 wireFind($('findQ'), $('findHits'), (w) => {
-  if (ui.tab === 'map') return pickOnMap(w);
+  if (onMap()) return pickOnMap(w);
   if (revealClearing(w.name)) toast('조건에 안 맞지만 이 암장만 보여 드려요');
   if (wide.matches && wallPosition(w)) mapApi?.select(w.name, true);
 }, cragMode);
@@ -2747,12 +3072,10 @@ $('axis').addEventListener('click', (e) => {
   if (!tk || !$('date').value) return;
   go({ type: 'pick', date: $('date').value, min: Math.min(tk.min, 1380) });
 });
-// the date field lies invisibly over the date text: on desktop a click lands on a field segment, so it opens the calendar itself
-$('date').addEventListener('click', () => { try { $('date').showPicker?.(); } catch { /* already open, or not allowed: the field still works */ } });
 
 // 완료 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
 // the only way out besides the backdrop, Esc and the back button; what is changed there is saved as it is changed, so there is no second button to read. The 조건 sheet also says how many walls its choices leave (updated in render).
-for (const id of ['conditions', 'profile', 'safety-sheet', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet', 'invite']) {
+for (const id of ['conditions', 'arrive-sheet', 'profile', 'safety-sheet', 'howto', 'about-sheet', 'month-share', 'poster-share', 'rank-info', 'year-info', 'gear-sheet', 'invite']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
   const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('close'));
@@ -2760,7 +3083,96 @@ for (const id of ['conditions', 'profile', 'safety-sheet', 'howto', 'about-sheet
   head.append(el('div', { class: 'sh-okw' }, id === 'conditions' ? el('small', { class: 'sh-count', 'aria-hidden': 'true' }) : null, ok));
 }
 const sheet = $('conditions');
+// 도착 시각(3a, docs/superpowers/plans/2026-11-07-home-slider-to-sheet.md): the slider box moves into its sheet with its ids as they are; the pill at the right of the 시간표 머리 opens it
+const arriveSheet = $('arrive-sheet');
+$('arriveHost').append(document.querySelector('.scrub'));
+const arrivePill = el('button', { type: 'button', id: 'arrivePill', class: 'sort-btn arrive-pill', 'aria-haspopup': 'dialog' }, '지금 도착');
+// 시안 ④: the box line above the 시간표 on a day with no trip card: the question and how many walls are open at that time, the pill (the sheet's opener) at its end
+const arriveQ = document.createTextNode('몇 시에 도착해요?'), arriveN = document.createTextNode('');
+const arriveRow = noteRow({ id: 'arriveRow', title: arriveQ, sub: arriveN, end: arrivePill });
+document.querySelector('section.board').before(arriveRow);
+homeOpen = el('section', { class: 'home-open', 'aria-label': '열린 외벽', hidden: true }); // 시안 ④: filled by drawHomeOpen (render)
+arriveRow.after(homeOpen);
+arrivePill.addEventListener('click', () => {
+  if (arrivePill.textContent === '내일 보기') { // after 23:00 no hour is left today: the pill does what the 내일 chip does
+    const chip = [...$('scrubDays').querySelectorAll('button[data-date]')].find((b) => b.textContent.startsWith('내일'));
+    if (chip) return chip.click();
+  }
+  arriveSheet.showModal();
+});
+// 외벽 더 찾기 (시안 ⑥, 계획서 "정정"): on a day with a trip card the filter row, the time box and the 시간표 live in this sheet (one place, ids kept); without one the list stays on 홈.
+// On the full-screen map the filter row returns home (it holds the 목록 button, the way back).
+const findHome = { filters: document.querySelector('#search .filters'), board: document.querySelector('section.board') };
+findHome.filtersNext = findHome.filters.nextElementSibling;
+findHome.boardNext = findHome.board.nextElementSibling;
+findHome.crag = $('crag-board'); findHome.cragParent = findHome.crag?.parentNode; findHome.cragNext = findHome.crag?.nextElementSibling ?? null;
+// 시안 ④: 일정 없는 홈 — '열린 외벽' 제목 + 정렬 알약, 열린 곳 3곳을 한 면 상자에, 맨 아래 외벽 더 찾기 (N곳). Same rows as the list (already sorted / sunk); the whole 시간표 is in the sheet.
+function drawHomeOpen(open, total) {
+  if (!homeOpen) return; // before the start-up placed it
+  const dist = ui.sortMode === 'distance' && !!vs.origin;
+  const sort = el('button', { type: 'button', class: 'sort-btn', 'aria-label': '정렬 바꾸기' }, dist ? '가까운 순' : '남은 시간 순');
+  sort.addEventListener('click', () => { if (!dist && !vs.origin) locate(true); else setUi('sortMode', dist ? 'time' : 'distance'); });
+  const line = (r) => {
+    const sun = r.wall.venue === 'indoor' ? '실내' : r.lit === true ? '양달' : r.lit === false ? '응달' : null;
+    const sub = [Number.isFinite(r.distanceKm) ? `${Math.round(r.distanceKm)}km` : null, sun].filter(Boolean).join(' · ');
+    const end = r.status?.closeAt ? `열림 · ${new Date(r.status.closeAt).getHours()}시까지` : '열림';
+    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('carabiner')), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
+    b.addEventListener('click', () => openWallSheet(r.wall.name, b));
+    return b;
+  };
+  homeOpen.setAttribute('aria-label', '열린 외벽');
+  const rows = open.slice(0, 3).map(line);
+  const find = lineRow({ title: `외벽 더 찾기 (${total}곳)`, data: { 'data-home': 'find' } });
+  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '열린 외벽'), sort),
+    el('div', { class: 'ln-box' }, ...(rows.length ? rows : [noteRow({ title: '이 시각에 열린 외벽이 없어요' })]), find),
+    ...(vs.origin ? [] : [el('p', { class: 'sh-hint' }, '위치를 허용하지 않으면 남은 시간 순으로 보여요. 위치는 이 기기에서만 쓰고 저장하지 않아요.')]));
+  homeOpen.hidden = hasPlan || onMap() || !state.walls.length;
+}
+// 싱글피치 모드의 홈: 외벽 홈(drawHomeOpen)과 같은 틀. 지금 갈 수 있는 곳 3줄(컨디션 말) + 싱글피치 더 찾기(목록·검색·조건은 시트).
+function drawHomeCrags(rows) {
+  if (!homeOpen) return;
+  const line = (r) => {
+    const sun = r.sun === 'sun' ? '양달' : r.sun === 'shade' ? '응달' : null;
+    const sub = [r.region || null, sun].filter(Boolean).join(' · ');
+    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('carabiner')), title: r.name, sub: sub || null,
+      end: el('span', { class: 'ln-end' }, el('span', { class: r.cond.state === 'good' ? 'ln-v open' : 'ln-v' }, r.cond.short ?? r.cond.text), arrow()), data: { 'data-crag': r.name } });
+    b.addEventListener('click', () => openCragSheet(r.name, undefined, b));
+    return b;
+  };
+  const find = lineRow({ title: `싱글피치 더 찾기 (${rows.length}곳)`, data: { 'data-home': 'find' } });
+  homeOpen.setAttribute('aria-label', '갈 수 있는 싱글피치');
+  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '갈 수 있는 곳')),
+    el('div', { class: 'ln-box' }, ...(rows.length ? rows.slice(0, 3).map(line) : [noteRow({ title: '이 시각에 갈 수 있는 싱글피치가 없어요' })]), find));
+  placeFinder(); // the title, the list's place in the sheet and homeOpen.hidden
+}
+function placeFinder() {
+  if (!finderReady) return;
+  // 홈의 틀은 일정이 있든 없든 같다: 검색·조건·지도 줄은 언제나 이 시트에 있고(지도 보기에서만 홈으로 돌아온다), 시간표는 일정 카드가 있는 날만 시트로 간다
+  const inSheet = !onMap(), boardIn = inSheet; // the 시간표 is in the sheet on every day: 홈 shows the open walls as a short box (drawHomeOpen)
+  if (inSheet !== finderIn) {
+    finderIn = inSheet;
+    if (inSheet) $('arriveHost').prepend(findHome.filters);
+    else findHome.filtersNext.before(findHome.filters);
+  }
+  $('arrive-title').textContent = inSheet ? (cragMode() ? '싱글피치 더 찾기' : '외벽 더 찾기') : '도착 시각';
+  if (boardIn !== boardInSheet) {
+    boardInSheet = boardIn;
+    if (boardIn) $('arriveHost').append(findHome.board, ...(findHome.crag ? [findHome.crag] : [])); // the crag list goes with it: the same 더 찾기 sheet
+    else { findHome.boardNext.before(findHome.board); if (findHome.crag) findHome.cragParent.insertBefore(findHome.crag, findHome.cragNext); }
+    arriveSheet.classList.toggle('is-find', boardIn);
+  }
+  // 지도 보기: the slider box itself sits under the filter row (pinned, as before the sheet), so the time can be moved while looking at the map; otherwise it is in the sheet, before the 시간표
+  const scrub = document.querySelector('.scrub');
+  if (onMap()) { if (scrub.previousElementSibling !== findHome.filters) findHome.filters.after(scrub); }
+  else if (!$('arriveHost').contains(scrub)) (findHome.board.parentNode === $('arriveHost') ? findHome.board : null) ? findHome.board.before(scrub) : $('arriveHost').append(scrub);
+  arriveRow.hidden = hasPlan || onMap();
+  homeOpen.hidden = hasPlan || onMap() || !homeOpen.childElementCount; // the slider is right there on the map (fitSticky: showTab calls it next, the observer on the form after a redraw)
+}
+finderReady = true;
+placeFinder();
+for (const host of [$('homeTop'), homeOpen]) host?.addEventListener('click', (e) => { if (e.target.closest('[data-home="find"]')) arriveSheet.showModal(); });
 const sheetForm = sheet.querySelector('form');
+$('condSched')?.addEventListener('click', () => { sheet.close(); showTab('sched', true); }); // 운동 스케줄 lives in the 일정 tab: this row goes there
 const ropeForm = $('profile').querySelector('form'); // 내 로프 길이 lives in 내 정보 (a setting, not a filter)
 for (const k of ['sun', 'minHours', 'sortMode', 'venue', 'approachMax', 'tempMin']) sheetForm.elements[k].value = ui[k];
 ropeForm.elements.ropeM.value = ui.ropeM;
@@ -2776,18 +3188,16 @@ const setUi = (k, v) => {
 };
 
 $('search').addEventListener('submit', (e) => e.preventDefault());
-$('search').addEventListener('input', (e) => {
-  if (e.target.id !== 'date' && e.target.id !== 'time') return;
-  if (!$('date').value) { render(); return; } // a cleared date (the picker's 삭제): the field goes back to the picked day instead of freezing the slider
+for (const host of [$('search'), arriveSheet]) host.addEventListener('input', (e) => { // the slider sits in the sheet now; the form still takes the search field's input
+  if (e.target.id !== 'time') return; // (the day is the hidden #date, set by render and the day chips)
   if (Number($('time').value) > 1380) $('time').value = '1380';
-  fadeNext = e.target.id === 'time';
+  fadeNext = true;
   go({ type: 'pick', date: $('date').value, min: Number($('time').value) });
 });
 $('nowBtn').addEventListener('click', () => go({ type: 'now' }));
 for (const [id, dir] of [['stepBack', -1], ['stepFwd', 1]]) { // ±1시간: the next / previous whole hour, the slider's own pick
   $(id).addEventListener('click', () => {
     if ($(id).getAttribute('aria-disabled') === 'true') return; // at the slider's end: nothing further
-    if (!$('date').value) return render(); // a cleared date: back to the picked day, as the slider does
     go({ type: 'pick', date: $('date').value, min: stepMinute(Number($('time').value), dir) });
   });
 }
@@ -2885,7 +3295,6 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
 // negative sticky top), unless even that would take over a short screen (landscape phone, large text):
 // then all of it scrolls away as before. The timetable axis sticks just below.
 // The 목록/지도 bar sticks right under that part (--ctl-h), and --stick-h covers both.
-$('mtnBand').append(mountainBand()); // 두 봉우리 선화: above the time box, so it scrolls away with the search row (fitSticky pins from the time box down)
 const controls = $('search');
 const tabbar = document.querySelector('.tabbar');
 const fitSticky = () => {
@@ -2897,8 +3306,16 @@ const fitSticky = () => {
     root.setProperty('--stick-h', '0px');
     return;
   }
+  const scrub = controls.querySelector('.scrub'); // 3a: the slider box is in the 도착 시각 sheet, so nothing of the header stays pinned (the axis pins under the top)
+  if (!scrub) {
+    controls.classList.add('unstuck');
+    tabbar.classList.add('unstuck');
+    document.documentElement.style.setProperty('--ctl-h', '0px');
+    document.documentElement.style.setProperty('--stick-h', '0px');
+    return;
+  }
   const box = controls.getBoundingClientRect();
-  const off = Math.max(0, controls.querySelector('.scrub').getBoundingClientRect().top - box.top - 4);
+  const off = Math.max(0, scrub.getBoundingClientRect().top - box.top - 4);
   const h = box.height - off;
   const axisH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.625; // .axis height, sticks below
   const bandH = parseFloat(getComputedStyle(document.documentElement).fontSize) * 2; // the list's heading line sticks under the axis too
@@ -2943,21 +3360,20 @@ $('favOnly').addEventListener('click', () => setUi('favOnly', !ui.favOnly));
 $('withBreaks').addEventListener('click', () => setUi('withBreaks', !ui.withBreaks));
 
 for (const k of tabs) {
-  $(`tab-${k}`).addEventListener('click', () => {
+  $(`tab-${k}`)?.addEventListener('click', () => {
     dropBackToCrag();
-    showTab(k);
-    if (k !== 'list') document.dispatchEvent(new CustomEvent(`stats:tab-${k}`)); // stats.js counts map and log by name
+    showTab(k === 'list' && onMap() ? 'list' : tabKey(k)); // 홈 pressed on 홈's own map: back to 목록 (from another tab it opens the last view)
+    if (k === 'log') document.dispatchEvent(new CustomEvent('stats:tab-log')); // stats.js counts it by name (the 지도 view counts at its toggle)
     scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }); // pressing a tab (even the open one) goes to the very top
   });
 }
 document.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
-  const order = wide.matches ? tabs.filter((k) => k !== 'map') : tabs; // no 지도 tab to land on when wide
-  const i = order.indexOf(ui.tab);
-  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: order.length - 1 }[e.key];
+  const i = tabs.indexOf(ui.tab);
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
   if (next === undefined) return;
   e.preventDefault();
   dropBackToCrag();
-  showTab(order[(next + order.length) % order.length], true);
+  showTab(tabKey(tabs[(next + tabs.length) % tabs.length]), true);
 });
 
 // Asks for the position (only on a press: 내 위치 / 가까운 순 in the list); kept in memory only.
@@ -3002,8 +3418,8 @@ document.querySelector('main').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
-  if (ui.tab === 'log') return;
-  if (ui.tab === 'map') { // Esc closes the map card, like its close button
+  if (ui.tab !== 'list') return;
+  if (onMap()) { // Esc closes the map card, like its close button
     if (!$('pin-card').childElementCount) return;
     mapApi?.select(null);
     return $('map').focus({ preventScroll: true });
@@ -3092,9 +3508,11 @@ partners = loadedPartners;
 state.walls = first ?? [];
 setWalls(state.walls);
 if (cragOn) state.crags = await fetchCrags().catch(() => []);
+if (zoneOn()) { zoneIds = loadZones(storage, state.crags); if (zoneIds.length) loadCragWx(); } // the banner needs the crag weather even in the wall view
 favs = loadFavs(storage, allWalls());
 schedule = loadSchedule(storage, allWalls());
 moves = liveMoves(schedule, loadMoves(storage, allWalls(), new Date()), new Date());
+loadTripsNow(); // after the walls and crags: a trip to a place not listed is kept aside (tripsOff), not dropped
 logView.reconcile(allWalls());
 const cragRoutesReady = cragOn ? loadCragRoutes({ crags: state.crags }).then((r) => { cragRoutes = new Map(Object.entries(r)); routeAsked.clear(); if (cragRoutes.size && cragMode()) render(); }).catch(() => {}) : Promise.resolve(); // the save totals are asked again with the topos
 showLoadError(!first);
@@ -3103,13 +3521,13 @@ showLoadError(!first);
 const sharedWall = wallFromSearch(state.walls, location.search);
 const invite = sharedWall ? parseInvite(location.search, new Date()) : null; // 같이 가요: the link also names a moment
 if (sharedWall) {
-  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', mode: 'wall' }); // a wall link opens the wall list even when the saved view is the 싱글피치 one (in memory only)
+  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', homeView: 'list', mode: 'wall' }); // a wall link opens the wall list even when the saved view is the 싱글피치 one (in memory only)
 }
 // A crag link (?crag=이름, the crag card's 공유) opens that crag in the 싱글피치 list the same way: this visit drops the filters
 // and the search, and shows the crag mode (in memory only). With config.singlePitch off it is ignored.
 const sharedCrag = !sharedWall && cragOn ? cragFromSearch(state.crags, location.search) : null;
 if (sharedCrag) {
-  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', mode: 'crag' });
+  linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', homeView: 'list', mode: 'crag' });
   if ($('findQ')) $('findQ').value = '';
 }
 syncRegions();
@@ -3210,4 +3628,4 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     $('install-close').addEventListener('click', () => { closeInstall(); b.hidden = true; });
   }
 }
-showTab(ui.tab); // loadUi keeps it to TABS
+showTab(tabKey(ui.tab)); // loadUi keeps it to TABS (an old saved 지도 tab reads as 홈's 지도 view)

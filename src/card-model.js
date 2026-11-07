@@ -699,11 +699,11 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     where,
     place, // expanded row
     state: status.state,
-    warn: warning, // closure-warning.js: a closed / short report covers the "열림" words (leftCard, left) with 확인 중; the hours themselves stay
+    warn: warning, // closure-warning.js: a closed / short report covers the "열림" words (leftCard, left) with 확인 전; the hours themselves stay
     soon: !warning && endingSoon(row),
     short: Boolean(row.short),
     statusText: text,
-    left: warning ? '확인 중' : rowLeft(status, at, wall),
+    left: warning ? '확인 전' : rowLeft(status, at, wall),
     leftCard: warning ? null : leftCard(status),
     hoursOnGauge: Boolean(bar?.open.length), // the gauge's ends say the hours: the photo does not repeat them
     sub: [where, plain ? text : statusText(status, at, wall, { dropClose: true })].filter(Boolean).join(' · '),

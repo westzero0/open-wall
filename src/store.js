@@ -281,6 +281,19 @@ export const MAX_CAUTION = 400;
 const cleanNote = (v, max) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, '').trim().slice(0, max).trim() : '');
 const cleanIntIn = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
 
+// 날씨 구역 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 3절): 종류 칩(멀티·볼더, 없으면 싱글), 등반 대표 고도(m), 봉우리 이름 목록.
+export const ZONE_TYPES = ['multi', 'boulder'];
+export const MAX_PEAKS = 30, MAX_PEAK_NAME = 30, MAX_ELEV_M = 4000;
+function cleanPeaks(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const p of v) {
+    const n = typeof p === 'string' ? p.normalize('NFC').trim() : '';
+    if (n && n.length <= MAX_PEAK_NAME && !out.includes(n)) out.push(n);
+  }
+  return out.slice(0, MAX_PEAKS);
+}
+
 // 접근 단계(사진·방향·헷갈리는 곳·소요 분)와 전체 접근 시간. 글이 빈 단계는 버리고, 단계 안의 잘못된 필드는 그 필드만 뺀다. min 0은 유효.
 export const MAX_STEPS = 16, MAX_STEP_TEXT = 80, MAX_STEP_WRONG = 40, MAX_APPROACH_MIN = 240;
 export const STEP_TURNS = ['left', 'right', 'straight', 'up', 'down'];
@@ -549,6 +562,9 @@ export function normalizeWall(raw) {
   const bolts_max = cleanIntIn(raw.bolts_max, 1, 30);
   const approach_steps = cleanSteps(raw.approach_steps);
   const approach_min = cleanIntIn(raw.approach_min, 1, MAX_APPROACH_MIN);
+  const type = ZONE_TYPES.includes(raw.type) ? raw.type : null;
+  const elev_m = cleanIntIn(raw.elev_m, 0, MAX_ELEV_M);
+  const peaks = cleanPeaks(raw.peaks);
 
   return {
     region,
@@ -598,6 +614,9 @@ export function normalizeWall(raw) {
     ...(bolts_max !== null ? { bolts_max } : {}),
     ...(approach_steps.length ? { approach_steps } : {}),
     ...(approach_min !== null ? { approach_min } : {}),
+    ...(type ? { type } : {}),
+    ...(elev_m !== null ? { elev_m } : {}),
+    ...(peaks.length ? { peaks } : {}),
   };
 }
 

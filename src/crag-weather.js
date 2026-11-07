@@ -8,7 +8,7 @@ export const CRAG_WX_KEY = 'open-wall:wx-crag';
 const TIMEOUT_MS = 8000;
 
 // names and coordinates (2 decimals, what is sent): a crag added, removed or moved asks again
-const keyOf = (spots) => spots.map(([c, p]) => `${c.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join('|');
+const keyOf = (spots) => spots.map(([c, p]) => `${c.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}${Number.isInteger(c.elev_m) ? `^${c.elev_m}` : ''}`).join('|');
 
 function readCache(storage) {
   try {
@@ -53,7 +53,7 @@ export async function loadCragWeather(crags, { fetchFn = fetch, storage = null, 
     const r = build(spots, saved.daily, saved.hourly, saved.wet);
     if (r.ok) return r;
   }
-  const points = spots.map(([, p]) => p);
+  const points = spots.map(([c, p]) => (Number.isInteger(c.elev_m) ? { ...p, elev: c.elev_m } : p)); // a zone's elevation corrects the temperatures
   const [dailyJson, hourlyJson, wetJson] = await Promise.all([ask(fetchFn, cragForecastUrl(points)), ask(fetchFn, listForecastUrl(points)), ask(fetchFn, wetnessForecastUrl(points))]);
   const r = build(spots, dailyJson, hourlyJson, wetJson);
   if (r.ok) {

@@ -1,6 +1,7 @@
 // src/share-image.js — the invite as a 9:16 picture (1080×1920) for a messenger or a story. Canvas only; no new dependency.
 // wrapLines, sunParts and shareSay are pure (tested); drawInvite, pictureBlob and shareInvite need a browser. The picture cannot carry a link, so it is always
 // shared together with the invite text, or saved while the text is copied when the phone cannot share files.
+import { LOCKUP } from './poster-lockup.js';
 export const W = 1080;
 export const H = 1920;
 export const M = 90;
@@ -60,8 +61,9 @@ export const image = (src) => new Promise((ok) => {
   img.onerror = () => ok(null); // no logo is better than no picture
   img.src = src;
 });
-// the horizontal lockup (mark + 해벽) with the wall in paper colour, for the dark ground
-export const lockup = () => image('assets/haebyeok-lockup-dark.svg');
+// the horizontal lockup (emblem + 희노애Rock) with the wall in paper colour, for the dark ground
+export const LOCKUP_RATIO = LOCKUP.w / LOCKUP.h; // assets/hinoae-lockup-dark.svg viewBox
+export const lockup = () => image('assets/hinoae-lockup-dark.svg');
 
 export const INK = '#17191c'; // the brand's 먹 (the logo's text ink; the light-ground wall is #2a2d32)
 export const PAPER = '#f4f2ec';
@@ -265,7 +267,7 @@ function block(g, { name, date, time, sunLine = null, sunInfo = null, tags = [],
 
 /** drawInvite(canvas, { name, date, time, at, open, sun, sunLine, sunInfo, tags, note, made } — tags: the chips (kinds, head-count)) — all strings already cleaned by the caller. */
 export async function drawInvite(canvas, { name, date, time, at, open = [], sun = [], sunLine = null, sunInfo = null, tags = [], note = '', made = '' }) {
-  await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 같이 가요 0123')));
+  await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '희노애Rock 같이 가요 0123')));
   canvas.width = W;
   canvas.height = H;
   const g = canvas.getContext('2d');
@@ -276,7 +278,7 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
   // read from the right margin. The words and the ruler are one block stacked up from the bottom, so
   // what a short invite leaves free lies between the lockup and the block. Everything that matters stays between 270 and
   // 1650: a story's top and bottom bars cover the rest. run(false) only measures.
-  if (sign) g.drawImage(sign, M, 190, (303 / 140) * 270, 270); // the brand's own 해벽, not letters set here (brand/design-system.md)
+  if (sign) g.drawImage(sign, M, 190, LOCKUP_RATIO * 270, 270); // the brand's own lockup, not letters set here (brand/design-system.md)
   const BOTTOM = 1490;
   const RULER = 190; // from the ruler's top figures to its legend
   const GAP = 70;
@@ -303,7 +305,7 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
 const CARD_W = 600;
 const CARD_H = 800;
 export async function drawInviteCard(canvas, { name, date, time, sunLine = null, sunInfo = null, tags = [], note = '', made = '' }) {
-  await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 같이 가요 0123')));
+  await Promise.all(['700 64px', '400 48px'].map((f) => document.fonts.load(`${f} ${FONT}`, '희노애Rock 같이 가요 0123')));
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const g = canvas.getContext('2d');
@@ -314,7 +316,7 @@ export async function drawInviteCard(canvas, { name, date, time, sunLine = null,
   const sign = await lockup();
   const TOP = 80;
   const LOGO = 270; // drawInvite's lockup height: the logo never changes size
-  if (sign) g.drawImage(sign, M, TOP, (303 / 140) * LOGO, LOGO);
+  if (sign) g.drawImage(sign, M, TOP, LOCKUP_RATIO * LOGO, LOGO);
   const FOOT = LH - 170; // the hairline; made and the credit under it as in drawInvite (+49, +93)
   const BOTTOM = FOOT - 55;
   const ROOM = BOTTOM - (TOP + LOGO + 24);

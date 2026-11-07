@@ -16,9 +16,9 @@ export function createMonthShare({ getWalls, icon = null, storage = safeStorage(
   const go = $('ms-share');
   const say = $('ms-say');
   const save = $('ms-save');
-  if (icon) { save.prepend(icon('download')); go.prepend(icon('share')); } // the icons lead the buttons' own words, as in the 오늘의 해벽 sheet
+  if (icon) { save.prepend(icon('download')); go.prepend(icon('share')); } // the icons lead the buttons' own words, as in the 오늘의 벽 sheet
   const ratioBtns = { '4:5': $('ms-ratio-45'), '9:16': $('ms-ratio-916') };
-  let ratio = '4:5'; // the same choice as the 오늘의 해벽 card, kept on this device
+  let ratio = '4:5'; // the same choice as the 오늘의 벽 card, kept on this device
   let ctx = null;
   let blob = null;
   let text = '';

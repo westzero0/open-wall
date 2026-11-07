@@ -1,6 +1,7 @@
 @font-face { font-family: "Pretendard Variable"; font-style: normal; font-weight: 300 800; font-display: swap; src: url("assets/fonts/PretendardVariable.subset.woff2") format("woff2-variations"); } /* self-hosted subset: KS X 1001 + every character the app and data use (OFL, assets/fonts/Pretendard-OFL.txt); anything else falls to IBM Plex Sans KR */
 /* ---- tokens (palette B: moss green, wine, amber) ---- */
 :root {
+  --icon-sm: 20px; /* 작은 아이콘 한 변(칸 안의 svg: 줄 앞 그림, 버튼 안 아이콘) */
   --icon-row: 48px; /* card: how far the camera / share row stands off the foot of the photo or the placeholder (see .ph-hero) */
   --paper: #f2f2f7; /* grouped-list grey (애플 결); the logo paper stays --logo-paper */
   --logo-paper: #f4f2ec; /* the logo's paper: manifest background_color, the app icons and the loading screen share it, so the OS start screen hands over without a seam */
@@ -24,6 +25,7 @@
   --open: #1e7e34;        /* text on surface */
   --open-bar: #34c759; /* day bar fill */
   --warn: var(--soon);    /* text on surface */
+  --rain-tint: color-mix(in srgb, var(--warn) 8%, var(--surface)); /* 비 예보 알약의 연분홍 면(2026-11-07 승인): 글자는 --warn, 어두운 테마도 같이 따라감 */
   --sun-bar: var(--sun);
   --point: #3f6c9e; /* 포인트(2026-11-05): 지금 고른 시각만 — 시각 태그·시각선·슬라이더 손잡이 테두리·현재 탭·답의 시각과 개수. 컨셉의 애(파랑), 응달 파랑(--shade-bar)보다 어둡고 낮은 채도 */
   --chip: 40px; --glyph: 30px; --badge: 22px; /* 목록 줄 날씨 칩 규격: 칩 · 그림 · 모서리 배지 */
@@ -223,13 +225,12 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 .controls[hidden] { display: none; }
 .controls > .wrap { display: grid; gap: var(--sp-4); }
 .field { display: block; min-width: 0; }
-#date, #nowBtn {
+#nowBtn {
   width: 100%; min-height: var(--tap); padding: 0 var(--sp-8); font-size: var(--fs-md);
   border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface);
 }
 #nowBtn { width: auto; padding: 0 var(--sp-12); font-weight: 600; color: var(--fg); border-color: transparent; border-radius: var(--r-pill); background: var(--sunken); } /* a small chip, not a second outlined box: the search field is the one outlined control */
 #findQ { border-radius: var(--r-base); }
-#date { width: auto; }
 /* arrival time: the slider follows the thumb 1:1, nothing animates */
 /* date · weekday · arrival wrap as a unit under large text; "지금으로" sits at the slider's end, so it never widens the header */
 .scrub-hd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); }
@@ -242,11 +243,18 @@ h1 strong { color: var(--fg); font-weight: 700; font-size: 1.125rem; }
 #countOpen { display: none; } /* the headline in the band already counts them */
 .scrub-q { font-size: var(--fs-md); font-weight: 700; color: var(--fg); white-space: nowrap; }
 .scrub-date { position: relative; flex: 0 1 auto; margin-left: auto; min-width: 0; }
-.scrub-pick { position: absolute; inset: -6px 0; } /* the invisible date field is 44px tall: the pill is 32px */
-.scrub-date:has(#date:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
-.scrub-pick #date { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; cursor: pointer; } /* invisible, over the date text: its tap is the calendar */
-.scrub-sum { display: flex; align-items: center; gap: var(--sp-8); min-height: 32px; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: var(--sunken); list-style: none; } /* a pill like −1시간 and 정렬: it is a button that opens the calendar */
-.scrub-sum::after { content: "▾"; content: "▾" / ""; color: var(--muted); font-size: var(--fs-sm); } /* the arrow is decoration: no alt text for screen readers */
+.scrub-sum { display: flex; align-items: center; gap: var(--sp-8); min-height: 32px; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: var(--sunken); list-style: none; } /* the picked day as a tag (no ▾: 홈 has no calendar, the days are the chips under the question) */
+.scrub-days.segs { margin-top: var(--sp-8); grid-auto-columns: max-content; overflow-x: auto; scrollbar-width: none; } /* 오늘·내일·모레 + 일정 날(●) + + 일정 잡기: the .segs control (app.js drawDays), above the time box so the pinned part does not grow; it scrolls sideways when the trips are many */
+.scrub-days.segs button { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); padding: 0 var(--sp-12); } /* .segs :is(button)보다 명시도를 높여 칩 폭·점 위치를 지킨다 */
+html[data-text] .scrub-days.segs { flex-wrap: nowrap; } /* 큰 글씨에서 .segs가 flex+wrap이 돼도 칩 줄은 가로 스크롤(줄바꿈·눌림 없음) */
+.scrub-days.segs > button { flex: none; }
+.scrub-days .day-dot { display: inline-block; width: 6px; height: 6px; margin-left: var(--sp-4); border-radius: 50%; background: currentColor; vertical-align: middle; } /* 일정이 있는 날: 글자 뒤 점(같은 말이 aria-label에도 있다) */
+/* 시안 new-home2: 날짜 칩은 따로 테두리가 있는 알약, 고른 칩은 굵은 테두리(세그먼트 바가 아님). 새 토큰 없음 */
+.scrub-days.segs { display: flex; gap: var(--sp-8); padding: var(--sp-8) var(--sp-4); background: none; border-radius: 0; }
+.scrub-days.segs > button { min-height: var(--tap); border-radius: var(--r-pill); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; }
+.scrub-days.segs > button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+.scrub-days .day-add { color: var(--muted); } /* 두 톤: 일정 칩·오늘 등은 --fg(.segs), 칩을 더하는 + 일정 잡기만 --muted. (0,2,0)이라 .segs :is(button)(0,1,1)을 이긴다 */
+@media (max-width: 340px) { .scrub-days.segs > button { padding: 0 var(--sp-8); } } /* 320px: 오늘·내일·모레 + 일정 잡기가 288px 안에 끝까지 들어간다(12px면 6px 잘림) */
 .scrub-sum .sub { min-width: 0; white-space: normal; font-size: var(--fs-sm); font-weight: 600; } /* wraps at spaces (keep-all) instead of being cut off */
 .scrub-row { position: relative; display: flex; align-items: center; gap: var(--sp-8); min-height: calc(var(--tap) - 4px); } /* same height with or without the button */
 #time { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; height: var(--tap); margin: 0 calc(var(--thumb-w) / -2); /* half the thumb width: the thumb's half width, so its centre travels exactly the axis' 06–24 plot */ -webkit-appearance: none; appearance: none; background: transparent; }
@@ -352,8 +360,8 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 :root[data-theme="dark"] #map .leaflet-bar { border: 1px solid var(--line); box-shadow: none; border-radius: var(--r-base); overflow: hidden; }
 :root[data-theme="dark"] #map .leaflet-control-attribution { background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--muted); }
 :root[data-theme="dark"] #map .leaflet-control-attribution a { color: var(--muted); }
-/* wide screens: the list and the map side by side. app.js (`wide`) shows the map panel with the 목록 tab and drops the
-   지도 tab; 기록 sits under the tab bar on the same left edge. The tab bar stops sticking (--stick-h = the controls only). */
+/* wide screens: the list and the map side by side. app.js (`wide`) shows the map panel with 홈 and the 목록 ⇄ 지도
+   toggle goes away; 일정·기록 sit under the tab bar on the same left edge. The tab bar stops sticking (--stick-h = the controls only). */
 @media (min-width: 1024px) {
   html { scrollbar-gutter: stable; } /* no 7px sideways shift when a tab is short enough to lose the scrollbar */
   .wrap { max-width: 1200px; }
@@ -363,11 +371,11 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
   main.wrap > #panel-map { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: calc(var(--ctl-h, 0px) + var(--sp-12)); }
   .controls > .wrap > * { max-width: 460px; } /* the filters and the slider are as wide as the list column under them, not the whole page */
   .controls > .wrap > .scrub { max-width: 492px; } /* the time box bleeds 16px each side (margin -16px) like the axis and the rows under it: 460 + 32, so its slider lines up with the axis */
-  main.wrap > #panel-log { max-width: 680px; } /* 기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
+  main.wrap > :is(#panel-log, #panel-sched) { max-width: 680px; } /* 일정·기록: wider than the list column but on the same left edge, so the tab bar never moves sideways */
   .tabbar { position: static; padding: var(--sp-4) var(--sp-16); box-shadow: none; z-index: var(--z-tabbar-flow); margin: 0 -16px; }
   .tabbar > .tabs { max-width: none; margin: 0; }
-  .tabs { grid-template-columns: 1fr 1fr; }
-  #tab-map { display: none; }
+  .tabs { grid-template-columns: 1fr 1fr 1fr; }
+  #homeView { display: none; } /* the list and the map are side by side: no 목록 ⇄ 지도 to choose */
   #map { height: calc(100dvh - var(--stick-h, 0px) - 275px); } /* room for the strip under the controls and the legend below */
 }
 /* pin names (src/map.js) at street zoom; map.js hides the ones that would overlap */
@@ -709,6 +717,7 @@ html[data-text="xlarge"] #group-open > .band { flex-wrap: wrap; row-gap: var(--s
 .wx-temp { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: var(--sp-2); font-size: var(--fs-xs); font-weight: 600; line-height: 1; color: var(--muted); white-space: nowrap; }
 :is(.row, .crag-row).has-photo.is-open :is(.row-btn, .crag-head) .wx-temp { color: var(--on-photo); }
 :is(.row-btn, .crag-head) > .bar { margin-top: calc(var(--fs-xs) + 3px); } /* the temperature hangs under the chip: the bar starts below it even on a 06~07시 row, whose bar begins under the chip */
+:is(.row-btn, .crag-head):has(.wx-temp) > .bar { margin-top: calc(var(--fs-xs) + 8px); } /* 320px: 온도 글자 아래로 막대가 4px 겹치던 줄(6~7시 시작 막대) */
 /* the list row's chip is a 34px square (the icon centred), so the badge and the name have room */
 :is(.row, .crag-row) .sunnow.pic { position: relative; width: 34px; height: 34px; padding: 0; justify-content: center; margin-right: var(--sp-4); }
 :is(.row, .crag-row) .sunnow.pic svg { width: 24px; height: 24px; }
@@ -720,7 +729,7 @@ html[data-text="xlarge"] #group-open > .band { flex-wrap: wrap; row-gap: var(--s
 :is(.row, .crag-row).is-open.part :is(.row-btn, .crag-head) .sunnow.sun.pic:not(.scw-on, .scw-veil) { position: relative; background: rgb(255 255 255 / .9); color: #a85f0a; box-shadow: none; }
 .wx-credit { padding: var(--sp-8) var(--sp-16) 0; font-size: var(--fs-xs); color: var(--muted); }
 .wx-credit a { color: inherit; display: inline-block; padding: var(--sp-8) 0; margin: calc(var(--sp-8) * -1) 0; } /* 44px tap area, same line height */
-.row-go { flex: none; width: .75em; margin-left: calc(-1 * var(--sp-4)); font-size: var(--fs-base); line-height: 1; color: var(--muted); text-align: center; } /* the row is a button: › says so */
+.row-go.pv-arrow { flex: none; width: .75em; margin-left: calc(-1 * var(--sp-4)); font-size: var(--fs-base); line-height: 1; color: var(--muted); text-align: center; } /* the row is a button: › says so */
 :is(.row, .crag-row).is-open .row-go { display: none; } /* the open card needs no hint: the › is for the list row only */
 .l1 .left { min-width: 3.4em; text-align: right; }
 .left .lf-pre { display: none; } /* 가능: only on the open card's pill */
@@ -746,7 +755,7 @@ html[data-text="xlarge"] #group-open > .band { flex-wrap: wrap; row-gap: var(--s
 /* light bars (closed, the legend's past swatch) get an edge with 3:1 against the sheet, so their length stays readable */
 .row.closed .bar .seg { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 70%, transparent); }
 .row.soon .bar .seg { background: var(--soon); }
-/* 닫힘·단축 제보(closure-warning): the green "열림" fill gives way to an amber outline, so the bar does not say 열림 over a warning; the passed grey stays */
+/* 닫힘·단축 제보(closure-warning): the green "열림" fill gives way to a --warn outline, so the bar does not say 열림 over a warning; the passed grey stays */
 .row.warned .bar .seg:not(.past), .card.warned .bar .seg:not(.past) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warn); }
 .row.soon .bar .seg.past, .card.soon .bar .seg.past { background: var(--gone); } /* gone is grey on a closing-soon bar too: only the time left is pink */
 .row.closed .bar .seg, .row.unknown .bar .seg { background: var(--off); }
@@ -901,15 +910,16 @@ dialog.gal.is-zoomed .gal-navs, dialog.gal.is-zoomed .gal-hint { display: none; 
 /* the decision line: today's hours one step larger */
 .susp-pill { display: inline-block; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: var(--warn); color: var(--on-accent); font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
 .today-row .today b.susp-pill, .rhero-cap b.susp-pill { display: inline-block; width: fit-content; margin-top: var(--sp-4); font-size: var(--fs-sm); line-height: 1.8; letter-spacing: 0; text-shadow: none; } /* a small pill, not the 2rem hours of an open day */
-/* 닫힘·단축 제보: an amber pill in the place of the remaining-time pill, the phone beside it (44px target); the words carry it, colour only helps */
+/* 닫힘·단축 제보: a --warn pill in the place of the remaining-time pill, the phone beside it (44px target); the words carry it, colour only helps */
 .warn-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4); vertical-align: middle; }
-.warn-pill { display: inline-block; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); font-weight: 700; font-size: var(--fs-sm); line-height: 1.8; white-space: nowrap; }
+.warn-pill { display: inline-block; padding: 0 var(--sp-12); border-radius: var(--r-pill); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); font-weight: 700; font-size: var(--fs-sm); line-height: 1.8; max-width: 100%; }
+.warn-pill .wp-t, .warn-pill .wp-s { white-space: nowrap; } /* the pill folds to two lines at a word edge (큰 글자·320px), each half stays whole; the short .warn-left label keeps its nowrap */
 .warn-left { color: var(--warn); font-weight: 700; white-space: nowrap; }
 .has-photo.is-open .warn-left { color: var(--soon-on-white); } /* it sits on the white glass pill in both themes */
 .warn-line { margin-top: var(--sp-8); }
 .warn-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--warn); }
 .row.is-open.warned .row-btn .left { display: none; } /* the open card says it in its own pill */
-.row.has-photo.is-open.warned .row-btn .left { display: inline-block; color: var(--soon-on-white); } /* a photo card: the glass pill on the photo says 확인 중 (the one place the eye starts) */
+.row.has-photo.is-open.warned .row-btn .left { display: inline-block; color: var(--soon-on-white); } /* a photo card: the glass pill on the photo says 확인 전 (the one place the eye starts) */
 .g-lead.susp { color: var(--warn); font-weight: 600; }
 .today-row .today b { font-size: var(--fs-lg); letter-spacing: -.02em; }
 /* 혼잡도: the level is in the words; the 3-bar meter (1 여유 · 2 보통 · 3 혼잡 filled) repeats it without colour */
@@ -1423,13 +1433,13 @@ html:is([data-text="large"], [data-text="xlarge"]) .irow.notice:has(.nt-go) .nt-
 .gsk-n-arrow { fill: var(--muted); } .gsk-n-txt { fill: var(--muted); font: 700 10px var(--font); font-variant-numeric: tabular-nums; }
 .gsk-cap { color: var(--muted); font-size: var(--fs-xs); }
 .gear-ic { display: inline-flex; vertical-align: -4px; margin-right: var(--sp-4); color: var(--muted); } /* the kind's carabiner, before a shop's name (the card's line and the sheet) */
-.gear-ic svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gear-ic svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .gear-name { margin: var(--sp-8) 0 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; }
 .gear-note { margin: 0; color: var(--muted); font-size: var(--fs-md); }
 .gear-links { display: grid; grid-template-columns: 1fr 1fr; margin-top: var(--sp-8); overflow: hidden; border-radius: var(--r-base); box-shadow: inset 0 0 0 1.5px var(--gear-edge); }
 .gear-links.n1 { grid-template-columns: 1fr; }
 .gear-link { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: 52px; color: var(--fg); font-weight: 600; text-decoration: none; }
-.gear-link svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gear-link svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .gear-link + .gear-link { border-left: 1.5px solid var(--gear-edge); }
 .gear-link .gl-out { color: var(--muted); font-weight: 400; }
 .gear-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
@@ -1691,12 +1701,13 @@ dialog::backdrop { background: var(--scrim); }
 .load-error p { margin: 0 0 var(--sp-12); text-wrap: pretty; }
 .load-error button { min-height: 44px; padding: 0 var(--sp-16); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); font-weight: 600; white-space: nowrap; }
 .load-error button:disabled { opacity: .6; }
-.load-failed .tabbar, .load-failed #panel-list, .load-failed #panel-map, .load-failed #panel-log { display: none; }
+.load-failed .tabbar, .load-failed #panel-list, .load-failed #panel-map, .load-failed #panel-log, .load-failed #panel-sched { display: none; }
 
 #breakRow, #favRow { flex-wrap: wrap; }
 .sent { display: inline-block; } /* a sentence moves to the next line whole instead of breaking in the middle (hints, notices) */
 .nb { white-space: nowrap; }
 .sh-hint { flex-basis: 100%; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+.home-open > .sh-hint { margin: var(--sp-8) var(--sp-4) 0; } /* 시안 ⑦-c: 위치 없을 때 목록 아래 한 줄 */
 .chip.break { color: var(--muted); }
 
 .checked { margin-top: var(--sp-8); font-size: var(--fs-xs); color: var(--muted); }
@@ -1765,6 +1776,13 @@ dialog::backdrop { background: var(--scrim); }
 /* the two 제보 links under the card's buttons stay quiet: small, a pale underline (the tap area stays 44px) */
 .help-row .help-link { display: inline-flex; align-items: center; gap: var(--sp-4); font-size: var(--fs-xs); text-decoration: none; } /* a small icon and the words, no underline: quiet, not a web link */
 .help-row .help-link svg { width: 14px; height: 14px; flex: none; }
+/* 날씨 구역: 등록한 구역의 비 예보 띠(홈 맨 위, 휴무안내 줄과 같은 마크업)와 카드의 종류·봉우리 줄, 등록 버튼 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md) */
+.zone-banner { margin: 0 0 var(--sp-12); }
+.zone-banner[hidden] { display: none; }
+.zone-meta { margin: var(--sp-4) 0; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: break-word; }
+.zone-toggle { white-space: nowrap; min-width: var(--tap); }
+.zone-banner .irow.notice.rain .nt-t { color: var(--fg); font-weight: 600; } /* 알리기만 하는 줄: 눌러지는 파란 링크처럼 보이지 않게 본문색 */
+.zone-toggle[aria-pressed="true"] { color: var(--fg); font-weight: 600; text-decoration: none; }
 .rp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .rp-status { min-height: 1.4em; margin: var(--sp-8) 0; font-size: var(--fs-sm); white-space: pre-line; }
 .rp-alt { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--accent); font-weight: 600; white-space: nowrap; }
@@ -1789,6 +1807,8 @@ dialog::backdrop { background: var(--scrim); }
 button.pf-link { width: 100%; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .pf-ios { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
 .pf-link span { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); text-align: right; }
+.pf-link span:not(.pv-arrow) { margin-left: auto; } /* 설명은 오른쪽으로 붙이고 › 가 맨 끝에 온다 */
+.pf-link .pv-arrow { font-size: var(--fs-md); } /* .pf-link span의 xs를 이겨 다른 › 와 같은 크기 */
 .pf-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 시트 머리의 글자 탭(나 | 설정): 본문의 면 세그먼트와 달리 밑줄 탭, 화면 전체가 바뀐다 */
 .sh-head:has(> .hd-tabs) { flex-wrap: wrap; align-content: flex-start; padding-bottom: 0; }
@@ -1859,7 +1879,7 @@ html[data-text="xlarge"] .map-find-btn { top: calc(var(--tap) + var(--sp-8)); } 
 .find { position: relative; flex: 1 1 0; min-width: 0; margin: 0; }
 /* the search field's 내 위치: a pin at its right end while the field is empty (typing brings the browser's own ✕ there); filled in the sun's colour while 가까운 순 runs on a known position */
 .find-loc { position: absolute; top: 0; right: 0; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--r-base); background: none; color: var(--muted); cursor: pointer; }
-.find-loc svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.find-loc svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .find-loc[aria-pressed="true"] { color: var(--sun-ui); }
 .find-loc[aria-pressed="true"] svg { fill: color-mix(in srgb, var(--sun-ui) 28%, transparent); }
 .find-loc.busy { opacity: .5; }
@@ -1990,7 +2010,7 @@ p.newspill { white-space: normal; border-radius: var(--r-base); padding: 0 var(-
 :is(.expand-in, .crag-body) .dock .been-btn { background: var(--accent); box-shadow: var(--shadow-seg); color: var(--on-accent); font-weight: 800; } /* the app's own action, the card's first: accent fill (the one coloured fill in the dock) */
 :is(.expand-in, .crag-body) .dock .been-btn.done { background: var(--sunken); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); color: var(--fg); font-weight: 700; } /* done: quiet again, the card has what it asked for */
 :is(.expand-in, .crag-body) .dock .been-btn :is(svg, .been-stamp) { color: currentColor; }
-.dock :is(svg, .been-stamp) { width: 20px; height: 20px; flex: none; }
+.dock :is(svg, .been-stamp) { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
 .dock .been-btn small { font-size: inherit; }
 .dock > :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 길찾기 · 전화: icons only (aria-label + title say it), one square each; 다녀왔어요 takes the rest of the line */
@@ -2086,7 +2106,7 @@ button.cchip { position: relative; cursor: pointer; }
 .lg-act-meta { margin: var(--sp-8) var(--sp-2) 0; font-size: var(--fs-sm); color: var(--muted); }
 .lg-info { position: relative; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: var(--sp-8); padding: 0; vertical-align: -5px; border: 0; background: none; color: var(--muted); }
 .lg-info::after { content: ""; position: absolute; inset: -10px; }
-.lg-info svg { width: 20px; height: 20px; }
+.lg-info svg { width: var(--icon-sm); height: var(--icon-sm); }
 .ri-list { display: grid; margin: var(--sp-4) 0 0; padding: 0; list-style: none; }
 .ri-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-4) var(--sp-12); min-height: 52px; padding: var(--sp-8) 0; border-top: 1px solid var(--hair); }
 .ri-name { display: grid; gap: 1px; min-width: 0; }
@@ -2115,8 +2135,8 @@ button.cchip { position: relative; cursor: pointer; }
    half in front) with 5 sun stops on the front arc (in front of the face), one more filled per tier, 전국 완주 draws the whole orbit solid;
    -1 (none yet) a dashed face with the empty orbit. The orbit box is 174% x 61% of the seal, tilted -24deg; margins reserve its reach. */
 .rk-seal { --rk-line: color-mix(in srgb, var(--muted) 60%, transparent); position: relative; flex: none; width: 56px; height: 56px; margin: var(--sp-12) 22px var(--sp-12) 20px; }
-.rk-face { position: absolute; inset: 0; z-index: 1; border: 2px solid var(--open); border-radius: 50%; background: var(--surface); color: var(--open); box-shadow: 0 0 0 3px var(--surface); } /* page-colour stroke: the orbit behind stops short of the rim */
-.rk-face .stamp { position: absolute; left: 24%; top: 24%; width: 52%; height: 52%; }
+.rk-face { position: absolute; inset: 0; z-index: 1; border-radius: 50%; background: var(--surface); color: var(--open); box-shadow: 0 0 0 3px var(--surface); } /* page-colour stroke: the orbit behind stops short of the rim */
+.rk-face .stamp { position: absolute; inset: 0; } /* the emblem's own ring is the rim */
 .rk-orb { position: absolute; left: -37%; top: 19.5%; width: 174%; height: 61%; border: 1px solid var(--rk-line); border-radius: 50%; transform: rotate(-24deg); pointer-events: none; }
 .rk-back { z-index: 0; clip-path: inset(-3px -3px 50% -3px); }
 .rk-front { z-index: 2; clip-path: inset(50% -3px -3px -3px); box-shadow: 0 0 0 2px var(--surface), inset 0 0 0 2px var(--surface); } /* page-colour halo both sides: the line weaves over the rim */
@@ -2124,8 +2144,7 @@ button.cchip { position: relative; cursor: pointer; }
 .rk-dots { z-index: 3; border: 0; }
 .rk-dot { position: absolute; width: calc(6px * var(--s, 1)); height: calc(6px * var(--s, 1)); margin: calc(-3px * var(--s, 1)) 0 0 calc(-3px * var(--s, 1)); border-radius: 50%; border: 1px solid var(--rk-line); background: var(--surface); box-shadow: 0 0 0 2px var(--surface); } /* the page-colour halo cuts the orbit line behind the dot */
 .rk-dot.on { width: calc(9px * var(--s, 1)); height: calc(9px * var(--s, 1)); margin: calc(-4.5px * var(--s, 1)) 0 0 calc(-4.5px * var(--s, 1)); border: 0; background: var(--open); }
-.rk-seal[data-level="-1"] .rk-face { border-color: var(--line-strong); border-style: dashed; }
-.rk-seal[data-level="-1"] .stamp { left: 30%; top: 30%; width: 40%; height: 40%; background: var(--muted); opacity: .5; }
+.rk-seal[data-level="-1"] .stamp { background: var(--muted); opacity: .5; }
 .rk-seal.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .rk-seal.stamp-in { animation: none; } }
 .lg-add {
@@ -2180,7 +2199,7 @@ html[data-text] .ps-ratio { flex-basis: 100%; } /* 큰 글씨: 세그먼트가 �
 .ps-pick { position: absolute; right: var(--sp-8); bottom: var(--sp-8); background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-edge); color: var(--fg-on-white); }
 .ps-pick:focus-visible { outline-offset: 2px; }
 .ps-actions .sh-toggle { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-8); font-size: var(--fs-md); }
-.ps-actions .sh-toggle svg { width: 20px; height: 20px; flex: none; }
+.ps-actions .sh-toggle svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
 .ps-share:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } /* sharing is what the sheet is for; saving is the same button in outline */
 /* the card keeps its own shape (4:5 or 9:16): size it by what fits, never by a fixed ratio */
 #ps-canvas, #ps-img { width: auto; height: auto; aspect-ratio: auto; max-width: min(72vw, 300px); max-height: 40vh; border-radius: var(--r-8); background: #17191c; box-shadow: var(--shadow-pop); }
@@ -2228,7 +2247,7 @@ html[data-text] .ps-ratio { flex-basis: 100%; } /* 큰 글씨: 세그먼트가 �
 .cal-day:has(.cal-stamp) .cal-n { visibility: hidden; } /* a stamped day shows the stamp only, whatever the artwork lets through */
 td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open) 14%, transparent); outline: 2px solid var(--fg); outline-offset: 2px; }
 /* the stamp: the logo file (or the wall's own, via --stamp-src from src/stamp.js) as a one-colour mask in the --open ink; the calendar's stamp is pressed over the day number and covers it (the button's aria-label carries the date) */
-.stamp { display: block; background: var(--open); -webkit-mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/haebyeok-mark.svg)) center / contain no-repeat; }
+.stamp { display: block; background: var(--open); -webkit-mask: var(--stamp-src, url(assets/hinoae-mark.svg)) center / contain no-repeat; mask: var(--stamp-src, url(assets/hinoae-mark.svg)) center / contain no-repeat; }
 .cal-stamp { position: absolute; z-index: 2; pointer-events: none; left: 50%; top: 50%; width: 68%; max-width: 42px; aspect-ratio: 1; margin: calc(max(-21px, -34%)) 0 0 calc(max(-21px, -34%)); }
 .cal-stamp.stamp-in { animation: stamp-in 120ms var(--ease-out) both; }
 @keyframes stamp-in { from { transform: scale(1.15); } to { transform: scale(1); } }
@@ -2236,9 +2255,9 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .cal-day .cal-n { position: relative; z-index: 1; }
 .rec-stamp { position: relative; flex: none; align-self: center; width: 32px; height: 32px; margin: 0 0 0 var(--sp-12); }
 /* the record's seal: mark in a rim; a 2nd rim = first visit to the wall; the sun dot rides the rim (filled sunny, hollow shade) */
-.seal { box-sizing: border-box; border: 1.5px solid var(--open); border-radius: 50%; }
-.seal.first { box-shadow: inset 0 0 0 1.5px var(--bg), inset 0 0 0 3px var(--open); } /* a second rim inside: the stamp keeps its size */
-.seal > .stamp { position: absolute; inset: 18%; transform: rotate(8deg); } /* every stamp leans the same way: pressed a little clockwise */
+.seal { box-sizing: border-box; border-radius: 50%; } /* the emblem's own ring is the rim */
+.seal.first { box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--open); } /* a second rim outside the emblem's */
+.seal > .stamp { position: absolute; inset: 0; }
 .seal > .sun { position: absolute; width: 22%; height: 22%; min-width: 7px; min-height: 7px; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid var(--open); }
 .seal > .sun.lit { background: var(--open); box-shadow: 0 0 0 2px var(--bg); }
 .seal > .sun.shade { background: var(--bg); }
@@ -2441,7 +2460,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-count { font-variant-numeric: tabular-nums; }
 .bd-hp[hidden] { display: none; }
 .bd-send { flex: none; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); cursor: pointer; transition: opacity var(--dur-ui, .15s), transform var(--dur-ui, .15s); }
-.bd-send svg { width: 20px; height: 20px; margin-left: var(--sp-2); }
+.bd-send svg { width: var(--icon-sm); height: var(--icon-sm); margin-left: var(--sp-2); }
 .bd-send:active:not(:disabled) { transform: scale(.92); }
 .bd-send:disabled { opacity: .35; cursor: default; }
 .bd-box:focus { outline: none; }
@@ -2659,9 +2678,7 @@ html[data-text] .bd-body { flex: 1; }
 .cq-ic.x { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
 .cq-ic:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cq-brand { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); font-weight: 700; letter-spacing: -.02em; }
-.cq-brand::before { content: ""; flex: none; width: 34px; height: 34px; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cq-brand::before { background-image: url("assets/haebyeok-mark-dark.svg"); } }
-:root[data-theme="dark"] .cq-brand::before { background-image: url("assets/haebyeok-mark-dark.svg"); }
+.cq-brand::before { content: ""; flex: none; width: 34px; height: 34px; background: currentColor; -webkit-mask: url(assets/hinoae-mark.svg) center / contain no-repeat; mask: url(assets/hinoae-mark.svg) center / contain no-repeat; }
 .cq-prog { display: flex; align-items: center; gap: var(--sp-12); margin: 0 0 var(--sp-16); }
 .cq-bolts { display: flex; flex: 1 1 auto; justify-content: space-between; min-width: 0; }
 .cq-bolts i, .cq-hold::before { position: relative; border-radius: 50%; }
@@ -2712,9 +2729,7 @@ html[data-text] .bd-body { flex: 1; }
 .cr-dots i.off { background: none; box-shadow: inset 0 0 0 2px var(--muted); }
 .cr-route { display: table; max-width: 100%; margin: 0 auto var(--sp-12); padding: var(--sp-4) var(--sp-12); border: 1px solid var(--fg); border-radius: var(--r-pill); font-size: var(--fs-sm); line-height: 1.4; text-align: center; text-wrap: balance; }
 .cr-plate-foot { display: flex; align-items: center; justify-content: center; gap: var(--sp-8); margin: 0; padding-top: var(--sp-8); border-top: 1px solid var(--fg); font-size: var(--fs-xs); color: var(--muted); }
-.cr-plate-foot::before { content: ""; width: 18px; height: 18px; background: url("assets/haebyeok-mark.svg") center / contain no-repeat; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cr-plate-foot::before { background-image: url("assets/haebyeok-mark-dark.svg"); } }
-:root[data-theme="dark"] .cr-plate-foot::before { background-image: url("assets/haebyeok-mark-dark.svg"); }
+.cr-plate-foot::before { content: ""; width: 18px; height: 18px; background: currentColor; -webkit-mask: url(assets/hinoae-mark.svg) center / contain no-repeat; mask: url(assets/hinoae-mark.svg) center / contain no-repeat; }
 .cr-safe { margin: 0; padding: var(--sp-12) var(--sp-16); border: 1px solid color-mix(in srgb, var(--soon) 30%, transparent); border-radius: var(--r-base); background: color-mix(in srgb, var(--soon) 8%, var(--surface)); font-size: var(--fs-sm); font-weight: 600; }
 .cr-read { display: grid; gap: var(--sp-8); font-size: var(--fs-md); }
 .cr-read p, .cr-read ul { margin: 0; }
@@ -2851,7 +2866,7 @@ html[data-text="xlarge"] .tour-dots { display: none; } /* 글자를 가장 크�
 .segs, .tabs { padding: var(--sp-2); gap: 0; border-radius: var(--r-base); background: var(--sunken); }
 .segs :is(label, button), .tabs [role="tab"] { border-radius: var(--r-md); font-weight: 500; color: var(--fg); }
 .segs button[aria-pressed="true"], .segs label:has(:checked), .tabs [aria-selected="true"] { background: var(--surface); color: var(--fg); font-weight: 600; box-shadow: var(--shadow-tab); }
-#sortBtn { padding: 0 var(--sp-24) 0 var(--sp-12); background: var(--sunken) var(--chev-down) no-repeat right var(--sp-8) center / 12px 12px; }
+#sortBtn, .arrive-pill { padding: 0 var(--sp-24) 0 var(--sp-12); background: var(--sunken) var(--chev-down) no-repeat right var(--sp-8) center / 12px 12px; }
 #sortBtn svg { display: none; } /* 정렬은 `남은 시간 순 ⌄` 메뉴 알약 */
 /* ---- 새 디자인 체계 3단계 (design-harness.md 2-2절): 재질·포커스 링·터치 영역·행 구분선 ---- */
 body .top, body .controls, body .tabbar, #sortMenu { background: var(--mat); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
@@ -2892,7 +2907,6 @@ body .tabbar { box-shadow: 0 -.5px 0 var(--mat-hair); } /* 탭바 윗선은 0.5p
 .scrub #summary b:last-of-type { font-size: 1.15em; }
 #group-open > .band { font-size: var(--fs-xs); font-weight: 500; color: var(--muted); } /* 정렬 줄: 알약과 같은 13px */
 #moreFilters::after { content: ""; display: inline-block; width: 12px; height: 12px; margin-left: var(--sp-4); vertical-align: -2px; background: var(--chev-down) center / 12px no-repeat; } /* 조건 ⌄: 글자 ▾ 대신 같은 쉐브론 */
-.scrub-date .scrub-sum::after { content: ""; display: inline-block; width: 12px; height: 12px; margin-left: var(--sp-4); font-size: 0; vertical-align: -2px; background: var(--chev-down) center / 12px no-repeat; } /* 날짜 알약의 ▾도 같은 ⌄ */
 /* ---- 부품 규격 (사용자 결정 2026-11-05): 높이 22/32/44 · 컨트롤은 알약, 면은 12 · 알약 글자 13/500 · 채움은 회색 ---- */
 #nowBtn, .scrub-sum, .sort-btn, #moreFilters { min-height: var(--h-m); font-size: var(--fs-xs); font-weight: 500; }
 .scrub-sum .sub { font-size: var(--fs-xs); font-weight: 500; }
@@ -3142,7 +3156,7 @@ button.rs-th { cursor: pointer; } /* every header is this 44px box (a sortable o
 /* ♥ in the list row, left of the name (app.js timeRow): a button beside the row's own button, over the room .rfav-gap leaves; 44 × 44 to tap */
 .rfav-gap { flex: none; width: 22px; margin-right: -4px; }
 .row-fav { position: absolute; z-index: 3; left: calc(var(--pad) + 35px); top: 8px; width: 44px; height: 44px; color: var(--muted); opacity: .8; } /* 44px, not --tap (that grows with the text size and would push the icon off the name's line); the icon stays where the 32px box put it */
-.row-fav svg { width: 20px; height: 20px; }
+.row-fav svg { width: var(--icon-sm); height: var(--icon-sm); }
 .row-fav.on { opacity: 1; }
 :is(.row, .crag-row):not(:has(.l1 .sunnow)) .row-fav { left: calc(var(--pad) - 11px); top: 6px; } /* a row with no sun chip starts its name at the edge */
 :is(.row, .crag-row).has-photo.is-open .row-fav { color: var(--on-photo); opacity: 1; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .55)); }
@@ -3222,3 +3236,127 @@ html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th
 .csub-near > .sh-hint { flex-basis: 100%; }
 .csub-body .btn.primary:disabled { opacity: .45; cursor: default; }
 
+/* 외출(일정) 카드 (src/trip-view.js): 외벽 줄의 날씨 칩(--chip·--glyph) · 이름 · 날짜 · 배지, 아래 .irow 줄과 dock 모양 버튼. 새 토큰·새 색 없음. */
+.trip-card { background: var(--surface); border-radius: var(--r-base); box-shadow: inset 0 0 0 1px var(--line); padding: var(--sp-12); margin-bottom: var(--sp-8); }
+.ln:focus-visible, .trip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.trip-head { display: grid; grid-template-columns: var(--chip) minmax(0, 1fr) auto; gap: 0 var(--sp-12); align-items: start; }
+.trip-wx { display: flex; flex-direction: column; align-items: center; margin: 0; line-height: 1; }
+.trip-chip { display: grid; place-items: center; width: var(--chip); height: var(--chip); border-radius: var(--r-md); background: var(--sunken); color: var(--fg); }
+.trip-chip svg { width: var(--glyph); height: var(--glyph); }
+.trip-wx.no-fc .trip-chip { color: var(--muted); } /* 예보 없음: 달력 그림, 날씨처럼 보이지 않게 옅게 */
+.trip-wx .wx-temp { position: static; transform: none; margin-top: var(--sp-4); color: var(--fg); font-weight: 700; } /* D-day 또는 기온: 칩 아래 흐름 안에 */
+.trip-t { min-width: 0; align-self: center; }
+.trip-name { margin: 0; font-size: var(--fs-md); font-weight: 800; line-height: 1.3; }
+.trip-date { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.trip-badge { padding: var(--sp-2) var(--sp-8); border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); white-space: nowrap; }
+.trip-badge.rain { color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); } /* 글자가 상태를 말한다: 색만으로 표시하지 않는다 */
+.trip-badge.today { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.trip-top .trip-badge.today { background: var(--accent); color: var(--on-accent); box-shadow: none; } /* 시안 ③: 당일 카드의 오늘 알약은 채움 */
+.trip-badge.mine { background: var(--sunken); box-shadow: none; color: var(--fg); }
+.trip-blk { margin-top: var(--sp-12); }
+.trip-blk-t { margin: 0 0 var(--sp-2); font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.trip-blk .irow:first-of-type { border-top: 0; }
+.trip-card > .irow { margin-top: var(--sp-8); }
+.trip-card .chip-bar { margin: var(--sp-12) 0 0; padding-bottom: 0; }
+.trip-acts { display: flex; flex-wrap: wrap; gap: var(--sp-8); margin-top: var(--sp-12); }
+.trip-btn { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: var(--h-l); padding: 0 var(--sp-12); border: 0; border-radius: var(--r-pill); background: var(--sunken); box-shadow: var(--shadow-seg), inset 0 0 0 1px var(--line); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; } /* dock-go 모양 */
+.trip-btn.main { background: var(--accent); box-shadow: var(--shadow-seg); color: var(--on-accent); font-weight: 800; } /* 이 카드의 일: 다녀왔어요와 같은 채움 */
+.trip-card > .trip-btn { width: 100%; margin-top: var(--sp-12); }
+/* 일정 카드의 날씨 머리(.pc, 시안 home-v3 2026-11-07): 장소 · 날짜 줄 → 날씨 제목 → 날씨 칸 둘(비 오는 칸은 --rain-tint) → 안내. 새 토큰 없음 */
+.pc .pc-eye { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); min-width: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--muted); }
+.pc .pc-place { flex: 1; min-width: 0; }
+.pc .pc-head { margin: var(--sp-8) 0 var(--sp-12); font-size: var(--fs-lg); font-weight: 800; line-height: 1.3; }
+.pc .pc-wx { display: flex; gap: var(--sp-8); }
+.pc .pc-cell { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-8); padding: var(--sp-12); border-radius: var(--r-base); background: var(--sunken); }
+.pc .pc-cell.wet { background: var(--rain-tint); color: var(--warn); }
+.pc .pc-g svg { width: var(--icon-sm); height: var(--icon-sm); display: block; }
+.pc .pc-t b { display: block; font-size: var(--fs-sm); }
+.pc .pc-t small { font-size: var(--fs-xs); color: var(--muted); }
+.pc .pc-cell.wet small { color: var(--warn); }
+.pc .pc-note { margin: var(--sp-12) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.pc .trip-blk .trip-opt { min-height: 48px; }
+html[data-text="large"] .pc .pc-wx, html[data-text="xlarge"] .pc .pc-wx { flex-direction: column; }
+@media (max-width: 360px) { .pc .pc-wx { flex-direction: column; } }
+.trip-ask { margin: var(--sp-12) 0 0; font-size: var(--fs-md); font-weight: 700; }
+/* 누르는 줄 한 부품(card-parts lineRow): 칩/그림 · 제목 위 보조 · 끝 값 또는 ›. 날짜 줄·일정 후보·암장 추천 줄이 같이 쓴다 */
+.ln { display: flex; align-items: center; gap: var(--sp-8); width: 100%; min-height: calc(var(--tap) + var(--sp-12)); margin-bottom: var(--sp-8); padding: var(--sp-8) var(--sp-12); border: 0; border-radius: var(--r-base); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.trip-dday { display: flex; align-items: baseline; gap: var(--sp-8); margin: 0 var(--sp-4) var(--sp-8); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); } /* 칩 줄과 카드 사이: D-n은 중립색(비 예보는 카드 안 알약이 말한다) */
+.trip-dday b { font-size: var(--fs-md); font-weight: 700; color: var(--fg); } /* 800 → 700(시안 home-v3 검수): 카드 제목(800)과 겨루지 않게 */
+.home-top { padding-top: var(--sp-8); } /* 칩 줄과 맨 위 카드·일정 잡기 줄 사이 */
+.home-top .trip-card, .home-top .ln { margin-bottom: var(--sp-12); } /* 맨 위 카드와 접힌 줄 사이(카드 안 간격 12와 같게) */
+.ln-tile { flex: none; display: grid; place-items: center; width: var(--chip); height: var(--chip); border-radius: var(--r-md); background: var(--sunken); color: var(--muted); } /* 추천 줄의 앞 그림 칸: 날씨 칩과 같은 40px */
+.ln-tile + .ln-t .ln-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* 추천 줄 이름은 한 줄(shortName) */
+.ln-tile svg { width: var(--icon-sm); height: var(--icon-sm); }
+.ln-end { flex: none; display: inline-flex; align-items: center; gap: var(--sp-4); }
+.ln-v { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); white-space: nowrap; } /* 줄 끝 값: 열림 · 22시까지 / 19시에 열어요 */
+.ln-v.open { color: var(--open); }
+.home-note { margin: var(--sp-8) var(--sp-4) var(--sp-12); } /* 누를 곳 없는 안내: 카드 면 없이 회색 한 줄 */
+.ln:last-child { margin-bottom: 0; } /* 줄 사이 간격은 줄이, 마지막 아래는 부모가 */
+.ln-t { flex: 1; min-width: 0; }
+.ln-n { display: block; font-size: var(--fs-sm); font-weight: 700; }
+.ln-m { display: block; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+.ln.sel { background: var(--sunken); } /* 근거 있는 첫 선택지(추천) */
+.tg { flex: none; display: inline-flex; align-items: center; min-height: var(--h-s); margin-left: var(--sp-4); padding: 0 var(--sp-8); border-radius: var(--r-pill); background: var(--sunken); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); white-space: nowrap; } /* 작은 알약 한 모양: 이름 옆 · 줄 끝 */
+.tg.ok { color: var(--open); background: color-mix(in srgb, var(--open) 8%, var(--surface)); } /* 추천: 글자가 말한다, 색은 거들 뿐 */
+.tg.rain { color: var(--warn); background: var(--rain-tint); } /* 비 예보: 연분홍 면(2026-11-07 승인) */
+.trip-line { margin: 0; padding: var(--sp-4) 0; font-size: var(--fs-sm); font-weight: 600; line-height: 1.45; } /* 누르지 않는 줄(지금 · 플랜B 후보): 이름 칸 없이 */
+.trip-line + .trip-line { border-top: 1px solid var(--hair); }
+/* 시안 ⑤: 내 암장 줄들과 맨 아래 외벽 더 찾기 줄은 한 장의 면, 줄 사이는 가는 선(낱장 카드 아님) */
+.ln-box { background: var(--surface); border-radius: var(--r-base); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.home-top .ln-box { margin-bottom: var(--sp-12); }
+.ln-box .ln { margin: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ln-box .ln + .ln { border-top: 1px solid var(--hair); }
+/* 시안 ④: 일정 없는 홈의 열린 외벽 3곳(제목줄 + 정렬 알약 + 한 면 상자). 전체 시간표는 외벽 더 찾기 시트에 */
+.home-open { margin: var(--sp-4) 0 var(--sp-12); }
+.home-open-h { display: flex; align-items: center; justify-content: space-between; margin: var(--sp-12) var(--sp-4) var(--sp-8); }
+.home-open-h b { font-size: var(--fs-md); font-weight: 800; }
+.home-open-h .sort-btn { white-space: nowrap; }
+.home-open .ln-box { margin-bottom: 0; }
+
+/* 일정 탭 (src/sched-tab-view.js): 헤더 + 달력(.cal-* 그대로, 일정 있는 날 = .cal-plan 점) 또는 목록(.trip-card), 맨 아래 매주 운동(.sched-week). 새 토큰·새 색 없음. */
+#panel-sched { margin-top: var(--sp-16); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-16); }
+.sched-hd { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); }
+.sched-title { margin: 0; font-size: var(--fs-lg); font-weight: 800; }
+.sched-tg { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-4); flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; border-radius: var(--r-md); background: none; color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; } /* 44px: 목록 ⇄ 달력 (그림 + 글자) */
+.sched-tg svg { width: 22px; height: 22px; }
+.sched-tg:active { background: var(--sunken); }
+.sched-tg:focus-visible, .sched-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-h { margin: 0 0 var(--sp-8); font-size: var(--fs-base); font-weight: 700; }
+.sched-h.sched-q { font-size: var(--fs-lg); font-weight: 800; } /* 일정 0개: 주말 질문과 평일 질문은 같은 무게 */
+.sched-n { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.sched-sec > .sh-hint { margin-bottom: var(--sp-8); }
+.sched-first .trip-acts { margin: 0 0 var(--sp-12); }
+.sched-day .trip-card { margin-bottom: 0; }
+.sched-day { display: grid; gap: var(--sp-8); }
+.sched-day > .irow { border-top: 0; }
+.sched-add { width: 100%; }
+.sched-week { display: grid; gap: var(--sp-8); }
+.sched-week > .sched-h { margin: 0; }
+@media (hover: hover) and (pointer: fine) { .sched-tg:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); } }
+
+/* 일정 추가 시트 (src/trip-sheet.js, #tripAdd): 기록 추가 시트의 .la-field 검색 · .la-chip 날짜 칩 · .la-foot 저장 줄, 후보는 .trip-fold 줄. 새 토큰·새 색 없음. */
+.tripadd-cands { display: grid; margin-top: var(--sp-12); }
+.tripadd-cand { margin-bottom: var(--sp-8); }
+.tripadd-cand[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); } /* 고른 곳: 테두리 + '선택' 글자(색만으로 말하지 않는다) */
+.tripadd-cand .trip-badge[hidden] { display: none; }
+.tripadd-none { padding: var(--sp-8) 0; }
+div.sh-row.tripadd-when { display: block; } /* 날짜 label above the chips, like 장소 (a div.sh-row is a flex row elsewhere) */
+.tripadd-days { margin-bottom: 0; }
+.tripadd-custom { display: grid; gap: var(--sp-12); margin-top: var(--sp-12); }
+.tripadd-custom[hidden] { display: none; }
+.tripadd-full { font-size: var(--fs-base); font-weight: 600; }
+/* 기록 추가 시트의 완등 칸 + 프로젝트 했어요 (src/route-field.js): la-* 칩·칸·체크 줄을 그대로 쓰고 배치만 더한다. 새 색 없음. */
+.la-route { row-gap: var(--sp-8); }
+.la-route > .sh-label { flex-basis: 100%; margin: 0; }
+.la-route .la-chips { flex-basis: 100%; margin-bottom: 0; }
+.la-route .la-chips[hidden], .la-route-body[hidden], .la-route .la-err[hidden] { display: none; }
+.la-route-past { align-items: center; }
+.la-route-past-q { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.la-route-on { flex-basis: 100%; }
+.la-route-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--sp-8) var(--sp-12); flex-basis: 100%; }
+
+/* 외벽 더 찾기 시트(일정이 있는 날): 화면 80%, 검색·조건·시간·시간표가 이 안에서 스크롤 (시안 ⑥) */
+.sheet.is-find { height: 80dvh; overflow-x: clip; --stick-h: 52px; } /* 시트 머리(.sh-head 52px) 아래에 axis·band가 붙는다: 머리를 가리지 않게 */ .sheet.is-find .board { overflow-x: clip; } .sheet.is-find form { padding-bottom: calc(var(--sp-16) + env(safe-area-inset-bottom)); } .sheet.is-find .filters { margin-top: var(--sp-8); } .sheet.is-find .board { margin-top: var(--sp-12); }
+#arriveRow { cursor: default; margin-top: var(--sp-12); } #arriveRow[hidden] { display: none; } #arriveRow .arrive-pill { position: relative; } #arriveRow .arrive-pill::before { content: ""; position: absolute; inset: -6px -4px; } /* 알약은 32px 그대로, 눌리는 면만 44px */ /* 시안 ④ 박스 줄: 누를 곳은 알약 하나, 줄 자체는 › 없음 */ html[data-text="xlarge"] #arriveRow { flex-wrap: wrap; } html[data-text="xlarge"] #arriveRow .ln-t { flex-basis: 100%; } html[data-text="xlarge"] #arriveRow .arrive-pill { margin-left: 0; } /* 큰 글씨: 질문이 한 줄을 다 쓰고 알약은 그 아래 */
+.arrive-pill { margin-left: auto; white-space: nowrap; } /* 도착 시각 알약: 시간표 머리 오른쪽, 정렬 알약과 같은 모양(3a) */
+#sortBtn { margin-left: var(--sp-8); }

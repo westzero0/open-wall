@@ -3,7 +3,7 @@
 // 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만; 근처 외벽 시트의 data-near-map 지도 링크는 세지 않는다),
 // climber-done(클라이머 유형 테스트를 끝냄: 횟수만, 유형·점수는 보내지 않는다),
 // card-open(목록에서 카드를 엶), log-add(방문 기록을 저장함), share-send(링크 복사로 공유함), weather-shown(날씨 상자를 처음 봄), fav-add(즐겨찾기를 켬),
-// sun-filter(양달·응달 칩을 켬), tab-map·tab-log(탭을 누름), region-set(내 지역을 고름), invite-make(초대 링크를 만듦·보냄), report-send(제보를 보냄), board-post(게시판 글을 씀), gear-view(근처 탭을 처음 봄: 횟수만), gear-<업체 id>(근처 탭의 업체 링크를 누름; id는 data/partners.json의 고정 이름): 모두 이름만 센다.
+// sun-filter(양달·응달 칩을 켬), tab-map(지도 보기를 켬)·tab-log(탭을 누름), region-set(내 지역을 고름), invite-make(초대 링크를 만듦·보냄), report-send(제보를 보냄), board-post(게시판 글을 씀), gear-view(근처 탭을 처음 봄: 횟수만), gear-<업체 id>(근처 탭의 업체 링크를 누름; id는 data/partners.json의 고정 이름): 모두 이름만 센다.
 // 방문자 구분(docs/superpowers/specs/2026-10-29-visit-exclude-design.md): ?me 로 한 번 연 기기('me')는 아무것도 보내지 않고, ?beta 로 연 기기('beta')는 모든 이벤트 이름 앞에 beta- 를 붙인다(페이지뷰는 beta-view 이벤트).
 // 표시는 localStorage open-wall:visitor 한 줄(me | beta | none). 두 파라미터는 읽은 뒤 주소에서 지운다(공유 링크로 새지 않게). 이 표시가 없던 옛 기기(last-visit만 있음)는 배포 전 방문이므로 beta 로 본다.
 // 날씨 상자를 한 번이라도 본 기기는 재방문을 return-wx로 센다(상자를 본 쪽과 못 본 쪽의 재방문율을 비교하려고; 기기 안 표시 하나, 암장·내용은 없다).
@@ -12,15 +12,17 @@ import { config } from './config.js';
 // 북극성 지표(행동으로 이어진 방문)의 갈래: 고른다·쌓는다·퍼뜨린다. 문서 이벤트를 받아 이름만 센다(암장·내용·위치는 없다).
 const ACTIONS = { 'stats:card-open': 'card-open', 'stats:log-add': 'log-add', 'stats:share-send': 'share-send', 'stats:weather-shown': 'weather-shown', 'stats:fav-add': 'fav-add',
   'stats:sun-filter': 'sun-filter', 'stats:tab-map': 'tab-map', 'stats:tab-log': 'tab-log', 'stats:region-set': 'region-set',
-  'stats:invite-make': 'invite-make', 'stats:report-send': 'report-send', 'stats:board-post': 'board-post', 'stats:gear-view': 'gear-view' };
+  'stats:invite-make': 'invite-make', 'stats:report-send': 'report-send', 'stats:board-post': 'board-post', 'stats:gear-view': 'gear-view',
+  'stats:trip-add': 'trip-add', 'stats:trip-move': 'trip-move', 'stats:trip-log': 'trip-log' };
 // 이벤트 목록(단일 출처): 새 이벤트는 여기에 이름·뜻을 먼저 적는다. test/stats.test.js가 코드가 보내는 이름이 모두 여기 있는지 검사한다.
 // 이름 규칙: 소문자-하이픈, 횟수만(암장·내용·위치 없음). 같은 뜻이면 새로 만들지 말고 기존 이름을 쓴다. 문서: docs/system/event-registry.md
 export const EVENTS = {
   view: '페이지뷰(?beta 기기만 이벤트로)', 'share-open': '공유 링크로 들어옴', return: '하루 이상 지나 다시 옴', 'return-wx': '날씨 상자를 본 기기의 재방문',
   'click-tel': '전화 링크', 'click-insta': '인스타 링크', 'click-route': '길찾기 링크', 'click-chat': '오픈채팅 링크', 'click-link': '그 밖의 외부 링크',
   'climber-done': '클라이머 유형 테스트 완료', 'card-open': '카드를 엶', 'log-add': '방문 기록 저장', 'share-send': '링크 복사로 공유', 'weather-shown': '날씨 상자를 처음 봄',
-  'fav-add': '즐겨찾기 켬', 'sun-filter': '양달·응달 칩 켬', 'tab-map': '지도 탭', 'tab-log': '기록 탭', 'region-set': '내 지역 고름',
+  'fav-add': '즐겨찾기 켬', 'sun-filter': '양달·응달 칩 켬', 'tab-map': '지도 보기', 'tab-log': '기록 탭', 'region-set': '내 지역 고름',
   'invite-make': '초대 링크 만듦', 'report-send': '제보 보냄', 'board-post': '게시판 글 씀', 'gear-view': '근처 탭을 처음 봄',
+  'trip-add': '일정 저장', 'trip-move': '일정 옮김(날짜·다른 날·대신 갈 곳)', 'trip-log': '일정에서 기록 남김',
   // gear-<업체 id>(근처 탭 업체 링크 클릭)는 gearEventName이 만든다: 고정 목록이 아니라 data/partners.json의 id
 };
 const WX_SEEN = 'open-wall:wx-seen';

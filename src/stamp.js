@@ -1,10 +1,10 @@
 // src/stamp.js — the one place that decides what a wall's stamp looks like (calendar, 기록 list, the card's 다녀왔어요).
-// Today every wall stamps the 해벽 mark. A wall with its own artwork (wall.stamp, "stamps/<name>.svg" under data/) is drawn
+// Today every wall stamps the 희노애Rock emblem. A wall with its own artwork (wall.stamp, "stamps/<name>.svg" under data/) is drawn
 // from that file instead; callers do not change when stamps are added, only the data does. No DOM of its own.
 import { STAMP_RE } from './store.js';
 import { isSunlit } from './sun.js';
 
-export const MARK = 'assets/haebyeok-mark.svg'; // the default, also what the stylesheet falls back to
+export const MARK = 'assets/hinoae-mark.svg'; // the default, also what the stylesheet falls back to
 
 /** stampUrl(wall) → 'url(data/stamps/x.svg)' for a wall with its own stamp, else null. The path is re-checked here. */
 export function stampUrl(wall) {

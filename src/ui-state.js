@@ -6,8 +6,8 @@ import { sharePageUrl, wallShareId } from './share-id.js';
 import { CRAG_SHEET_TABS } from './crag-sheet-model.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { scrubHinted: false, minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall' };
-export const TABS = ['list', 'map', 'log'];
+const DEFAULTS = { scrubHinted: false, minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall', schedView: 'cal', homeView: 'list' };
+export const TABS = ['list', 'sched', 'log']; // 홈 | 일정 | 기록 (지도 is 홈's view: homeView)
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
 // 글자 크기: html[data-text] scales the root font size (style.css), on top of the phone's own text-size setting
@@ -26,6 +26,10 @@ export const cleanVenue = (v) => (VENUE_FILTERS.includes(v) ? v : 'any');
 // 보기 종류: 외벽(wall)과 싱글피치(crag). 헤더 토글이 고르고 기기에 저장한다(싱글피치는 config.singlePitch가 켜진 동안만 쓰인다).
 export const MODES = ['wall', 'crag'];
 export const cleanMode = (v) => (MODES.includes(v) ? v : 'wall');
+// 일정 탭 보기: 달력(cal, 기본) ⇄ 목록(list). 헤더 토글이 고르고 기기에 저장한다.
+export const cleanSchedView = (v) => (v === 'list' ? 'list' : 'cal');
+// 홈 보기: 목록(list, 기본) ⇄ 지도(map). 넓은 화면은 둘을 나란히 두므로 이 값을 쓰지 않는다(app.js).
+export const cleanHomeView = (v) => (v === 'map' ? 'map' : 'list');
 // 저장된 값이 crag여도 스위치가 꺼졌거나 불러온 암장이 없으면 외벽을 보여 준다(빈 화면이 되지 않게).
 export const effectiveMode = (mode, { enabled, count }) => (mode === 'crag' && enabled && count > 0 ? 'crag' : 'wall');
 // 내 로프 길이 (not a filter: it only tells the card whether the wall's height fits). '0' = not set.
@@ -65,7 +69,9 @@ export function loadUi(storage) {
   ui.approachMax = cleanApproach(ui.approachMax);
   ui.tempMin = cleanTemp(ui.tempMin);
   ui.mode = cleanMode(ui.mode);
+  ui.schedView = cleanSchedView(ui.schedView);
   ui.favOnly = ui.favOnly === true;
+  ui.homeView = ui.tab === 'map' ? 'map' : cleanHomeView(ui.homeView); // the old 지도 tab is now 홈's 지도 view
   if (!TABS.includes(ui.tab)) ui.tab = 'list';
   ui.theme = cleanTheme(ui.theme);
   ui.textSize = cleanTextSize(ui.textSize);

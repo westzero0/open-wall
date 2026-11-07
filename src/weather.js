@@ -7,6 +7,8 @@ const MAX_HOURS = 200; // forecast_days=4 is 96 hours
 const HOUR_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:00$/;
 const p2 = (n) => String(n).padStart(2, '0');
 const round2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+// 날씨 구역의 등반 대표 고도(m, 공개 데이터): 점에 elev가 하나라도 있으면 보낸다(없는 점은 NaN = 지형 기본 고도). 하나도 없으면 요청은 예전과 글자 그대로 같다.
+const elevationQ = (points) => (points.some((p) => Number.isFinite(p.elev)) ? `&elevation=${points.map((p) => (Number.isFinite(p.elev) ? Math.round(p.elev) : 'NaN')).join(',')}` : '');
 
 /** forecastUrl(lat, lng) → the request URL. Only the wall's coordinates (2 decimals) vary. */
 export const forecastUrl = (lat, lng) => 'https://api.open-meteo.com/v1/forecast'
@@ -97,6 +99,7 @@ export const RAIN_PROB = 60; // ... at least this chance of it (%), is a "비 �
 /** weekendForecastUrl([{lat, lng}, ...]) → one request for every wall: daily rain / gust numbers for 7 days. Only coordinates (2 decimals) vary. */
 export const weekendForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + elevationQ(points)
   + '&daily=precipitation_sum,precipitation_probability_max,wind_gusts_10m_max&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=7';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -142,6 +145,7 @@ export function dayWeather(d) {
 /** listForecastUrl([{lat, lng}, ...]) → one request for every outdoor wall: the hourly temperature, sky and gusts for 4 days (the list row's weather). Only coordinates (2 decimals) vary. */
 export const listForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + elevationQ(points)
   + '&hourly=temperature_2m,weather_code,wind_gusts_10m&wind_speed_unit=ms&timezone=Asia/Seoul&forecast_days=4';
 
 /** parseListForecast(json, n) → n Maps ('YYYY-MM-DDTHH:00' → {t °C, c WMO weather code, g gust m/s}) in request order, or null when anything is off. One place comes back as an object, several as an array. */
@@ -220,6 +224,7 @@ export const weatherLine = (h) => `예보 · 기온 ${Math.round(h.t)}° · 바�
 /** wetnessForecastUrl([{lat, lng}, ...]) → 싱글피치 젖음 계산용: 지난 7일 + 예보 7일의 시간별 강수·기온·습도·풍속·일사·강수확률. 기존 요청은 그대로 두고 암장 좌표(소수 둘째 자리)만 다르다. */
 export const wetnessForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
   + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + elevationQ(points)
   + '&hourly=precipitation,temperature_2m,relative_humidity_2m,wind_speed_10m,shortwave_radiation,precipitation_probability'
   + '&wind_speed_unit=ms&timezone=Asia/Seoul&past_days=7&forecast_days=7';
 

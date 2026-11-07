@@ -3,7 +3,7 @@
 // Made on this device, never sent. The sun is always whole (every day has its ray); the data is which rays are lit.
 import { firstVisits } from './log.js';
 import { shortName } from './viewmodel.js';
-import { FONT, H, INK, M, MUTED, PAPER, W, lockup, wrapLines } from './share-image.js';
+import { FONT, H, INK, LOCKUP_RATIO, M, MUTED, PAPER, W, lockup, wrapLines } from './share-image.js';
 
 export const MAX_NAMES = 5;
 
@@ -78,14 +78,14 @@ export const MONTH_LAYOUT = {
 export async function drawMonth(canvas, pic, ratio = '9:16') {
   const L = MONTH_LAYOUT[ratio] ?? MONTH_LAYOUT['9:16'];
   const cy = L.cy; // the foot of the sun on this shape
-  await Promise.all(['300 200px', '400 40px', '600 52px'].map((f) => document.fonts.load(`${f} ${FONT}`, '해벽 0123 번곳 처음 간')));
+  await Promise.all(['300 200px', '400 40px', '600 52px'].map((f) => document.fonts.load(`${f} ${FONT}`, '희노애Rock 0123 번곳 처음 간')));
   canvas.width = W;
   canvas.height = L.h;
   const g = canvas.getContext('2d');
   g.fillStyle = INK;
   g.fillRect(0, 0, W, L.h);
   const sign = await lockup();
-  if (sign) g.drawImage(sign, M, L.ly, (303 / 140) * L.lh, L.lh); // the brand's own lockup, same place and size as the invite
+  if (sign) g.drawImage(sign, M, L.ly, LOCKUP_RATIO * L.lh, L.lh); // the brand's own lockup, same place and size as the invite
   const dim = new Date(pic.year, pic.month, 0).getDate();
 
   g.textBaseline = 'alphabetic';

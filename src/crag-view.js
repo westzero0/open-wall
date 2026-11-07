@@ -5,7 +5,7 @@
 // 안쪽은 외벽 클래스(.l1·.rname·.bar·.sunband…)를 쓰지만 li·머리 버튼에는 .row/.row-btn/.rows를 붙이지 않는다(외벽 JS가 그것을 잡는다;
 // style.css는 :is(.row, .crag-row)로 넓혀 같이 칠한다). DOM은 el()과 텍스트 노드만 쓴다.
 import { el } from './dom.js';
-import { boardRow, chipBar, dock, gaugeEnds, goRow, infoRow, noticeLine, placeholderHero, remainPill } from './card-parts.js';
+import { arrow, boardRow, chipBar, dock, gaugeEnds, goRow, infoRow, noticeLine, placeholderHero, remainPill } from './card-parts.js';
 import { cragCard, cragModel, COND_HINT_NO_DRY, COND_NOTE, FAR_NOTE, GEAR_BASIS } from './crag-model.js';
 import { approachModel } from './crag-approach.js';
 import { routeSummary } from './crag-grades.js';
@@ -177,8 +177,10 @@ function cardEl(c, at, deps) {
   const visit = been?.(c.name) ?? null;
   const summary = routeSummary(routes?.get(c.name)?.routes, mine); // the route table's count (and 내 그레이드 count), or null
   const approach = approachModel(c.crag);
+  const zoneBtn = deps.zone?.(c) ?? null;
   return [
     go || visit ? dock(go, visit, null, deps.share?.(c.name) ?? null) : null,
+    zoneMetaLine(c), // 멀티·볼더 구역의 종류와 봉우리 이름 (싱글피치는 줄 없음)
     c.caution ? noticeLine({ tone: 'sure', text: c.caution }, { mk: '주의' }) : null, // a caution is told as plainly as a confirmed closing, under its own word
     gearChips(c, deps.icon, summary, onOpenSheet ? (tab, b) => onOpenSheet(c.name, tab, b) : null, Boolean(routes?.get(c.name)?.routes?.length || routes?.get(c.name)?.topos?.length)),
     condRow(c, onOpenSheet, whyLine(c)),
@@ -187,15 +189,21 @@ function cardEl(c, at, deps) {
     boardLine(c, onOpenSheet, boardListed?.(c.name) ?? false),
     nearRow(c, deps),
     ...sunBox(c, at, deps),
-    onReport ? reportRow(c.name, onReport) : null,
+    onReport ? reportRow(c.name, onReport, zoneBtn) : zoneBtn ? el('div', { class: 'help-row' }, zoneBtn) : null, // 비 예보 등록은 정보 수정 요청과 같은 한 줄(app.js zoneRow; config.zoneWatch가 꺼지면 없음)
   ].filter(Boolean);
 }
 
+/** zoneMetaLine(card) → '멀티 · 봉우리 울산바위, 권금성' (the type word, the peaks when there are some); a plain single-pitch crag has nothing to add → null. */
+export function zoneMetaLine({ typeLabel, peaks = [] }) {
+  if (typeLabel === '싱글' && !peaks.length) return null;
+  return el('p', { class: 'zone-meta' }, [typeLabel, peaks.length ? `봉우리 ${peaks.join(', ')}` : null].filter(Boolean).join(' · '));
+}
+
 // 정보 수정 요청: the wall card's quiet .help-row link at the card's very end (no 오픈채팅 추가 for a crag); app.js passes onReport only with config.reportEndpoint
-function reportRow(name, onReport) {
+function reportRow(name, onReport, before = null) {
   const b = el('button', { type: 'button', class: 'help-link' }, '정보 수정 요청');
   b.addEventListener('click', () => onReport(name));
-  return el('div', { class: 'help-row' }, b);
+  return el('div', { class: 'help-row' }, ...(before ? [before] : []), b);
 }
 
 /**
@@ -213,12 +221,13 @@ function reportRow(name, onReport) {
  *   camera(name) → Node | null (app.js's cameraBtn, the first photo's button on the .ph-hero block; optional: no camera without it),
  *   been(name) → Node (app.js's beenBtn: 다녀왔어요, the 기록 추가 sheet with this crag fixed; the dock's second button (with 길찾기 first); optional),
  *   near(card) → { line, onOpen(opener) } | null (the 근처 외벽 row after 게시판; app.js's cragNear: walls within 60 km; optional: no row without it),
+ *   zone(card) → Node | null (the 비 예보 등록 button, on the same line as the 정보 수정 요청 link; app.js zoneRow; optional: no row without it),
  *   onReport(name, kind?) (the 정보 수정 요청 link at the card's end, and the 루트 row with nothing to show, open the report sheet for this crag; optional: no link without it) }.
  * Only the open row gets a card.
  */
 export function renderCragBoard(host, rows, at, deps) {
   const { now = new Date(), daily = null, hourly = null, wet = null, ropeM = 0, tempMin = 0, openName = null, enterName = null, onOpen = () => {}, showDistance = false, byMine = false, isNow = true, empty = {}, icon = null } = deps;
-  const cardDeps = { now, daily, nav: deps.nav ?? null, share: deps.share ?? null, sunBox: deps.sunBox ?? null, onOpenSheet: deps.onOpenSheet ?? (() => {}), boardListed: deps.boardListed ?? null, routes: deps.routes ?? null, mine: deps.mine ?? null, been: deps.been ?? null, onReport: deps.onReport ?? null, near: deps.near ?? null, icon };
+  const cardDeps = { now, daily, nav: deps.nav ?? null, share: deps.share ?? null, sunBox: deps.sunBox ?? null, onOpenSheet: deps.onOpenSheet ?? (() => {}), boardListed: deps.boardListed ?? null, routes: deps.routes ?? null, mine: deps.mine ?? null, been: deps.been ?? null, onReport: deps.onReport ?? null, near: deps.near ?? null, zone: deps.zone ?? null, icon };
   const items = rows.map((r, i) => {
     const open = r.name === openName;
     const id = `crag-card-${i}`;
@@ -245,7 +254,7 @@ export function renderCragBoard(host, rows, at, deps) {
         el('span', { class: 'rsub' }, r.region ? el('span', { class: 'rmeta', title: r.region }, r.region) : null),
         cold ? el('span', { class: 'sr-only' }, `기온 ${tempMin}도 미만`) : null,
         el('span', { class: `left is-${r.cond.state}` }, remainPill({ short: r.cond.short ?? r.cond.text, long: r.cond.text })), // the wall's pill: the short wording on a narrow screen, the long one wide (both read aloud as the wall's do)
-        el('span', { class: 'row-go', 'aria-hidden': 'true' }, '›')),
+        arrow('›', 'row-go')),
       bar ?? el('span', { class: 'crag-nodir' }, '방향 정보 없음'), ends);
     head.addEventListener('click', () => onOpen(open ? null : r.name));
     const card = open ? cragCard(r.crag, at, { now, daily, hourly, wet, ropeM }) : null;

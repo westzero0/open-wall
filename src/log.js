@@ -40,6 +40,27 @@ const newestFirst = (a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.t
 export const CLOCK_SKEW_MIN = 5;
 const isAhead = (date, time, today, nowMin) => nowMin != null && date === today && minOfTime(time) > nowMin + CLOCK_SKEW_MIN;
 
+export const MAX_ROUTES = 8;
+const SENT = ['onsight', 'flash', 'redpoint'];
+
+/** cleanRoutes(v) → at most 8 {name, grade?, tries, sent}: a bad route is dropped, onsight/flash with 2+ tries becomes redpoint. */
+export function cleanRoutes(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const x of v) {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) continue;
+    const name = cleanText(x.name, 41);
+    if (!name || name.length > 40) continue;
+    const grade = cleanText(x.grade, 9);
+    const tries = Number.isInteger(x.tries) && x.tries >= 1 && x.tries <= 99 ? x.tries : 1;
+    let sent = SENT.includes(x.sent) ? x.sent : null;
+    if (tries >= 2 && sent) sent = 'redpoint';
+    out.push({ name, ...(grade && grade.length <= 8 ? { grade } : {}), tries, sent });
+    if (out.length >= MAX_ROUTES) break;
+  }
+  return out;
+}
+
 // One record or null. today: 'YYYY-MM-DD' (local); a later date is dropped. A bad time — or, with nowMin (minutes of
 // the day now), a time still to come today — is dropped, the record kept.
 function cleanRecord(r, today, nowMin = null) {
@@ -53,7 +74,9 @@ function cleanRecord(r, today, nowMin = null) {
   if (discipline === 'multi' && !multi) return null;
   const sends = discipline === 'multi' ? {} : cleanCounts(r.sends, scaleOf(discipline));
   const tries = discipline === 'multi' ? {} : cleanCounts(r.tries, scaleOf(discipline));
+  const routes = cleanRoutes(r.routes);
   return {
+    ...(routes.length ? { routes } : {}),
     id: r.id, wall, ...(wall_id ? { wall_id } : {}), date: r.date, ...(validTime(r.time) && !isAhead(r.date, r.time, today, nowMin) ? { time: r.time } : {}), ...(memo ? { memo } : {}),
     ...(discipline !== 'lead' ? { discipline } : {}), ...(multi ? { multi } : {}),
     ...(Object.keys(sends).length ? { sends } : {}), ...(Object.keys(tries).length ? { tries } : {}),
@@ -149,7 +172,7 @@ export function saveLog(storage, log) {
 }
 
 /**
- * addRecord(log, {wall, date, time, memo, sends, tries}, {today, id}) → {log, record} or {error} (Korean, shown as is).
+ * addRecord(log, {wall, date, time, memo, sends, tries, routes}, {today, id}) → {log, record} or {error} (Korean, shown as is).
  * time: 'HH:mm' or empty (시간 모름); anything else is left off the record.
  * id comes from the caller (crypto.randomUUID in the browser). nowMin (minutes of the day now): today's date with a later
  * time is refused ({error, field: 'time'}).
@@ -162,13 +185,13 @@ export function addRecord(log, input, { today, id, nowMin = null }) {
   if (validTime(input.time) && isAhead(input.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
   if (log.length >= MAX_RECORDS) return { error: `기록은 ${MAX_RECORDS}개까지 저장돼요.` };
   if (input?.discipline === 'multi' && !cleanMulti(input.multi)) return { error: '피치 수를 적어 주세요.', field: 'pitches' };
-  const record = cleanRecord({ id, wall, wall_id: input.wall_id, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries, discipline: input.discipline, multi: input.multi }, today);
+  const record = cleanRecord({ id, wall, wall_id: input.wall_id, date: input.date, time: input.time, memo: input.memo, sends: input.sends, tries: input.tries, discipline: input.discipline, multi: input.multi, routes: input.routes }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: [...log, record].sort(newestFirst), record };
 }
 
 /**
- * updateRecord(log, id, {time, memo, sends, tries}, {today, nowMin}) → {log, record} or {error, field?}: one record's time, memo and grades
+ * updateRecord(log, id, {time, memo, sends, tries, routes}, {today, nowMin}) → {log, record} or {error, field?}: one record's time, memo and grades
  * changed; its wall and date stay. time '' makes it 시간 모름. A later time today is refused like in addRecord.
  */
 export function updateRecord(log, id, input, { today, nowMin = null }) {
@@ -177,7 +200,7 @@ export function updateRecord(log, id, input, { today, nowMin = null }) {
   if (validTime(input?.time) && isAhead(old.date, input.time, today, nowMin)) return { error: '지금보다 뒤의 시각은 기록할 수 없어요.', field: 'time' };
   // a discipline this version does not know keeps its grades: the sheet only shows the rope wall and would clean them away
   const keep = old.discipline && !DISCIPLINES.includes(old.discipline);
-  const record = cleanRecord({ id, wall: old.wall, wall_id: old.wall_id, date: old.date, time: input?.time, memo: input?.memo, sends: keep ? old.sends : input?.sends, tries: keep ? old.tries : input?.tries, discipline: old.discipline, multi: input?.multi ?? old.multi }, today);
+  const record = cleanRecord({ id, wall: old.wall, wall_id: old.wall_id, date: old.date, time: input?.time, memo: input?.memo, sends: keep ? old.sends : input?.sends, tries: keep ? old.tries : input?.tries, discipline: old.discipline, multi: input?.multi ?? old.multi, routes: input?.routes ?? old.routes }, today);
   if (!record) return { error: '저장하지 못했어요.' };
   return { log: log.map((r) => (r.id === id ? record : r)).sort(newestFirst), record };
 }
@@ -394,9 +417,9 @@ export const recentVisits = (log, limit = 50) => [...log].sort(newestFirst).slic
 
 // ---- backup file ----
 // contrib (optional, src/fill-store.js exportContrib): this device's authorId and the blanks it filled, so a new phone keeps the credit
-export function exportLog(log, now = new Date(), contrib = null) {
+export function exportLog(log, now = new Date(), contrib = null, extra = null) {
   const at = `${dateOf(now.getFullYear(), now.getMonth() + 1, now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`; // local time
-  return JSON.stringify({ app: 'open-wall', kind: 'log', version: 1, exported_at: at, records: log, ...(contrib ? { contrib } : {}) }, null, 2);
+  return JSON.stringify({ app: 'open-wall', kind: 'log', version: 1, exported_at: at, records: log, ...(contrib ? { contrib } : {}), ...(extra ? { extra } : {}) }, null, 2);
 }
 
 /**
@@ -417,14 +440,16 @@ export function parseImport(text, today, nowMin = null) {
   const records = normalizeLog(list, today, nowMin);
   if (!records.length) return { ok: false, error: '가져올 수 있는 기록이 없어요.' };
   const contrib = Array.isArray(data) ? null : cleanContrib(data.contrib); // a file from before 빈칸 채우기 has none: the result has no such key
-  return { ok: true, records, dropped: list.length - records.length, ...(contrib ? { contrib } : {}) };
+  const extra = !Array.isArray(data) && data.extra && typeof data.extra === 'object' ? data.extra : null; // raw: backup.js restoreExtra cleans it
+  return { ok: true, records, dropped: list.length - records.length, ...(contrib ? { contrib } : {}), ...(extra ? { extra } : {}) };
 }
 
 /** mergeLog(log, incoming) → {log, added}: same id, or the same wall+date+time+memo as a record already in the log, is not added twice (twins within the incoming file are both kept). */
 export function mergeLog(log, incoming) {
   const keyOf = (r) => `${r.wall}\n${r.date}\n${r.time ?? ''}\n${r.memo ?? ''}\n${JSON.stringify([r.sends ?? {}, r.tries ?? {}])}
 ${r.discipline ?? ''}
-${JSON.stringify(r.multi ?? null)}`;
+${JSON.stringify(r.multi ?? null)}
+${JSON.stringify(r.routes ?? null)}`;
   const ids = new Set(log.map((r) => r.id));
   const keys = new Set(log.map(keyOf));
   const fresh = [];

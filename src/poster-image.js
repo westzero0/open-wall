@@ -336,7 +336,7 @@ export async function drawPoster(canvas, pic, bitmap, { ratio = DEFAULT_RATIO, f
 
   // registration marks, the head
   for (const [x, y, dx, dy] of [[40, 40, 1, 1], [W - 40, 40, -1, 1], [40, H - 40, 1, -1], [W - 40, H - 40, -1, -1]]) { line(x, y, x + 22 * dx, y, 1.5, 0.75); line(x, y, x, y + 22 * dy, 1.5, 0.75); }
-  drawLockup(g, MARGIN + 8, 56, LOGO, A(1), SUN);
+  drawLockup(g, MARGIN + 8, 56, LOGO, A(1));
   text(pic.title, W - MARGIN, 56 + LOGO * 0.62, sans(300, 24), 0.92, 'right', 7);
   line(MARGIN, RULE, W - MARGIN, RULE, 1, 0.59);
   const [date, dow] = pic.issue.split(' ');

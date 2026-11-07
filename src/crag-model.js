@@ -75,6 +75,7 @@ const SUN_TRUSTED = false;
  * cond: the wetness W (crag-wetness.js) when the hourly series covers the moment; else the old daily-rain conditionOf (dry_days) as the fallback.
  * The wetness cond adds hoursLeft, ago (hours since the last rain, for the list order), basis 'wetness' and evidence lines.
  */
+export const TYPE_LABEL = { multi: '멀티', boulder: '볼더' }; // 구역 종류 칩: 필드가 없으면 싱글피치
 export function cragRow(crag, at, { now = new Date(), daily = null, hourly = null, wet = null } = {}) {
   const series = wet?.get(crag.name);
   const calc = series?.length ? wetnessAt(series, at, { wall: crag, sunTrusted: SUN_TRUSTED, dryDays: crag.dry_days }) : null;
@@ -87,6 +88,8 @@ export function cragRow(crag, at, { now = new Date(), daily = null, hourly = nul
     sun: sunStateOf(isSunlit(crag, at)),
     cond: w ?? { ...c, text: condText(c), short: condShort(c) },
     wx: hours ? pickHour(hours, at) : null,
+    typeLabel: TYPE_LABEL[crag.type] ?? '싱글',
+    peaks: crag.peaks ?? [],
     crag,
   };
 }

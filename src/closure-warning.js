@@ -1,4 +1,4 @@
-// src/closure-warning.js — 닫힘·단축 제보를 카드의 "확인 중" 경고로 바꾼다 (docs/superpowers/specs/2026-10-29-closure-warning-design.md). No DOM.
+// src/closure-warning.js — 닫힘·단축 제보를 카드의 "확인 전" 경고로 바꾼다 (docs/superpowers/specs/2026-10-29-closure-warning-design.md). No DOM.
 // Input is report-tap's GET /v1/tap-summary (untrusted): { walls: { <name>: { <YYYY-MM-DD>: { hours: { ok, wrong, claims: {closed, short, long}, onsite_wrong, last } } } } }.
 // Asymmetric on purpose: one closed / short claim lights the warning (a wrong one costs a phone call); it takes two other people saying "맞아요"
 // (and more of them than the claims) to put it out. It never edits the hours: the card's times stay, the warning covers the "열림" words.
@@ -32,7 +32,7 @@ export function warningOf({ tap, name, status, at, now = new Date() }) {
   const kind = e.closed >= e.short ? 'closed' : 'short';
   return {
     kind,
-    phrase: mixed ? '제보가 엇갈려요' : kind === 'closed' ? '닫혔을 수 있어요' : '일찍 닫을 수 있어요',
+    phrase: mixed ? '제보가 엇갈려요' : kind === 'closed' ? '제보: 닫혔을 수 있음' : '제보: 일찍 닫을 수 있음',
     mixed,
     onsite: e.onsiteWrong > 0,
     ago: e.last == null ? null : Math.max(0, Math.round((now.getTime() - e.last) / 60000)),

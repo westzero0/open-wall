@@ -5,7 +5,7 @@ import { mountainBand } from './mountain-band.js';
 import { ropeMeter, ropeStage } from './rope-meter.js';
 import { config, boardOn } from './config.js';
 import { shareNick, shareToBoard } from './board-view.js';
-import { saveBackupAt } from './backup.js';
+import { saveBackupAt, exportExtra, restoreExtra } from './backup.js';
 import { ymd } from './time.js';
 import { hasHours, openIntervals } from './hours.js';
 import { axisFrac, formatRanges, pickChips, searchPicks } from './viewmodel.js';
@@ -28,6 +28,8 @@ import { KIND_TEXT } from './year-seal.js';
 import { getStr, setStr } from './storage.js';
 import { exportContrib, restoreContrib } from './fill-store.js';
 import { cragEntry } from './crag-submit-view.js';
+import { createRouteField } from './route-field.js';
+import { loadHidden, projectsAt } from './projects.js';
 import {
   MAX_IMPORT_BYTES, TIP_AT, VISIT_FIRST, addRecord, updateRecord, reconcileLog, minOfTime, countFor, dayParts, exportLog, loadLog, mergeLog, minuteAtFrac, monthGrid, monthSummary,
   firstVisits, normalizeLog, visitSplit, wallsInMonth, parseImport, recordNote, recordsByDay, removeRecord, saveLog, shiftMonth, snapVisit, timeOfMin,
@@ -123,15 +125,17 @@ box.addEventListener('focusout', armToast);
  * sendCrowd(wall, level, date, time) → Promise<boolean>: the 혼잡도 report (app.js; the record itself stays here).
  * getOrigin(): {lat, lng} already in memory, or null — never asks for it (the sheet sorts a search by it).
  * addFav(name): ♥ a wall (the ♥ 추천 toast's button).
+ * onImport(): a backup file was read in; its 일정·숨김 went to storage behind app.js's back (app.js reloads them).
  */
 export function createLogView({
   storage, icon = () => document.createElement('span'), getWalls, getFavs, onChange, reveal, showList, crowdAsk = () => null, sendCrowd = async () => false,
   getPlan = () => [], // getPlan('YYYY-MM-DD') → [{ name, rain }]: the walls scheduled for that day (운동 스케줄; [] when none or the feature is off)
   cragSubmit = null, // { open(), mineRows() } or null (off): the 새 암장 제보하기 line and the person's own submissions (app.js; null makes no element)
   getOrigin = () => null, addFav = () => {}, getWeather = async () => null, getWallId = () => null, // getWallId(name) → the wall's id (null for a name not in the lists)
+  onImport = () => {},
 }) {
   const panel = $('panel-log');
-  const lead = ['schedAsk', 'sched'].map((id) => $(id)).filter(Boolean); // 내 운동 스케줄 (app.js draws them): kept across redraws, so they stay in the page and keep their open state
+  const lead = ['schedAsk', 'sched'].map((id) => $(id)).filter((n) => n && panel?.contains(n)); // 내 운동 스케줄 (app.js draws them): kept across redraws when they sit in this panel; in the 일정 탭 (#panel-sched) they are not pulled back here
   const monthShare = createMonthShare({ getWalls, icon });
   // the 오늘의 벽 cards kept for records (this browser only): madeIds says which rows have one, thumbItems are the small thumbnails the rows and
   // the strip show (read together, then kept in step; a read that finds nothing new redraws nothing)
@@ -247,6 +251,7 @@ export function createLogView({
     drawChips();
     drawSave();
     drawDay();
+    routeField.suggest(projectsFor(name));
     if (timeTouched) drawCrowd();
     else resetTime();
   }
@@ -298,6 +303,10 @@ export function createLogView({
   const crowdRow = dlg.querySelector('.la-crowd');
   const crowdSentNote = dlg.querySelector('.la-crowd-sent');
   const moreBox = dlg.querySelector('.la-memo'); // the 메모 fold (the 그레이드 fold is gradesBox)
+  const routeField = createRouteField(); // 완등 칸 + 프로젝트 했어요, just above the memo fold
+  moreBox.before(routeField.el);
+  const projectsFor = (wall) => (wall ? projectsAt(log, wall, loadHidden(storage)) : []);
+  let onSavedCb = null; // openAdd's onSaved: called with the record once it is saved (a trip's 기록 남기기 counts it)
   const crowdPills = [...crowdRow.querySelectorAll('.crowd-pill')];
   let visitMin = null; // minutes of the day, or null (시간 모름)
   let timeTouched = false; // set or cleared by the visitor: picking another wall keeps it
@@ -513,10 +522,10 @@ export function createLogView({
   });
 
   /**
-   * openAdd({wall, date, from, place}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today.
+   * openAdd({wall, date, from, place, onSaved}): wall fixed (펼친 카드의 다녀왔어요) or picked here (기록 탭); date defaults to today.
    * place: the fixed wall's object when it is not in getWalls() (a crag card's 다녀왔어요; with no hours the time is free, 06:00–23:30).
    */
-  function openAdd({ wall = null, date = null, from = null, place = null } = {}) {
+  function openAdd({ wall = null, date = null, from = null, place = null, onSaved = null } = {}) {
     form.reset();
     gradeWall.clear();
     boulderWall.clear();
@@ -533,6 +542,8 @@ export function createLogView({
     choice = null;
     extraWall = null;
     opener = from;
+    onSavedCb = onSaved;
+    routeField.reset(projectsFor(wall));
     chipNames = wall ? [] : pickChips(getWalls(), { favs: getFavs(), visits: visitStats(log) }).map((w) => w.name);
     searchBox.hidden = Boolean(wall);
     picks.hidden = true;
@@ -579,6 +590,7 @@ export function createLogView({
       form.elements.mresult.value = r.multi.result;
     }
     gradesBox.open = Boolean(r.sends || r.tries || r.multi);
+    if (r.routes?.length) routeField.set(r.routes[0]); // the sheet edits the first route; the rest stay as they are
     drawTime();
     setTimeOpen(false);
   }
@@ -590,8 +602,10 @@ export function createLogView({
     const wall = sheetWall();
     if (!wall) return;
     const time = visitMin == null ? '' : timeOfMin(visitMin);
+    const route = routeField.routes();
+    if (route.error) return; // shown under the field, its name input focused
     if (editing) {
-      const up = updateRecord(log, editing.id, { time, memo: form.elements.memo.value, ...climbed() }, { today: today(), nowMin: nowMin() });
+      const up = updateRecord(log, editing.id, { time, memo: form.elements.memo.value, ...climbed(), routes: [...route.routes, ...(editing.routes?.slice(1) ?? [])] }, { today: today(), nowMin: nowMin() });
       if (up.field === 'time') {
         timeErr.textContent = up.error;
         timeErr.hidden = false;
@@ -605,7 +619,7 @@ export function createLogView({
       changed();
       return toast(`${wall} 기록을 고쳤어요`);
     }
-    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, ...climbed(), wall_id: getWallId(wall) }, { today: today(), id: newId(), nowMin: nowMin() });
+    const res = addRecord(log, { wall, date: form.elements.date.value, time, memo: form.elements.memo.value, ...climbed(), routes: route.routes, wall_id: getWallId(wall) }, { today: today(), id: newId(), nowMin: nowMin() });
     if (res.field === 'time') {
       timeErr.textContent = res.error;
       timeErr.hidden = false;
@@ -634,6 +648,7 @@ export function createLogView({
     rankUp = after.level > before.level;
     persist();
     document.dispatchEvent(new CustomEvent('stats:log-add')); // stats.js counts it (no wall name or memo in it)
+    onSavedCb?.(res.record);
     if (!panel.hidden) { // added from the 기록 tab: show the day it went on
       picked = focusDay = res.record.date;
       dayShown = true;
@@ -673,7 +688,7 @@ export function createLogView({
 
   // ---- backup ----
   function exportFile() {
-    const url = URL.createObjectURL(new Blob([exportLog(log, new Date(), exportContrib({ get: getStr, set: setStr }))], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([exportLog(log, new Date(), exportContrib({ get: getStr, set: setStr }), exportExtra(storage, today()))], { type: 'application/json' }));
     const a = el('a', { href: url, download: `haebyeok-log-${today()}.json` });
     document.body.append(a);
     a.click();
@@ -689,6 +704,8 @@ export function createLogView({
     const res = parseImport(await file.text(), today(), nowMin());
     if (!res.ok) return `가져오지 못했어요: ${res.error}`;
     restoreContrib({ get: getStr, set: setStr }, res.contrib); // the authorId only on a device that has none
+    restoreExtra(storage, res.extra, today()); // 일정·프로젝트 숨김: 정제해서 합친다
+    onImport();
     const merged = mergeLog(log, res.records);
     log = merged.log;
     persist();
@@ -715,7 +732,7 @@ export function createLogView({
     });
   }
 
-  // The record's 도장: the 해벽 mark (css mask) in a round rim; a dot on the rim where the sun stood
+  // The record's 도장: the 희노애Rock emblem (css mask) in a round rim; a dot on the rim where the sun stood
   // (filled = sunny wall, hollow = shade; only a record with a time), a second rim for the first visit to that wall.
   // Decoration only. A wall with its own stamp artwork (src/stamp.js) is drawn from that file. `recs`: the records
   // this seal stands for, newest visit first (a calendar day shows its first record's).
@@ -734,7 +751,7 @@ export function createLogView({
     return s;
   }
 
-  // The 등급 seal — the ONE place its artwork is decided: the 해벽 mark in a round rim, ringed by the sun's path (a thin
+  // The 등급 seal — the ONE place its artwork is decided: the 희노애Rock emblem in a round rim, ringed by the sun's path (a thin
   // tilted orbit, its upper half behind the seal, its lower half in front). Five sun stops sit on the front arc (east →
   // west, below the mark); one more is filled per tier (볕뉘 1 … 해무리 5) and 온누리 (전국 완주) draws the whole orbit solid.
   // level: rankOf's -1..5; pressed: the save just raised the 등급 (.stamp-in). Decoration only: the name and the way to
@@ -1140,5 +1157,6 @@ export function createLogView({
     justStamped: (name) => stampedWall === name, // true only while changed() redraws after a save
     reconcile: (walls) => { const r = reconcileLog(log, walls); if (r.changed) { log = r.log; persist(); } }, // after the lists load: names follow ids, old records get ids
     recordsFor: (name) => log.filter((r) => r.wall === name), // newest first (normalizeLog/addRecord keep that order)
+    records: () => log, // every record, newest first (홈의 일정 0개 추천이 방문 횟수를 센다)
   };
 }

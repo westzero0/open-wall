@@ -40,6 +40,6 @@ export function cragList(crags, at, { regions = [], approachMax = 0, origin = nu
       return { ...row, distanceKm, litMin: row.cond.basis === 'wetness' ? litMin(cragModel(wall, at).bar) : 0 };
     })
     .filter((r) => (sun === 'sun' || sun === 'shade' ? r.sun === sun : true)
-      && (!q || `${r.name} ${r.crag.region ?? ''}`.toLowerCase().includes(q)))
+      && (!q || `${r.name} ${r.crag.region ?? ''} ${r.peaks.join(' ')}`.toLowerCase().includes(q)))
     .sort((a, b) => order.reduce((d, f) => d || f(a, b), 0) || cmp(a.name, b.name));
 }
