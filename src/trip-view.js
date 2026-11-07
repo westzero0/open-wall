@@ -9,7 +9,7 @@
 //   ddayLine(model)                                              홈의 칩 줄과 카드 사이 한 줄: 'D-5 다음 일정' (카드는 장소·날짜를 스스로 말하고 D-day는 여기)
 //   backCard(model, { onRecord, onSkip, icon })                  다녀온 뒤: '어제 다녀왔어요?' (model.when = '어제' | 'N일 전', 배지도 같은 말)
 import { el } from './dom.js';
-import { WX_ICON, wxLabel, goRow, chipBar, lineRow, tag } from './card-parts.js';
+import { WX_ICON, wxLabel, goRow, chipBar, lineRow, tag, arrow } from './card-parts.js';
 
 const pic = (icon, name) => (icon ? icon(name) : null);
 // 칩 그림 하나: 예보가 없으면 날씨를 그리지 않는다(달력 그림 = "아직 예보 없음", 맑다고 말하지 않는다). wx.kind null = 맑음.
@@ -30,11 +30,16 @@ const head = (m, icon, end = badge(m.badge, m.badgeKind)) => el('div', { class: 
   el('div', { class: 'trip-t' }, el('h3', { class: 'trip-name' }, m.title), m.dateText ? el('p', { class: 'trip-date' }, [m.dateText, m.dday].filter(Boolean).join(' · ')) : null), end);
 
 // 날씨 머리(m.plan = trip-plan.js planHead, 시안 home-v3): 장소 · 날짜 줄(+ 알약) → 날씨 제목 → 날씨 칸 둘(비 오는 칸은 --rain-tint) → 안내. m.plan이 없으면 예전 머리(칩 · 이름 · 날짜).
-const planHeader = (m, icon, end) => [
+const planHeader = (m, icon, end, onWeather = null) => [  // onWeather(button): 날씨 칸을 누르면 그 암장 시트의 날씨 보기로(없으면 읽기만)
   el('div', { class: 'pc-eye' }, el('span', { class: 'pc-place' }, [m.title, m.dateText].filter(Boolean).join(' · ')), end),
   el('h3', { class: 'pc-head' }, m.plan.headline),
-  m.plan.cells.length ? el('div', { class: 'pc-wx' }, ...m.plan.cells.map((c) => el('div', { class: `pc-cell${c.rain ? ' wet' : ''}` }, el('span', { class: 'pc-g', 'aria-hidden': 'true' }, pic(icon, c.glyph)),
-    el('div', { class: 'pc-t' }, el('b', {}, c.day), el('small', {}, c.text))))) : null,
+  m.plan.cells.length ? el('div', { class: 'pc-wx' }, ...m.plan.cells.map((c) => {
+    const body = [el('span', { class: 'pc-g', 'aria-hidden': 'true' }, pic(icon, c.glyph)), el('div', { class: 'pc-t' }, el('b', {}, c.day), el('small', {}, c.text))];
+    if (!onWeather) return el('div', { class: `pc-cell${c.rain ? ' wet' : ''}` }, ...body);
+    const b = el('button', { type: 'button', class: `pc-cell go${c.rain ? ' wet' : ''}`, 'aria-label': `${c.day} ${c.text}, 날씨 자세히 보기` }, ...body, arrow());
+    b.addEventListener('click', () => onWeather(b));
+    return b;
+  })) : null,
   m.plan.note ? el('p', { class: 'pc-note' }, m.plan.note) : null,
 ];
 const kindTag = (p) => tag(p.kind === 'zone' ? '구역' : p.indoor ? '실내' : '외벽');
@@ -47,8 +52,8 @@ const btn = (label, f, main = false, focus = null) => { // focus: data-focus, so
 };
 const btnRow = (...bs) => (bs.some(Boolean) ? el('div', { class: 'trip-acts' }, ...bs) : null);
 
-export function tripCard(m, { onHome, onMove, onDelete, homeMain = false, icon } = {}) {
-  return el('article', { class: m.plan ? 'trip-card pc' : 'trip-card', 'data-trip': m.id }, ...(m.plan ? planHeader(m, icon, badge(m.badge, m.badgeKind)) : [head(m, icon)]),
+export function tripCard(m, { onHome, onMove, onDelete, onWeather = null, homeMain = false, icon } = {}) {
+  return el('article', { class: m.plan ? 'trip-card pc' : 'trip-card', 'data-trip': m.id }, ...(m.plan ? planHeader(m, icon, badge(m.badge, m.badgeKind), onWeather) : [head(m, icon)]),
     btnRow(btn('홈에서 보기', onHome && (() => onHome(m.id)), homeMain, `trip-home-${m.id}`), btn('일정 옮기기', onMove && ((b) => onMove(m.id, b)), false, `trip-move-${m.id}`),
       btn('삭제', onDelete && (() => onDelete(m.id)), false, `trip-delete-${m.id}`)));
 }

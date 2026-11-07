@@ -15,7 +15,7 @@ export function suggestBlock(suggest, { icon, onOpenWall, tail = null }) { // ta
   return el('section', { class: 'trip-blk' }, el('h4', { class: 'trip-blk-t' }, HEAD[suggest.kind] ?? ''), el('div', { class: 'ln-box' },
     ...suggest.rows.map((r) => {
       const sub = [Number.isFinite(r.km) ? `${Math.round(r.km)}km` : null, r.sun || null, r.last ? `지난 방문 ${mdOf(r.last)}` : null].filter(Boolean).join(' · ');
-      const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon ? icon(fav ? 'heart' : 'carabiner', fav) : null), title: shortName(r.wall), sub: sub || null,
+      const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon ? icon(fav ? 'heart' : 'route', fav) : null), title: shortName(r.wall), sub: sub || null,
         end: el('span', { class: 'ln-end' }, el('span', { class: r.open ? 'ln-v open' : 'ln-v' }, when(r)), arrow()), data: { 'data-wall': r.wall.name } });
       b.addEventListener('click', () => onOpenWall?.(r.wall.name, b));
       return b;

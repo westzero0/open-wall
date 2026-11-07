@@ -1290,7 +1290,7 @@ function homeTopCard(top, fc, today) {
   const hr = (min) => Math.floor(min / 60);
   const sun = iv.length && p.venue !== 'indoor' ? (dayBar(p, day).sun || []).map(([a, b]) => [Math.max(a, iv[0][0]), Math.min(b, iv.at(-1)[1])]).filter(([a, b]) => b > a) : null; // 시안: 운영 한 줄에 그날 양달도(방향을 알 때만)
   const ops = plan && !zone ? `${iv.length ? `운영 ${hr(iv[0][0])}–${hr(iv.at(-1)[1])}시${sun?.length ? ` · 예상 양달 ${formatRanges(sun).replaceAll(', ', ' · ')}` : ''}. ` : ''}운영시간은 가기 전에 확인해 주세요.` : null;
-  return [ddayLine(m, ddayLabel()), tripCard({ ...m, plan: plan && { ...plan, note: plan.note ?? ops }, dday: null, badge: m.badgeKind === 'season' ? null : m.badge }, { icon })];
+  return [ddayLine(m, ddayLabel()), tripCard({ ...m, plan: plan && { ...plan, note: plan.note ?? ops }, dday: null, badge: m.badgeKind === 'season' ? null : m.badge }, { icon, onWeather: plan && zone ? (b) => openCragSheet(p.name, 'cond', b) : null })]; // 날씨 칸 → 그 암장 시트의 날씨 보기. 싱글피치(컨디션 탭)만: 외벽 시트에는 아직 날씨 칸이 없어 연결하지 않는다(외벽 시트에 시간별 날씨를 넣으면 같이 연결)
 }
 // 일정 0개 홈(홈 맨 위): 일정 잡기 줄 + 추천(♥ → 기록 → 가까운 곳, home-suggest.js). The list below stays open; the 외벽 시간표 is the 외벽 더 찾기.
 function drawEmptyHome(host) {
@@ -3093,6 +3093,8 @@ const arriveRow = noteRow({ id: 'arriveRow', title: arriveQ, sub: arriveN, end: 
 document.querySelector('section.board').before(arriveRow);
 homeOpen = el('section', { class: 'home-open', 'aria-label': '열린 외벽', hidden: true }); // 시안 ④: filled by drawHomeOpen (render)
 arriveRow.after(homeOpen);
+arriveRow.addEventListener('click', (e) => { if (!e.target.closest('button')) arrivePill.click(); }); // 박스 어디를 눌러도 같은 시트(누를 곳이 알약뿐이면 박스가 눌리는 것처럼 보이는데 안 눌린다)
+arriveRow.classList.add('go');
 arrivePill.addEventListener('click', () => {
   if (arrivePill.textContent === '내일 보기') { // after 23:00 no hour is left today: the pill does what the 내일 chip does
     const chip = [...$('scrubDays').querySelectorAll('button[data-date]')].find((b) => b.textContent.startsWith('내일'));
@@ -3110,13 +3112,13 @@ findHome.crag = $('crag-board'); findHome.cragParent = findHome.crag?.parentNode
 function drawHomeOpen(open, total) {
   if (!homeOpen) return; // before the start-up placed it
   const dist = ui.sortMode === 'distance' && !!vs.origin;
-  const sort = el('button', { type: 'button', class: 'sort-btn', 'aria-label': '정렬 바꾸기' }, dist ? '가까운 순' : '남은 시간 순');
+  const sort = el('button', { type: 'button', class: 'sort-btn', 'aria-label': '정렬 바꾸기' }, icon('sort'), dist ? '가까운 순' : '남은 시간 순'); // ⇅: 눌러 정렬을 바꾼다는 단서
   sort.addEventListener('click', () => { if (!dist && !vs.origin) locate(true); else setUi('sortMode', dist ? 'time' : 'distance'); });
   const line = (r) => {
     const sun = r.wall.venue === 'indoor' ? '실내' : r.lit === true ? '양달' : r.lit === false ? '응달' : null;
     const sub = [Number.isFinite(r.distanceKm) ? `${Math.round(r.distanceKm)}km` : null, sun].filter(Boolean).join(' · ');
     const end = r.status?.closeAt ? `열림 · ${new Date(r.status.closeAt).getHours()}시까지` : '열림';
-    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('carabiner')), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
+    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('route')), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
     b.addEventListener('click', () => openWallSheet(r.wall.name, b));
     return b;
   };
@@ -3124,7 +3126,8 @@ function drawHomeOpen(open, total) {
   const rows = open.slice(0, 3).map(line);
   const find = lineRow({ title: `외벽 더 찾기 (${total}곳)`, data: { 'data-home': 'find' } });
   homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '열린 외벽'), sort),
-    el('div', { class: 'ln-box' }, ...(rows.length ? rows : [noteRow({ title: '이 시각에 열린 외벽이 없어요' })]), find),
+    ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 열린 외벽이 없어요')]), // 누를 곳이 없는 말은 박스가 아니라 글
+    el('div', { class: 'ln-box' }, ...rows, find),
     ...(vs.origin ? [] : [el('p', { class: 'sh-hint' }, '위치를 허용하지 않으면 남은 시간 순으로 보여요. 위치는 이 기기에서만 쓰고 저장하지 않아요.')]));
   homeOpen.hidden = hasPlan || onMap() || !state.walls.length;
 }
@@ -3134,7 +3137,7 @@ function drawHomeCrags(rows) {
   const line = (r) => {
     const sun = r.sun === 'sun' ? '양달' : r.sun === 'shade' ? '응달' : null;
     const sub = [r.region || null, sun].filter(Boolean).join(' · ');
-    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('carabiner')), title: r.name, sub: sub || null,
+    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('route')), title: r.name, sub: sub || null,
       end: el('span', { class: 'ln-end' }, el('span', { class: r.cond.state === 'good' ? 'ln-v open' : 'ln-v' }, r.cond.short ?? r.cond.text), arrow()), data: { 'data-crag': r.name } });
     b.addEventListener('click', () => openCragSheet(r.name, undefined, b));
     return b;
@@ -3142,7 +3145,8 @@ function drawHomeCrags(rows) {
   const find = lineRow({ title: `싱글피치 더 찾기 (${rows.length}곳)`, data: { 'data-home': 'find' } });
   homeOpen.setAttribute('aria-label', '갈 수 있는 싱글피치');
   homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '갈 수 있는 곳')),
-    el('div', { class: 'ln-box' }, ...(rows.length ? rows.slice(0, 3).map(line) : [noteRow({ title: '이 시각에 갈 수 있는 싱글피치가 없어요' })]), find));
+    ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 갈 수 있는 싱글피치가 없어요')]),
+    el('div', { class: 'ln-box' }, ...rows.slice(0, 3).map(line), find));
   placeFinder(); // the title, the list's place in the sheet and homeOpen.hidden
 }
 function placeFinder() {
