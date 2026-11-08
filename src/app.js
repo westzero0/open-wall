@@ -1984,8 +1984,9 @@ function weatherSection(wall, m, at) {
   return sec;
 }
 function buildWallSheet(wallName) {
-  const row = allRows.find((r) => r.wall.name === wallName);
   const at = shown.at ?? new Date();
+  // 싱글피치 모드에서는 외벽 목록을 만들지 않아 allRows가 비어 있다(일정 카드의 외벽 칸이 시트를 못 열던 이유): 그 암장 한 줄만 지금 시각으로 만든다
+  const row = allRows.find((r) => r.wall.name === wallName) ?? buildList(state.walls.filter((w) => w.name === wallName), at, {})[0];
   if (!row) return null; // an unknown wall: nothing opens
   const wall = row.wall;
   const m = modelOf(row, at);
