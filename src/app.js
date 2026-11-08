@@ -1276,8 +1276,8 @@ function homeTopCard(top, fc, today) {
     const days = rainDays(t, fc, today, tripPlaces()).map((x) => ({ text: tripMd(dayKey(x.date)), rain: x.rain, wx: x.known ? { kind: x.rain ? 'rain' : null } : null }));
     const sub = (x) => [x.reason, Number.isFinite(x.km) ? `${Math.round(x.km)}km` : null].filter(Boolean).join(' · ');
     return [ddayLine(m, ddayLabel()), rainCard({ ...m, plan, dday: null, days, otherDay: rc.otherDay, recommend: rc.recommend,
-      otherDayLabel: rc.otherDay ? `${dayParts(rc.otherDay.from).dow}요일만 가기` : null, otherDaySub: rc.otherDay ? `같은 곳 · ${tripMd(rc.otherDay.from)} 비 예보 없음` : null,
-      instead: rc.instead.map((x) => ({ id: x.id, name: x.name, indoor: x.indoor, sub: sub(x) })), keepSub: days.find((d) => d.rain) ? `${days.find((d) => d.rain).text} 비 예보` : null }, {
+      otherDayLabel: rc.otherDay ? `${dayParts(rc.otherDay.from).dow}요일만 가기` : null, otherDaySub: rc.otherDay ? `${tripMd(rc.otherDay.from)} 비 예보 없음` : null,
+      instead: rc.instead.map((x) => ({ id: x.id, name: x.name, indoor: x.indoor, sub: sub(x) })), keepSub: plan?.cells?.find((c) => c.rain)?.text ?? (days.find((d) => d.rain) ? `${days.find((d) => d.rain).text} 비 예보` : null) }, { // 그대로 가기가 말하는 결정 정보 = 그날의 비 확률·기온(제목 문장은 '비'만 말한다)
       icon,
       onOtherDay: (id, od) => tripChange(moveTrip(trips, id, od), `${tripMd(od.from)} 하루로 바꿨어요`, 'stats:trip-move'),
       onInstead: (id, b) => tripChange(swapPlace(trips, id, { type: 'wall', id: b.id }), `${b.name}(으)로 바꿨어요`, 'stats:trip-move'),
@@ -1298,7 +1298,7 @@ function drawEmptyHome(host) {
   host.hidden = false;
   renderEmptyHome(host, {
     suggest: homeSuggest({ walls: state.walls, favs, log: logView.records(), here: vs.origin, now: new Date() }), icon,
-    onAsk: (b) => openTripAdd(null, b), onOpenWall: (name, b) => openWallSheet(name, b), onLocate: () => locate(true),
+    onAsk: (b) => openTripAdd(null, b), onOpenWall: (name, b) => openWallSheet(name, b),
   });
 }
 const findLine = () => lineRow({ title: '외벽 더 찾기', data: { 'data-home': 'find' } });
@@ -1358,7 +1358,7 @@ const tripDayWx = (choice, date) => (date ? dayWeather(tripForecasts().get(choic
 function openTripSheetFor(preset, opener, onSave, full = false, title) {
   if (state.walls.length) loadWeekendWeather(); // quiet when fresh; a late answer shows on the next opening
   openTripSheet({
-    dialog: $('tripAdd'), choices: tripChoices(), today: tripToday(), preset, full, icon, opener, onSave, title,
+    dialog: $('tripAdd'), choices: tripChoices(), today: tripToday(), preset: preset ?? {}, full, icon, opener, onSave, title,
     forecastText: (c, date) => { const w = tripDayWx(c, date); return w ? `${tripMd(date)} ${w.rainText ?? '비 예보 없음'}` : null; },
     forecastWx: (c, date) => { const w = tripDayWx(c, date); return w ? { kind: w.rain ? 'rain' : null } : null; },
   });
@@ -3120,6 +3120,7 @@ arrivePill.addEventListener('click', () => {
     const chip = [...$('scrubDays').querySelectorAll('button[data-date]')].find((b) => b.textContent.startsWith('내일'));
     if (chip) return chip.click();
   }
+  $('arrive-title').textContent = '도착 시각'; // 알약으로 연 시트는 제목도 알약 이름을 따른다(안은 같은 시트: 시각·시간표·조건)
   arriveSheet.showModal();
 });
 // 외벽 더 찾기 (시안 ⑥, 계획서 "정정"): on a day with a trip card the filter row, the time box and the 시간표 live in this sheet (one place, ids kept); without one the list stays on 홈.
@@ -3132,23 +3133,24 @@ findHome.crag = $('crag-board'); findHome.cragParent = findHome.crag?.parentNode
 function drawHomeOpen(open, total) {
   if (!homeOpen) return; // before the start-up placed it
   const dist = ui.sortMode === 'distance' && !!vs.origin;
-  const sort = el('button', { type: 'button', class: 'sort-btn', 'aria-label': '정렬 바꾸기' }, icon('sort'), dist ? '가까운 순' : '남은 시간 순'); // ⇅: 눌러 정렬을 바꾼다는 단서
+  const sort = el('button', { type: 'button', class: 'sort-btn sort-quiet', 'aria-label': '정렬 바꾸기' }, icon('sort'), dist ? '가까운 순' : '남은 시간 순'); // ⇅: 눌러 정렬을 바꾼다는 단서
   sort.addEventListener('click', () => { if (!dist && !vs.origin) locate(true); else setUi('sortMode', dist ? 'time' : 'distance'); });
   const line = (r) => {
     const sun = r.wall.venue === 'indoor' ? '실내' : r.lit === true ? '양달' : r.lit === false ? '응달' : null;
     const sub = [Number.isFinite(r.distanceKm) ? `${Math.round(r.distanceKm)}km` : null, sun].filter(Boolean).join(' · ');
     const end = r.status?.closeAt ? `열림 · ${new Date(r.status.closeAt).getHours()}시까지` : '열림';
-    const b = lineRow({ lead: el('span', { class: 'ln-tile', 'aria-hidden': 'true' }, icon('route')), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
+    const lit = r.wall.venue === 'indoor' ? 'indoor' : r.lit === true ? 'sun' : r.lit === false ? 'shade' : 'route'; // 앞 칸은 줄마다 다른 정보: 양달·응달·실내
+    const b = lineRow({ lead: el('span', { class: `ln-tile ln-${lit}`, 'aria-hidden': 'true' }, icon(lit)), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
     b.addEventListener('click', () => openWallSheet(r.wall.name, b));
     return b;
   };
   homeOpen.setAttribute('aria-label', '열린 외벽');
   const rows = open.slice(0, 3).map(line);
   const find = lineRow({ title: `외벽 더 찾기 (${total}곳)`, data: { 'data-home': 'find' } });
-  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '열린 외벽'), sort),
-    ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 열린 외벽이 없어요')]), // 누를 곳이 없는 말은 박스가 아니라 글
-    el('div', { class: 'ln-box' }, ...rows, find),
-    ...(vs.origin ? [] : [el('p', { class: 'sh-hint' }, '위치를 허용하지 않으면 남은 시간 순으로 보여요. 위치는 이 기기에서만 쓰고 저장하지 않아요.')]));
+  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '열린 외벽'), arrivePill), // 제목 줄 오른쪽 = 이 목록의 조건(도착 시각), 카드 안 위쪽 = 목록의 순서(정렬): 성격이 다른 둘을 같은 알약으로 나란히 두지 않는다
+    el('div', { class: 'home-open-card' }, el('div', { class: 'home-open-ctl' }, sort),
+      ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 열린 외벽이 없어요')]), // 누를 곳이 없는 말은 박스가 아니라 글
+      el('div', { class: 'ln-box' }, ...rows, find)));
   homeOpen.hidden = hasPlan || onMap() || !state.walls.length;
 }
 // 싱글피치 모드의 홈: 외벽 홈(drawHomeOpen)과 같은 틀. 지금 갈 수 있는 곳 3줄(컨디션 말) + 싱글피치 더 찾기(목록·검색·조건은 시트).
@@ -3164,9 +3166,10 @@ function drawHomeCrags(rows) {
   };
   const find = lineRow({ title: `싱글피치 더 찾기 (${rows.length}곳)`, data: { 'data-home': 'find' } });
   homeOpen.setAttribute('aria-label', '갈 수 있는 싱글피치');
-  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '갈 수 있는 곳')),
-    ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 갈 수 있는 싱글피치가 없어요')]),
-    el('div', { class: 'ln-box' }, ...rows.slice(0, 3).map(line), find));
+  homeOpen.replaceChildren(el('div', { class: 'home-open-h' }, el('b', {}, '갈 수 있는 곳'), arrivePill),
+    el('div', { class: 'home-open-card' },
+      ...(rows.length ? [] : [el('p', { class: 'sh-hint home-note' }, '이 시각에 갈 수 있는 싱글피치가 없어요')]),
+      el('div', { class: 'ln-box' }, ...rows.slice(0, 3).map(line), find)));
   placeFinder(); // the title, the list's place in the sheet and homeOpen.hidden
 }
 function placeFinder() {
@@ -3194,7 +3197,7 @@ function placeFinder() {
 }
 finderReady = true;
 placeFinder();
-for (const host of [$('homeTop'), homeOpen]) host?.addEventListener('click', (e) => { if (e.target.closest('[data-home="find"]')) arriveSheet.showModal(); });
+for (const host of [$('homeTop'), homeOpen]) host?.addEventListener('click', (e) => { if (e.target.closest('[data-home="find"]')) { $('arrive-title').textContent = cragMode() ? '싱글피치 더 찾기' : '외벽 더 찾기'; arriveSheet.showModal(); } });
 const sheetForm = sheet.querySelector('form');
 $('condSched')?.addEventListener('click', () => { sheet.close(); showTab('sched', true); }); // 운동 스케줄 lives in the 일정 tab: this row goes there
 const ropeForm = $('profile').querySelector('form'); // 내 로프 길이 lives in 내 정보 (a setting, not a filter)

@@ -23,11 +23,11 @@ export function suggestBlock(suggest, { icon, onOpenWall, tail = null }) { // ta
 }
 
 /**
- * renderEmptyHome(host, { suggest, onAsk(button), onOpenWall(name, button), onLocate(button), icon(name, filled) })
- * suggest: home-suggest.js's { kind, rows, note }. Draws: 일정 잡기 · the heading and the rows (fav ♥, else 기록, else 가까운 곳) · or the note (far: grey line, locate: 위치 허용 줄).
+ * renderEmptyHome(host, { suggest, onAsk(button), onOpenWall(name, button), icon(name, filled) })
+ * suggest: home-suggest.js's { kind, rows, note }. Draws: 일정 잡기 · the heading and the rows (fav ♥, else 기록, else 가까운 곳) · or the note (far: grey line). 가까운 순은 목록 머리의 정렬 알약이 맡는다(위치 허용 줄은 없음).
  */
-export function renderEmptyHome(host, { suggest, onAsk, onOpenWall, onLocate, icon, tail = null }) {
-  const ask = lineRow({ title: '일정 잡기', sub: '일정을 잡으면 그날 날씨·운영 정보를 카드에서 보여 드려요', data: { 'data-home': 'ask' } });
+export function renderEmptyHome(host, { suggest, onAsk, onOpenWall, icon, tail = null }) {
+  const ask = lineRow({ title: '일정 잡기', sub: '날짜·암장을 고르면 날씨까지 모아 보여 줘요', data: { 'data-home': 'ask' } });
   ask.addEventListener('click', () => onAsk?.(ask));
   const parts = [ask];
   if (suggest.rows.length) {
@@ -35,10 +35,6 @@ export function renderEmptyHome(host, { suggest, onAsk, onOpenWall, onLocate, ic
     tail = null;
   } else if (suggest.note === 'far') {
     parts.push(el('p', { class: 'sh-hint home-note' }, '30km 안에 가까운 암장이 없어요. 아래 외벽 시간표에서 찾아보세요.'));
-  } else if (suggest.note === 'locate') {
-    const loc = lineRow({ title: '위치 허용하고 가까운 순으로 보기', sub: '위치는 이 기기에서만 쓰고 저장하지 않아요', data: { 'data-home': 'locate' } });
-    loc.addEventListener('click', () => onLocate?.(loc));
-    parts.push(loc);
   }
   host.replaceChildren(...parts, ...(tail ? [tail] : []));
 }

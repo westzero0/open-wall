@@ -34,6 +34,8 @@
   --chev-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23111114' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); /* ⌄ 12px: 정렬 알약·조건 버튼 */
   --shade-bar: #4d8fe0; /* the 응달 stretch of a day bar (the pick) */
   --closed: var(--off);
+  /* 올리브·모래(2026-11-08 홈 시안 B, Komoot 결): 홈의 주 행동 하나와 보조 면에만. --accent(먹색)는 그대로 */
+  --olive: #4f6814; --on-olive: #f5f3ec; --olive-soft: #e7e8d1; --sand: #ede9de; --sand-ink: #4a4636;
   --accent: #111114; /* 먹색: 주 행동·현재 시각 (초록은 상태 표시만) */
   --accent-soft: rgba(118, 118, 128, .16);
   --scrim: rgb(0 0 0 / .45);
@@ -133,6 +135,7 @@
     --mat: rgb(30 33 37 / .74);
     --mat-hair: rgb(255 255 255 / .16);
     --point: #8fb4e3;
+    --olive: #b4c765; --on-olive: #1c2206; --olive-soft: #2b3318; --sand: #2b2d27; --sand-ink: #d9d4c4;
     --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M12.5 11.5 8.5 16l4 4.5M19.5 11.5l4 4.5-4 4.5' fill='none' stroke='%238fb4e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --shade-glyph: #86a3c9;
     --chev-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23f4f2ec' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -160,7 +163,7 @@
 :root[data-theme="dark"] {
   --paper: #17191c; --sheet: #1e2125; --panel: #262a2f; --wall: #f4f2ec; --sun-ui: #f2b25c; --open-past: #2b4231; --soon: #f08aa8; --sun: #f2b25c;
   --fav: #ffd34d; --fav-edge: #ffd34d; --off: #343a37; --gone: #666d72; --hair: #24282c; --fg: #f4f2ec; --muted: #a9aaa7;
-  --line: #33373c; --line-strong: #4a4e54; --open: #86c993; --open-bar: #86c993; --rope: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='10'%3E%3Cpath d='M0,5.0L2,5.7L4,6.3L6,6.8L8,7.3L10,7.5L12,7.6L14,7.5L16,7.3L18,6.8L20,6.3L22,5.7L24,5.0L26,4.3L28,3.7L30,3.2L32,2.7L34,2.5L36,2.4L38,2.5L40,2.7L42,3.2L44,3.7L46,4.3L48,5.0' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,5.0L2,5.7L4,6.3L6,6.8L8,7.3L10,7.5L12,7.6L14,7.5L16,7.3L18,6.8L20,6.3L22,5.7L24,5.0L26,4.3L28,3.7L30,3.2L32,2.7L34,2.5L36,2.4L38,2.5L40,2.7L42,3.2L44,3.7L46,4.3L48,5.0' fill='none' stroke='%23a9aaa7' stroke-width='2.4'/%3E%3Cpath d='M0,7.3L2,6.8L4,6.3L6,5.7L8,5.0L10,4.3L12,3.7L14,3.2L16,2.7L18,2.5L20,2.4L22,2.5L24,2.7L26,3.2L28,3.7L30,4.3L32,5.0L34,5.7L36,6.3L38,6.8L40,7.3L42,7.5L44,7.6L46,7.5L48,7.3' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,7.3L2,6.8L4,6.3L6,5.7L8,5.0L10,4.3L12,3.7L14,3.2L16,2.7L18,2.5L20,2.4L22,2.5L24,2.7L26,3.2L28,3.7L30,4.3L32,5.0L34,5.7L36,6.3L38,6.8L40,7.3L42,7.5L44,7.6L46,7.5L48,7.3' fill='none' stroke='%238a8c90' stroke-width='2.4'/%3E%3Cpath d='M0,2.7L2,2.5L4,2.4L6,2.5L8,2.7L10,3.2L12,3.7L14,4.3L16,5.0L18,5.7L20,6.3L22,6.8L24,7.3L26,7.5L28,7.6L30,7.5L32,7.3L34,6.8L36,6.3L38,5.7L40,5.0L42,4.3L44,3.7L46,3.2L48,2.7' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,2.7L2,2.5L4,2.4L6,2.5L8,2.7L10,3.2L12,3.7L14,4.3L16,5.0L18,5.7L20,6.3L22,6.8L24,7.3L26,7.5L28,7.6L30,7.5L32,7.3L34,6.8L36,6.3L38,5.7L40,5.0L42,4.3L44,3.7L46,3.2L48,2.7' fill='none' stroke='%236b6f74' stroke-width='2.4'/%3E%3C/svg%3E"); --mat: rgb(30 33 37 / .74); --mat-hair: rgb(255 255 255 / .16); --point: #8fb4e3; --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M12.5 11.5 8.5 16l4 4.5M19.5 11.5l4 4.5-4 4.5' fill='none' stroke='%238fb4e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --shade-glyph: #86a3c9; --chev-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23f4f2ec' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --accent: #f4f2ec; --accent-soft: #2b4231; --sunken: #262a2f; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
+  --line: #33373c; --line-strong: #4a4e54; --open: #86c993; --open-bar: #86c993; --rope: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='10'%3E%3Cpath d='M0,5.0L2,5.7L4,6.3L6,6.8L8,7.3L10,7.5L12,7.6L14,7.5L16,7.3L18,6.8L20,6.3L22,5.7L24,5.0L26,4.3L28,3.7L30,3.2L32,2.7L34,2.5L36,2.4L38,2.5L40,2.7L42,3.2L44,3.7L46,4.3L48,5.0' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,5.0L2,5.7L4,6.3L6,6.8L8,7.3L10,7.5L12,7.6L14,7.5L16,7.3L18,6.8L20,6.3L22,5.7L24,5.0L26,4.3L28,3.7L30,3.2L32,2.7L34,2.5L36,2.4L38,2.5L40,2.7L42,3.2L44,3.7L46,4.3L48,5.0' fill='none' stroke='%23a9aaa7' stroke-width='2.4'/%3E%3Cpath d='M0,7.3L2,6.8L4,6.3L6,5.7L8,5.0L10,4.3L12,3.7L14,3.2L16,2.7L18,2.5L20,2.4L22,2.5L24,2.7L26,3.2L28,3.7L30,4.3L32,5.0L34,5.7L36,6.3L38,6.8L40,7.3L42,7.5L44,7.6L46,7.5L48,7.3' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,7.3L2,6.8L4,6.3L6,5.7L8,5.0L10,4.3L12,3.7L14,3.2L16,2.7L18,2.5L20,2.4L22,2.5L24,2.7L26,3.2L28,3.7L30,4.3L32,5.0L34,5.7L36,6.3L38,6.8L40,7.3L42,7.5L44,7.6L46,7.5L48,7.3' fill='none' stroke='%238a8c90' stroke-width='2.4'/%3E%3Cpath d='M0,2.7L2,2.5L4,2.4L6,2.5L8,2.7L10,3.2L12,3.7L14,4.3L16,5.0L18,5.7L20,6.3L22,6.8L24,7.3L26,7.5L28,7.6L30,7.5L32,7.3L34,6.8L36,6.3L38,5.7L40,5.0L42,4.3L44,3.7L46,3.2L48,2.7' fill='none' stroke='%2317191c' stroke-width='4.4'/%3E%3Cpath d='M0,2.7L2,2.5L4,2.4L6,2.5L8,2.7L10,3.2L12,3.7L14,4.3L16,5.0L18,5.7L20,6.3L22,6.8L24,7.3L26,7.5L28,7.6L30,7.5L32,7.3L34,6.8L36,6.3L38,5.7L40,5.0L42,4.3L44,3.7L46,3.2L48,2.7' fill='none' stroke='%236b6f74' stroke-width='2.4'/%3E%3C/svg%3E"); --mat: rgb(30 33 37 / .74); --mat-hair: rgb(255 255 255 / .16); --point: #8fb4e3; --olive: #b4c765; --on-olive: #1c2206; --olive-soft: #2b3318; --sand: #2b2d27; --sand-ink: #d9d4c4; --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M12.5 11.5 8.5 16l4 4.5M19.5 11.5l4 4.5-4 4.5' fill='none' stroke='%238fb4e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --shade-glyph: #86a3c9; --chev-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23f4f2ec' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --accent: #f4f2ec; --accent-soft: #2b4231; --sunken: #262a2f; --scrim: rgb(0 0 0 / .6); --on-accent: #17191c;
     --plate: #1e2125;
     --sun-disc: #f4b942;
     --shade-ink: rgba(0, 0, 0, .32);
@@ -341,7 +344,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
   .tabs [aria-selected="true"] { background: none; box-shadow: none; color: var(--fg); }
   .tb-ic { position: relative; display: block; }
   .tb-ic svg { display: block; width: 24px; height: 24px; }
-  .tabs [aria-selected="true"] .tb-ic svg { color: var(--accent); }
+  .tabs [aria-selected="true"] .tb-ic svg { color: var(--olive); }
   .tabs [aria-selected="true"] .tb-ic::after { content: ""; position: absolute; top: 0; right: -9px; width: 8px; height: 8px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 25%, transparent); }
 }
 
@@ -2882,7 +2885,7 @@ body .tabbar { box-shadow: 0 -.5px 0 var(--mat-hair); } /* 탭바 윗선은 0.5p
 @media (max-width: 1023px) {
   body .tabbar .tabs { background: transparent; padding: 0; }
   body .tabbar .tabs [role="tab"] { color: var(--muted); font-weight: 500; }
-  body .tabbar .tabs [aria-selected="true"] { background: transparent; box-shadow: none; color: var(--point); font-weight: 600; } /* 탭바의 현재 탭은 칸이 아니라 글자 무게와 색 */
+  body .tabbar .tabs [aria-selected="true"] { background: transparent; box-shadow: none; color: var(--olive); font-weight: 600; } /* 탭바의 현재 탭은 칸이 아니라 글자 무게와 색 */
 }
 :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 .segs button { position: relative; }
@@ -3367,3 +3370,29 @@ div.sh-row.tripadd-when { display: block; } /* 날짜 label above the chips, lik
 .ws-wx-hrs { margin-top: var(--sp-12); flex-wrap: wrap; row-gap: var(--sp-8); } /* 큰 글씨: 6칸이 한 줄에 안 들어가면 줄바꿈(가로 넘침 없음) */
 .ws-wx-hrs li { flex: 1 1 0; }
 .ws-wx-none { margin: 0; }
+
+/* 홈 시안 B (2026-11-08): 올리브 = 주 행동 하나(+ 일정 잡기 칩·빈 홈 줄), 모래 = 보조 알약·앞 칸. 도착 줄의 설명은 읽는 사람에게만 남기고, 알약과 목록이 위계를 잡는다 */
+.ln[data-home="ask"] { background: var(--olive); box-shadow: none; color: var(--on-olive); }
+.ln[data-home="ask"] .ln-m, .ln[data-home="ask"] .pv-arrow { color: var(--on-olive); }
+#arriveRow { display: none; } /* 도착 시각 알약은 열린 외벽 섹션 안(.home-open-ctl)으로 옮겼다: 목록을 바꾸는 조작이라 목록 위에 따로 두지 않는다 */
+.home-open-card { background: var(--surface); border-radius: var(--r-16); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; } /* 열린 외벽: 제목은 카드 위, 알약(도착 시각·정렬)과 목록은 한 카드 안 */
+.home-open-h .arrive-pill { margin-left: var(--sp-8); }
+.home-open-ctl { display: flex; justify-content: flex-end; margin: var(--sp-8) var(--sp-8) 0; } /* 8px: 카드의 overflow:hidden이 알약 눌림 영역(위 6px)을 자르지 않게 */
+/* 정렬은 눌러서 바꾸는 조작이라 알약 모양을 지키되, 도착 시각(조건)보다 작게 카드 안 위쪽에 둔다 */
+.home-open .sort-btn.sort-quiet { background-color: var(--sand); color: var(--sand-ink); font-weight: 600; }
+.home-open .ln-box { box-shadow: none; border-radius: 0; background: transparent; border-top: 1px solid var(--hair); }
+.home-open-card > .home-note { margin: 0 var(--sp-16) var(--sp-12); }
+.home-open-ctl .sort-btn, .home-open-ctl .arrive-pill { margin-left: 0; }
+.home-open .sort-btn, .home-open .arrive-pill { background-color: var(--sand); color: var(--sand-ink); }
+.home-open .ln-tile { background: none; color: var(--muted); }
+.home-open .ln-tile.ln-sun { color: var(--sun-ui); }
+.home-open-h b { font-size: var(--fs-xl); }
+/* 일정이 없는 홈은 올리브 줄이 일정 잡기 입구: 맨 위 칩의 같은 이름 입구는 숨긴다(일정이 있으면 줄이 없으니 칩이 남는다) */
+body:has(#homeTop .ln[data-home="ask"]) .scrub-days .day-add { display: none; }
+
+/* 홈 시안 B 확정(2026-11-08): 도착 알약 = 올리브 외곽선(조건), 정렬 알약 = 모래 면(순서). 다크는 일정 잡기 줄을 --olive-soft 면 + 올리브 글자로 낮춘다 */
+.home-open-h .arrive-pill { background-color: transparent; box-shadow: inset 0 0 0 1.5px var(--olive); color: var(--olive); font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ln[data-home="ask"] { background: var(--olive-soft); color: var(--olive); box-shadow: inset 0 0 0 1px rgb(180 199 101 / .28); }
+  :root:not([data-theme="light"]) .ln[data-home="ask"] .ln-m, :root:not([data-theme="light"]) .ln[data-home="ask"] .pv-arrow { color: var(--olive); }
+}

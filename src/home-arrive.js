@@ -3,12 +3,12 @@
 import { dayText, fmtMin } from './viewmodel.js';
 import { ymd } from './time.js';
 
-/** arriveLabel(at, now, isNow) → '오늘 21:00 도착' (live: the next whole hour; 내일 보기 from 23:01) | '오늘 09:05 도착' | '11/9(월) 14:00 도착'. */
+/** arriveLabel(at, now, isNow) → '21:00 도착' (live: the next whole hour; 내일 보기 from 23:01) | '09:05 도착' (today: no date, the chip says it) | '11/9(월) 14:00 도착'. */
 export function arriveLabel(at, now, isNow) {
   if (isNow) { // 시안 ④: a live pick reads as the next whole hour (the slider's own steps); at 23시 and later there is none to pick, so the pill points to the next day (the 내일 chip)
     const h = now.getHours() + (now.getMinutes() ? 1 : 0);
-    return h > 23 ? '내일 보기' : `오늘 ${fmtMin(h * 60)} 도착`;
+    return h > 23 ? '내일 보기' : `${fmtMin(h * 60)} 도착`;
   }
-  const day = ymd(at) === ymd(now) ? '오늘' : dayText(at);
-  return `${day} ${fmtMin(at.getHours() * 60 + at.getMinutes())} 도착`;
+  const day = ymd(at) === ymd(now) ? '' : `${dayText(at)} `;
+  return `${day}${fmtMin(at.getHours() * 60 + at.getMinutes())} 도착`;
 }
