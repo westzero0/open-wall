@@ -3363,3 +3363,7 @@ div.sh-row.tripadd-when { display: block; } /* 날짜 label above the chips, lik
 #arriveRow { cursor: default; margin-top: var(--sp-12); } #arriveRow[hidden] { display: none; } #arriveRow .arrive-pill { position: relative; } #arriveRow .arrive-pill::before { content: ""; position: absolute; inset: -6px -4px; } /* 알약은 32px 그대로, 눌리는 면만 44px */ /* 시안 ④ 박스 줄: 키보드는 알약 하나, 줄 어디를 눌러도 같은 시트(›는 없음) */ html[data-text="xlarge"] #arriveRow { flex-wrap: wrap; } html[data-text="xlarge"] #arriveRow .ln-t { flex-basis: 100%; } html[data-text="xlarge"] #arriveRow .arrive-pill { margin-left: 0; } /* 큰 글씨: 질문이 한 줄을 다 쓰고 알약은 그 아래 */
 .arrive-pill { margin-left: auto; white-space: nowrap; } /* 도착 시각 알약: 시간표 머리 오른쪽, 정렬 알약과 같은 모양(3a) */
 #sortBtn { margin-left: var(--sp-8); }
+.ws-wx .wx-box { margin: 0; } /* 시간 탭 날씨 칸: 제목 아래 카드의 날씨 상자가 그대로, 위 여백은 제목 줄이 맡는다 */
+.ws-wx-hrs { margin-top: var(--sp-12); flex-wrap: wrap; row-gap: var(--sp-8); } /* 큰 글씨: 6칸이 한 줄에 안 들어가면 줄바꿈(가로 넘침 없음) */
+.ws-wx-hrs li { flex: 1 1 0; }
+.ws-wx-none { margin: 0; }

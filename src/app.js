@@ -110,7 +110,7 @@ import { applyTextSize, applyTheme, createProfileView } from './profile-view.js'
 import { createSafetyView } from './safety-view.js';
 import { aggregate, askable, canReport, crowdPayload, crowdReady, markSent, parseCrowdCsv } from './crowd.js';
 import { bumpCrowd } from './rank.js';
-import { CURRENT_MS, belowTempMin, countWx, sinkBad, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, sceneSky, skyKind, weatherFresh, weekendForecastUrl, windy, wxKind, rowWeather } from './weather.js';
+import { CURRENT_MS, RAIN_MM, belowTempMin, countWx, sinkBad, dayKey, dayWeather, forecastTrusted, skyVeils, skyWet, forecastUrl, listForecastUrl, parseCurrent, parseDaily, parseForecast, parseListForecast, pickHour, hoursAhead, sceneSky, skyKind, weatherFresh, weekendForecastUrl, windy, wxKind, rowWeather } from './weather.js';
 import { boardBox } from './board-view.js';
 import { createBoardApi } from './board-api.js';
 import { agoText, warningOf } from './closure-warning.js';
@@ -1290,7 +1290,7 @@ function homeTopCard(top, fc, today) {
   const hr = (min) => Math.floor(min / 60);
   const sun = iv.length && p.venue !== 'indoor' ? (dayBar(p, day).sun || []).map(([a, b]) => [Math.max(a, iv[0][0]), Math.min(b, iv.at(-1)[1])]).filter(([a, b]) => b > a) : null; // 시안: 운영 한 줄에 그날 양달도(방향을 알 때만)
   const ops = plan && !zone ? `${iv.length ? `운영 ${hr(iv[0][0])}–${hr(iv.at(-1)[1])}시${sun?.length ? ` · 예상 양달 ${formatRanges(sun).replaceAll(', ', ' · ')}` : ''}. ` : ''}운영시간은 가기 전에 확인해 주세요.` : null;
-  return [ddayLine(m, ddayLabel()), tripCard({ ...m, plan: plan && { ...plan, note: plan.note ?? ops }, dday: null, badge: m.badgeKind === 'season' ? null : m.badge }, { icon, onWeather: plan && zone ? (b) => openCragSheet(p.name, 'cond', b) : null })]; // 날씨 칸 → 그 암장 시트의 날씨 보기. 싱글피치(컨디션 탭)만: 외벽 시트에는 아직 날씨 칸이 없어 연결하지 않는다(외벽 시트에 시간별 날씨를 넣으면 같이 연결)
+  return [ddayLine(m, ddayLabel()), tripCard({ ...m, plan: plan && { ...plan, note: plan.note ?? ops }, dday: null, badge: m.badgeKind === 'season' ? null : m.badge }, { icon, onWeather: plan ? (zone ? (b) => openCragSheet(p.name, 'cond', b) : !noWeather(p) ? (b) => openWallSheet(p.name, b, { tab: 'time', section: 'weather' }) : null) : null })]; // 날씨 칸 → 그 암장 시트의 날씨 보기(싱글피치는 컨디션 탭, 외벽은 시간 탭의 날씨 칸; 실내·휴업은 읽기만)
 }
 // 일정 0개 홈(홈 맨 위): 일정 잡기 줄 + 추천(♥ → 기록 → 가까운 곳, home-suggest.js). The list below stays open; the 외벽 시간표 is the 외벽 더 찾기.
 function drawEmptyHome(host) {
@@ -1965,6 +1965,24 @@ function tapSection(wall, at) {
     onsite: (id, v) => tapApi.setOnsite(id, v),
   }));
 }
+// the wall sheet's 시간 tab 날씨 section: the card's 날씨 box for the picked moment + the next hours; filled again when the forecast arrives (loadWeather → wxSheet.fill)
+let wxSheet = null;
+function weatherSection(wall, m, at) {
+  if (noWeather(wall) || !wallPosition(wall)) { wxSheet = null; return null; }
+  const body = el('div', { class: 'ws-wx' });
+  const sec = sheetCard(vs.live ? '날씨 · 지금' : '날씨', [body], { attrs: { 'data-sec': 'weather' } });
+  const fill = () => {
+    const e = wx.byWall.get(wall.name);
+    const hrs = e?.hours ? hoursAhead(e.hours, at, 6) : [];
+    const box = e ? weatherBox(m, wall, at) : [];
+    const hour = (a) => el('li', {}, el('span', {}, a.label), el('b', {}, `${a.t}°`), a.r >= RAIN_MM ? el('small', {}, `${a.r < 10 ? Math.round(a.r * 10) / 10 : Math.round(a.r)}mm`) : null);
+    body.replaceChildren(...(box.length || hrs.length ? [...box, hrs.length ? el('ul', { class: 'wxb-hrs ws-wx-hrs', 'aria-label': '시간별 기온·강수' }, ...hrs.map(hour)) : null] : [el('p', { class: 'ws-chk ws-wx-none' }, !e ? '날씨를 불러오는 중이에요' : !e.hours && !e.current ? '날씨를 가져오지 못했어요. 잠시 뒤 다시 열어 보세요' : '이 시각의 예보가 아직 없어요')]).filter(Boolean));
+  };
+  fill();
+  wxSheet = { name: wall.name, fill };
+  loadWeather(wall);
+  return sec;
+}
 function buildWallSheet(wallName) {
   const row = allRows.find((r) => r.wall.name === wallName);
   const at = shown.at ?? new Date();
@@ -1990,7 +2008,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? weatherSection(wall, m, at) : null, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
     }))],
   };
 }
@@ -2099,6 +2117,7 @@ async function loadWeather(wall) {
   wx.byWall.set(wall.name, { hours, current, at: Date.now() });
   wx.busy.delete(wall.name);
   if (hours || current) refillOpen(wall.name);
+  wxSheet?.name === wall.name && wxSheet.fill(); // the open wall sheet's 날씨 section (it asked for the forecast when it opened)
 }
 // A tap leaves focus on the row's button, so a full render() would be skipped (and the minute tick may be off). Instead only
 // the forecast line is put into the open card (first in .m-info, after the 혼잡도 chip, where rowDetails puts it), so nothing
