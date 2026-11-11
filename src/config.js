@@ -19,7 +19,11 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 기록 탭(달력·카드·도장)은 stage와 무관하게 사람마다 기록 수로 열린다(docs/superpowers/specs/2026-10-21-staged-opening.md). src/stage.js가 읽는다.
 // 기록 탭 한 줄 요약의 야외 횟수: 야외가 열리기 전에는 false(코드에만 두고 화면에는 안 보인다).
 // 시간 슬라이더 첫 방문 넛지(src/scrub-hint.js): false면 손잡이 움직임과 한 줄 안내가 없다. 새 요청은 없다.
+// 클라이머 일정앱: planner.on — 켜면 일정 홈(planner.html)이 열린다. 서버 없음(기기 저장). appUrl — 약속 카드에 넣을 앱 주소(도메인 미정, 빈 값 = 링크 없음).
+// data.aliases — 내 암장/이름 -> 공식 암장 id 별칭 JSON 주소(빈 값 = 요청 없음).
 export const config = {
+  planner: { on: true },
+  appUrl: '',
   scrubHint: true,
   showOutdoorCount: false,
   stage: 'beta',
@@ -33,17 +37,20 @@ export const config = {
   zoneWatch: false, // 날씨 구역 등록 + 앱 안 비 예보 띠 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 5절): singlePitch(또는 시범 기기)와 함께일 때만 쓰인다. 꺼지면 등록 버튼·띠·저장 읽기가 모두 없다. 기기 저장뿐, 새 요청 없음(등록한 구역의 날씨는 기존 싱글피치 요청)
   fill: true, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.
   cragSubmit: true, // 새 암장 제보 (docs/superpowers/specs/2026-11-02-crag-submit-design.md): 켜면 boardUrl Worker에 암장 이름·좌표·방향·닉네임·authorId가 나간다. docs/system/permissions.md 반영 전에는 켜지 않는다.
-  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
+  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json', aliases: '' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportTap: true, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
   reportNickEntry: 'entry.1516503630', nickRequired: true,
-  statsCode: 'haebyeok', // GoatCounter 사이트 코드(src/stats.js); 비우면 통계를 보내지 않는다
+  posthogKey: 'phc_m95yxrqJzuxu7GUh4ukKExF6J6qcmkbFNzRZbkQtr5HC', // PostHog 프로젝트 키(phc_…, 공개 키라 클라이언트에 둬도 된다; src/stats.js). 비우면 통계를 보내지 않는다
+  posthogHost: 'https://eu.i.posthog.com', // PostHog Cloud 수집 주소(EU). CSP connect-src와 같아야 한다
   crowdEndpoint: `${CROWD_FORM}/formResponse`,
   crowdFields: { wall: 'entry.1128962446', level: 'entry.1535482151', kind: '', when: 'entry.1240200685', wallId: '' },
   crowdCsvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRo5ix5HkR_u07cMefjHVC_8XbrZ89w-JN3eCQAbcpRRBSLEibj4KnTP9sDCXQHFsJUdJkUjGr3kkCz/pub?gid=324204039&single=true&output=csv',
 };
 
+// 일정앱이 켜졌는가(config.planner.on).
+export const plannerOn = () => Boolean(config.planner?.on);
 // 게시판(Worker)이 켜졌는가. boardUrl이 비면 꺼진 것이고 요청도 가지 않는다. 화면은 boardUrl 대신 이것을 묻는다.
 export const boardOn = () => Boolean(config.boardUrl);
 // 탭 제보가 켜졌는가(reportTap과 boardUrl 둘 다). 꺼지면 줄도 요청도 없다.

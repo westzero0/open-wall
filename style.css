@@ -3379,7 +3379,6 @@ div.sh-row.tripadd-when { display: block; } /* 날짜 label above the chips, lik
 .home-open-h .arrive-pill { margin-left: var(--sp-8); }
 .home-open-ctl { display: flex; justify-content: flex-end; margin: var(--sp-8) var(--sp-8) 0; } /* 8px: 카드의 overflow:hidden이 알약 눌림 영역(위 6px)을 자르지 않게 */
 /* 정렬은 눌러서 바꾸는 조작이라 알약 모양을 지키되, 도착 시각(조건)보다 작게 카드 안 위쪽에 둔다 */
-.home-open .sort-btn.sort-quiet { background-color: var(--sand); color: var(--sand-ink); font-weight: 600; }
 .home-open .ln-box { box-shadow: none; border-radius: 0; background: transparent; border-top: 1px solid var(--hair); }
 .home-open-card > .home-note { margin: 0 var(--sp-16) var(--sp-12); }
 .home-open-ctl .sort-btn, .home-open-ctl .arrive-pill { margin-left: 0; }
@@ -3390,8 +3389,10 @@ div.sh-row.tripadd-when { display: block; } /* 날짜 label above the chips, lik
 /* 일정이 없는 홈은 올리브 줄이 일정 잡기 입구: 맨 위 칩의 같은 이름 입구는 숨긴다(일정이 있으면 줄이 없으니 칩이 남는다) */
 body:has(#homeTop .ln[data-home="ask"]) .scrub-days .day-add { display: none; }
 
-/* 홈 시안 B 확정(2026-11-08): 도착 알약 = 올리브 외곽선(조건), 정렬 알약 = 모래 면(순서). 다크는 일정 잡기 줄을 --olive-soft 면 + 올리브 글자로 낮춘다 */
-.home-open-h .arrive-pill { background-color: transparent; box-shadow: inset 0 0 0 1.5px var(--olive); color: var(--olive); font-weight: 600; }
+/* 홈 시안 B 확정(2026-11-08): 도착 시각(조건) = 모래 면 알약 + 시계 · 값 · ⌄ (값을 고르는 입력 칸), 정렬(순서) = 면 없는 글자 버튼 ⇅ + 진한 글자. 다크는 일정 잡기 줄을 --olive-soft 면 + 올리브 글자로 낮춘다 */
+.home-open .arrive-pill svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+.home-open .arrive-pill { gap: var(--sp-4); }
+.home-open .sort-btn.sort-quiet { background: none; color: var(--fg); font-weight: 600; padding: 0 var(--sp-4); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .ln[data-home="ask"] { background: var(--olive-soft); color: var(--olive); box-shadow: inset 0 0 0 1px rgb(180 199 101 / .28); }
   :root:not([data-theme="light"]) .ln[data-home="ask"] .ln-m, :root:not([data-theme="light"]) .ln[data-home="ask"] .pv-arrow { color: var(--olive); }

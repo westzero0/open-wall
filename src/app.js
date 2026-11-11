@@ -739,6 +739,7 @@ function hoursGrid(wall, at) {
     const minAt = (x) => hourOf(rawAt(x));
     const commit = (m, byKey) => { // the sheet only: the grid is drawn again for that time of the same day; the list behind keeps its own moment
       if (m === hourOf(nowMin)) return;
+      document.dispatchEvent(new CustomEvent('stats:time-slide')); // stats.js counts it once per visit (name only)
       const there = new Date(at);
       there.setHours(Math.floor(m / 60), m % 60, 0, 0);
       const next = hoursGrid(wall, there);
@@ -2650,7 +2651,7 @@ function render() {
   const t = hhmm(at);
   const label = timeLabel(minuteOf(at), isNow);
   $('timeOut').textContent = label;
-  arrivePill.textContent = arriveLabel(at, now, isNow); // the pill says what the sheet's slider is set to
+  arriveText.textContent = arriveLabel(at, now, isNow); // the pill says what the sheet's slider is set to
   $('scrubQ').textContent = arriveQ.textContent = askText(at, now, isNow); // 계획형: another day names the weekday
   $('time').setAttribute('aria-valuetext', label);
   nowTag.textContent = t;
@@ -3106,7 +3107,8 @@ const sheet = $('conditions');
 // 도착 시각(3a, docs/superpowers/plans/2026-11-07-home-slider-to-sheet.md): the slider box moves into its sheet with its ids as they are; the pill at the right of the 시간표 머리 opens it
 const arriveSheet = $('arrive-sheet');
 $('arriveHost').append(document.querySelector('.scrub'));
-const arrivePill = el('button', { type: 'button', id: 'arrivePill', class: 'sort-btn arrive-pill', 'aria-haspopup': 'dialog' }, '지금 도착');
+const arriveText = el('span', {}, '지금 도착'); // 알약의 글자만 바뀐다(앞의 시계 아이콘은 그대로)
+const arrivePill = el('button', { type: 'button', id: 'arrivePill', class: 'sort-btn arrive-pill', 'aria-haspopup': 'dialog' }, icon('clock'), arriveText); // 값을 고르는 입력 칸처럼: 시계 · 값 · ⌄
 // 시안 ④: the box line above the 시간표 on a day with no trip card: the question and how many walls are open at that time, the pill (the sheet's opener) at its end
 const arriveQ = document.createTextNode('몇 시에 도착해요?'), arriveN = document.createTextNode('');
 const arriveRow = noteRow({ id: 'arriveRow', title: arriveQ, sub: arriveN, end: arrivePill });
@@ -3116,7 +3118,7 @@ arriveRow.after(homeOpen);
 arriveRow.addEventListener('click', (e) => { if (!e.target.closest('button')) arrivePill.click(); }); // 박스 어디를 눌러도 같은 시트(누를 곳이 알약뿐이면 박스가 눌리는 것처럼 보이는데 안 눌린다)
 arriveRow.classList.add('go');
 arrivePill.addEventListener('click', () => {
-  if (arrivePill.textContent === '내일 보기') { // after 23:00 no hour is left today: the pill does what the 내일 chip does
+  if (arriveText.textContent === '내일 보기') { // after 23:00 no hour is left today: the pill does what the 내일 chip does
     const chip = [...$('scrubDays').querySelectorAll('button[data-date]')].find((b) => b.textContent.startsWith('내일'));
     if (chip) return chip.click();
   }

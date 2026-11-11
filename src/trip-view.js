@@ -30,10 +30,10 @@ const head = (m, icon, end = badge(m.badge, m.badgeKind)) => el('div', { class: 
   el('div', { class: 'trip-t' }, el('h3', { class: 'trip-name' }, m.title), m.dateText ? el('p', { class: 'trip-date' }, [m.dateText, m.dday].filter(Boolean).join(' · ')) : null), end);
 
 // 날씨 머리(m.plan = trip-plan.js planHead, 시안 home-v3): 장소 · 날짜 줄(+ 알약) → 날씨 제목 → 날씨 칸 둘(비 오는 칸은 --rain-tint) → 안내. m.plan이 없으면 예전 머리(칩 · 이름 · 날짜).
-const planHeader = (m, icon, end, onWeather = null) => [  // onWeather(button): 날씨 칸을 누르면 그 암장 시트의 날씨 보기로(없으면 읽기만)
+const planHeader = (m, icon, end, onWeather = null, slim = false) => [  // onWeather(button): 날씨 칸을 누르면 그 암장 시트의 날씨 보기로(없으면 읽기만). slim: 날씨 칸을 걷는다(비 예보 카드: 선택지 줄이 각자의 날씨를 말한다, 같은 말을 두 번 하지 않는다)
   el('div', { class: 'pc-eye' }, el('span', { class: 'pc-place' }, [m.title, m.dateText].filter(Boolean).join(' · ')), end),
   el('h3', { class: 'pc-head' }, m.plan.headline),
-  m.plan.cells.length ? el('div', { class: 'pc-wx' }, ...m.plan.cells.map((c) => {
+  m.plan.cells.length && !slim ? el('div', { class: 'pc-wx' }, ...m.plan.cells.map((c) => {
     const body = [el('span', { class: 'pc-g', 'aria-hidden': 'true' }, pic(icon, c.glyph)), el('div', { class: 'pc-t' }, el('b', {}, c.day), el('small', {}, c.text))];
     if (!onWeather) return el('div', { class: `pc-cell${c.rain ? ' wet' : ''}` }, ...body);
     const b = el('button', { type: 'button', class: `pc-cell go${c.rain ? ' wet' : ''}`, 'aria-label': `${c.day} ${c.text}, 날씨 자세히 보기` }, ...body, arrow());
@@ -67,7 +67,8 @@ export function foldLine(m, onOpen, { icon } = {}) {
 }
 
 // 블록 하나 = 작은 제목 + 외벽 카드의 .irow 줄들. 어프로치 줄은 order에 없어도 가는 길에 꼭 넣는다(저장된 정보가 없어도 시트는 열린다).
-const block = (title, ...rows) => el('section', { class: 'trip-blk' }, el('h4', { class: 'trip-blk-t' }, title), ...rows);
+const blockOf = (titleClass, title, ...rows) => el('section', { class: 'trip-blk' }, el('h4', { class: titleClass }, title), ...rows);
+const block = (title, ...rows) => blockOf('trip-blk-t', title, ...rows);
 export function dayCard(m, { onApproach, onRoutes, onProject, onReport, onRecord, icon } = {}) {
   const order = m.order?.includes('approach') ? m.order : [...(m.order ?? []), 'approach'];
   // 시안 ③: 작은 장소 줄(+ 오늘 알약) → 큰 상태 제목(m.now) → 줄들. 줄은 외벽 카드의 .ln(제목 위 보조 · ›)
@@ -107,8 +108,8 @@ export function rainCard(m, { onOtherDay, onInstead, onKeep, onOpenSched, icon }
     ...(m.instead ?? []).map((p, k) => (onInstead ? line(k ? `instead-${k}` : 'instead', [p.name, kindTag(p)], p.sub, () => onInstead(m.id, p)) : null)),
     onKeep ? line('keep', '그대로 가기', m.keepSub, () => onKeep(m.id)) : null,
   ].filter(Boolean);
-  return el('article', { class: `trip-card trip-top trip-rain${m.plan ? ' pc' : ''}`, 'data-trip': m.id }, ...(m.plan ? planHeader(m, icon, tag('비 예보', 'rain')) : [head(m, icon, tag('비 예보', 'rain'))]), days,
-    block('비를 피하려면', ...opts),
+  return el('article', { class: `trip-card trip-top trip-rain${m.plan ? ' pc' : ''}`, 'data-trip': m.id }, ...(m.plan ? planHeader(m, icon, tag('비 예보', 'rain'), null, true) : [head(m, icon, tag('비 예보', 'rain'))]), days,
+    blockOf(m.plan ? 'trip-blk-t sr-only' : 'trip-blk-t', '비를 피하려면', ...opts), // 새 머리(m.plan)에서는 소제목을 스크린리더에만 남긴다: 제목 문장과 줄들이 이미 말한다
     onOpenSched ? goRow('일정', ['일정 탭에서 보기'], 'sched', (e) => onOpenSched(m.id, e.currentTarget)) : null);
 }
 

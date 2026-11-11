@@ -1,6 +1,6 @@
-// 방문 통계(GoatCounter, 쿠키 없음): 외부 스크립트 없이 이미지 요청 하나(GET /count)만 보낸다.
-// config.statsCode(사이트 코드)가 비어 있거나 localhost·Do Not Track이면 아무것도 보내지 않는다. 경로만 보내고 쿼리(한마디·인원 등)는 보내지 않는다.
-// 이벤트: view(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만; 근처 외벽 시트의 data-near-map 지도 링크는 세지 않는다),
+// 방문 통계(PostHog Cloud, 쿠키 없음): 외부 스크립트 없이 수집 주소로 fetch(POST) 하나만 보낸다(posthog-js 안 씀).
+// config.posthogKey(프로젝트 키)가 비어 있거나 localhost·Do Not Track이면 아무것도 보내지 않는다. 이벤트에는 이름·익명 기기 ID(localStorage open-wall:stats-id)·beta 여부·(페이지뷰만) 경로와 리퍼러만 싣고 쿼리는 싣지 않는다.
+// 이벤트: $pageview(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만; 근처 외벽 시트의 data-near-map 지도 링크는 세지 않는다),
 // climber-done(클라이머 유형 테스트를 끝냄: 횟수만, 유형·점수는 보내지 않는다),
 // card-open(목록에서 카드를 엶), log-add(방문 기록을 저장함), share-send(링크 복사로 공유함), weather-shown(날씨 상자를 처음 봄), fav-add(즐겨찾기를 켬),
 // sun-filter(양달·응달 칩을 켬), tab-map(지도 보기를 켬)·tab-log(탭을 누름), region-set(내 지역을 고름), invite-make(초대 링크를 만듦·보냄), report-send(제보를 보냄), board-post(게시판 글을 씀), gear-view(근처 탭을 처음 봄: 횟수만), gear-<업체 id>(근처 탭의 업체 링크를 누름; id는 data/partners.json의 고정 이름): 모두 이름만 센다.
@@ -13,20 +13,24 @@ import { config } from './config.js';
 const ACTIONS = { 'stats:card-open': 'card-open', 'stats:log-add': 'log-add', 'stats:share-send': 'share-send', 'stats:weather-shown': 'weather-shown', 'stats:fav-add': 'fav-add',
   'stats:sun-filter': 'sun-filter', 'stats:tab-map': 'tab-map', 'stats:tab-log': 'tab-log', 'stats:region-set': 'region-set',
   'stats:invite-make': 'invite-make', 'stats:report-send': 'report-send', 'stats:board-post': 'board-post', 'stats:gear-view': 'gear-view',
-  'stats:trip-add': 'trip-add', 'stats:trip-move': 'trip-move', 'stats:trip-log': 'trip-log' };
+  'stats:trip-add': 'trip-add', 'stats:trip-move': 'trip-move', 'stats:trip-log': 'trip-log',
+  'stats:plan-start': 'plan-start', 'stats:plan-done': 'plan-done', 'stats:time-slide': 'time-slide' };
+const ONCE = new Set(['time-slide']); // 방문당 한 번만 보내는 이름
 // 이벤트 목록(단일 출처): 새 이벤트는 여기에 이름·뜻을 먼저 적는다. test/stats.test.js가 코드가 보내는 이름이 모두 여기 있는지 검사한다.
 // 이름 규칙: 소문자-하이픈, 횟수만(암장·내용·위치 없음). 같은 뜻이면 새로 만들지 말고 기존 이름을 쓴다. 문서: docs/system/event-registry.md
 export const EVENTS = {
-  view: '페이지뷰(?beta 기기만 이벤트로)', 'share-open': '공유 링크로 들어옴', return: '하루 이상 지나 다시 옴', 'return-wx': '날씨 상자를 본 기기의 재방문',
+  $pageview: '페이지뷰(경로·리퍼러만)', 'share-open': '공유 링크로 들어옴', return: '하루 이상 지나 다시 옴', 'return-wx': '날씨 상자를 본 기기의 재방문',
   'click-tel': '전화 링크', 'click-insta': '인스타 링크', 'click-route': '길찾기 링크', 'click-chat': '오픈채팅 링크', 'click-link': '그 밖의 외부 링크',
   'climber-done': '클라이머 유형 테스트 완료', 'card-open': '카드를 엶', 'log-add': '방문 기록 저장', 'share-send': '링크 복사로 공유', 'weather-shown': '날씨 상자를 처음 봄',
   'fav-add': '즐겨찾기 켬', 'sun-filter': '양달·응달 칩 켬', 'tab-map': '지도 보기', 'tab-log': '기록 탭', 'region-set': '내 지역 고름',
   'invite-make': '초대 링크 만듦', 'report-send': '제보 보냄', 'board-post': '게시판 글 씀', 'gear-view': '근처 탭을 처음 봄',
   'trip-add': '일정 저장', 'trip-move': '일정 옮김(날짜·다른 날·대신 갈 곳)', 'trip-log': '일정에서 기록 남김',
+  'plan-start': '일정 만들기 시작', 'plan-done': '일정을 다녀옴으로 마침', 'time-slide': '시간 슬라이더를 처음 움직임(방문당 1회)',
   // gear-<업체 id>(근처 탭 업체 링크 클릭)는 gearEventName이 만든다: 고정 목록이 아니라 data/partners.json의 id
 };
 const WX_SEEN = 'open-wall:wx-seen';
 export const VISITOR_KEY = 'open-wall:visitor';
+const ID_KEY = 'open-wall:stats-id';
 
 /** visitorFlag(search, stored, hadVisit) → { flag: 'me'|'beta'|null, store } ; store: a value to save, or undefined to leave the mark alone.
  *  Order: ?me=off > ?me > stored me > ?beta > stored beta/none > (no mark yet) an old device is beta, a new one is marked none. */
@@ -40,14 +44,16 @@ export function visitorFlag(search, stored, hadVisit = false) {
   return hadVisit ? { flag: 'beta', store: 'beta' } : { flag: null, store: 'none' };
 }
 
-/** The event name a device sends: beta devices get the beta- prefix, everyone else the plain name. */
-export const eventName = (flag, name) => (flag === 'beta' ? `beta-${name}` : name);
-
 // 근처 장비점 sheet partner link: `gear-<id>` for a well-formed id (the id pattern is src/gear.js's ID_RE; kept here so counting never imports the wall code), else null
 export const gearEventName = (id) => (typeof id === 'string' && /^[a-z0-9-]{1,24}$/.test(id) ? `gear-${id}` : null);
 
-export const countUrl = (code, { path, event = false, ref = '' }) =>
-  `https://${code}.goatcounter.com/count?p=${encodeURIComponent(path)}${event ? '&e=true' : ''}${ref ? `&r=${encodeURIComponent(ref)}` : ''}&rnd=${Math.random().toString(36).slice(2, 8)}`;
+export const captureUrl = (host) => `${host.replace(/\/+$/, '')}/capture/`;
+
+// PostHog 수집 본문. $process_person_profile:false = 사람 프로필을 만들지 않는 익명 이벤트(퍼널·재방문은 distinct_id로 센다).
+export const captureBody = (key, id, event, props = {}) => JSON.stringify({
+  api_key: key, event, distinct_id: id, timestamp: new Date().toISOString(),
+  properties: { ...props, $process_person_profile: false, $lib: 'open-wall' },
+});
 
 export function linkKind(href) {
   let u; try { u = new URL(href, 'https://x.invalid/'); } catch { return null; }
@@ -60,8 +66,8 @@ export function linkKind(href) {
   return 'link';
 }
 
-export const shouldTrack = (code, hostname, dnt) =>
-  !!code && !dnt && !/^(localhost|127\.0\.0\.1|\[::1\]|.*\.localhost)$/.test(hostname);
+export const shouldTrack = (key, hostname, dnt) =>
+  !!key && !dnt && !/^(localhost|127\.0\.0\.1|\[::1\]|.*\.localhost)$/.test(hostname);
 
 // Reads ?me/?beta and the saved mark, saves what changed, and takes the two parameters out of the address. Storage may be blocked: then only this visit is marked.
 function readVisitor(win) {
@@ -79,29 +85,42 @@ function readVisitor(win) {
   return flag;
 }
 
-export function initStats(win = globalThis.window, code = config.statsCode) {
+// 익명 기기 ID: 무작위값 하나. 저장이 막히면 이번 방문만의 값.
+function anonId(win) {
+  try {
+    const old = win.localStorage.getItem(ID_KEY);
+    if (old && /^[a-z0-9-]{8,64}$/.test(old)) return old;
+    const id = win.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    win.localStorage.setItem(ID_KEY, id);
+    return id;
+  } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`; }
+}
+
+export function initStats(win = globalThis.window, key = config.posthogKey, host = config.posthogHost) {
   if (!win) return false;
   const flag = readVisitor(win);
-  if (flag === 'me' || !shouldTrack(code, win.location.hostname, win.navigator.doNotTrack === '1')) return false;
-  const send = (path, event) => { new win.Image().src = countUrl(code, { path: event ? eventName(flag, path) : path, event, ref: event ? '' : win.document.referrer }); };
-  if (flag === 'beta') send('view', true); else send(win.location.pathname || '/', false);
+  if (flag === 'me' || !shouldTrack(key, win.location.hostname, win.navigator.doNotTrack === '1')) return false;
+  const id = anonId(win), url = captureUrl(host), once = new Set();
+  const post = (event, props) => { try { win.fetch(url, { method: 'POST', body: captureBody(key, id, event, { ...props, ...(flag === 'beta' ? { beta: true } : {}) }), keepalive: true, credentials: 'omit' })?.catch?.(() => {}); } catch { /* 통계는 앱을 막지 않는다 */ } };
+  const send = (name) => { if (ONCE.has(name)) { if (once.has(name)) return; once.add(name); } post(name); };
+  post('$pageview', { $current_url: `${win.location.origin ?? ''}${win.location.pathname || '/'}`, $pathname: win.location.pathname || '/', $referrer: win.document.referrer || '' });
   const q = new URLSearchParams(win.location.search);
-  if (q.has('wall')) send('share-open', true);
+  if (q.has('wall')) send('share-open');
   try {
     const last = Number(win.localStorage.getItem('open-wall:last-visit')) || 0;
-    if (last && Date.now() - last > 864e5) send(win.localStorage.getItem(WX_SEEN) ? 'return-wx' : 'return', true);
+    if (last && Date.now() - last > 864e5) send(win.localStorage.getItem(WX_SEEN) ? 'return-wx' : 'return');
     win.localStorage.setItem('open-wall:last-visit', String(Date.now()));
   } catch { /* 저장 불가면 재방문만 못 센다 */ }
-  win.document.addEventListener('climber:done', () => send('climber-done', true)); // climber-view.js dispatches it when a result is made
-  for (const [type, name] of Object.entries(ACTIONS)) win.document.addEventListener(type, () => send(name, true));
+  win.document.addEventListener('climber:done', () => send('climber-done')); // climber-view.js dispatches it when a result is made
+  for (const [type, name] of Object.entries(ACTIONS)) win.document.addEventListener(type, () => send(name));
   win.document.addEventListener('stats:weather-shown', () => { try { win.localStorage.setItem(WX_SEEN, '1'); } catch { /* 저장 불가면 비교만 못 한다 */ } });
   win.document.addEventListener('click', (e) => {
     const a = e.target.closest?.('a[href]');
     const gear = a && gearEventName(a.dataset?.gear); // a 근처 partner link: only the partner's id as an event name (a fixed list of ours, no wall or user data)
-    if (gear) { send(gear, true); return; } // not also click-route/link: those count the wall's own links
+    if (gear) { send(gear); return; } // not also click-route/link: those count the wall's own links
     if (a?.dataset?.nearMap) return; // the 근처 외벽 sheet's 지도 link: not the wall's own 길찾기, so not click-route (nothing sent)
     const kind = a && linkKind(a.href);
-    if (kind) send(`click-${kind}`, true);
+    if (kind) send(`click-${kind}`);
   }, true);
   return true;
 }

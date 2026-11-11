@@ -18,6 +18,7 @@ const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 
  * state: 'good' (좋아 보여요) | 'drying' (마르는 중일 수 있어요, daysLeft days to go) | 'rain' (target is a wet day) |
  *        'recent' (no dry_days and a damp or wet day in the week up to the target: daysSince from the latest one, its rounded mm,
  *        today = the target is today) | 'unknown' (no forecast) | 'out' (before today or past the forecast range).
+ * 'drying' also carries daysSince / mm: the rain day that sets daysLeft (the largest contribution).
  * Without dry_days a week with no damp day is 'good' (why 'dry-week'): dry_days is at most 7 (store.js), so the value cannot matter.
  * far: the target is three or more days away (the forecast may still change).
  */
@@ -44,9 +45,11 @@ export function conditionOf(daily, dryDays, target, now = new Date()) {
     return result('good', null, 'dry-week'); // ponytail: a missing past day counts as dry (the request always asks past_days=7)
   }
   let left = 0;
+  let from = 0; // the day (i days before the target) whose rain sets `left`
   for (let i = 1; i <= 7; i++) {
     const level = levelOf(addDays(target, -i));
-    if (level) left = Math.max(left, (level === 'full' ? dryDays : dampDays(dryDays)) - i);
+    const l = level ? (level === 'full' ? dryDays : dampDays(dryDays)) - i : 0;
+    if (l > left) { left = l; from = i; }
   }
-  return left > 0 ? result('drying', left) : result('good');
+  return left > 0 ? { ...result('drying', left), daysSince: from, mm: Math.round(entry(addDays(target, -from)).mm) } : result('good');
 }
