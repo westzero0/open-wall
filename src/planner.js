@@ -14,7 +14,12 @@ import { PlanSheet } from './planner-new.js';
 import { PartnersSheet } from './planner-partners.js';
 import { RecordExtra } from './planner-record.js';
 import { CardSheet } from './planner-card.js';
-import { html, render } from './planner-ui.js';
+import { html, render, usePlannerState } from './planner-ui.js';
+
+function Notice({ store }) { // the live region stays mounted (empty) so a screen reader announces the text when it appears
+  const s = usePlannerState(store);
+  return html`<p class="n notice" role="status">${s.notice || ''}</p>`;
+}
 
 const app = document.getElementById('app');
 app.tabIndex = -1; // focus target after a sheet closes (see onClose)
@@ -60,8 +65,9 @@ function makeHandlers(store, storage) {
     onAdd: () => { stat('stats:plan-start'); store.update({ sheet: 'new', editId: null }); },
     onEdit: (id) => store.update({ sheet: 'edit', editId: id }),
     onPartners: () => store.update({ sheet: 'partners' }),
-    onClose: () => {
-      store.update({ sheet: null, editId: null });
+    onClose: (extra) => { // extra: { notice } = a one-line note shown above the list for a few seconds
+      store.update({ sheet: null, editId: null, ...extra });
+      if (extra?.notice) setTimeout(() => store.update({ notice: '' }), 4000);
       // the sheet unmounts on the next render; if its opener is gone focus would fall to <body>: park it on #app
       setTimeout(() => { if (document.activeElement === document.body || !document.activeElement) document.getElementById('app')?.focus(); }, 0);
     },
@@ -99,7 +105,7 @@ async function main() {
   paint(store.get());
   store.subscribe(paint);
   const renderRecordExtra = (plan, o) => html`<${RecordExtra} plan=${plan} kind=${o.kind} resolved=${o.resolved} done=${o.done} store=${store} handlers=${handlers} />`;
-  render(html`<${Home} store=${store} handlers=${handlers} renderRecordExtra=${renderRecordExtra} /><${PlanSheet} store=${store} handlers=${handlers} /><${PartnersSheet} store=${store} handlers=${handlers} /><${CardSheet} store=${store} handlers=${handlers} />`, app);
+  render(html`<${Notice} store=${store} /><${Home} store=${store} handlers=${handlers} renderRecordExtra=${renderRecordExtra} /><${PlanSheet} store=${store} handlers=${handlers} /><${PartnersSheet} store=${store} handlers=${handlers} /><${CardSheet} store=${store} handlers=${handlers} />`, app);
   store.boot().then(handlers.loadCrowd);
   setInterval(store.tick, 60000);
 }

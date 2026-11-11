@@ -56,9 +56,9 @@ export function DetailView({ plan, v, s, now, h, onBack, onRecord, onAnswer }) {
       <div class="row2"><button type="button" class="btn p" onClick=${() => onAnswer(plan, 'went')}>갔다</button><button type="button" class="btn" onClick=${() => onAnswer(plan, 'missed')}>못 갔다</button></div></section>`}
     <div class="dacts">
       ${v.atRisk && html`<button type="button" class="btn full" onClick=${() => h.savePlan(rest(plan))}>이날은 쉬기</button>`}
-      ${v.live && !v.atRisk && html`<button type="button" class="btn p full" onClick=${() => h.onCard(plan.id)}>약속 카드 보내기</button>`}
+      ${v.live && !v.atRisk && html`<button type="button" class="btn p full" onClick=${() => h.onCard(plan.id)}>약속 카드 공유</button>`}
       <div class="acts">
-        ${v.live && v.atRisk && html`<button type="button" class="txt" onClick=${() => h.onCard(plan.id)}>약속 카드 보내기</button>`}
+        ${v.live && v.atRisk && html`<button type="button" class="txt" onClick=${() => h.onCard(plan.id)}>약속 카드 공유</button>`}
         ${v.recorded && onRecord && html`<button type="button" class="txt" onClick=${() => onRecord(plan)}>기록 고치기</button>`}
         <button type="button" class="txt" onClick=${() => h.onEdit(plan.id)}>${v.rest ? '다시 일정 잡기' : '편집'}</button>
         <button type="button" class="txt del" onBlur=${() => setArmed(false)} onClick=${() => (armed ? h.removePlan(plan.id) : setArmed(true))}>${armed ? '한 번 더 누르면 지워요' : '삭제'}</button>

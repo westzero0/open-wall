@@ -24,6 +24,8 @@ export const ICON_SHAPES = {
   rain: () => [path(RAIN, W), path('M8 17.5l-1 3M12 17.5l-1 3M16 17.5l-1 3', W)],
   wind: () => [path('M3 9h11a3 3 0 1 0-3-3', W), path('M3 14h15a3 3 0 1 1-3 3', W)],
   lit: () => [path(PEAK, W), circle(19, 6, 2.6, { fill: 'currentColor' })],
+  x: () => [path('M6 6l12 12M18 6L6 18', W)],
+  check: () => [path('M5 12.5l4.5 4.5L19 7.5', W)],
   shade: () => [path(PEAK, W), ...[10.5, 13, 15.5, 18].map((y) => path(`M12.8 ${y}H${f1(12 + (y - 5) * 0.6 - 1.2)}`, { stroke: 'currentColor', 'stroke-width': 1.4, 'stroke-linecap': 'round' }))],
 };
 

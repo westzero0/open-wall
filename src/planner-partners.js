@@ -34,6 +34,5 @@ export function PartnersSheet({ store, handlers: h }) {
     <ul class="prs">${s.db.partners.map((p) => html`<${PartnerRow} key=${p.id} p=${p} h=${h} fail=${fail} />`)}</ul>
     <${NameAdd} onAdd=${(name) => { if (h.savePartner({ id: randomId(), name })?.ok === false) fail(); else setErr(''); }} />
     <p class="err" role="alert">${err}</p>
-    <div class="row2"><button type="button" class="btn" onClick=${h.onClose}>닫기</button></div>
   <//>`;
 }

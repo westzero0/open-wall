@@ -37,4 +37,10 @@ export function planFromDraft(existing, draft, { id, now, resolved }) {
   });
 }
 
+export const UNSAVED_NOTE = '저장하지 않았어요';
+/** Pure: has the person typed or picked anything beyond what the sheet opened with? (then a tap on the backdrop must not throw it away) */
+export function draftDirty(cur, init) {
+  const ids = (a) => [...a].sort().join(',');
+  return cur.date !== init.date || cur.time !== init.time || cur.query.trim() !== init.query.trim() || ids(cur.partnerIds) !== ids(init.partnerIds);
+}
 export const SAVE_FAIL = '저장하지 못했어요. 기기 저장 공간을 확인해 주세요';

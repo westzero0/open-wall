@@ -61,9 +61,9 @@ export const cardKey = (model) => (!model || model.past ? null : JSON.stringify(
 /** cardText(model) → the message that goes with the picture, one fact per line. The link only when config.appUrl is set. */
 export const cardText = (model) => ['[희노애Rock] ' + model.title, model.when, model.badge, model.who, model.wx, model.link].filter(Boolean).join('\n');
 
-/** cardSay(result) → the line after 보내기/그림 저장 (shareSay talks about the invite sheet's text box, which this sheet has not). */
+/** cardSay(result) → the line after 공유/카드 저장 (shareSay talks about the invite sheet's text box, which this sheet has not). */
 export function cardSay({ how, copied } = {}) {
-  if (how === 'shared') return '공유 창을 열었어요. 그림과 문구를 함께 넘겼어요.';
-  if (how === 'saved') return copied ? '그림을 저장했어요. 문구도 복사했어요. 그림과 문구를 함께 보내세요.' : '그림을 저장했어요. 문구는 복사하지 못했어요.';
-  return how === 'file' ? '그림을 저장했어요.' : '';
+  if (how === 'shared') return '공유 창을 열었어요. 카드와 문구를 함께 넘겼어요.';
+  if (how === 'saved') return copied ? '카드를 저장했어요. 문구도 복사했어요. 카드와 문구를 함께 보내세요.' : '카드를 저장했어요. 문구는 복사하지 못했어요.';
+  return how === 'file' ? '카드를 저장했어요.' : '';
 }
