@@ -1,5 +1,6 @@
 // src/planner.js — planner.html entry: flag check, saved screen prefs, state boot, Preact mount.
 // Screens: planner-home.js (+ planner-row.js, planner-record.js), sheets planner-new.js / planner-partners.js / planner-card.js.
+import './stats.js'; // 방문 통계(PostHog): 불러오면 스스로 시작한다. 이벤트는 아래 stats:* 문서 이벤트로만 받는다
 import { plannerOn } from './config.js';
 import { safeStorage, getStr } from './storage.js';
 import { UI_KEY, cleanTheme, cleanTextSize } from './ui-state.js';
@@ -48,6 +49,7 @@ function makeHandlers(store, storage) {
     if (!routesP || (!routesP.crags && crags.length)) routesP = Object.assign(loadCragRoutes({ crags }), { crags: crags.length > 0 });
     return routesP;
   };
+  const stat = (name) => document.dispatchEvent(new CustomEvent(name)); // stats.js counts the name only (no place, date or text)
   const reloaded = (r) => { store.reload(); return r; };
   const after = (r) => { store.reload(); store.loadWx(); loadCrowd(); return r; };
   return {
@@ -55,7 +57,7 @@ function makeHandlers(store, storage) {
     loadRoutes,
     getSent: () => loadSent(storage),
     saveSent: (v) => saveSent(storage, v),
-    onAdd: () => store.update({ sheet: 'new', editId: null }),
+    onAdd: () => { stat('stats:plan-start'); store.update({ sheet: 'new', editId: null }); },
     onEdit: (id) => store.update({ sheet: 'edit', editId: id }),
     onPartners: () => store.update({ sheet: 'partners' }),
     onClose: () => {
@@ -65,7 +67,12 @@ function makeHandlers(store, storage) {
     },
     getState: store.get,
     onCard: (id) => store.update({ sheet: 'card', cardId: id }),
-    savePlan: (plan) => after(savePlan(storage, plan, { today: store.get().today })),
+    savePlan: (plan) => {
+      const was = store.get().db.plans.find((p) => p.id === plan.id)?.status;
+      const r = savePlan(storage, plan, { today: store.get().today });
+      if (r?.ok !== false && plan.status === '갔다' && was !== '갔다') stat('stats:plan-done'); // 다녀옴으로 마침 (once per plan: only on the change)
+      return after(r);
+    },
     removePlan: (id) => after(removePlan(storage, id)),
     // not plan-related: only re-read storage
     savePartner: (p) => reloaded(savePartner(storage, p)),
