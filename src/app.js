@@ -39,7 +39,7 @@ import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from '.
 import { parseInvite } from './invite.js';
 import { createInviteView } from './invite-view.js';
 import { inkStamp } from './stamp.js';
-import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanSun, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, cragSheetTabFromSearch, boardRequested, infoRequested } from './ui-state.js';
+import { CLEARED, TABS, cleanApproach, cleanRegions, cleanRope, cleanSun, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, climberCardDue, cragFilterView, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, cragFromSearch, cragSheetTabFromSearch, boardRequested, infoRequested, homeViewFromSearch } from './ui-state.js';
 import { clockView, startView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { cleanMode, effectiveMode } from './ui-state.js'; // 싱글피치: 보기 종류
@@ -3558,6 +3558,12 @@ const sharedCrag = !sharedWall && cragOn ? cragFromSearch(state.crags, location.
 if (sharedCrag) {
   linkHeld = holdLinkView(ui, { ...CLEARED, regions: [], tab: 'list', homeView: 'list', mode: 'crag' });
   if ($('findQ')) $('findQ').value = '';
+}
+if (!sharedWall && !sharedCrag && homeViewFromSearch(location.search) === 'map') { // ?tab=map (the planner's 지도로 보기 link): this visit opens the map, the saved view stays (in memory only)
+  linkHeld = holdLinkView(ui, { tab: 'list', homeView: 'map', mode: 'wall' });
+  const u = new URL(location.href);
+  u.searchParams.delete('tab');
+  history.replaceState(null, '', u);
 }
 syncRegions();
 render();

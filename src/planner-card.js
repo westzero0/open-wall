@@ -56,7 +56,7 @@ function CardForm({ s, plan, h }) {
     ${!st.err && html`<div class="cardprev">${preview && html`<img src=${preview} alt=${alt} />`}</div>`}
     <p class="err" role="alert">${st.err ? ERR[st.err] : ''}</p>
     <p class="n" role="status">${say}</p>
-    <div class="row2 foot">${st.err ? null : failed ? html`<button type="button" class="btn p" onClick=${make}>다시 만들기</button>`
+    <div class="row2 foot cardfoot">${st.err ? null : failed ? html`<button type="button" class="btn p" onClick=${make}>다시 만들기</button>`
       : html`<button type="button" class="btn p" aria-disabled=${!done} onClick=${done ? send : undefined}>공유</button>
       <button type="button" class="btn" aria-disabled=${!done} onClick=${done ? save : undefined}>카드 저장</button>`}</div>
   <//>`;

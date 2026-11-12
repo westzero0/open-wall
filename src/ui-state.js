@@ -170,6 +170,9 @@ export function shareUrl(href, name, kind = 'wall', id = wallShareId(name)) { //
 /** does the link ask for the wall sheet's 게시판 tab (?wall=<name>&board)? */
 export const boardRequested = (search) => new URLSearchParams(search).has('board');
 
+/** ?tab=map (from the utility links) opens the old app on its map view: 'map' only for exactly that, else null. */
+export const homeViewFromSearch = (search) => (new URLSearchParams(search).get('tab') === 'map' ? 'map' : null);
+
 /** does the link ask for the wall's info sheet (?wall=<name>&info)? */
 export const infoRequested = (search) => new URLSearchParams(search).has('info');
 

@@ -8,16 +8,19 @@ import { dayParts, homeCells, placeLine, altRow, cellsQuiet } from './plan-view.
 import { DisciplineIcon } from './planner-icons.js';
 import { Cells } from './planner-cells.js';
 import { SunCard } from './planner-sun.js';
+import { LinkButton } from './planner-parts.js';
+import { wallPageId } from './share-id.js';
 
 const ALT_WHY = '같은 날 비 예보가 없는 곳 중, 원래 장소와 가까운 순으로 보여 드려요';
 
 function Alternatives({ plan, v, s, now, h }) {
   const { picks } = alternatives(plan, v.resolved, { walls: s.walls, wx: s.wx, now });
   if (!picks.length) return null;
+  const ctx = { planId: plan.id, date: plan.date, min: plan.min };
   return html`<section class="alts" aria-labelledby="alt-h"><h3 id="alt-h" class="lbl">대신 이렇게 해볼까요</h3><p class="why">${ALT_WHY}</p>
     <ul>${picks.map((pick) => { const a = altRow(pick, v.resolved); return html`<li class="alt" key=${a.key}>
       <${DisciplineIcon} kind=${a.symbol} cls="sy" />
-      <div class="ab"><b>${a.name}</b>${a.sub && html`<em>${a.sub}</em>`}</div>
+      <div class="ab"><b><${LinkButton} onClick=${() => h.openWall(a.key, { from: 'alt', ...ctx })}>${a.name}<//></b>${a.sub && html`<em>${a.sub}</em>`}</div>
       <button type="button" class="btn" onClick=${() => h.savePlan(changePlace(plan, a.place, a.placeName))}>이곳으로 바꾸기</button>
     </li>`; })}</ul></section>`;
 }
@@ -42,7 +45,7 @@ export function DetailView({ plan, v, s, now, h, onBack, onRecord, onAnswer }) {
       <div class="k">${plan.date === s.today ? '오늘' : `${p.month}월`}</div>
       <div class="dd n">${p.d}<small>${p.dow}${v.time ? ` · ${v.time}` : ''}</small></div>
       <h2><${DisciplineIcon} kind=${v.symbol} cls="sy" />${v.title}</h2>
-      ${line && html`<p class="pl">${line}</p>`}
+      ${line && html`<p class="pl">${line}${v.resolved.kind === 'wall' && v.resolved.wall && html` <${LinkButton} onClick=${() => h.openWall(wallPageId(v.resolved.wall), { from: 'detail', planId: plan.id, date: plan.date, min: plan.min })}>암장 정보 ›<//>`}</p>`}
       ${phrase && html`<p class=${'wx n ' + (v.level === 'caution' || v.level === 'hard' ? v.level : '')}>${phrase}</p>`}
     </header>
     ${cells && (quiet ? html`<p class="quiet n">${quiet}</p>` : html`<${Cells} c=${cells} />`)}

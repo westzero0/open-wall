@@ -26,6 +26,9 @@ export const ICON_SHAPES = {
   lit: () => [path(PEAK, W), circle(19, 6, 2.6, { fill: 'currentColor' })],
   x: () => [path('M6 6l12 12M18 6L6 18', W)],
   check: () => [path('M5 12.5l4.5 4.5L19 7.5', W)],
+  prev: () => [path('M15 5l-7 7 7 7', W)],
+  next: () => [path('M9 5l7 7-7 7', W)],
+  gear: () => [circle(12, 12, 3, W), circle(12, 12, 7, W), path('M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8', W)],
   shade: () => [path(PEAK, W), ...[10.5, 13, 15.5, 18].map((y) => path(`M12.8 ${y}H${f1(12 + (y - 5) * 0.6 - 1.2)}`, { stroke: 'currentColor', 'stroke-width': 1.4, 'stroke-linecap': 'round' }))],
 };
 

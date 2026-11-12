@@ -24,6 +24,7 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 export const config = {
   planner: { on: true },
   appUrl: '',
+  utilUrl: 'classic.html', // 외벽 유틸리티 페이지 주소(옛 앱). 빈 값 = 링크 없음.
   scrubHint: true,
   showOutdoorCount: false,
   stage: 'beta',

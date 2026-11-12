@@ -12,19 +12,19 @@ export function alternatives(plan, resolved, opts) {
   const { walls, wx, now = Date.now(), limit = 2 } = opts ?? {};
   const none = { picks: [], rest: true };
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(plan?.date ?? '');
-  if (!m || !resolved?.located || !resolved.pos) return none;
+  if (!m || !(resolved?.located && resolved.pos)) return none;
   const today = new Date(now); today.setHours(0, 0, 0, 0);
   if (new Date(+m[1], +m[2] - 1, +m[3]) < today) return none;
   const day = new Date(+m[1], +m[2] - 1, +m[3]);
   const nowD = new Date(now);
   const min = Number.isFinite(plan.min) ? plan.min : null;
-  const self = resolved.wall ? wallPageId(resolved.wall) : null;
+  const self = resolved?.wall ? wallPageId(resolved.wall) : null;
   const rainy = (() => { const r = riskOf(resolved, plan, wx, now); return r.level === 'hard' && (RAIN.test(r.reason ?? '') || r.reason === 'rain'); })();
 
   const rows = [];
   for (const w of Array.isArray(walls) ? walls : []) {
     if (!w || typeof w !== 'object' || typeof w.name !== 'string' || !w.name) continue;
-    if (w === resolved.wall || (self && wallPageId(w) === self) || w.name === resolved.name) continue;
+    if (w === resolved?.wall || (self && wallPageId(w) === self) || w.name === resolved?.name) continue;
     if (w.suspended || !hasHours(w) || staleness(w, nowD).stale) continue;
     const stretch = openIntervals(w, day).find(([, end]) => min === null || end > min);
     if (!stretch) continue;

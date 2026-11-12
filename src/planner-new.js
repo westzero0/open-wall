@@ -9,8 +9,11 @@ import { randomId } from './plan-model.js';
 import { offerFor, reportInput, dismiss, markReported } from './plan-report.js';
 import { sendNewWall, REPORT_OK, REPORT_LATER, OFFER_ASK, NAME_ONLY_NOTE } from './plan-report-api.js';
 import { config } from './config.js';
+import { findWall, openLabel, utilLinks } from './plan-wall.js';
+import { LinkButton } from './planner-parts.js';
 import { minFromTime, timeFromMin, placeOf, planFromDraft, draftDirty, UNSAVED_NOTE, SAVE_FAIL } from './plan-sheet.js';
 
+const util = utilLinks(config.utilUrl);
 const reportOn = () => /^https?:\/\//.test(config.reportEndpoint ?? '');
 
 function MineForm({ onAdd, onCancel }) {
@@ -44,10 +47,12 @@ function Offer({ saved, h, state, setState }) { // state (null | 'busy' | 'sent'
 function PlanForm({ s, plan, h }) {
   const ctx = { walls: s.walls, crags: s.crags, mine: s.db.mine, aliases: s.aliases };
   const r0 = plan ? resolvePlace(plan.place, { ...ctx, savedName: plan.placeName }) : null;
-  const [date, setDate] = useState(plan?.date ?? comingWeekend(s.today).sat);
+  const preset = plan ? null : s.preset; // a new plan may start from a bridge (?new&wall=) or the calendar
+  const [date, setDate] = useState(plan?.date ?? preset?.date ?? comingWeekend(s.today).sat);
   const [time, setTime] = useState(plan ? timeFromMin(plan.min) : '');
-  const [query, setQuery] = useState(r0?.name ?? '');
-  const [picked, setPicked] = useState(plan?.place ?? null);
+  const p0 = preset?.place ? resolvePlace(preset.place, ctx) : null;
+  const [query, setQuery] = useState(r0?.name ?? p0?.name ?? '');
+  const [picked, setPicked] = useState(plan?.place ?? (p0 ? preset.place : null));
   const [partnerIds, setPartnerIds] = useState(plan?.partnerIds ?? []);
   const [mineOpen, setMineOpen] = useState(false);
   const [err, setErr] = useState('');
@@ -97,9 +102,19 @@ function PlanForm({ s, plan, h }) {
     </div>
     <div class="f"><label for="pl">장소</label>
       <input id="pl" class="in-t" value=${query} aria-label="장소 검색" autocomplete="off" autofocus=${!plan} onInput=${(e) => { setQuery(e.target.value); setPicked(null); }} /></div>
-    <div class="picks">${rows.map((row, i) => html`<button type="button" key=${row.key} class=${'pick' + (i === 0 ? ' first' : '')} onClick=${() => pick(row)}>${row.label}<small>${row.key.startsWith('name:') ? NAME_ONLY_NOTE : row.sub}</small></button>`)}</div>
+    <div class="picks">${rows.map((row, i) => {
+      const w = row.place.kind === 'official' ? findWall(s.walls, row.place.id) : null; // a crag or a name has no hours: no open label, no 정보 button
+      const open = w ? openLabel(w, date, minFromTime(time)) : '';
+      const shut = /닫힘|쉼|휴관/.test(open); // closed on that day/time: bold, no colour
+      const sub = row.key.startsWith('name:') ? NAME_ONLY_NOTE : html`${row.sub}${row.sub && open ? ' · ' : ''}${shut ? html`<span class="op-no">${open}</span>` : open}`;
+      return html`<div class="pick-row" key=${row.key}>
+        <button type="button" class=${'pick' + (i === 0 ? ' first' : '')} onClick=${() => pick(row)}>${row.label}<small>${sub}</small></button>
+        ${w && html`<${LinkButton} aria-label=${row.label + ' 정보'} onClick=${() => h.openWall(row.place.id, { from: 'search', date, min: minFromTime(time) })}>정보<//>`}
+      </div>`;
+    })}</div>
     ${mineOpen ? html`<${MineForm} onAdd=${addMineWall} onCancel=${() => setMineOpen(false)} />`
       : html`<button type="button" class="txt" onClick=${() => setMineOpen(true)}>내 암장 추가</button>`}
+    ${util && html`<div class="p-row-links"><${LinkButton} href=${util.list} external>열린 암장 둘러보기 ›<//><${LinkButton} href=${util.map} external>지도로 보기 ›<//></div>`}
     <div class="f"><span class="lb">동행 (선택)</span>
       <div class="sel">${s.db.partners.map((p) => html`<button type="button" key=${p.id} aria-pressed=${partnerIds.includes(p.id) ? 'true' : 'false'} onClick=${() => togglePartner(p.id)}>${p.name}</button>`)}</div>
       <${NameAdd} onAdd=${addPartner} /></div>

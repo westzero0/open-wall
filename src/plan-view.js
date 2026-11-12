@@ -172,6 +172,35 @@ export function weekStrip(plans, today, hardOf = () => false) {
   });
 }
 
+/** Month calendar: weeks Monday..Sunday covering (year, month 1..12). Cell: { date, d, inMonth, today, past, count, marks:{planned,went,missed,rest} }. Broken plan dates are ignored. */
+const MARK_OF = { '예정': 'planned', '갔다': 'went', '못 갔다': 'missed', '쉼': 'rest' };
+const ymd = (at) => `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
+export function monthGrid(plans, year, month, today) {
+  const by = new Map();
+  for (const p of Array.isArray(plans) ? plans : []) {
+    const k = MARK_OF[p?.status];
+    if (!k || typeof p.date !== 'string') continue;
+    const e = by.get(p.date) ?? { planned: 0, went: 0, missed: 0, rest: 0 };
+    e[k]++; by.set(p.date, e);
+  }
+  const first = new Date(year, month - 1, 1);
+  const start = new Date(year, month - 1, 1 - ((first.getDay() + 6) % 7));
+  const last = new Date(year, month, 0);
+  const weeks = Math.ceil(((first.getDay() + 6) % 7 + last.getDate()) / 7);
+  return Array.from({ length: weeks }, (_, w) => Array.from({ length: 7 }, (_, i) => {
+    const at = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + i);
+    const date = ymd(at);
+    const marks = by.get(date) ?? { planned: 0, went: 0, missed: 0, rest: 0 };
+    return { date, d: at.getDate(), inMonth: at.getMonth() === month - 1, today: date === today, past: date < today, count: marks.planned + marks.went + marks.missed + marks.rest, marks: { ...marks } };
+  }));
+}
+
+/** Home day filter: only the plans on `date` ('YYYY-MM-DD'); no date → all of them. */
+export const filterByDay = (plans, date) => (date ? plans.filter((p) => p.date === date) : plans);
+
+/** `11월 14일 토요일` — the day the home filter is showing. */
+export function dayFullText(date) { const p = dayParts(date); return `${p.month}월 ${p.day}일 ${p.dow}요일`; }
+
 /** `다음 일정은 토요일이에요` — the first plan still ahead after today; '' when there is none. */
 export function nextPlanText(plans, today) {
   const next = plans.filter((p) => p.date > today && p.status === '예정').sort((a, b) => a.date.localeCompare(b.date))[0];

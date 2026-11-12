@@ -1,15 +1,18 @@
 // src/planner-home.js — the v3 home: week strip, today hero (date, place, weather/wind/crowd cells, sun line), upcoming rows, 기록하기 (oldest one),
 // `지난 일정 보기 ›`. A row opens the plan's detail (store.detailId); until batch E draws the detail screen it shows RowDetail. Words/flags come from plan-view.js.
 // Hook points: `renderRecordExtra(plan, { kind: 'went'|'missed', resolved, done })` (record fields) and handlers.onAdd/onEdit/onCard.
-import { html, useState, useEffect, usePlannerState } from './planner-ui.js';
+import { html, useState, usePlannerState } from './planner-ui.js';
 import { buildTimeline } from './plan-timeline.js';
 import { markWent, markMissed } from './plan-actions.js';
-import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, nextPlanText } from './plan-view.js';
+import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, nextPlanText, filterByDay, dayFullText } from './plan-view.js';
 import { Row } from './planner-row.js';
 import { Cells } from './planner-cells.js';
 import { DetailView } from './planner-detail.js';
 import { Icon, DisciplineIcon } from './planner-icons.js';
+import { utilLinks } from './plan-wall.js';
+import { config } from './config.js';
 
+const util = utilLinks(config.utilUrl);
 const PEAKS = 'assets/planner-peaks.svg';
 const byTime = (a, b) => a.date.localeCompare(b.date) || (Number.isInteger(a.min) ? a.min : 1e9) - (Number.isInteger(b.min) ? b.min : 1e9);
 
@@ -28,10 +31,11 @@ function RecordItem({ plan, v, kind, extra, onAnswer, onLater }) {
   </div>`;
 }
 
-function Strip({ days }) {
-  return html`<ol class="strip">${days.map((d) => html`<li key=${d.date} class=${'dy' + (d.today ? ' t' : '')}
-    aria-label=${`${d.month}월 ${d.d}일 ${d.dow}요일${d.today ? ', 오늘' : ''}${d.count ? `, 일정 ${d.count}개` : ''}${d.hard ? ', 어려움' : ''}`}>
-    <span aria-hidden="true">${d.dow}<i>${d.d}</i><u class=${d.hard ? 'hard' : d.count ? 'has' : ''}></u></span></li>`)}</ol>`;
+function Strip({ days, picked, onPick }) {
+  return html`<ol class="strip">${days.map((d) => html`<li key=${d.date} class=${'dy' + (d.today ? ' t' : '')}>
+    <button type="button" aria-pressed=${picked === d.date ? 'true' : 'false'} onClick=${() => onPick(picked === d.date ? null : d.date)}
+      aria-label=${`${d.month}월 ${d.d}일 ${d.dow}요일${d.today ? ', 오늘' : ''}${d.count ? `, 일정 ${d.count}개` : ''}${d.hard ? ', 어려움' : ''}`}>
+    <span aria-hidden="true">${d.dow}<i>${d.d}</i><u class=${d.hard ? 'hard' : d.count ? 'has' : ''}></u></span></button></li>`)}</ol>`;
 }
 
 function Hero({ plan, v, s, now, onOpen }) {
@@ -64,35 +68,34 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const [later, setLater] = useState(false); // 나중에 할게요: this session only (nothing is stored, nothing nags)
   const [answered, setAnswered] = useState(() => new Map()); // id -> 'went'|'missed' while a record extra is open
   const [showPast, setShowPast] = useState(false);
+  const [picked, setPicked] = useState(null); // the strip day the list is filtered to; this visit only, never stored
+  const pick = picked && picked >= s.today ? picked : null; // a day that has passed (app left open overnight) is no filter
   const now = Date.now();
   const plans = s.db.plans;
   const detail = s.detailId ? plans.find((p) => p.id === s.detailId) : null;
 
-  // the open plan was deleted: leave the detail and park focus on #app (its opener is gone)
-  useEffect(() => {
-    if (s.detailId && !detail) { store.update({ detailId: null }); document.getElementById('app')?.focus(); }
-  }, [s.detailId, detail, store]);
-
   const views = new Map();
   const viewOf = (p) => { if (!views.has(p.id)) views.set(p.id, rowView(p, { s, now })); return views.get(p.id); };
-  const open = (id) => store.update({ detailId: id });
+  const open = (id) => h.go({ screen: 'plan', id });
   const close = () => {
     const id = s.detailId;
-    store.update({ detailId: null });
+    h.back();
     setTimeout(() => document.querySelector(`[data-row="${id}"]`)?.focus(), 0);
   };
   // a recorded plan can be reopened to fill the same fields again (only where a record extra exists)
-  const toRecord = (p, kind) => { setAnswered((m) => new Map(m).set(p.id, kind)); store.update({ detailId: null }); setTimeout(() => document.getElementById('app')?.focus(), 0); };
+  const toRecord = (p, kind) => { setAnswered((m) => new Map(m).set(p.id, kind)); h.replace({ screen: 'home' }); setTimeout(() => document.getElementById('app')?.focus(), 0); };
   const reopen = renderRecordExtra ? (p) => toRecord(p, p.status === '갔다' ? 'went' : 'missed') : null;
   // a past plan with no record yet can be answered right from its detail (same save as the 기록하기 block)
   const answerHere = renderRecordExtra ? (p, kind) => { if (h.savePlan(kind === 'went' ? markWent(p) : markMissed(p))?.ok !== false) toRecord(p, kind); } : null;
 
+  if (s.base.screen === 'calendar') return null; // drawn by Calendar
   if (detail) return html`<${DetailView} plan=${detail} v=${viewOf(detail)} s=${s} now=${now} h=${h} onBack=${close} onRecord=${reopen} onAnswer=${answerHere} />`;
 
-  const strip = html`<${Strip} key="strip" days=${weekStrip(plans, s.today, (p) => { const v = viewOf(p); return v.live && v.risk.level === 'hard'; })} />`;
+  const strip = html`<${Strip} key="strip" picked=${pick} onPick=${setPicked} days=${weekStrip(plans, s.today, (p) => { const v = viewOf(p); return v.live && v.risk.level === 'hard'; })} />`;
+  const pickLine = html`<div class="pick" key="pick" role="status">${pick && html`<span>${dayFullText(pick)}만 보는 중</span><button type="button" class="txt" onClick=${() => setPicked(null)}>전체 보기</button>`}</div>`;
   const addBtn = (cls, key) => html`<button type="button" key=${key} class=${cls} onClick=${() => h.onAdd()}>＋ 일정 추가</button>`;
-  const partnersBtn = html`<div key="partners" class="pl-foot"><button type="button" class="txt" onClick=${() => h.onPartners()}>동행인</button></div>`;
-  if (!plans.length) {
+  const partnersBtn = html`<div key="partners" class="pl-foot"><button type="button" class="txt" onClick=${() => h.onPartners()}>동행인</button>${util && html`<a class="txt weak" href=${util.list}>지도·기록·암장 정보는 이전 화면에서 볼 수 있어요 ›</a>`}</div>`;
+  if (!plans.length && !pick) {
     return html`${strip}<section class="empty" key="empty"><div class="k">이번 주 · 일정 없음</div><h2>이번 주말은 비어 있어요</h2><p>날짜와 장소만 정하면 날씨를 같이 봐 드려요</p>${addBtn('btn p', 'add0')}</section>
       <img class="pk end" key="pk" src=${PEAKS} alt="" width="600" height="460" />${partnersBtn}`;
   }
@@ -101,8 +104,8 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const pendingIds = new Set(tl.record.map((p) => p.id));
   const recorded = (p) => p.status === '갔다' || p.status === '못 갔다';
   const upcoming = plans.filter((p) => p.date >= s.today && !recorded(p) && !pendingIds.has(p.id)).sort(byTime);
-  const hero = upcoming.find((p) => p.date === s.today && p.status === '예정') ?? null;
-  const rows = upcoming.filter((p) => p !== hero);
+  const hero = (!pick || pick === s.today) ? upcoming.find((p) => p.date === s.today && p.status === '예정') ?? null : null;
+  const rows = filterByDay(upcoming.filter((p) => p !== hero), pick);
 
   // 기록하기: the oldest pending plan only (newest-first list → last) + the ones just answered whose extra is still open
   const openRec = plans.filter((p) => answered.has(p.id));
@@ -134,12 +137,14 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   }
   const row = (p) => html`<li key=${p.id}><${Row} plan=${p} v=${viewOf(p)} onOpen=${open} s=${s} now=${now} /></li>`;
 
-  const nodes = [strip];
+  const nodes = [strip, pickLine];
   if (hero) nodes.push(html`<${Hero} key="hero" plan=${hero} v=${viewOf(hero)} s=${s} now=${now} onOpen=${open} />`);
-  else {
+  else if (pick && pick !== s.today) {
+    if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이 날은 일정이 없어요</h2>${addBtn('btn p', 'add1')}</section>`);
+  } else {
     const next = nextPlanText(plans, s.today);
     const p = dayParts(s.today);
-    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${next && html`<p>${next}</p>`}${addBtn('btn p', 'add1')}</section>`);
+    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${!pick && next && html`<p>${next}</p>`}${addBtn('btn p', 'add1')}</section>`);
   }
   if (rows.length) nodes.push(html`<ul class="rows" key="rows">${rows.map(row)}</ul>`);
   if (items.length) nodes.push(html`<section class="rec" key="rec"><div class="k">기록하기</div>${items}</section>`);
@@ -150,6 +155,6 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
         <ul class="rows">${b.days.flatMap((d) => d.plans).map(row)}</ul></div>`)}</div>`);
     }
   }
-  if (hero) nodes.push(addBtn('btn p add', 'add2'));
+  if (hero || (pick && pick !== s.today && rows.length)) nodes.push(addBtn('btn p add', 'add2'));
   return html`<div key="list">${nodes}</div>${partnersBtn}`;
 }

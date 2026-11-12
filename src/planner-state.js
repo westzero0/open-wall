@@ -6,6 +6,7 @@ import { loadPlanWeather as realLoadPlanWeather } from './plan-weather.js';
 import { resolvePlace } from './plan-place.js';
 import { ymd } from './time.js';
 
+const HOME = { screen: 'home', id: null };
 const EMPTY_WX = { hourly: new Map(), crag: { daily: new Map(), hourly: new Map(), wet: new Map(), ok: true }, ok: true };
 
 /**
@@ -24,7 +25,7 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
   };
   const clock = () => { const d = now(); return { today: ymd(d), nowMin: d.getHours() * 60 + d.getMinutes() }; };
   let state = {
-    db: loadAll(storage, { today: clock().today }), walls: [], crags: [], aliases: new Map(), wx: EMPTY_WX, ...clock(), expandedId: null, dismissedAuto: new Set(), detailId: null, wxLoaded: false,
+    db: loadAll(storage, { today: clock().today }), walls: [], crags: [], aliases: new Map(), wx: EMPTY_WX, ...clock(), expandedId: null, dismissedAuto: new Set(), detailId: null, wxLoaded: false, route: HOME, base: HOME, preset: null, wallCtx: null,
   };
   const subs = new Set();
   const notify = () => { for (const fn of [...subs]) fn(state); };
@@ -38,6 +39,14 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
     const c = clock();
     if (c.nowMin === state.nowMin && c.today === state.today) return;
     update(c);
+  };
+
+  /** The address changed: route follows it; detailId always comes from the base route (a plan's detail is a screen, not a flag).
+   *  route = what the address shows; base = the last non-wall route (a wall sheet floats over it); preset = { place?, date? } seeds the new-plan sheet. */
+  const setRoute = (r) => {
+    const route = { screen: r?.screen ?? 'home', id: r?.id ?? null };
+    const base = route.screen === 'wall' || route.screen === 'settings' ? state.base : route;
+    update({ route, base, detailId: base.screen === 'plan' ? base.id : null });
   };
 
   /** Re-read storage (after a save through plan-api) without touching the network. */
@@ -73,5 +82,5 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
     return state;
   }
 
-  return { get, update, subscribe, boot, tick, reload, loadWx };
+  return { get, update, subscribe, boot, tick, reload, loadWx, setRoute };
 }

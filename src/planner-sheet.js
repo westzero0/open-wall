@@ -14,7 +14,7 @@ export function Sheet({ title, onClose, onSave, saveDisabled = false, keepOnBack
   const gone = useRef(false);
   useEffect(() => {
     const d = ref.current;
-    if (d && !d.open) d.showModal();
+    if (d && !d.open) { d.showModal(); const a = document.activeElement; if (a?.closest?.('.sh-head')) d.querySelector('#sheet-h')?.focus(); } // first-focus landed on ✓/X (a ring-drawing button): park it on the title; an autofocus field inside stays
     return () => { gone.current = true; if (d?.open) d.close(); };
   }, []);
   const away = (e) => { // a tap on the dim backdrop (outside the sheet's box) closes it
@@ -38,7 +38,7 @@ export function Sheet({ title, onClose, onSave, saveDisabled = false, keepOnBack
   };
   return html`<dialog ref=${ref} class="sheet" aria-labelledby="sheet-h" onClose=${() => { if (!gone.current) onClose(); }} onClick=${away}>
     <div class="grab" aria-hidden="true" ...${grip}></div>
-    <div class="sh-head" ...${grip}><h2 id="sheet-h">${title}</h2>
+    <div class="sh-head" ...${grip}><h2 id="sheet-h" tabindex="-1">${title}</h2>
       ${onSave ? html`<button type="button" class="sh-ic" aria-label="저장" disabled=${saveDisabled} onClick=${onSave}><${Icon} name="check" /></button>`
         : html`<button type="button" class="sh-ic" aria-label="닫기" onClick=${() => ref.current?.close()}><${Icon} name="x" /></button>`}</div>
     ${children}</dialog>`;
