@@ -737,6 +737,24 @@ export async function fetchCrags(fetchFn = fetch) {
   return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
 }
 
+// Pending crags (data/single-pitch-next.json): name, region, type and the old app's pin only, for the planner's search and records.
+// Each file may fail on its own; a name already in `taken` is skipped.
+export async function fetchPendingCrags(fetchFn = fetch, taken = []) {
+  const seen = new Set(taken);
+  const lists = await Promise.allSettled((config.data.pendingCrags ?? []).map(async (path) => {
+    const r = await fetchFn(path);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const raw = JSON.parse(await r.text())?.pending;
+    return (Array.isArray(raw) ? raw : []).map((p) => {
+      const g = p?.csv_geo;
+      return normalizeWall({ name: p?.name, region: p?.region, memo: p?.memo, type: p?.type, ...(g ? { sun: { lat: g.lat, lng: g.lng } } : {}) });
+    });
+  }));
+  const out = [];
+  for (const l of lists) for (const c of l.status === 'fulfilled' ? l.value : []) if (c.name && !seen.has(c.name)) { seen.add(c.name); out.push({ ...c, pending: true }); }
+  return out;
+}
+
 export function loadWalls(storage) {
   try {
     const raw = storage.getItem(KEY);

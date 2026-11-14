@@ -39,7 +39,7 @@ export const config = {
   zoneWatch: false, // 날씨 구역 등록 + 앱 안 비 예보 띠 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 5절): singlePitch(또는 시범 기기)와 함께일 때만 쓰인다. 꺼지면 등록 버튼·띠·저장 읽기가 모두 없다. 기기 저장뿐, 새 요청 없음(등록한 구역의 날씨는 기존 싱글피치 요청)
   fill: true, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.
   cragSubmit: true, // 새 암장 제보 (docs/superpowers/specs/2026-11-02-crag-submit-design.md): 켜면 boardUrl Worker에 암장 이름·좌표·방향·닉네임·authorId가 나간다. docs/system/permissions.md 반영 전에는 켜지 않는다.
-  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json', aliases: '' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다
+  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', pendingCrags: ['data/single-pitch-next.json'], cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json', aliases: '' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다. pendingCrags: 확인 전 대기 암장(이름·지역·예전 앱 좌표), 일정앱 검색·기록에만 쓴다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportTap: true, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,

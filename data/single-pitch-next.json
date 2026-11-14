@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "아직 앱에 싣지 않는 다음 배치(11곳)의 자리표시. 앱은 이 파일을 읽지 않고 공개 배포에도 넣지 않는다. 좌표·방향·루트가 확인되면 data/single-pitch.json으로 옮긴다. region은 블로그 글 제목에서 짐작한 값이다. priority는 먼저 채울 순서(2026-10-22 사용자 선택, 블로그 글 수 많은 순). 2026-11-14: 예전 앱 Crags.csv의 자연 하드프리·멀티피치 암장을 덧붙임(거인암장은 폐쇄라 뺌). type:\"multi\"는 멀티피치 암장(GLOSSARY 판단 규칙), csv_geo는 예전 앱 좌표라 위성 확인 전, csv_routes는 crag_route.csv 행 수.",
+  "note": "아직 정식 목록(data/single-pitch.json)에 싣지 않는 대기 암장(40곳). 일정앱 검색·기록이 이름·지역·예전 앱 좌표로 읽고, 공개 배포에 들어간다(2026-11-15 사용자 승인). 좌표·방향·루트가 확인되면 data/single-pitch.json으로 옮긴다. 블로그에서 온 11곳의 region은 글 제목에서 짐작한 값이고, priority는 먼저 채울 순서(2026-10-22 사용자 선택, 블로그 글 수 많은 순). 2026-11-14: 예전 앱 Crags.csv의 자연 하드프리·멀티피치 암장을 덧붙임(거인암장은 폐쇄라 뺌). type:\"multi\"는 멀티피치 암장(GLOSSARY 판단 규칙), csv_geo는 예전 앱 좌표라 위성 확인 전, csv_routes는 crag_route.csv 행 수.",
   "pending": [
     {
       "name": "고령 우곡수리암장",

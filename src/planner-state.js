@@ -1,7 +1,7 @@
 // src/planner-state.js — framework-agnostic boot/state for the planner. No DOM, no framework: the view layer (Preact, Task 12b+)
 // subscribes and renders. storage and every fetch function are injected; nothing here touches fetch/localStorage directly.
 import { loadAll, loadAliases as realLoadAliases } from './plan-api.js';
-import { fetchNational as realFetchNational, fetchCrags as realFetchCrags } from './store.js';
+import { fetchNational as realFetchNational, fetchCrags as realFetchCrags, fetchPendingCrags as realFetchPendingCrags } from './store.js';
 import { loadPlanWeather as realLoadPlanWeather } from './plan-weather.js';
 import { resolvePlace } from './plan-place.js';
 import { ymd } from './time.js';
@@ -21,7 +21,7 @@ const EMPTY_WX = { hourly: new Map(), crag: { daily: new Map(), hourly: new Map(
  */
 export function createPlannerState({ storage, fetchFns = {}, now = () => new Date() } = {}) {
   const f = {
-    fetchNational: realFetchNational, fetchCrags: realFetchCrags, loadAliases: realLoadAliases, loadPlanWeather: realLoadPlanWeather, ...fetchFns,
+    fetchNational: realFetchNational, fetchCrags: realFetchCrags, fetchPendingCrags: realFetchPendingCrags, loadAliases: realLoadAliases, loadPlanWeather: realLoadPlanWeather, ...fetchFns,
   };
   const clock = () => { const d = now(); return { today: ymd(d), nowMin: d.getHours() * 60 + d.getMinutes() }; };
   let state = {
@@ -75,7 +75,9 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
     const ok = (r, dflt) => (r.status === 'fulfilled' && r.value ? r.value : dflt);
     const [w, c, a] = await Promise.allSettled([f.fetchNational(f.fetchFn), f.fetchCrags(f.fetchFn), f.loadAliases({ fetchFn: f.fetchFn })]);
     const walls = ok(w, []);
-    const crags = ok(c, []);
+    const official = ok(c, []);
+    const pending = f.fetchPendingCrags ? await f.fetchPendingCrags(f.fetchFn, [...walls, ...official].map((x) => x.name)).catch(() => []) : [];
+    const crags = [...official, ...pending]; // 대기 암장(이름·예전 좌표만)도 검색·기록되게
     const aliases = ok(a, new Map());
     update({ walls, crags, aliases });
     try { await loadWx(); } finally { if (!state.wxLoaded) update({ wxLoaded: true }); }
