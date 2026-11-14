@@ -13,7 +13,7 @@ import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 const builders = {};
 let built = null; // what the open sheet was built from (its report and address keys)
 let onClose = null;
-let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null;
+let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null, plan = null;
 let opener = null; // the button that opened it: focus goes back there
 let focusBack = null; // built.focusBack of the open sheet
 let wall = '';
@@ -61,7 +61,8 @@ function make() {
   ok.addEventListener('click', () => dlg.close());
   rep = el('button', { type: 'button', class: 'sk-rep' }, '제보하기'); // on the name line: the report sheet opens on the kinds of the tab in view
   rep.addEventListener('click', () => { const k = built?.tabs[cur]?.kinds ?? TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k, ...(built.reportCrag ? { crag: true } : {}) } })); });
-  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, ok),
+  plan = el('a', { class: 'sk-plan' }, '일정 잡기'); // built.plan: the planner's new-plan address for this wall, opened in this tab (a move into the planner, not an outside page); none = hidden
+  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, plan, ok),
     el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
@@ -162,6 +163,8 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   show(first);
   paint(first);
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
+  plan.hidden = !built.plan;
+  if (built.plan) plan.setAttribute('href', built.plan); else plan.removeAttribute('href');
   rep.textContent = '제보하기'; // measured with the full word first
   rep.textContent = title.offsetHeight > parseFloat(getComputedStyle(title).lineHeight) * 1.5 ? '제보' : '제보하기'; // a name on two lines leaves the button less room: the short word
   title.focus();

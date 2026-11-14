@@ -1,13 +1,13 @@
-// src/ui-state.js — the saved screen state (filters, sort, tab, theme): defaults, cleaning old/broken values,
+// src/ui-state.js — the saved screen state (filters, sort, view, theme): defaults, cleaning old/broken values,
 // load/save through an injected storage, and what the filters add up to (counts, labels, empty text). No DOM.
 // What is on screen but not saved (picked moment, open row, position) is view-state.js.
 import { normalizeAreas } from './areas.js';
 import { sharePageUrl, wallShareId } from './share-id.js';
-import { CRAG_SHEET_TABS } from './crag-sheet-model.js';
 
 export const UI_KEY = 'open-wall:ui';
-const DEFAULTS = { scrubHinted: false, minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', tab: 'list', regions: [], hidePick: false, venue: 'any', ropeM: '0', approachMax: '0', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', climberCardDone: false, climberFirstDay: '', introDone: false, mode: 'wall', schedView: 'cal', homeView: 'list' };
-export const TABS = ['list', 'sched', 'log']; // 홈 | 일정 | 기록 (지도 is 홈's view: homeView)
+const DEFAULTS = { scrubHinted: false, minHours: '0', sun: 'any', parkingOnly: false, rentalOnly: false, withBreaks: false, sortMode: 'time', regions: [], venue: 'any', tempMin: '0', favOnly: false, theme: 'auto', textSize: 'normal', introDone: false, homeView: 'list' };
+// keys of features this page no longer has (일정·기록 탭, 싱글피치, 주말 추천, 유형 테스트, 내 로프·어프로치): dropped on read, so the next save leaves them out
+const GONE = ['tab', 'mode', 'schedView', 'hidePick', 'climberCardDone', 'climberFirstDay', 'ropeM', 'approachMax'];
 // 화면: 자동 follows the phone; 라이트/다크 set html[data-theme] over prefers-color-scheme
 export const cleanTheme = (v) => (['light', 'dark'].includes(v) ? v : 'auto');
 // 글자 크기: html[data-text] scales the root font size (style.css), on top of the phone's own text-size setting
@@ -23,24 +23,11 @@ const MIN_HOURS = ['0', '3', '5', '8'];
 const migrateMinHours = (v) => ({ 1: '0', 2: '3' }[String(v)] ?? (MIN_HOURS.includes(String(v)) ? String(v) : '0'));
 
 export const cleanVenue = (v) => (VENUE_FILTERS.includes(v) ? v : 'any');
-// 보기 종류: 외벽(wall)과 싱글피치(crag). 헤더 토글이 고르고 기기에 저장한다(싱글피치는 config.singlePitch가 켜진 동안만 쓰인다).
-export const MODES = ['wall', 'crag'];
-export const cleanMode = (v) => (MODES.includes(v) ? v : 'wall');
-// 일정 탭 보기: 달력(cal, 기본) ⇄ 목록(list). 헤더 토글이 고르고 기기에 저장한다.
-export const cleanSchedView = (v) => (v === 'list' ? 'list' : 'cal');
 // 홈 보기: 목록(list, 기본) ⇄ 지도(map). 넓은 화면은 둘을 나란히 두므로 이 값을 쓰지 않는다(app.js).
 export const cleanHomeView = (v) => (v === 'map' ? 'map' : 'list');
-// 저장된 값이 crag여도 스위치가 꺼졌거나 불러온 암장이 없으면 외벽을 보여 준다(빈 화면이 되지 않게).
-export const effectiveMode = (mode, { enabled, count }) => (mode === 'crag' && enabled && count > 0 ? 'crag' : 'wall');
-// 내 로프 길이 (not a filter: it only tells the card whether the wall's height fits). '0' = not set.
-export const ROPE_CHOICES = ['0', '40', '45', '50', '60', '70'];
 // 기온 (°C at the arrival hour): outdoor walls below it go to the bottom of the open group, dimmed. '0' = off.
 export const TEMP_CHOICES = ['0', '5', '10', '15'];
 export const cleanTemp = (v) => (TEMP_CHOICES.includes(String(v)) ? String(v) : '0');
-export const cleanRope = (v) => (ROPE_CHOICES.includes(String(v)) ? String(v) : '0');
-// 어프로치 도보 (싱글피치만): 걸어 들어가는 분이 이보다 긴 암장을 목록에서 뺀다(분을 모르는 곳은 남긴다). '0' = 안 정함.
-export const APPROACH_CHOICES = ['0', '10', '20', '30'];
-export const cleanApproach = (v) => (APPROACH_CHOICES.includes(String(v)) ? String(v) : '0');
 // Saved selection: 권역 names only (areas.js; an old "서울 동작구" becomes "서울"), no repeats, and (when the list is known) only 권역 that exist.
 export function cleanRegions(v, known = null) {
   return normalizeAreas(v).filter((r) => !known || known.includes(r));
@@ -57,32 +44,22 @@ export function loadUi(storage) {
   // `sun` used to be a sort preference ('sun'/'shade' first); the same values now mean the 양달/응달 filter.
   if (!SUN_FILTERS.includes(ui.sun)) ui.sun = 'any';
   ui.minHours = migrateMinHours(ui.minHours); // 1h/2h choices from before 3·5·8
-  if (!['time', 'distance', 'mygrade'].includes(ui.sortMode)) ui.sortMode = 'time';
+  if (!['time', 'distance'].includes(ui.sortMode)) ui.sortMode = 'time'; // an old 'mygrade' (a crag-list order) too
   ui.scrubHinted = ui.scrubHinted === true; // the first-visit slider hint was seen (scrub-hint.js)
   ui.parkingOnly = ui.parkingOnly === true;
   ui.rentalOnly = ui.rentalOnly === true;
   ui.withBreaks = ui.withBreaks === true;
   ui.regions = cleanRegions(ui.regions);
-  ui.hidePick = ui.hidePick === true; // 이번 주말 추천 turned off in 내 정보
   ui.venue = cleanVenue(ui.venue);
-  ui.ropeM = cleanRope(ui.ropeM);
-  ui.approachMax = cleanApproach(ui.approachMax);
   ui.tempMin = cleanTemp(ui.tempMin);
-  ui.mode = cleanMode(ui.mode);
-  ui.schedView = cleanSchedView(ui.schedView);
   ui.favOnly = ui.favOnly === true;
   ui.homeView = ui.tab === 'map' ? 'map' : cleanHomeView(ui.homeView); // the old 지도 tab is now 홈's 지도 view
-  if (!TABS.includes(ui.tab)) ui.tab = 'list';
   ui.theme = cleanTheme(ui.theme);
   ui.textSize = cleanTextSize(ui.textSize);
-  ui.climberCardDone = ui.climberCardDone === true; // the 클라이머 유형 테스트 intro card was closed
-  ui.climberFirstDay = /^\d{4}-\d{2}-\d{2}$/.test(ui.climberFirstDay) ? ui.climberFirstDay : ''; // the day the app was first opened with the test on
   ui.introDone = ui.introDone === true; // the first-visit "how to read" card was closed
+  for (const k of GONE) delete ui[k];
   return ui;
 }
-
-/** climberCardDue(ui, today, hasResult) → bool: the 클라이머 테스트 intro card shows from the first visit *after* the first day (a reload is not a second visit), until closed or the test is taken. */
-export const climberCardDue = (ui, today, hasResult) => !ui.climberCardDone && !hasResult && ui.climberFirstDay !== '' && ui.climberFirstDay < today;
 
 // A shared link shows its wall over the saved filters (in memory only). holdLinkView applies that view and returns what it
 // replaced; saveUi writes the saved value back for every key the visitor has not changed since, so opening a link and then
@@ -131,7 +108,7 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
     regionLabel: label,
     regionChipLabel: `${label} 해제, 전국 보기`,
     // the sheet button counts what only the sheet shows: 양달/응달 (the 해 row), 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온, 내 로프 길이 (a setting: it hides no wall)
-    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance' || ui.sortMode === 'mygrade') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0) + Number(ui.sun !== 'any'),
+    sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0) + Number(ui.sun !== 'any'),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones
     emptyText: !openTotal || !on.length
       ? '아래 닫힌 곳에서 곳마다 다음 오픈 시간을 볼 수 있어요.'
@@ -139,19 +116,6 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
     // "전국으로 보기" when 내 지역 hid open walls; "조건 지우기" when another filter did
     national: openTotal > 0 && ui.regions.length > 0,
     clear: openTotal > 0 && activeFilters({ ...f, regions: [] }).length > 0,
-  };
-}
-
-/**
- * cragFilterView(ui, { hasGrade, query }) → the 싱글피치 list's 조건 count and empty-box buttons: only what cragList uses.
- * sheetCount: the sheet's own (가까운 순 / 내 그레이드 루트 많은 순 with a 내 그레이드, 내 지역, 즐겨찾기만, 어프로치 도보 — cragList drops crags by the last, 양달/응달 — the 해 row); the search sits outside the sheet.
- * national: 내 지역 narrows the list (전국으로 보기). clear: 양달/응달, the search, 즐겨찾기만, a set 어프로치 도보 narrows it (조건 지우기 clears those four).
- */
-export function cragFilterView(ui, { hasGrade = false, query = '' } = {}) {
-  return {
-    sheetCount: Number(ui.sortMode === 'distance' || (ui.sortMode === 'mygrade' && hasGrade)) + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.approachMax) > 0) + Number(Number(ui.tempMin) > 0) + Number(ui.sun !== 'any'),
-    national: ui.regions.length > 0,
-    clear: ui.sun !== 'any' || Boolean(ui.favOnly) || Number(ui.approachMax) > 0 || Number(ui.tempMin) > 0 || query.trim() !== '',
   };
 }
 
@@ -183,11 +147,6 @@ export function wallFromSearch(walls, search) {
   return name ? walls.find((w) => w.name.normalize('NFC') === name) ?? null : null;
 }
 
-/** The tab a ?crag=<name>&<tab> link asks for (cond / way / routes / board), or null: the card opens alone. */
-export const cragSheetTabFromSearch = (search) => { const q = new URLSearchParams(search); return q.has('crag') ? CRAG_SHEET_TABS.find((k) => q.has(k)) ?? null : null; };
-
-/** The crag a ?crag=<name> link names: exact (NFC) name match in the loaded crags, else null (wallFromSearch's shape). */
-export function cragFromSearch(crags, search) {
-  const name = new URLSearchParams(search).get('crag')?.normalize('NFC').trim();
-  return name ? crags.find((c) => c.name.normalize('NFC') === name) ?? null : null;
-}
+/** plannerLink(plannerUrl, wallId) → the planner's "new plan at this wall" address (the wall sheet's 일정 잡기), or null when either is empty. */
+export const plannerLink = (plannerUrl, wallId) =>
+  (typeof plannerUrl === 'string' && plannerUrl && typeof wallId === 'string' && wallId ? `${plannerUrl}?new&wall=${encodeURIComponent(wallId)}` : null);

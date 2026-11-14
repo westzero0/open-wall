@@ -24,7 +24,8 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 export const config = {
   planner: { on: true },
   appUrl: '',
-  utilUrl: 'classic.html', // 외벽 유틸리티 페이지 주소(옛 앱). 빈 값 = 링크 없음.
+  utilUrl: 'walls.html', // 외벽 유틸리티 페이지 주소(옛 앱). 빈 값 = 링크 없음.
+  plannerUrl: './', // 일정앱 주소(외벽 시트의 일정 잡기 → ?new&wall=<id>). 빈 값 = 버튼 없음.
   scrubHint: true,
   showOutdoorCount: false,
   stage: 'beta',

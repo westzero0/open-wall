@@ -127,7 +127,7 @@ function makeHandlers(store, storage) {
 }
 
 async function main() {
-  const old = legacyTarget(location.pathname, location.search, location.hash); // an old ?wall=/?crag= link: the old app (classic.html) still answers it
+  const old = legacyTarget(location.pathname, location.search, location.hash); // an old ?wall=/?crag= link: the old app (walls.html) still answers it
   if (old) { location.replace(old); return; }
   if (!plannerOn()) {
     const p = document.createElement('p');

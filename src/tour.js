@@ -126,7 +126,7 @@ export const startTour = ({ onClose = () => {} } = {}) => {
     window.removeEventListener('resize', onResize);
     cancelAnimationFrame(raf);
     dlg.remove();
-    (from && from !== document.body && from.isConnected ? from : document.getElementById('tab-list'))?.focus();
+    (from && from !== document.body && from.isConnected ? from : document.getElementById('helpBtn'))?.focus();
     onClose({ completed });
   });
 
