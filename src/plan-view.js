@@ -3,6 +3,7 @@
 import { DAY_KO } from './time.js';
 import { resolvePlace } from './plan-place.js';
 import { riskOf } from './plan-risk.js';
+import { ICE_FLAG_TEXT } from './plan-ice.js';
 import { recordSummary } from './plan-actions.js';
 import { changedPhrase, placeLine, symbolKind } from './plan-card.js';
 export { placeLine, symbolKind };
@@ -11,8 +12,10 @@ import { cragRow } from './crag-model.js';
 import { isSunlit, dayWindow, fmt } from './sun.js';
 import { wallPageId } from './share-id.js';
 import { shortName } from './viewmodel.js';
+import { sidoOf } from './rain-map.js';
 import { crowdLevel } from './plan-crowd.js';
 import { nextShadeMin, sunTitle, HOME_SHADE_NOTE } from './plan-sun.js';
+import { reserveOf, reserveState, reserveDeadline, reserveCopy, isReserved } from './reserve.js';
 
 export const LOADING = '날씨를 불러오는 중이에요';
 const dateOf = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
@@ -30,13 +33,25 @@ export function todayText(today) { const p = dayParts(today); return `${p.month}
 export const timeText = (min) => (Number.isInteger(min) ? fmt(min) : '');
 
 export function resolveFor(plan, s) {
-  return resolvePlace(plan.place, { walls: s.walls, crags: s.crags, mine: s.db.mine, aliases: s.aliases, savedName: plan.placeName });
+  return resolvePlace(plan.place, { walls: s.walls, crags: s.crags, ice: s.ice, mine: s.db.mine, aliases: s.aliases, savedName: plan.placeName });
 }
 
 export const partnerNames = (plan, partners) => (plan.partnerIds ?? []).map((id) => partners.find((p) => p.id === id)?.name).filter(Boolean);
 
 /** '오늘은 가능' for the today row; null when the risk has nothing to say (none / past). */
 export const verdictOf = (level) => ({ ok: '오늘은 가능', caution: '오늘은 주의', hard: '오늘은 어려움' }[level] ?? null);
+
+/** The 예약 part of a plan (spec 2026-11-16-reservation §5·§6): null when the place needs no reservation or the plan is not ahead. Words come from reserve.js. */
+export function reserveView(plan, resolved, s) {
+  const place = resolved?.wall ?? resolved?.crag ?? resolved?.ice;
+  if (!place) return null;
+  // the mountain a sector or a waterfall points at lives in the ice list (data/ice.json), so a crag sector finds its parent there too (C3)
+  const byId = (id) => [s.walls, s.crags, s.ice].flatMap((a) => a ?? []).find((x) => x.id === id);
+  const rule = reserveOf(place, byId);
+  const state = reserveState({ plan, reserve: rule, today: s.today, reserved: isReserved(plan) });
+  if (state === 'none') return null;
+  return { state, ...reserveCopy(state, { deadline: reserveDeadline(plan.date, rule.daysBefore), checkedAt: rule.checkedAt }), url: rule.url, name: rule.name, reserved: state === 'done' };
+}
 
 /** rowView(plan, { s, now }) → the words and flags of one row. */
 export function rowView(plan, { s, now = Date.now() }) {
@@ -53,13 +68,18 @@ export function rowView(plan, { s, now = Date.now() }) {
   const live = !rest && !recorded && plan.date >= s.today; // a card / alternatives make sense only for a plan still ahead
   const p = dayParts(plan.date);
   const verdict = level === 'hard' ? '어려움, ' : '';
-  const aria = `${p.month}월 ${p.day}일 ${p.dow}요일 ${title}${plan.min != null ? ` ${timeText(plan.min)}` : ""}. ${verdict}${phrase}`;
+  const reserve = rest || recorded ? null : reserveView(plan, resolved, s);
+  const flag = live && !loading && !!risk.flag; // 빙벽: a condition is met (facts only, no colour level)
+  const aria = `${p.month}월 ${p.day}일 ${p.dow}요일 ${title}${plan.min != null ? ` ${timeText(plan.min)}` : ""}. ${verdict}${phrase}${flag ? `. ${ICE_FLAG_TEXT}` : ''}${reserve?.tag ? `. ${reserve.tag}` : ''}`;
   return {
-    id: plan.id, resolved, risk, level, title, time: timeText(plan.min), phrase, symbol: plan.discipline ?? symbolKind(resolved), rest, recorded, live, aria,
+    id: plan.id, resolved, risk, level, title, time: timeText(plan.min), phrase, symbol: plan.discipline ?? symbolKind(resolved) ?? (resolved.kind === 'ice' ? 'ice' : null), rest, recorded, live, aria,
     past: plan.date < s.today,
     changed: plan.changedFrom ? changedPhrase(plan) : null,
     who: partnerNames(plan, s.db.partners),
     atRisk: live && (risk.level === 'hard' || risk.level === 'caution'),
+    flag,
+    ice: live && !loading ? risk.ice ?? null : null,
+    reserve,
   };
 }
 
@@ -172,16 +192,16 @@ export function weekStrip(plans, today, hardOf = () => false) {
   });
 }
 
-/** Month calendar: weeks Monday..Sunday covering (year, month 1..12). Cell: { date, d, inMonth, today, past, count, marks:{planned,went,missed,rest} }. Broken plan dates are ignored. */
+/** Month calendar: weeks Monday..Sunday covering (year, month 1..12). Cell: { date, d, inMonth, today, past, count, marks:{planned,went,missed,rest,hard} }. Broken plan dates are ignored. */
 const MARK_OF = { '예정': 'planned', '갔다': 'went', '못 갔다': 'missed', '쉼': 'rest' };
 const ymd = (at) => `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
-export function monthGrid(plans, year, month, today) {
+export function monthGrid(plans, year, month, today, hardOf = () => false) { // hardOf(plan) → true for a plan whose weather is 어려움 (the cell gets marks.hard, same as the week strip's red dot)
   const by = new Map();
   for (const p of Array.isArray(plans) ? plans : []) {
     const k = MARK_OF[p?.status];
     if (!k || typeof p.date !== 'string') continue;
-    const e = by.get(p.date) ?? { planned: 0, went: 0, missed: 0, rest: 0 };
-    e[k]++; by.set(p.date, e);
+    const e = by.get(p.date) ?? { planned: 0, went: 0, missed: 0, rest: 0, hard: 0 };
+    e[k]++; if (k === 'planned' && hardOf(p)) e.hard++; by.set(p.date, e);
   }
   const first = new Date(year, month - 1, 1);
   const start = new Date(year, month - 1, 1 - ((first.getDay() + 6) % 7));
@@ -190,7 +210,7 @@ export function monthGrid(plans, year, month, today) {
   return Array.from({ length: weeks }, (_, w) => Array.from({ length: 7 }, (_, i) => {
     const at = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + i);
     const date = ymd(at);
-    const marks = by.get(date) ?? { planned: 0, went: 0, missed: 0, rest: 0 };
+    const marks = by.get(date) ?? { planned: 0, went: 0, missed: 0, rest: 0, hard: 0 };
     return { date, d: at.getDate(), inMonth: at.getMonth() === month - 1, today: date === today, past: date < today, count: marks.planned + marks.went + marks.missed + marks.rest, marks: { ...marks } };
   }));
 }
@@ -211,16 +231,31 @@ export function nextPlanText(plans, today) {
 /** One alternative as a row: { key, name, symbol, sub: tags joined by ' · ' (one muted line, no chips), tags[], place, placeName }. Distance is from the ORIGINAL place (pick.km); no user position is used. */
 export function altRow(pick, resolved) {
   const w = pick.wall;
-  const tags = [];
+  let tags = [];
   if (pick.indoor) tags.push('실내 · 비 영향 없음');
   else if (pick.risk.phrase) tags.push(pick.risk.phrase);
-  const sido = (r) => String(r ?? '').trim().split(/\s+/)[0];
-  const here = sido(resolved.wall?.region ?? resolved.crag?.region);
-  if (here && sido(w.region) === here) tags.push('같은 지역'); // the 시·도 really matches (경기 양주 ≠ 인천), else the tag is left out
+  const here = sidoOf(resolved.wall?.region ?? resolved.crag?.region);
+  if (here && sidoOf(w.region) === here) tags.push('같은 지역'); // the 시·도 really matches (경기 양주 ≠ 인천), else the tag is left out
   if (Number.isFinite(pick.km)) tags.push(`약 ${Math.max(1, Math.round(pick.km))}km`);
+  tags = tags.filter((t) => String(t ?? '').trim());
   return {
     key: wallPageId(w), name: shortName(w), symbol: pick.indoor ? 'lead' : 'wall',
     sub: tags.join(' · '), tags,
     place: { kind: 'official', id: wallPageId(w) }, placeName: w.name,
+  };
+}
+
+/** One "다른 바위" row (plan-alt rockAlternatives): `비 예보 없음` first, nothing about the rock's state; a pending crag adds `위치 확인 전`. Distance from the ORIGINAL place. */
+export function rockRow(pick, resolved) {
+  const c = pick.crag;
+  const here = sidoOf(resolved.crag?.region ?? resolved.wall?.region);
+  const tags = ['비 예보 없음'];
+  if (pick.pending) tags.push('위치 확인 전');
+  if (here && sidoOf(c.region) === here) tags.push('같은 지역');
+  if (Number.isFinite(pick.km)) tags.push(`약 ${Math.max(1, Math.round(pick.km))}km`);
+  return {
+    key: wallPageId(c), name: shortName(c), symbol: symbolKind({ kind: 'crag', crag: c }),
+    sub: tags.join(' · '), tags,
+    place: { kind: 'official', id: wallPageId(c) }, placeName: c.name,
   };
 }

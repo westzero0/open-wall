@@ -2586,7 +2586,8 @@
       "contact": {
         "reserve": {
           "name": "포천도시공사 예약",
-          "url": "https://res.pcuc.kr/res/fclt/rental/view/4/008"
+          "url": "https://res.pcuc.kr/res/fclt/rental/view/4/008",
+          "required": true
         },
         "notice_url": "https://res.pcuc.kr/res/boardList/rsv_notice"
       },
@@ -7451,7 +7452,9 @@
         "phone": "055-339-8866",
         "reserve": {
           "name": "김해시 공공예약포털",
-          "url": "https://www.gimhae.go.kr/yes/05561/05927/05931.web"
+          "url": "https://www.gimhae.go.kr/yes/05561/05927/05931.web",
+          "required": true,
+          "days_before": 1
         }
       },
       "holiday": "weekend",
@@ -11932,7 +11935,8 @@
         "phone": "042-824-3288",
         "reserve": {
           "name": "네이버 예약(하나클라이밍짐)",
-          "url": "https://map.naver.com/p/entry/place/1503912790"
+          "url": "https://map.naver.com/p/entry/place/1503912790",
+          "required": true
         },
         "instagram": "hanaclimbing"
       },

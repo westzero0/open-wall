@@ -5,14 +5,15 @@ import { cragForecastUrl, listForecastUrl, parseDaily, parseListForecast, parseW
 import { wallPosition } from './viewmodel.js';
 
 export const CRAG_WX_KEY = 'open-wall:wx-crag';
+export const CRAG_WX_ALL_KEY = 'open-wall:wx-crag-all'; // the nationwide rain map's copy, kept apart from the nearby one
 const TIMEOUT_MS = 8000;
 
 // names and coordinates (2 decimals, what is sent): a crag added, removed or moved asks again
 const keyOf = (spots) => spots.map(([c, p]) => `${c.name}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}${Number.isInteger(c.elev_m) ? `^${c.elev_m}` : ''}`).join('|');
 
-function readCache(storage) {
+function readCache(storage, cacheKey) {
   try {
-    const v = JSON.parse(storage?.getItem(CRAG_WX_KEY));
+    const v = JSON.parse(storage?.getItem(cacheKey));
     return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
   } catch { return null; /* no copy, or a broken one: ask */ }
 }
@@ -38,16 +39,16 @@ async function ask(fetchFn, url) {
 }
 
 /**
- * loadCragWeather(crags, { fetchFn, storage, now }) → { daily, hourly, wet, ok }
+ * loadCragWeather(crags, { fetchFn, storage, now, cacheKey }) → { daily, hourly, wet, ok }
  * daily: Map name → Map 'YYYY-MM-DD' → {mm, p, g}; hourly: Map name → Map 'YYYY-MM-DDTHH:00' → {t, c}.
  * wet: Map name → [{ at, r, t, rh, v, s, p }] (past 7 days + forecast). Only crags with a position are asked for. ok: all three parts arrived and passed the checks
  * (a part that failed leaves its map empty: the rows fall back to the older daily-rain condition, and the next ask is 5 minutes away).
  */
-export async function loadCragWeather(crags, { fetchFn = fetch, storage = null, now = Date.now() } = {}) {
+export async function loadCragWeather(crags, { fetchFn = fetch, storage = null, now = Date.now(), cacheKey = CRAG_WX_KEY } = {}) {
   const spots = crags.map((c) => [c, wallPosition(c)]).filter(([, p]) => p);
   if (!spots.length) return { daily: new Map(), hourly: new Map(), wet: new Map(), ok: false };
   const key = keyOf(spots);
-  const saved = readCache(storage);
+  const saved = readCache(storage, cacheKey);
   // a copy stamped in the future (a clock that was ahead, or a tampered value) is not trusted: it would never age out
   if (saved?.key === key && Number.isFinite(saved.at) && saved.at <= now && weatherFresh({ hours: true, at: saved.at }, now)) {
     const r = build(spots, saved.daily, saved.hourly, saved.wet);
@@ -57,7 +58,7 @@ export async function loadCragWeather(crags, { fetchFn = fetch, storage = null, 
   const [dailyJson, hourlyJson, wetJson] = await Promise.all([ask(fetchFn, cragForecastUrl(points)), ask(fetchFn, listForecastUrl(points)), ask(fetchFn, wetnessForecastUrl(points))]);
   const r = build(spots, dailyJson, hourlyJson, wetJson);
   if (r.ok) {
-    try { storage?.setItem(CRAG_WX_KEY, JSON.stringify({ key, at: now, daily: dailyJson, hourly: hourlyJson, wet: wetJson })); } catch { /* full or blocked: asked again next time */ }
+    try { storage?.setItem(cacheKey, JSON.stringify({ key, at: now, daily: dailyJson, hourly: hourlyJson, wet: wetJson })); } catch { /* full or blocked: asked again next time */ }
   }
   return r;
 }

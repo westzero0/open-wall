@@ -4,15 +4,16 @@ import { config } from './config.js';
 
 /** discipline symbol of a place: wall | lead (indoor) | boulder | single | multi */
 export function symbolKind(resolved) {
-  if (resolved.kind === 'crag') return resolved.crag?.type === 'multi' ? 'multi' : resolved.crag?.type === 'boulder' ? 'boulder' : 'single';
+  if (resolved.kind === 'ice') return null; // no ice symbol yet (decided with the shared tokens, B4): the shared card draws no symbol (rows show the letters 빙벽 in the symbol slot, plan-view.js)
+  if (resolved.kind === 'crag') return resolved.crag?.type === 'multi' ? 'multi' : resolved.crag?.type === 'boulder' ? 'boulder' : 'single'; // ice has no symbol yet (SYMBOL_SHAPES draws only these; E6 adds it), so it falls to single
   return resolved.venue === 'indoor' ? 'lead' : 'wall';
 }
 
 /** `실내 · 서울` / `외벽 · 경기 양주시` / `자연암장 · 서울`; '' when nothing is known (a name-only place). */
 export function placeLine(resolved) {
-  const region = resolved.wall?.region ?? resolved.crag?.region ?? resolved.mineWall?.region ?? '';
+  const region = resolved.wall?.region ?? resolved.crag?.region ?? resolved.ice?.region ?? resolved.mineWall?.region ?? '';
   const kind = resolved.kind === 'crag' ? '자연암장' : resolved.kind === 'mine' ? (resolved.venue === 'indoor' ? '실내' : resolved.venue === 'outdoor' ? '외벽' : '내 암장')
-    : resolved.kind === 'wall' ? (resolved.venue === 'indoor' ? '실내' : '외벽') : '';
+    : resolved.kind === 'wall' ? (resolved.venue === 'indoor' ? '실내' : '외벽') : resolved.kind === 'ice' ? '빙벽장' : '';
   return [kind, region].filter(Boolean).join(' · ');
 }
 

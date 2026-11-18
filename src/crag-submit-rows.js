@@ -4,7 +4,7 @@ import { facingTendency } from './crag-submit-fields.js';
 export const NO_SUN = '일사는 반영하지 않았어요';
 export const PENDING_NOTE = '이름과 위치만 받았어요. 접근·주차는 확인된 뒤에 열려요';
 
-/** 읽어 올지: ?lab=crag AND cragSubmitOn() 둘 다일 때만 (config.singlePitch 와는 별개 스위치) (아니면 api.list를 부르지 않는다). */
+/** 읽어 올지: lab AND cragSubmitOn() 둘 다일 때만 (아니면 api.list를 부르지 않는다). */
 export const shouldLoadSubmissions = ({ lab, on }) => !!(lab && on);
 
 /** subs: api.list() 행. → [{id,name,mine,chip,short,sun,sunLabel,dot}] (dot=false: 지도 점 없음 — visible:false) */

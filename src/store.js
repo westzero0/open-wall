@@ -48,14 +48,20 @@ function cleanHours(v) {
   return out;
 }
 
-// contact.reserve = { name?, url, required? }: a reservation site (http/https only, no spaces); no usable url = no reserve. required: true = a reservation is a must (the card says 예약 필수); only a true is stored.
+// contact.reserve = { name?, url, required?, days_before?, checked_at? } (spec 2026-11-16-reservation §2): a reservation site (http/https only, no spaces); no usable url = no reserve. required: true = a reservation is a must (the card says 예약 필수); only a true is stored.
 export const HTTP_URL_RE = /^https?:\/\/\S+$/i;
+export const MAX_RESERVE_NOTE = 40;
+const oneLine = (v, max) => (typeof v === 'string' ? v.normalize('NFC').replace(/[\x00-\x1f\x7f\s]+/g, ' ').trim().slice(0, max).trim() : '');
 function cleanReserve(v) {
   const r = getPlainObject(v);
   const url = typeof r.url === 'string' ? r.url.trim() : '';
   if (!HTTP_URL_RE.test(url) || url.length > 500) return null;
   const name = typeof r.name === 'string' ? r.name.trim().slice(0, 20) : '';
-  return { ...(name ? { name } : {}), url, ...(r.required === true ? { required: true } : {}) };
+  const n = typeof r.days_before === 'string' && r.days_before.trim() !== '' ? Number(r.days_before) : r.days_before;
+  const days = Number.isInteger(n) && n >= 0 && n <= 60 ? n : null; // 등반일 며칠 전까지 (0 = 당일까지); anything else = 모름
+  const checked = isDateStr(r.checked_at) ? r.checked_at : null; // the day this rule was checked against the operator
+  const note = oneLine(r.note, MAX_RESERVE_NOTE); // one line on this rule ("100m만 예약(2026)"); spec 2026-11-16-ice-venues §6
+  return { ...(name ? { name } : {}), url, ...(r.required === true ? { required: true } : {}), ...(days !== null ? { days_before: days } : {}), ...(checked ? { checked_at: checked } : {}), ...(note ? { note } : {}) };
 }
 
 function cleanContact(v) {
@@ -281,8 +287,35 @@ export const MAX_CAUTION = 400;
 const cleanNote = (v, max) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]/g, '').trim().slice(0, max).trim() : '');
 const cleanIntIn = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
 
-// 날씨 구역 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 3절): 종류 칩(멀티·볼더, 없으면 싱글), 등반 대표 고도(m), 봉우리 이름 목록.
-export const ZONE_TYPES = ['multi', 'boulder'];
+// 자연암장 종류 (docs/superpowers/specs/2026-11-15-crag-type-rename.md 3절): 데이터에 직접 적는다. 값 없음 = 종류 미정(화면은 싱글처럼, 관리자 할 일).
+// 모르는 소문자 낱말은 그대로 둔다(새 버전의 값; 화면은 '기타', 싱글 계산 없음). ice 는 값만 예약.
+export const CRAG_TYPES = ['single', 'multi', 'boulder', 'ice'];
+const cleanCragType = (v) => (CRAG_TYPES.includes(v) || (typeof v === 'string' && /^[a-z]{2,16}$/.test(v)) ? v : null);
+// 빙벽장 칸 (docs/superpowers/specs/2026-11-16-ice-venues.md 3·4절): 자연/인공, 정원, 이용 안내 한 줄, 시즌별 운영 상태. 없거나 잘못되면 키 자체가 없다.
+export const ICE_KINDS = ['natural', 'artificial'];
+export const ICE_ROPE_MODE_NAMES = ['normal', 'toprope']; // 일반등반 / 탑로핑 (the rope an ice waterfall asks for: crag-model.js iceRope)
+export const ICE_STATUS = ['open', 'not_open', 'suspended']; // 운영 · 미개장 · 운영 중지
+export const MAX_ACCESS_NOTE = 80, MAX_SEASON_NOTE = 60, MAX_ICE_SEASONS = 12;
+// season = the year whose January the winter reaches ("2026 시즌" = winter 2025-26). opened_on only means something for 'open'; notice_on only with its url.
+export function cleanIceSeasons(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const r of v) {
+    if (!isPlainObject(r) || !Number.isInteger(r.season) || r.season < 2000 || r.season > 2100 || !ICE_STATUS.includes(r.status) || out.some((x) => x.season === r.season)) continue;
+    const url = typeof r.notice_url === 'string' ? r.notice_url.trim() : '';
+    const notice_url = HTTP_URL_RE.test(url) && url.length <= 500 ? url : '';
+    const note = oneLine(r.note, MAX_SEASON_NOTE);
+    out.push({
+      season: r.season, status: r.status,
+      ...(r.status === 'open' && isDateStr(r.opened_on) ? { opened_on: r.opened_on } : {}),
+      ...(notice_url ? { notice_url } : {}),
+      ...(notice_url && isDateStr(r.notice_on) ? { notice_on: r.notice_on } : {}),
+      ...(note ? { note } : {}),
+    });
+  }
+  return out.sort((a, b) => b.season - a.season).slice(0, MAX_ICE_SEASONS);
+}
+// 날씨 구역 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 3절): 등반 대표 고도(m), 봉우리 이름 목록.
 export const MAX_PEAKS = 30, MAX_PEAK_NAME = 30, MAX_ELEV_M = 4000;
 function cleanPeaks(v) {
   if (!Array.isArray(v)) return [];
@@ -493,6 +526,7 @@ export const HOLIDAY_RULES = ['weekend', 'closed', 'weekday'];
 
 // A wall's stable id: 8 lowercase base36 chars, the form of src/share-id.js. Written once into the data, it stays when the name changes.
 export const WALL_ID_RE = /^[a-z0-9]{8}$/;
+const ALIAS_RE = /^[A-Za-z0-9_-]{1,16}$/;
 
 export function normalizeWall(raw) {
   if (!isPlainObject(raw)) {
@@ -513,6 +547,8 @@ export function normalizeWall(raw) {
 
   const name = typeof raw.name === 'string' ? raw.name.normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
   const id = typeof raw.id === 'string' && WALL_ID_RE.test(raw.id) ? raw.id : '';
+  const parentId = typeof raw.parentId === 'string' && WALL_ID_RE.test(raw.parentId) && raw.parentId !== id ? raw.parentId : ''; // a sector points at its mountain (plan-board 2절 등반지 ID); reserve.js reserveOf reads it
+  const aliases = getStringArray(raw.aliases).filter((a) => ALIAS_RE.test(a)).slice(0, 10); // old ids (sheet numbers C002 …) a place keeps after it got its own id
   const tags = getStringArray(raw.tags);
   const hours = cleanHours(raw.hours);
   const winter = getWinter(raw.winter);
@@ -562,9 +598,14 @@ export function normalizeWall(raw) {
   const bolts_max = cleanIntIn(raw.bolts_max, 1, 30);
   const approach_steps = cleanSteps(raw.approach_steps);
   const approach_min = cleanIntIn(raw.approach_min, 1, MAX_APPROACH_MIN);
-  const type = ZONE_TYPES.includes(raw.type) ? raw.type : null;
+  const type = cleanCragType(raw.type);
   const elev_m = cleanIntIn(raw.elev_m, 0, MAX_ELEV_M);
   const peaks = cleanPeaks(raw.peaks);
+  const ice_kind = ICE_KINDS.includes(raw.ice_kind) ? raw.ice_kind : null;
+  const rope_mode = ICE_ROPE_MODE_NAMES.includes(raw.rope_mode) ? raw.rope_mode : null;
+  const capacity = cleanIntIn(raw.capacity, 1, 1000);
+  const access_note = oneLine(raw.access_note, MAX_ACCESS_NOTE);
+  const ice_seasons = cleanIceSeasons(raw.ice_seasons);
 
   return {
     region,
@@ -584,6 +625,8 @@ export function normalizeWall(raw) {
     sun,
     name,
     ...(id ? { id } : {}),
+    ...(parentId ? { parentId } : {}),
+    ...(aliases.length ? { aliases } : {}),
     ...(seasons.length ? { seasons } : {}),
     ...(suspended ? { suspended } : {}),
     ...(rope_m ? { rope_m } : {}),
@@ -617,6 +660,11 @@ export function normalizeWall(raw) {
     ...(type ? { type } : {}),
     ...(elev_m !== null ? { elev_m } : {}),
     ...(peaks.length ? { peaks } : {}),
+    ...(ice_kind ? { ice_kind } : {}),
+    ...(rope_mode ? { rope_mode } : {}),
+    ...(capacity !== null ? { capacity } : {}),
+    ...(access_note ? { access_note } : {}),
+    ...(ice_seasons.length ? { ice_seasons } : {}),
   };
 }
 
@@ -654,7 +702,12 @@ export function keepGeo(old, next) {
   if (!out.contact?.chat_url && old.contact?.chat_url) out.contact = { ...out.contact, chat_url: old.contact.chat_url }; // so does one without 오픈채팅
   if (!out.contact?.reserve && old.contact?.reserve) out.contact = { ...out.contact, reserve: old.contact.reserve }; // and one without 예약
   if (out.contact?.reserve && !out.contact.reserve.required && old.contact?.reserve?.required && out.contact.reserve.url === old.contact.reserve.url) out.contact = { ...out.contact, reserve: { ...out.contact.reserve, required: true } }; // the same link from a file with no 예약필수 keeps 필수
-  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'overview', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  if (out.contact?.reserve && old.contact?.reserve && out.contact.reserve.url === old.contact.reserve.url) { // the same link from a file without 예약기한일/예약확인일 keeps them
+    const keep = Object.fromEntries(['days_before', 'checked_at', 'note'].filter((k) => out.contact.reserve[k] === undefined && old.contact.reserve[k] !== undefined).map((k) => [k, old.contact.reserve[k]]));
+    if (Object.keys(keep).length) out.contact = { ...out.contact, reserve: { ...out.contact.reserve, ...keep } };
+  }
+  for (const k of ['sun_note', 'indoor_hours', 'indoor_winter', 'seasons', 'fees', 'discount', 'blog_posts', 'stamp', 'address', 'width_m', 'indoor_height_m', 'rope_m', 'route_sets', 'overview', 'approach', 'caution', 'bolts_max', 'approach_steps', 'approach_min', 'ice_kind', 'rope_mode', 'access_note', 'ice_seasons']) if (!out[k] && old[k]) out[k] = old[k]; // not in the CSV/form
+  if (out.capacity === undefined && old.capacity !== undefined) out.capacity = old.capacity;
   if (out.dry_days === undefined && old.dry_days !== undefined) out.dry_days = old.dry_days; // 0 is a real value, so not the truthy check above
   // an older CSV without 공휴일/격주휴무 (or the cells left empty) keeps the stored rules
   if (!out.holiday && old.holiday) out.holiday = old.holiday;
@@ -730,14 +783,21 @@ export async function fetchNational(fetchFn = fetch) {
   return list;
 }
 
-// Single-pitch crags (data/single-pitch.json), a separate list from the walls. Unlike fetchNational an empty list is fine.
+// Natural crags (data/crags.json), a separate list from the walls. Unlike fetchNational an empty list is fine.
 export async function fetchCrags(fetchFn = fetch) {
   const r = await fetchFn(config.data.crags);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
 }
 
-// Pending crags (data/single-pitch-next.json): name, region, type and the old app's pin only, for the planner's search and records.
+// Ice venues (data/ice.json, spec 2026-11-16-ice-venues §2): a list of their own, read by no screen yet. Like fetchCrags an empty list is fine.
+export async function fetchIce(fetchFn = fetch) {
+  const r = await fetchFn(config.data.ice);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return parseJson(await r.text()).map(normalizeWall).filter((w) => w.name);
+}
+
+// Pending crags (data/crags-pending.json): name, region, type and the old app's pin only, for the planner's search and records.
 // Each file may fail on its own; a name already in `taken` is skipped.
 export async function fetchPendingCrags(fetchFn = fetch, taken = []) {
   const seen = new Set(taken);
@@ -747,7 +807,7 @@ export async function fetchPendingCrags(fetchFn = fetch, taken = []) {
     const raw = JSON.parse(await r.text())?.pending;
     return (Array.isArray(raw) ? raw : []).map((p) => {
       const g = p?.csv_geo;
-      return normalizeWall({ name: p?.name, region: p?.region, memo: p?.memo, type: p?.type, ...(g ? { sun: { lat: g.lat, lng: g.lng } } : {}) });
+      return normalizeWall({ name: p?.name, id: p?.id, parentId: p?.parentId, aliases: p?.aliases, short_name: p?.short_name, region: p?.region, memo: p?.memo, type: p?.type, ...(g ? { sun: { lat: g.lat, lng: g.lng } } : {}) });
     });
   }));
   const out = [];

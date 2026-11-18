@@ -1,6 +1,7 @@
 // src/plan-api.js — the one place the planner reads/writes storage (and the optional alias list). No DOM; storage is injected
 // ({ getItem, setItem }). Reads never throw (broken data -> empty); writes return { ok } instead of throwing.
-import { cleanAll, cleanPlan, cleanPartner, cleanMineWall, cleanSettings } from './plan-model.js';
+import { cleanAll, cleanPlan, cleanPartner, cleanMineWall, cleanSettings, cleanRouteNote, randomId } from './plan-model.js';
+import { noteKey, adoptRoutes } from './route-notes.js';
 import { getAuthorId } from './author-id.js';
 import { getJson } from './remote.js';
 import { config } from './config.js';
@@ -44,6 +45,30 @@ export const removePlan = (storage, id) => remove(storage, 'plans', id);
 export const savePartner = (storage, partner, opts) => upsert(storage, 'partners', cleanPartner, partner, opts);
 export const removePartner = (storage, id) => remove(storage, 'partners', id); // plans keep participants as they were
 export const saveMine = (storage, wall, opts) => upsert(storage, 'mine', cleanMineWall, wall, opts);
+
+/** 루트 메모 one route: same route (noteKey) → overwritten, its id kept; empty text → that note removed. → { ok, routeNotes } */
+export function saveRouteNote(storage, { cragId, routeId = null, routeName = '', text = '' }, opts) {
+  const state = loadAll(storage, opts);
+  const key = noteKey({ cragId, routeId, routeName });
+  const i = state.routeNotes.findIndex((n) => noteKey(n) === key);
+  const c = cleanRouteNote({ id: i >= 0 ? state.routeNotes[i].id : randomId(), authorId: i >= 0 ? state.routeNotes[i].authorId : deviceId(storage),
+    cragId, routeId, routeName, text, updatedAt: opts?.now ?? Date.now() });
+  if (!c) {
+    if (i < 0) return { ok: true, routeNotes: state.routeNotes };
+    state.routeNotes.splice(i, 1);
+  } else if (i >= 0) state.routeNotes[i] = c; else state.routeNotes.push(c);
+  return { ...write(storage, state), routeNotes: state.routeNotes };
+}
+
+/** The whole db written at once (adoptRoutes' result), cleaned first. → { ok } */
+export const saveDb = (storage, db, opts) => write(storage, cleanAll(db, opts));
+
+/** Typed routes of this crag that the route list now has → merged and saved (route-notes.js adoptRoutes). → { saved } (false: nothing to do, or the write failed) */
+export function adoptAndSave(storage, cragId, routes, inCrag, opts) {
+  const db = loadAll(storage, opts);
+  const next = adoptRoutes(db, { cragId, routes, inCrag });
+  return { saved: next !== db && saveDb(storage, next, opts).ok };
+}
 
 export function saveSettings(storage, patch) {
   const state = loadAll(storage);

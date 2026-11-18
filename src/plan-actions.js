@@ -1,6 +1,7 @@
 // src/plan-actions.js — pure status transitions and the one-line summary. Inputs are never mutated.
 import { MISS_REASONS, cleanRecord as cleanCore } from './plan-model.js';
-import { STYLES, STYLE_NAME, cleanRecord } from './plan-fields.js';
+import { STYLES, STYLE_NAME, ICE_FEEL, cleanRecord } from './plan-fields.js';
+import { iceTempWords } from './plan-ice.js';
 
 export const markWent = (plan) => ({ ...plan, status: '갔다' });
 export const markMissed = (plan, reason = null) => ({ ...plan, status: '못 갔다', record: { ...plan.record, missReason: MISS_REASONS.includes(reason) ? reason : null } });
@@ -31,7 +32,9 @@ export function recordSummary(plan, today = null) {
   }
   if (r.sends > 0) return `완등 ${r.sends} / 시도 ${r.attempts}`;
   if (r.attempts > 0) return `시도 ${r.attempts}`;
-  if (r.memo) return '메모 있음';
+  const ice = [ICE_FEEL[r.ice?.feel], iceTempWords(r.ice).join(' ')].filter(Boolean);
+  if (ice.length) return ice.join(' · ');
+  if (r.memo || r.ice?.line) return '메모 있음';
   return '다녀왔어요';
 }
 

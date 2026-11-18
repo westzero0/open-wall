@@ -2,6 +2,7 @@
 // Deleting keeps plan.participants as written; plan-view's partnerNames just skips the missing name.
 import { html, useState, useEffect, useRef, usePlannerState } from './planner-ui.js';
 import { Sheet, NameAdd } from './planner-sheet.js';
+import { Note } from './planner-parts.js';
 import { randomId } from './plan-model.js';
 import { SAVE_FAIL } from './plan-sheet.js';
 
@@ -18,7 +19,7 @@ function PartnerRow({ p, h, fail }) {
   if (edit !== null) {
     return html`<li class="pr"><input class="in-t" aria-label="이름 고치기" maxlength="12" value=${edit} ref=${input} onInput=${(e) => setEdit(e.target.value)}
       onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } }} />
-      <button type="button" class="btn" disabled=${!edit.trim()} onClick=${save}>저장</button></li>`;
+      <button type="button" class="btn p" disabled=${!edit.trim()} onClick=${save}>저장</button></li>`;
   }
   return html`<li class="pr"><span class="pn">${p.name}</span>
     <button type="button" class="txt" ref=${editBtn} aria-label=${`${p.name} 고치기`} onClick=${() => setEdit(p.name)}>고치기</button>
@@ -31,6 +32,7 @@ export function PartnersSheet({ store, handlers: h }) {
   if (s.sheet !== 'partners') return null;
   const fail = () => setErr(SAVE_FAIL);
   return html`<${Sheet} title="동행인" onClose=${h.onClose}>
+    ${!s.db.partners.length && html`<${Note} class="prs-empty"><b>아직 이름이 없어요</b>이름은 이 기기에만 저장돼요<//>`}
     <ul class="prs">${s.db.partners.map((p) => html`<${PartnerRow} key=${p.id} p=${p} h=${h} fail=${fail} />`)}</ul>
     <${NameAdd} onAdd=${(name) => { if (h.savePartner({ id: randomId(), name })?.ok === false) fail(); else setErr(''); }} />
     <p class="err" role="alert">${err}</p>

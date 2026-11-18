@@ -6,11 +6,13 @@ import { buildTimeline } from './plan-timeline.js';
 import { markWent, markMissed } from './plan-actions.js';
 import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, nextPlanText, filterByDay, dayFullText } from './plan-view.js';
 import { Row } from './planner-row.js';
+import { Note } from './planner-parts.js';
 import { Cells } from './planner-cells.js';
 import { DetailView } from './planner-detail.js';
 import { Icon, DisciplineIcon } from './planner-icons.js';
 import { utilLinks } from './plan-wall.js';
 import { config } from './config.js';
+import { ICE_FLAG_TEXT } from './plan-ice.js';
 
 const util = utilLinks(config.utilUrl);
 const PEAKS = 'assets/planner-peaks.svg';
@@ -54,12 +56,14 @@ function Hero({ plan, v, s, now, onOpen }) {
             <span class="t">${v.title}${' '}${v.time && html`<span class="tm n">${v.time}</span>`}</span>
             ${verdict && html`<span class="vd">${verdict}</span>`}
             ${(v.level === 'caution' || v.level === 'hard') && html`<span class=${'wx n ' + v.level}>${v.phrase}</span>`}
+            ${v.resolved.kind === 'ice' && html`<span class="wx n">${v.phrase}</span>`}
+            ${v.flag && html`<span class="ice-flag">${ICE_FLAG_TEXT}</span>`}
           </span>
         </button></h2>
       </div>
       <img class="pk" src=${PEAKS} alt="" width="600" height="460" />
     </section>
-    <${Cells} c=${c} />
+    ${v.resolved.kind !== 'ice' && html`<${Cells} c=${c} />`}
     ${sun && html`<div class="sunline"><${Icon} name=${sun.lit ? 'lit' : 'shade'} /><b>${sun.title}</b>${sun.note && html`<span>${sun.note}</span>`}</div>`}`;
 }
 
@@ -96,7 +100,7 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const addBtn = (cls, key) => html`<button type="button" key=${key} class=${cls} onClick=${() => h.onAdd()}>＋ 일정 추가</button>`;
   const partnersBtn = html`<div key="partners" class="pl-foot"><button type="button" class="txt" onClick=${() => h.onPartners()}>동행인</button>${util && html`<a class="txt weak" href=${util.list}>지도·기록·암장 정보는 이전 화면에서 볼 수 있어요 ›</a>`}</div>`;
   if (!plans.length && !pick) {
-    return html`${strip}<section class="empty" key="empty"><div class="k">이번 주 · 일정 없음</div><h2>이번 주말은 비어 있어요</h2><p>날짜와 장소만 정하면 날씨를 같이 봐 드려요</p>${addBtn('btn p', 'add0')}</section>
+    return html`${strip}<section class="empty" key="empty"><div class="k">이번 주 · 일정 없음</div><h2>이번 주말은 비어 있어요</h2><${Note}>날짜와 장소만 정하면 날씨를 같이 봐 드려요<//>${addBtn('btn p full', 'add0')}</section>
       <img class="pk end" key="pk" src=${PEAKS} alt="" width="600" height="460" />${partnersBtn}`;
   }
 
@@ -140,11 +144,11 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const nodes = [strip, pickLine];
   if (hero) nodes.push(html`<${Hero} key="hero" plan=${hero} v=${viewOf(hero)} s=${s} now=${now} onOpen=${open} />`);
   else if (pick && pick !== s.today) {
-    if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이 날은 일정이 없어요</h2>${addBtn('btn p', 'add1')}</section>`);
+    if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이 날은 일정이 없어요</h2>${addBtn('btn p full', 'add1')}</section>`);
   } else {
     const next = nextPlanText(plans, s.today);
     const p = dayParts(s.today);
-    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${!pick && next && html`<p>${next}</p>`}${addBtn('btn p', 'add1')}</section>`);
+    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${!pick && next && html`<${Note}>${next}<//>`}${addBtn('btn p full', 'add1')}</section>`);
   }
   if (rows.length) nodes.push(html`<ul class="rows" key="rows">${rows.map(row)}</ul>`);
   if (items.length) nodes.push(html`<section class="rec" key="rec"><div class="k">기록하기</div>${items}</section>`);

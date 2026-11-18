@@ -131,6 +131,37 @@ export function parseDaily(json, n) {
 /** cragForecastUrl([{lat, lng}, ...]) → the weekend request plus the seven days before today: a crag's wet-or-dry state needs the rain that already fell. Only coordinates (2 decimals) vary. */
 export const cragForecastUrl = (points) => `${weekendForecastUrl(points).replace('wind_gusts_10m_max&', 'wind_gusts_10m_max,weather_code,temperature_2m_max&')}&past_days=7`;
 
+/** iceForecastUrl([{lat, lng}, ...]) → one request for the ice venues the plans use: daily min/max, daily rain (rain only, snow left out) and hourly temperature, seven days back and seven ahead (plan-ice counts conditions over the week before a plan). Only coordinates (2 decimals) vary. */
+export const iceForecastUrl = (points) => 'https://api.open-meteo.com/v1/forecast'
+  + `?latitude=${points.map((p) => round2(p.lat)).join(',')}&longitude=${points.map((p) => round2(p.lng)).join(',')}`
+  + '&daily=temperature_2m_min,temperature_2m_max,rain_sum&hourly=temperature_2m&timezone=Asia/Seoul&past_days=7&forecast_days=7';
+
+const ICE_HOUR_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const tempOrNull = (v) => v === null || within(v, -80, 80);
+/** parseIceForecast(json, n) → n × { days: [{date, tmin, tmax, rain (mm, null when unknown)}], hours: [{time, t}] } in request order, or null when anything is off. A null temperature stays null in days and is left out of hours (never read as a value). */
+export function parseIceForecast(json, n) {
+  const list = Array.isArray(json) ? json : [json];
+  if (list.length !== n || n < 1) return null;
+  const out = [];
+  for (const item of list) {
+    const d = item?.daily;
+    const h = item?.hourly;
+    if (!d || !h || !Array.isArray(d.time) || !Array.isArray(h.time)) return null;
+    const { time, temperature_2m_min: lo, temperature_2m_max: hi, rain_sum: mm } = d; // rain_sum, not precipitation_sum: snow is not rain
+    const t = h.temperature_2m;
+    const rain = Array.isArray(mm) && mm.length === time.length && mm.every((v) => v === null || within(v, 0, 1000)) ? mm : null; // optional: without it the rain condition stays unknown
+    if (!time.length || time.length > 16 || ![lo, hi].every((a) => Array.isArray(a) && a.length === time.length)) return null;
+    if (h.time.length > 400 || !Array.isArray(t) || t.length !== h.time.length) return null;
+    if (!time.every((x) => typeof x === 'string' && DAY_RE.test(x)) || !lo.every(tempOrNull) || !hi.every(tempOrNull)) return null;
+    if (!h.time.every((x) => typeof x === 'string' && ICE_HOUR_RE.test(x)) || !t.every(tempOrNull)) return null;
+    out.push({
+      days: time.map((date, i) => ({ date, tmin: lo[i], tmax: hi[i], rain: rain ? rain[i] : null })),
+      hours: h.time.map((x, i) => ({ time: x, t: t[i] })).filter((x) => x.t !== null),
+    });
+  }
+  return out;
+}
+
 /** local YYYY-MM-DD, the key of parseDaily's maps. */
 export const dayKey = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 

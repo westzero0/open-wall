@@ -9,7 +9,6 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 닉네임 (docs/superpowers/specs/2026-10-08-beta-form.md): reportNickEntry — the report form's 닉네임 entry (empty: no field, nothing sent);
 // nickRequired — true while the ranking event runs; set false after it (the field stays, a report no longer needs a nickname).
 // 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
-// 싱글피치: singlePitch — data/single-pitch.json 로드 스위치(docs/superpowers/specs/2026-10-12-single-pitch-design.md). false면 요청을 보내지 않는다.
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // 운동 스케줄 비 알림: scheduleAlert — 켜면 내 정보 시트에 '운동 스케줄' 줄·홈 알림 카드·어제 기록 묻기·기록 달력 점이 생긴다(docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md). 공개 단계(stage)와 별개: 베타 이용자 요청이라 먼저 연다. 새 외부 요청은 없다.
 // 토탈클라이머: totalClimber — 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다(docs/superpowers/specs/2026-11-03-total-climber-levels-design.md). 서버 없음(기기 안).
@@ -21,7 +20,11 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // 시간 슬라이더 첫 방문 넛지(src/scrub-hint.js): false면 손잡이 움직임과 한 줄 안내가 없다. 새 요청은 없다.
 // 클라이머 일정앱: planner.on — 켜면 일정 홈(planner.html)이 열린다. 서버 없음(기기 저장). appUrl — 약속 카드에 넣을 앱 주소(도메인 미정, 빈 값 = 링크 없음).
 // data.aliases — 내 암장/이름 -> 공식 암장 id 별칭 JSON 주소(빈 값 = 요청 없음).
+// 서비스 문의: contact — 켜면 앱 정보 시트의 '문의' 줄이 문의 시트를 연다(boardUrl Worker의 POST /v1/contacts). 꺼지면 줄도 요청도 없다. docs/system/permissions.md "서비스 문의".
+// 전국 비 예보 지도(docs/superpowers/specs/2026-11-16-rain-map.md): rainMap — 켜면 자연암장 일정 상세에 '전국 비 예보 보기' 버튼이 생기고, 누르면 전국 자연암장 좌표(소수 둘째 자리)로 Open-Meteo 예보를 받고 OSM 타일을 받는다. 꺼지면 버튼도 요청도 없다. 2026-11-18 소유자 승인으로 켰다가 같은 날 미배포로 결정해 다시 껐다(지도 방향이 정해질 때까지 보류).
 export const config = {
+  rainMap: false,
+  contact: true,
   planner: { on: true },
   appUrl: '',
   utilUrl: 'walls.html', // 외벽 유틸리티 페이지 주소(옛 앱). 빈 값 = 링크 없음.
@@ -35,11 +38,11 @@ export const config = {
   totalClimber: false, // 토탈클라이머 (docs/superpowers/specs/2026-11-03-total-climber-levels-design.md): 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다. 서버 없음(기기 안).
   points: true, // 참여 포인트 (docs/superpowers/specs/2026-11-04-streak-and-points-design.md): 켜면 글(+10)·제보(+15) 성공 시 기기 안에 적립하고, 내 정보에 "쌓은 포인트" 한 줄이 생긴다. 랭킹은 나중. 서버 없음.
   closureWarning: true, // 닫힘·단축 제보 경고(docs/superpowers/specs/2026-10-29-closure-warning-design.md): report-tap의 GET /v1/tap-summary를 읽는다. Worker에 그 경로가 배포된 뒤 켠다
-  singlePitch: false,
-  zoneWatch: false, // 날씨 구역 등록 + 앱 안 비 예보 띠 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 5절): singlePitch(또는 시범 기기)와 함께일 때만 쓰인다. 꺼지면 등록 버튼·띠·저장 읽기가 모두 없다. 기기 저장뿐, 새 요청 없음(등록한 구역의 날씨는 기존 싱글피치 요청)
+  zoneWatch: false, // 날씨 구역 등록 + 앱 안 비 예보 띠 (docs/superpowers/specs/2026-11-06-positioning-natural-rock-design.md 5절): 꺼지면 등록 버튼·띠·저장 읽기가 모두 없다. 기기 저장뿐, 새 요청 없음(등록한 구역의 날씨는 기존 자연암장 날씨 요청)
   fill: true, // 빈칸 채우기 제보 (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md): 켜면 boardUrl Worker에 필드·값·시각·authorId가 나간다. docs/system/permissions.md 예외 승인 전에는 켜지 않는다.
   cragSubmit: true, // 새 암장 제보 (docs/superpowers/specs/2026-11-02-crag-submit-design.md): 켜면 boardUrl Worker에 암장 이름·좌표·방향·닉네임·authorId가 나간다. docs/system/permissions.md 반영 전에는 켜지 않는다.
-  data: { walls: 'data/national.json', crags: 'data/single-pitch.json', pendingCrags: ['data/single-pitch-next.json'], cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json', aliases: '' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다. pendingCrags: 확인 전 대기 암장(이름·지역·예전 앱 좌표), 일정앱 검색·기록에만 쓴다
+  season: { wall: '', crag: '', ice: '' }, // 분류별 시즌 수동 스위치(src/season.js): 'on' = 날짜와 상관없이 켬, 'off' = 끔, 빈 값 = 기본 기간 표(빙벽 12/15~2월 말). 일정 만들기 시트의 목록 칩만 따른다(검색은 언제나 전부)
+  data: { walls: 'data/national.json', crags: 'data/crags.json', ice: 'data/ice.json', pendingCrags: ['data/crags-pending.json'], cragRoutes: 'data/crag-routes.json', partners: 'data/partners.json', contributors: 'data/contributors.json', aliases: '' }, // 정적 데이터 경로: 서버로 옮기면 여기만 바꾼다. pendingCrags: 확인 전 대기 암장(이름·지역·예전 앱 좌표), 일정앱 검색·기록에만 쓴다
   boardUrl: 'https://open-wall-board.westzero0103.workers.dev',
   reportTap: true, // 운영시간 "맞아요/달라요" 탭 제보 (docs/superpowers/specs/2026-10-29-report-tap-design.md): 게시판 Worker에 taps 라우트가 배포된 뒤에 켠다. boardUrl도 있어야 한다
   reportEndpoint: `${FORM}/formResponse`, reportFormUrl: `${FORM}/viewform`,
@@ -53,11 +56,14 @@ export const config = {
 
 // 일정앱이 켜졌는가(config.planner.on).
 export const plannerOn = () => Boolean(config.planner?.on);
+export const rainMapOn = () => Boolean(config.rainMap);
 // 게시판(Worker)이 켜졌는가. boardUrl이 비면 꺼진 것이고 요청도 가지 않는다. 화면은 boardUrl 대신 이것을 묻는다.
 export const boardOn = () => Boolean(config.boardUrl);
 // 탭 제보가 켜졌는가(reportTap과 boardUrl 둘 다). 꺼지면 줄도 요청도 없다.
 export const tapOn = () => Boolean(config.reportTap && config.boardUrl);
 
+// 서비스 문의가 켜졌는가: config.contact와 게시판(boardUrl) 둘 다 있어야 한다.
+export const contactOn = () => Boolean(config.contact) && boardOn();
 // 빈칸 채우기가 켜졌는가: config.fill과 게시판(boardUrl) 둘 다 있어야 한다. 꺼지면 요청도 가지 않는다.
 export const fillOn = () => Boolean(config.fill) && boardOn();
 // 새 암장 제보가 켜졌는가: config.cragSubmit과 게시판(boardUrl) 둘 다 있어야 한다.

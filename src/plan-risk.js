@@ -1,6 +1,7 @@
 // Weather risk of one plan: level + a phrase that is never empty. DOM-free.
 import { pickHour, hardWeather, rainOf, skyKind, windy } from './weather.js';
 import { cragRow } from './crag-model.js';
+import { iceRisk } from './plan-ice.js';
 
 const FAR_TEXT = '예보가 아직 바뀔 수 있어요'; // the crag card's FAR_NOTE reads '예보는 바뀔 수 있어요'; the spec wording is kept here
 const LEVEL = { good: 'ok', drying: 'caution', wet: 'caution', recent: 'caution', rain: 'hard', frozen: 'hard' };
@@ -50,6 +51,11 @@ export function riskOf(resolved, plan, wx, now = Date.now()) {
   const at = new Date(+date[1], +date[2] - 1, +date[3], Number.isFinite(plan.min) ? Math.floor(plan.min / 60) : 12, Number.isFinite(plan.min) ? plan.min % 60 : 0);
   const diff = Math.round((day0(at) - day0(nowD)) / 864e5);
   if (diff < 0) return out('past', '지난 일정');
+  if (resolved?.kind === 'ice') { // 빙벽: facts from the week's temperatures, no colour level (plan-ice.js)
+    const far = diff >= 3;
+    const r = iceRisk(resolved, plan, wx, { today: `${nowD.getFullYear()}-${p2(nowD.getMonth() + 1)}-${p2(nowD.getDate())}`, far, noForecast: () => noForecast(at, nowD, 6).replace('예보를 불러오지', '기온을 불러오지') });
+    return r.level === 'ice' && far ? { ...r, note: FAR_TEXT } : r;
+  }
   if (resolved?.venue === 'indoor') return out('ok', '실내');
   if (!resolved?.located) return out('none', resolved?.reported ? '운영자가 확인 중이에요' : '아직 앱에 없는 암장이라 날씨는 볼 수 없어요');
   const far = diff >= 3;

@@ -25,5 +25,14 @@ export function Crowd({ n = 0, cls = '' }) { return svg('ic ' + cls, '0 0 24 24'
 /** sky kind (weather.js skyKind().kind) -> icon name; wet kinds draw the rain cloud */
 export const skyIcon = (kind) => (kind === 'clear' || kind === 'partly' ? 'sun' : kind === 'cloud' || kind === 'fog' ? 'cloud' : 'rain');
 
-/** DisciplineIcon({ kind, cls }) — kind: wall (outdoor wall) | lead (indoor) | boulder | single | multi; anything else draws the outdoor wall */
-export function DisciplineIcon({ kind, cls = '' }) { return svg('sy ' + cls, '0 0 48 48', els((SYMBOL_SHAPES[kind] ?? SYMBOL_SHAPES.wall)())); }
+/** DisciplineIcon({ kind, cls }) — kind: wall (outdoor wall) | lead (indoor) | boulder | single | multi; anything else draws the outdoor wall.
+ *  'ice' has no symbol yet (decided with the shared tokens): the same slot shows the letters 빙벽 in a box, never the wall's sun. */
+export function DisciplineIcon({ kind, cls = '' }) {
+  if (kind === 'ice') {
+    return svg('sy sy-ice ' + cls, '0 0 48 48', [
+      h('rect', { x: 3, y: 12, width: 42, height: 24, rx: 4, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }),
+      h('text', { x: 24, y: 30, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700, fill: 'currentColor' }, '빙벽'),
+    ]);
+  }
+  return svg('sy ' + cls, '0 0 48 48', els((SYMBOL_SHAPES[kind] ?? SYMBOL_SHAPES.wall)()));
+}

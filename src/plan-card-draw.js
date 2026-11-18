@@ -4,7 +4,7 @@ import { W, H, M, FONT, wrapLines, image } from './share-image.js';
 import { linkHost } from './plan-card.js';
 import { ICON_SHAPES, SYMBOL_SHAPES, peopleShapes } from './planner-shapes.js';
 
-export const CARD = { paper: '#f4f1ea', ink: '#17191b', moss: '#3f5a2d', muted: '#5d5a52', link: '#6e6a60', warn: '#b3261e' };
+export const CARD = { paper: '#f4f6f6', ink: '#1c1e21', moss: '#3f5a2d', muted: '#59616a', link: '#697078', warn: '#b3261e' }; // the shared neutral tokens (--pl-paper, --pl-ink, --pl-today, --pl-muted, --pl-past, --pl-warn)
 const LOGO_H = 170;
 const WORDMARK_RATIO = 367.364 / 167.273; // assets/hinoae-wordmark.svg viewBox: ink on a light ground
 const PEAKS = { w: 660, h: 660 * 460 / 600, right: 40, bottom: 110, apex: 64 / 506.7 }; // assets/planner-peaks.svg 600×460 drawn 660 wide, 40 past the right edge; apex = how far below its top the first peak starts

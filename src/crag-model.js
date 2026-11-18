@@ -1,4 +1,4 @@
-// Card values of a single-pitch crag (data/single-pitch.json): no hours, the sunrise-to-sunset day is the frame.
+// Card values of a natural crag (data/crags.json): no hours, the sunrise-to-sunset day is the frame.
 // Pure, no DOM. Not wired to any screen yet (docs/superpowers/specs/2026-10-12-single-pitch-design.md).
 import { isSunlit, dayWindow, fmt as hhmm } from './sun.js';
 import { conditionOf } from './crag-condition.js';
@@ -10,9 +10,38 @@ import { dayText } from './viewmodel.js';
 
 const STEP = 1; // minute resolution: the bar's edges are the real flips, so state, bar and nextChange agree
 const NOTE = '벽 기준이며 나무 가림은 반영하지 않아요.';
+// Kinds and rock sums (spec 2026-11-16-ice-venues §8, §8-2). The one place this is decided.
+// noRock: ice and the mountain holding its waterfalls have no quickdraws and no "마르는 중" call (rock dryness means nothing on ice; E4 puts the freeze condition there).
+// noSun: the mountain and an unknown type word (from a newer version) have no sun call, day bar or rope. Ice has its own sun words and rope (iceRope).
+// noSingleCalc: neither the rock rope nor quickdraws.
+const noRock = (crag) => crag?.type === 'ice' || crag?.type === 'mountain';
+const noSingleCalc = (crag) => noRock(crag) || (!!crag?.type && !Object.hasOwn(TYPE_LABEL, crag.type));
+const noSun = (crag) => crag?.type === 'mountain' || (!!crag?.type && !Object.hasOwn(TYPE_LABEL, crag.type));
+// On ice the sun means melting and the shade means the ice holds (the reverse of rock). Said as a guess; nothing is said without a direction or pin.
+export const ICE_SUN_TEXT = { sun: '햇빛이 닿아요 · 녹을 수 있어요', shade: '그늘이에요 · 얼음이 유지돼요' };
+export const ICE_ROPE_MODES = { normal: 1, toprope: 2 }; // 일반등반: the waterfall's height; 탑로핑: twice it (down and up)
+/** the rope an ice waterfall asks for: height × (1 normal, 2 toprope), up to a length people carry; null when the height or the mode is unknown. no margin: the height is the user's number */
+export function iceRope(crag) {
+  const k = Object.hasOwn(ICE_ROPE_MODES, crag?.rope_mode) ? ICE_ROPE_MODES[crag.rope_mode] : 0;
+  if (!k || !(crag.height_m > 0)) return null;
+  const need = crag.height_m * k;
+  const m = ROPE_LENGTHS.find((l) => l >= need);
+  return { m: m ?? null, over: m === undefined, need };
+}
 const sunStateOf = (here) => (here.lit === null ? 'unknown' : here.reason === 'night' ? 'night' : here.lit ? 'sun' : 'shade');
 
 export function cragModel(crag, at) {
+  if (noSun(crag)) {
+    const { lat, lng } = crag.sun ?? {};
+    const pos = Number.isFinite(lat) && Number.isFinite(lng);
+    return {
+      name: crag.name,
+      region: crag.region,
+      route: pos ? `https://map.kakao.com/link/to/${encodeURIComponent(crag.name)},${lat},${lng}` : null,
+      routeNaver: pos ? `https://map.naver.com/p/directions/-/${lng},${lat},${encodeURIComponent(crag.name)}/-/transit` : null,
+      day: null, state: 'unknown', remainingMin: null, nextChange: null, bar: [], note: null,
+    };
+  }
   const day = (m) => new Date(at.getFullYear(), at.getMonth(), at.getDate(), 0, m);
   const now = at.getHours() * 60 + at.getMinutes();
   const win = dayWindow(crag, at);
@@ -75,20 +104,23 @@ const SUN_TRUSTED = false;
  * cond: the wetness W (crag-wetness.js) when the hourly series covers the moment; else the old daily-rain conditionOf (dry_days) as the fallback.
  * The wetness cond adds hoursLeft, ago (hours since the last rain, for the list order), basis 'wetness' and evidence lines.
  */
-export const TYPE_LABEL = { multi: '멀티', boulder: '볼더' }; // 구역 종류 칩: 필드가 없으면 싱글피치
+export const TYPE_LABEL = { single: '싱글', multi: '멀티', boulder: '볼더', ice: '빙벽', mountain: '산' }; // 종류 칩: 값 없음(종류 미정)은 싱글, 모르는 값은 기타
+/** an unknown type word (from a newer version) gets '기타' (and no single-pitch sums, see noSingleCalc) */
+const otherType = (crag) => !!crag.type && !Object.hasOwn(TYPE_LABEL, crag.type);
 export function cragRow(crag, at, { now = new Date(), daily = null, hourly = null, wet = null } = {}) {
   const series = wet?.get(crag.name);
   const calc = series?.length ? wetnessAt(series, at, { wall: crag, sunTrusted: SUN_TRUSTED, dryDays: crag.dry_days }) : null;
   const w = calc && calc.state !== 'out' ? wetnessCond(calc, { at, now, hours: series }) : null;
-  const c = w ?? conditionOf(daily?.get(crag.name) ?? null, crag.dry_days, at, now);
+  const c = noRock(crag) ? { state: 'unknown' } : w ?? conditionOf(daily?.get(crag.name) ?? null, crag.dry_days, at, now); // rock dryness means nothing on ice; E4 puts the freeze condition here
   const hours = hourly?.get(crag.name);
   return {
     name: crag.name,
     region: crag.region,
-    sun: sunStateOf(isSunlit(crag, at)),
-    cond: w ?? { ...c, text: condText(c), short: condShort(c) },
+    sun: noSun(crag) ? 'unknown' : sunStateOf(isSunlit(crag, at)),
+    sunWords: crag.type === 'ice' ? ICE_SUN_TEXT[sunStateOf(isSunlit(crag, at))] ?? null : null,
+    cond: (noRock(crag) ? null : w) ?? { ...c, text: condText(c), short: condShort(c) },
     wx: hours ? pickHour(hours, at) : null,
-    typeLabel: TYPE_LABEL[crag.type] ?? '싱글',
+    typeLabel: otherType(crag) ? '기타' : TYPE_LABEL[crag.type] ?? '싱글',
     peaks: crag.peaks ?? [],
     crag,
   };
@@ -108,7 +140,7 @@ export function blogLinks(crag) {
 export function cragCard(crag, at, ctx = {}) {
   const row = cragRow(crag, at, ctx);
   const m = cragModel(crag, at);
-  const need = ropeNeeded(crag.height_m);
+  const need = crag.type === 'ice' ? iceRope(crag) : noSingleCalc(crag) ? null : ropeNeeded(crag.height_m);
   const own = Number(ctx.ropeM) > 0 ? Number(ctx.ropeM) : 0;
   const { lat, lng } = crag.sun ?? {};
   const now = ctx.now ?? new Date();
@@ -126,7 +158,7 @@ export function cragCard(crag, at, ctx = {}) {
     photo,
     credit,
     photos: photo ? [{ src: photo, credit, date: null }] : [],
-    hero: { lead: `${ymd(at) === ymd(now) ? '오늘' : dayText(at)} 해`, text: m.day ? `${m.day.from}–${m.day.to}` : '해 정보 없음' },
+    hero: noSun(crag) ? null : { lead: `${ymd(at) === ymd(now) ? '오늘' : dayText(at)} 해`, text: m.day ? `${m.day.from}–${m.day.to}` : '해 정보 없음' },
     remainingMin: m.remainingMin,
     nextChange: m.nextChange,
     bar: m.bar,
@@ -134,7 +166,7 @@ export function cragCard(crag, at, ctx = {}) {
     gear: {
       rope: need ? (need.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${need.m}m 이상`) : null,
       ownFit: need && own ? (own >= need.need ? 'ok' : 'short') : null,
-      quickdraws: Number.isInteger(crag.bolts_max) ? `퀵드로 ${crag.bolts_max}개 이상` : null,
+      quickdraws: !noSingleCalc(crag) && Number.isInteger(crag.bolts_max) ? `퀵드로 ${crag.bolts_max}개 이상` : null,
     },
     approach: crag.approach ?? null,
     caution: crag.caution ?? null,

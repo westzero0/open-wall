@@ -3,7 +3,7 @@ import { buildList } from './listing.js';
 import { DAY_KO, hhmm, isNight, ymd } from './time.js';
 import { fetchNational, loadWalls } from './store.js';
 import { state, storage, onChange } from './state.js';
-import { config, boardOn, tapOn, fillOn, plannerOn } from './config.js';
+import { config, boardOn, tapOn, fillOn, contactOn, plannerOn } from './config.js';
 import { idByName } from './share-id.js';
 import { safeStorage, getStr, setStr } from './storage.js';
 import { addPoint, loadPoints, savePoints } from './points.js';
@@ -26,6 +26,7 @@ import { feeTableEl } from './fee-table-view.js';
 import { loadFavs, saveFavs, toggleFav } from './favorites.js';
 import { syncFound, weekChanges } from './changes.js';
 import { loadSeen, markSeen, recordFirstSeen, saveSeen, settingChanged } from './setting.js';
+import { createContactView } from './contact-view.js';
 import { CLEARED, plannerLink, cleanRegions, cleanSun, cleanTemp, cleanTextSize, cleanTheme, cleanVenue, filterView, holdLinkView, loadUi, saveUi as storeUi, shareUrl, wallFromSearch, boardRequested, homeViewFromSearch } from './ui-state.js';
 import { clockView, startView, step } from './view-state.js';
 import { areaList } from './areas.js';
@@ -2014,7 +2015,7 @@ $('axis').addEventListener('click', (e) => {
 
 // 완료 ✓ at the right end of the title row of the sheets people scroll in and read or set (the title row stays in view, style.css .sh-head):
 // the only way out besides the backdrop, Esc and the back button; what is changed there is saved as it is changed, so there is no second button to read. The 조건 sheet also says how many walls its choices leave (updated in render).
-for (const id of ['conditions', 'arrive-sheet', 'howto', 'about-sheet', 'gear-sheet']) {
+for (const id of ['conditions', 'arrive-sheet', 'howto', 'about-sheet', 'gear-sheet', 'contact']) {
   const dlg = $(id), head = dlg?.querySelector('.sh-head');
   if (!head || head.querySelector('.sh-okw')) continue;
   const ok = el('button', { type: 'button', class: 'sh-ok', 'aria-label': '완료' }, icon('close'));
@@ -2185,7 +2186,7 @@ $('sortMenu').addEventListener('click', (e) => {
   if (b) { chooseSort(b.dataset.sort); sortMenuShow(false); $('sortBtn').focus(); }
 });
 document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#sortBtn, #sortMenu')) sortMenuShow(false); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sortMenu').hidden) { sortMenuShow(false); $('sortBtn').focus(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sortMenu').hidden) { e.preventDefault(); /* 시트(dialog)까지 닫지 않는다 */ sortMenuShow(false); $('sortBtn').focus(); } });
 document.addEventListener('focusin', (e) => { if (!e.target.closest('#sortBtn, #sortMenu')) sortMenuShow(false); }); // Tab out of the menu closes it
 $('sortMenu').addEventListener('keydown', (e) => { // a menu: ↑ ↓ Home End move between the two choices
   const items = [...$('sortMenu').children]; const i = items.indexOf(document.activeElement);
@@ -2375,21 +2376,10 @@ $('retry').addEventListener('click', async () => {
   render();
 });
 
-// 문의 메일 (앱 정보 sheet): shown as text with a copy button, no mailto: link (an in-app browser may not open a mail app; the trust boundary keeps links to http/https)
-$('mailCopy')?.addEventListener('click', async () => {
-  const addr = $('footMailAddr');
-  try {
-    await navigator.clipboard.writeText(addr.textContent);
-    toast('문의 주소를 복사했어요');
-  } catch { // no clipboard (some in-app browsers): select the address so a long press copies it
-    const range = document.createRange();
-    range.selectNodeContents(addr);
-    const sel = getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    toast('주소를 길게 눌러 복사해 주세요');
-  }
-});
+// 문의 (앱 정보 sheet): no mail address is shown; the line opens the 문의 sheet, which posts to the board Worker (src/contact-view.js). Off (config.contact / boardUrl empty) = the line stays hidden.
+$('contact-note').hidden = !contactOn();
+const contactView = createContactView();
+$('contactOpen').addEventListener('click', () => contactView.open());
 
 const [first, loadedPartners] = await Promise.all([loadList(), loadPartners()]); // loaded together: a share link opens its sheet right after, and the 근처 line is decided then (loadPartners never rejects; a failed load = no tab)
 partners = loadedPartners;

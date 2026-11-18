@@ -66,8 +66,8 @@ export const LOCKUP_RATIO = LOCKUP.w / LOCKUP.h; // assets/hinoae-lockup-dark.sv
 export const lockup = () => image('assets/hinoae-lockup-dark.svg');
 
 export const INK = '#17191c'; // the brand's 먹 (the logo's text ink; the light-ground wall is #2a2d32)
-export const PAPER = '#f4f2ec';
-export const MUTED = '#9a9d98';
+export const PAPER = '#f4f6f6'; // --pl-paper: the words on the dark ground (was the logo's beige paper)
+export const MUTED = '#a3abb4'; // --pl-muted (dark): secondary words on the dark ground
 const SUN = '#f4b942'; // the logo's sun: used only where the sun is meant
 
 // Small pictures for how the sun is, drawn in the pill's ink. r: the sun's radius. 'sun': a disc with eight rays (ink strokes, never
@@ -125,7 +125,7 @@ function ruler(g, y, { open = [], sun = [], at }) {
     g.fillText(String(h), px(h * 60), y - 20);
   }
   g.textAlign = 'left';
-  g.fillStyle = 'rgba(244,242,236,0.12)';
+  g.fillStyle = 'rgba(244,246,246,0.12)';
   g.fillRect(x0, y + 14, w, bar);
   for (const [a, b] of sun) { g.fillStyle = SUN; g.fillRect(px(a), y + 14, Math.max(px(b) - px(a), 2), bar); }
   g.strokeStyle = PAPER;
@@ -230,7 +230,7 @@ function block(g, { name, date, time, sunLine = null, sunInfo = null, tags = [],
         if (draw) {
           g.beginPath();
           g.roundRect(x, y, w, PILL, PILL / 2);
-          if (solid) { g.fillStyle = SUN; g.fill(); } else { g.strokeStyle = 'rgba(244,242,236,0.55)'; g.lineWidth = 2; g.stroke(); }
+          if (solid) { g.fillStyle = SUN; g.fill(); } else { g.strokeStyle = 'rgba(244,246,246,0.55)'; g.lineWidth = 2; g.stroke(); }
           g.font = font(solid);
           g.fillStyle = solid ? INK : PAPER;
           let px = x + 28;
@@ -285,7 +285,7 @@ export async function drawInvite(canvas, { name, date, time, at, open = [], sun 
   const bottom = BOTTOM - (open.length ? GAP + RULER : 0);
   block(g, { name, date, time, sunLine, sunInfo, tags, note }, bottom, bottom - 270); // the block's top stays below the story's top bar
   if (open.length) ruler(g, BOTTOM - RULER + 56, { open, sun, at });
-  g.fillStyle = 'rgba(244,242,236,0.45)'; // a hairline sets the credit apart from the facts above
+  g.fillStyle = 'rgba(244,246,246,0.45)'; // a hairline sets the credit apart from the facts above
   g.fillRect(M, 1545, W - M * 2, 3);
   g.font = `400 34px ${FONT}`;
   g.fillStyle = MUTED;
@@ -321,7 +321,7 @@ export async function drawInviteCard(canvas, { name, date, time, sunLine = null,
   const BOTTOM = FOOT - 55;
   const ROOM = BOTTOM - (TOP + LOGO + 24);
   block(g, { name, date, time, sunLine, sunInfo, tags, note }, BOTTOM, ROOM);
-  g.fillStyle = 'rgba(244,242,236,0.45)';
+  g.fillStyle = 'rgba(244,246,246,0.45)';
   g.fillRect(M, FOOT, W - M * 2, 3);
   g.font = `400 34px ${FONT}`;
   g.fillStyle = MUTED;

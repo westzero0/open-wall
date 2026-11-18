@@ -196,8 +196,8 @@ export function plateLayout(ratio, { nameLines = 1, quoteLines = 0, nameSize = N
 
 // ---- legibility on any ground: the zones the ink must hold on, measured on the ground and the veil that is laid over it
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const KINDS = { cream: [244, 242, 236], dark: [23, 25, 28] };
-const VEIL = { cream: [10, 12, 14], dark: [244, 242, 236] }; // the ground is darkened for cream ink and lightened for dark ink
+const KINDS = { cream: [244, 246, 246], dark: [23, 25, 28] }; // cream = --pl-paper #f4f6f6 (was the beige #f4f2ec)
+const VEIL = { cream: [10, 12, 14], dark: [244, 246, 246] }; // the ground is darkened for cream ink and lightened for dark ink
 
 /** veilAlpha(y, H, k) → how much veil lies at height y of an H-high card at strength k (0.10 … 0.55): a gentle one overall, deeper at the head and the foot. */
 export function veilAlpha(y, H, k) {

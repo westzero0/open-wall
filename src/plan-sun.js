@@ -51,10 +51,10 @@ export function pillOf(model, name, flip = null, { isNow = true, before = false 
   if (lit) {
     const alt = model.sun?.altitude;
     if (Number.isFinite(alt) && alt < LOW_SUN) return { lit, title, note: `해 고도 ${Math.round(alt)}°${flip != null ? ' · 곧 응달' : ''}` };
-    return { lit, title, note: flip != null ? `${name} · ${fmt(flip)}부터 응달` : name };
+    return { lit, title, note: flip != null ? `${fmt(flip)}부터 응달` : '' }; // 암장 이름은 바로 위 제목에 있다
   }
   const why = !model.sun ? (before ? '해 뜨기 전' : '해가 졌어요') : model.state === 'terrain' ? '산에 가려져요' : '해는 벽 뒤';
-  return { lit, title, note: `${name} · ${why}` };
+  return { lit, title, note: why };
 }
 
 /** the slider's spoken value: '14:00 양달' */

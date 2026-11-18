@@ -164,7 +164,7 @@ export async function drawMonth(canvas, pic, ratio = '9:16') {
     wrapLines((t) => g.measureText(t).width, text, W - M * 2, 2).forEach((l, i) => g.fillText(l, M, L.n1 + i * 42));
   }
 
-  g.fillStyle = 'rgba(244,242,236,0.45)'; // the same hairline as the invite, with the credit alone
+  g.fillStyle = 'rgba(244,246,246,0.45)'; // the same hairline as the invite, with the credit alone
   g.fillRect(M, L.rule, W - M * 2, 3);
   g.font = `400 34px ${FONT}`;
   g.fillStyle = MUTED;

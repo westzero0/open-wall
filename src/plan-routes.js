@@ -13,7 +13,7 @@ export function choseong(text) {
   return out;
 }
 
-const norm = (s) => String(s ?? '').normalize('NFC').toLowerCase().replace(/\s+/g, '');
+export const norm = (s) => String(s ?? '').normalize('NFC').toLowerCase().replace(/\s+/g, '');
 const JAMO_ONLY = /^[ㄱ-ㅎ]+$/;
 
 function tier(route, q, jamo) {

@@ -2,15 +2,19 @@
 // Every function takes untrusted input (localStorage, imports) and returns clean values; nothing throws.
 import { ID_RE, validDate } from './log.js';
 import { cleanLine } from './clean-line.js';
-import { MAX_NAME, MAX_REGION, MAX_ADDRESS } from './store.js';
+import { MAX_NAME, MAX_REGION, MAX_ADDRESS, WALL_ID_RE } from './store.js';
 import { GRADES } from './grades.js';
 import { AUTHOR_RE } from './author-id.js';
+import { noteKey, ROUTE_NOTE_KEEP } from './route-notes.js';
 
 export const STATUS = ['예정', '갔다', '못 갔다', '쉼'];
 export const PARTICIPANT = ['수락', '대기', '거절'];
 export const MISS_REASONS = ['날씨', '컨디션', '파트너 사정', '기타'];
 export const NOTE_MAX = 100;
 export const MEMO_MAX = 300;
+export const ICE_FEELS = ['hard', 'good', 'soft'];
+export const ICE_LINE_LEN = 60;
+const MAX_ROUTE_NOTES = 1000;
 const MAX_PLANS = 1000, MAX_PARTNERS = 200, MAX_MINE = 200, MAX_KEYS = 200, MAX_ASCENTS = 20, MAX_PARTNER_NAME = 12;
 const ASCENT_STYLES = ['onsight', 'flash', 'redpoint', 'toprope'];
 const ROUTE_ID_RE = /^r\d{1,6}$/;
@@ -74,6 +78,13 @@ function cleanAscents(v) {
   return out;
 }
 
+const iceTemp = (x) => (typeof x === 'number' && Number.isFinite(x) && x >= -60 && x <= 60 ? Math.round(x * 10) / 10 : null);
+/** 빙벽 기록 묶음: feel code, one 60-char line, that day's min/max °C (strings are not accepted). */
+export function cleanIce(v) {
+  const i = isObj(v) ? v : {};
+  return { feel: ICE_FEELS.includes(i.feel) ? i.feel : null, line: cleanLine(i.line, ICE_LINE_LEN), tmin: iceTemp(i.tmin), tmax: iceTemp(i.tmax) };
+}
+
 /** The record core: all fields, every one empty/null by default. plan-fields.js filters it per discipline. */
 export function cleanRecord(raw) {
   const r = isObj(raw) ? raw : {};
@@ -84,9 +95,17 @@ export function cleanRecord(raw) {
     hardest: GRADES.includes(r.hardest) ? r.hardest : null,
     ascents: cleanAscents(r.ascents),
     memo: cleanMemo(r.memo),
+    ice: cleanIce(r.ice),
     missReason: MISS_REASONS.includes(r.missReason) ? r.missReason : null,
     crowdAsked: r.crowdAsked === true,
   };
+}
+
+// "예약했어요": the date and place it was ticked for. A check made for another date or place is dropped on save (spec 2026-11-16-reservation §6, D2).
+function cleanReservedFor(v, date, place) {
+  if (!isObj(v) || v.date !== date || place?.kind !== 'official' || v.place !== `official:${place.id}`) return null;
+  const m = /^official:(.+)$/.exec(v.place);
+  return m && pickId(m[1]) ? { date: v.date, place: v.place } : null;
 }
 
 export function cleanPlan(v, opts) {
@@ -117,6 +136,7 @@ export function cleanPlan(v, opts) {
     createdAt: Number.isFinite(v.createdAt) ? v.createdAt : 0,
     updatedAt: stamp(v.updatedAt),
     discipline: DISCIPLINES.includes(v.discipline) ? v.discipline : null,
+    reservedFor: cleanReservedFor(v.reservedFor, v.date, place),
   };
 }
 
@@ -139,6 +159,28 @@ export function cleanMineWall(v) {
     reported: v.reported === true,
     updatedAt: stamp(v.updatedAt),
   };
+}
+
+/** 루트 메모: { id, authorId, cragId, routeId|null, routeName, text, updatedAt } or null (no route, or empty text = no note). */
+export function cleanRouteNote(v) {
+  if (!isObj(v)) return null;
+  const id = pickId(v.id), cragId = typeof v.cragId === 'string' && WALL_ID_RE.test(v.cragId) ? v.cragId : null;
+  const routeId = typeof v.routeId === 'string' && ROUTE_ID_RE.test(v.routeId) ? v.routeId : null;
+  const routeName = cleanLine(v.routeName, 30), text = cleanLine(v.text, ROUTE_NOTE_KEEP);
+  if (!id || !cragId || (!routeId && !routeName) || !text) return null;
+  return { id, authorId: pickAuthor(v.authorId), cragId, routeId, routeName, text, updatedAt: stamp(v.updatedAt) };
+}
+
+function cleanRouteNotes(list) {
+  const out = [], seen = new Set();
+  for (const x of Array.isArray(list) ? list : []) {
+    if (out.length >= MAX_ROUTE_NOTES) break;
+    const c = cleanRouteNote(x);
+    if (!c || seen.has(c.id) || seen.has(noteKey(c))) continue;
+    seen.add(c.id); seen.add(noteKey(c));
+    out.push(c);
+  }
+  return out;
 }
 
 const keyList = (v) => (Array.isArray(v) ? [...new Set(v.map((k) => cleanLine(k, 100)).filter(Boolean))].slice(0, MAX_KEYS) : []);
@@ -172,6 +214,7 @@ export function cleanAll(raw, opts) {
     plans: cleanList(r.plans, cleanPlan, MAX_PLANS, { today }),
     partners: cleanList(r.partners, cleanPartner, MAX_PARTNERS),
     mine: cleanList(r.mine, cleanMineWall, MAX_MINE),
+    routeNotes: cleanRouteNotes(r.routeNotes),
     settings: cleanSettings(r.settings),
   };
 }

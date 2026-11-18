@@ -39,8 +39,8 @@ export function Sheet({ title, onClose, onSave, saveDisabled = false, keepOnBack
   return html`<dialog ref=${ref} class="sheet" aria-labelledby="sheet-h" onClose=${() => { if (!gone.current) onClose(); }} onClick=${away}>
     <div class="grab" aria-hidden="true" ...${grip}></div>
     <div class="sh-head" ...${grip}><h2 id="sheet-h" tabindex="-1">${title}</h2>
-      ${onSave ? html`<button type="button" class="sh-ic" aria-label="저장" disabled=${saveDisabled} onClick=${onSave}><${Icon} name="check" /></button>`
-        : html`<button type="button" class="sh-ic" aria-label="닫기" onClick=${() => ref.current?.close()}><${Icon} name="x" /></button>`}</div>
+      ${onSave ? html`<button type="button" class="p-ic" aria-label="저장" disabled=${saveDisabled} onClick=${onSave}><${Icon} name="check" /></button>`
+        : html`<button type="button" class="p-ic" aria-label="닫기" onClick=${() => ref.current?.close()}><${Icon} name="x" /></button>`}</div>
     ${children}</dialog>`;
 }
 
@@ -56,5 +56,5 @@ export function NameAdd({ onAdd }) {
   if (!open) return html`<button type="button" class="txt nm-open" ref=${opener} onClick=${() => setOpen(true)}>＋ 새 이름</button>`;
   return html`<div class="nm"><input class="in-t" aria-label="새 이름" maxlength="12" value=${name} ref=${input}
     onInput=${(e) => setName(e.target.value)} onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
-    <button type="button" class="btn" disabled=${!name.trim()} onClick=${add}>추가</button></div>`;
+    <button type="button" class="btn p" disabled=${!name.trim()} onClick=${add}>추가</button></div>`;
 }

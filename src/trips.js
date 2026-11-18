@@ -103,9 +103,3 @@ export const dday = (trip, today) => dayNum(trip.from) - dayNum(today);
 /** backWhen(trip, today) → '어제' | 'N일 전': how long ago a past trip's last day was (the 다녀온 card's badge and question). */
 export const backWhen = (trip, today) => { const n = dayNum(today) - dayNum(trip.to); return n === 1 ? '어제' : `${n}일 전`; };
 
-/** placeChoices({ walls, crags, singlePitchOn }) → [{ type, id, name, kind }]: 싱글피치 first when on, then every 외벽. */
-export function placeChoices({ walls, crags, singlePitchOn }) {
-  const w = walls.map((x) => ({ type: 'wall', id: x.id, name: x.name, kind: '외벽' }));
-  if (!singlePitchOn) return w;
-  return [...crags.map((x) => ({ type: 'zone', id: x.id, name: x.name, kind: '싱글피치' })), ...w];
-}

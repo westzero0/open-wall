@@ -1,11 +1,12 @@
 // src/plan-fields.js — which record fields each discipline shows/keeps, plus route history. No DOM.
-import { cleanRecord as cleanCore } from './plan-model.js';
+import { cleanRecord as cleanCore, cleanIce } from './plan-model.js';
 
 export const STYLES = {
   single: ['onsight', 'flash', 'redpoint', 'toprope'],
   boulder: ['flash', 'redpoint'],
   multiLead: ['onsight', 'flash', 'redpoint'],
 };
+export const ICE_FEEL = { hard: '단단해서 깨짐', good: '잘 박힘', soft: '무름' };
 export const STYLE_NAME = { onsight: '온사이트', flash: '플래시', redpoint: '레드포인트', toprope: '탑로핑' };
 
 // Table only: boulder/multi screens show one memo line in v1.
@@ -13,6 +14,7 @@ export const FIELDS_BY = {
   wall: { fields: ['attempts', 'sends', 'hardest', 'memo'], styles: null },
   crag: { fields: ['ascents', 'memo'], styles: STYLES.single },
   boulder: { fields: ['memo'], styles: STYLES.boulder },
+  ice: { fields: ['ice', 'memo'], styles: null },
   multi: { fields: ['memo'], role: ['선등', '후등'], styles: STYLES.multiLead, stylesOnlyFor: '선등' },
 };
 
@@ -25,12 +27,14 @@ export function fieldsKeyOf(resolved, plan) {
   const k = resolved && resolved.kind;
   if (k === 'wall') return 'wall';
   if (k === 'crag' || k === 'mine' || k === 'name') return 'crag';
+  if (k === 'ice') return 'ice';
   return 'memo';
 }
 
 /** Core clean, then keep only what this discipline owns. */
 export function cleanRecord(raw, fieldsKey) {
   const r = cleanCore(raw);
+  if (fieldsKey !== 'ice') r.ice = cleanIce(null);
   if (fieldsKey === 'wall') r.ascents = [];
   else if (fieldsKey === 'crag') { r.attempts = 0; r.sends = 0; r.hardest = null; }
   else { r.attempts = 0; r.sends = 0; r.hardest = null; r.ascents = []; }

@@ -42,6 +42,9 @@ export function nearbyWalls(wall, walls, limit = 3) {
   return rows.sort((a, b) => a.km - b.km).slice(0, Math.max(0, limit));
 }
 
+/** 지역에서 이름이 이미 말한 낱말을 뺀다(이름 `전북` + `전북 부안군` → `부안군`, `남구` + `대구 남구` → `대구`). */
+export const restRegion = (name, region) => String(region ?? '').split(/\s+/).filter((t) => t && !name.includes(t) && !t.includes(name)).join(' ');
+
 export function wallSheetModel(wall, { date, min = null, walls = [] } = {}) {
   const day = dateOf(date) ?? new Date();
   const hours = hasHours(wall);
@@ -53,7 +56,7 @@ export function wallSheetModel(wall, { date, min = null, walls = [] } = {}) {
     week: hours ? groupWeekRows(weeklyHours(wall, day).rows) : null,
     fee: feeWord(wall, day) || null,
     address: typeof wall.address === 'string' && wall.address ? wall.address : null,
-    nearby: nearbyWalls(wall, walls).map(({ wall: w, km }) => ({ id: wallPageId(w), name: shortName(w), region: w.region ?? '', km, open: openLabel(w, date, min) })),
+    nearby: nearbyWalls(wall, walls).map(({ wall: w, km }) => ({ id: wallPageId(w), name: shortName(w), region: restRegion(shortName(w), w.region), km, open: openLabel(w, date, min) })),
   };
 }
 

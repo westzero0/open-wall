@@ -3,11 +3,11 @@
 import { html, useState, usePlannerState } from './planner-ui.js';
 import { monthGrid, filterByDay, dayFullText, rowView } from './plan-view.js';
 import { Row } from './planner-row.js';
-import { ButtonRow, IconButton } from './planner-parts.js';
+import { IconButton } from './planner-parts.js';
 
 const HEAD = ['월', '화', '수', '목', '금', '토', '일'];
 const byTime = (a, b) => (Number.isInteger(a.min) ? a.min : 1e9) - (Number.isInteger(b.min) ? b.min : 1e9);
-const summary = (m) => [m.planned && `예정 ${m.planned}`, m.went && `다녀옴 ${m.went}`, m.missed && `못 감 ${m.missed}`, m.rest && `쉼 ${m.rest}`].filter(Boolean).join(', ');
+const summary = (m) => [m.planned && `예정 ${m.planned}`, m.hard && '어려움', m.went && `다녀옴 ${m.went}`, m.missed && `못 감 ${m.missed}`, m.rest && `쉼 ${m.rest}`].filter(Boolean).join(', '); // 쉼·못 감은 말로만(표시 점 없음)
 
 export function Calendar({ store, handlers: h }) {
   const s = usePlannerState(store);
@@ -16,11 +16,16 @@ export function Calendar({ store, handlers: h }) {
   if (s.base.screen !== 'calendar') return null;
   const day = picked ?? s.today;
   const [ty, tm] = s.today.split('-').map(Number);
-  const grid = monthGrid(s.db.plans, ym.y, ym.m, s.today);
-  const move = (d) => setYm(({ y, m }) => { const n = new Date(y, m - 1 + d, 1); return { y: n.getFullYear(), m: n.getMonth() + 1 }; });
   const now = Date.now();
+  const grid = monthGrid(s.db.plans, ym.y, ym.m, s.today, (p) => { const v = rowView(p, { s, now }); return v.live && v.risk.level === 'hard'; });
+  const move = (d) => setYm(({ y, m }) => { const n = new Date(y, m - 1 + d, 1); return { y: n.getFullYear(), m: n.getMonth() + 1 }; });
   const list = filterByDay(s.db.plans, day).sort(byTime);
-  const add = (text) => html`<button type="button" class="btn p" onClick=${() => h.onAdd({ date: day })}>${text}</button>`;
+  const dt = new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)));
+  const dcol = html`<span class="ce-d n" aria-hidden="true">${dt.getDate()}<small>${HEAD[(dt.getDay() + 6) % 7]}</small></span>`;
+  // 일정 없는 날: 목록 줄 모양(날짜 열 + 문구 + 밑줄 글자). 지난 날은 행동 없이 문구만
+  const emptyRow = (msg, act) => act
+    ? html`<button type="button" class="ce" onClick=${() => h.onAdd({ date: day })}>${dcol}<span class="ce-t"><b>${msg}</b><em>일정 추가</em></span><span class="ce-p" aria-hidden="true">+</span></button>`
+    : html`<div class="ce">${dcol}<span class="ce-t"><b>${msg}</b></span></div>`;
   return html`<section class="calv" aria-label="달력">
     <div class="cal-h">
       <${IconButton} name="prev" label="이전 달" onClick=${() => move(-1)} />
@@ -33,14 +38,14 @@ export function Calendar({ store, handlers: h }) {
         <button type="button" class=${'cd' + (c.inMonth ? '' : ' out') + (c.today ? ' t' : '') + (c.past ? ' past' : '')} aria-pressed=${day === c.date ? 'true' : 'false'}
           aria-label=${[dayFullText(c.date), c.today && '오늘', summary(c.marks)].filter(Boolean).join(', ')} onClick=${() => { setPicked(c.date); setTimeout(() => document.querySelector('.cal-day h3')?.scrollIntoView?.({ block: 'nearest' }), 0); }}>
           <span class="dn n">${c.d}</span>
-          <span class="mk" aria-hidden="true">${c.marks.planned > 0 && html`<i class="m-plan"></i>`}${c.marks.went > 0 && html`<i class="m-went"></i>`}${(c.marks.missed + c.marks.rest) > 0 && html`<i class="m-skip"></i>`}${c.count > 1 && html`<u>${c.count}</u>`}</span>
+          <span class="mk" aria-hidden="true">${c.marks.planned > 0 && html`<i class=${c.marks.hard > 0 ? 'm-hard' : 'm-plan'}></i>`}${c.marks.went > 0 && html`<i class="m-went"></i>`}${c.count > 1 && html`<u>${c.count}</u>`}</span>
         </button></td>`)}</tr>`)}</tbody></table>
     <section class="cal-day" aria-live="polite" aria-label=${dayFullText(day)}>
-      <h3>${dayFullText(day)}</h3>
+      <h3 class=${list.length ? '' : 'vh'}>${dayFullText(day)}</h3>
       ${list.length
         ? html`<ul class="rows">${list.map((p) => html`<li key=${p.id}><${Row} plan=${p} v=${rowView(p, { s, now })} onOpen=${(id) => h.go({ screen: 'plan', id })} s=${s} now=${now} /></li>`)}</ul>`
-        : !s.db.plans.length ? html`<p>일정이 아직 없어요</p><${ButtonRow}>${add('이 날 일정 만들기')}<//>`
-        : day >= s.today ? html`<${ButtonRow}>${add('이 날 일정 만들기')}<//>` : html`<p>기록이 없어요</p>`}
+        : !s.db.plans.length ? emptyRow('일정이 아직 없어요', true)
+        : day >= s.today ? emptyRow('비어 있어요', true) : emptyRow('기록이 없어요', false)}
     </section>
   </section>`;
 }

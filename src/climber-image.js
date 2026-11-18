@@ -8,12 +8,12 @@ import { CODES, axisWords, characterSrc, routeLine } from './climber-test.js';
 import { FONT, INK, image } from './share-image.js';
 
 const W = 1080;
-const PLATE = '#f4f2ec'; // the plate's paper (the logo's paper)
+const PLATE = '#f4f6f6'; // the plate's paper (--pl-paper; was the logo's beige paper)
 const GREEN = '#2e5e3e'; // the app's accent
-const SOFT = '#55585b'; // secondary text: the app's muted ink (share-image's MUTED is made for a dark ground)
+const SOFT = '#59616a'; // secondary text: the app's muted ink (share-image's MUTED is made for a dark ground)
 const SUN = '#f4b942'; // the logo's sun
 const WALL_INK = '#2a2d32'; // the logo's slab
-const HAIR = 'rgba(27, 31, 30, 0.16)';
+const HAIR = 'rgba(28, 30, 33, 0.16)';
 const STAGE = { x: 150, y: 140, w: 780, h: 640 };
 
 // '#rrggbb' mixed with another: t of a, the rest of b
@@ -92,7 +92,7 @@ function drawWall(g, t) {
   g.clip();
   g.fillStyle = mix(t.tint, PLATE, 0.55);
   g.fillRect(x, y, w, h);
-  g.fillStyle = 'rgba(27, 31, 30, 0.14)';
+  g.fillStyle = 'rgba(28, 30, 33, 0.14)';
   for (let py = y + 26; py < y + h; py += 52) {
     for (let px = x + 26; px < x + w; px += 52) {
       g.beginPath();

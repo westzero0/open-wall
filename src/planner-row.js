@@ -3,6 +3,7 @@
 import { html } from './planner-ui.js';
 import { dayParts, hourFor, rowWeatherCell } from './plan-view.js';
 import { Icon, DisciplineIcon } from './planner-icons.js';
+import { ICE_FLAG_TEXT } from './plan-ice.js';
 
 /** A list row: date + weekday on one line, discipline symbol, place, weather, ›. props: plan, v (rowView), onOpen(id), s, now */
 export function Row({ plan, v, onOpen, s, now }) {
@@ -18,6 +19,8 @@ export function Row({ plan, v, onOpen, s, now }) {
         <span class="b">
           <span class="t">${v.title}${' '}${v.time && html`<span class="tm n">${v.time}</span>`}</span>
           ${showPhrase && html`<span class=${'wx n ' + (v.level === 'caution' || v.level === 'hard' ? v.level : '')}>${v.phrase}</span>`}
+          ${v.flag && html`<span class="ice-flag">${ICE_FLAG_TEXT}</span>`}
+          ${v.reserve?.tag && html`<span class=${'rsv-tag' + (v.reserve.state === 'late' ? ' late' : '')}>${v.reserve.tag}</span>`}
         </span>
         ${rc && html`<span class=${'rw n' + (rc.warn ? ' warn' : '')}><${Icon} name=${rc.icon} />${rc.text}</span>`}
         <span class="ch" aria-hidden="true">›</span>

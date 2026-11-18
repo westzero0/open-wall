@@ -6,7 +6,7 @@
 `brand/`, `assets/`(로고·아이콘·OG 이미지·클라이머 일러스트), "해벽"·"지금 열린 외벽" 이름과 `heenoaerock.kr` 도메인은 허락 없이 쓸 수 없습니다. 포크·복제본은 다른 이름과 로고를 써야 하고, 원본인 것처럼 보이게 해서는 안 됩니다.
 
 ## 2. 데이터 모음 — CC BY-NC 4.0
-`data/national.json`, `data/single-pitch.json`, `data/*.csv`에서 운영자가 직접 확인·정리해 엮은 **모음 전체**(암장 목록, 운영시간·요금·공지 정리, 양달/응달 계산용 값)는 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko)으로 공개합니다.
+`data/national.json`, `data/crags.json`, `data/*.csv`에서 운영자가 직접 확인·정리해 엮은 **모음 전체**(암장 목록, 운영시간·요금·공지 정리, 양달/응달 계산용 값)는 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko)으로 공개합니다.
 - 비영리 목적으로 복사·수정·재배포할 수 있습니다.
 - 출처를 표시해야 합니다: "데이터: 해벽(heenoaerock.kr)" + 링크.
 - 상업적 이용(광고·유료 서비스·제휴 수익 포함)은 사전 허락이 필요합니다.

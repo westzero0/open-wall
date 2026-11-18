@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "walls": [
+    {
+      "name": "구곡폭포",
+      "id": "9erlss2x",
+      "region": "강원 춘천시",
+      "type": "ice",
+      "ice_kind": "natural",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "opened_on": "2026-01-13"
+        }
+      ],
+      "contact": {
+        "reserve": {
+          "name": "춘천도시공사",
+          "url": "https://rev.cuc.or.kr/www/1",
+          "required": true
+        }
+      },
+      "height_m": 50,
+      "rope_mode": "normal",
+      "parking": {
+        "status": "paid",
+        "note": "구곡폭포관광지 주차장"
+      },
+      "access_note": "탑로핑 없이 후등으로 올라 정상에서 하강 루트로 내려와요"
+    },
+    {
+      "name": "호오스테이",
+      "id": "w31jfrkh",
+      "region": "전북 완주군",
+      "type": "ice",
+      "ice_kind": "artificial",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "opened_on": "2026-01-03"
+        }
+      ]
+    },
+    {
+      "name": "판대아이스파크",
+      "id": "idaluokb",
+      "region": "강원 원주시",
+      "type": "ice",
+      "ice_kind": "artificial",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "opened_on": "2026-01-04"
+        }
+      ]
+    },
+    {
+      "name": "용소빙벽장",
+      "id": "jmtqhctt",
+      "region": "강원 양구군",
+      "type": "ice",
+      "ice_kind": "artificial",
+      "access_note": "교육단체 교육장 예약 가능, 개인 이용은 어려움",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "suspended"
+        }
+      ]
+    },
+    {
+      "name": "설악산",
+      "id": "nz0fnbbf",
+      "region": "강원",
+      "type": "mountain",
+      "ice_kind": "natural",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "opened_on": "2026-01-30",
+          "note": "예약은 1월 27일 11시부터"
+        }
+      ],
+      "contact": {
+        "reserve": {
+          "url": "https://www.knps.or.kr/smartsafe/permission/list.do",
+          "required": true,
+          "days_before": 3
+        }
+      }
+    },
+    {
+      "name": "설악산 토왕성",
+      "id": "ag1hrq4i",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "토왕성",
+      "ice_kind": "natural",
+      "capacity": 15,
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "name": "설악산 형제",
+      "id": "0smq3ewy",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "형제",
+      "ice_kind": "natural",
+      "capacity": 20,
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "name": "설악산 50m",
+      "id": "pt1lwlor",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "50m",
+      "ice_kind": "natural",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "name": "설악산 100m",
+      "id": "v68gtdbo",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "100m",
+      "ice_kind": "natural",
+      "capacity": 25,
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "name": "설악산 실폭포",
+      "id": "re8k6p8z",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "실폭포",
+      "ice_kind": "natural",
+      "capacity": 15,
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open"
+        }
+      ],
+      "sun": {
+        "lat": 38.11456,
+        "lng": 128.34619
+      },
+      "parking": {
+        "status": "free",
+        "note": "장수대분소 주차장"
+      }
+    },
+    {
+      "name": "설악산 두줄",
+      "id": "hl3rmhcf",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "두줄",
+      "ice_kind": "natural",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "not_open"
+        }
+      ]
+    },
+    {
+      "name": "설악산 소승",
+      "id": "gx8exh0z",
+      "region": "강원",
+      "type": "ice",
+      "parentId": "nz0fnbbf",
+      "short_name": "소승",
+      "ice_kind": "natural",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "not_open"
+        }
+      ]
+    },
+    {
+      "name": "운악산 무지개폭포",
+      "id": "nolifb1r",
+      "region": "경기 포천시",
+      "type": "ice",
+      "ice_kind": "natural"
+    },
+    {
+      "name": "가래비 빙벽장",
+      "id": "oe72vlxk",
+      "region": "경기 양주시",
+      "type": "ice",
+      "ice_kind": "natural",
+      "access_note": "사유지, 탑로핑만",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "note": "1월 13일 기준 열려 있었어요"
+        }
+      ]
+    },
+    {
+      "name": "매바위 빙벽장",
+      "id": "nnntk9o6",
+      "region": "강원 인제군",
+      "type": "ice",
+      "ice_kind": "artificial",
+      "ice_seasons": [
+        {
+          "season": 2026,
+          "status": "open",
+          "note": "1월 13일 기준 열려 있었어요"
+        }
+      ]
+    }
+  ]
+}

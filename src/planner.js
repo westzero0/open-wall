@@ -6,7 +6,8 @@ import { legacyTarget } from './legacy-link.js';
 import { safeStorage, getStr } from './storage.js';
 import { UI_KEY, cleanTheme, cleanTextSize, loadUi, saveUi } from './ui-state.js';
 import { createPlannerState } from './planner-state.js';
-import { savePlan, removePlan, savePartner, removePartner, saveMine, saveSettings, loadSent, saveSent } from './plan-api.js';
+import { savePlan, removePlan, savePartner, removePartner, saveMine, saveSettings, loadSent, saveSent, saveRouteNote, adoptAndSave } from './plan-api.js';
+import { wallPageId } from './share-id.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { loadCrowdReports } from './plan-crowd-api.js';
 import { resolveFor, todayText } from './plan-view.js';
@@ -84,6 +85,8 @@ function makeHandlers(store, storage) {
     replace: (route) => location.replace(routeHref(route)),
     back: () => { if (navigated) history.back(); else location.replace(routeHref({ screen: 'home' })); },
     openWall: (id, ctx) => { store.update({ wallCtx: { from: ctx?.from ?? null, planId: ctx?.planId ?? null, date: ctx?.date ?? null, min: Number.isFinite(ctx?.min) ? ctx.min : null } }); navigated = true; location.hash = routeHref({ screen: 'wall', id }); },
+    retryWx: () => store.loadWx(),
+    loadRainMap: () => store.loadRainMap(),
     swapWall: (id) => location.replace(routeHref({ screen: 'wall', id })), // nearby → nearby: one entry, so 뒤로 leaves the sheet at once
     onAdd: (preset) => { stat('stats:plan-start'); store.update({ sheet: 'new', editId: null, preset: preset ?? null }); },
     onEdit: (id) => store.update({ sheet: 'edit', editId: id }),
@@ -117,12 +120,19 @@ function makeHandlers(store, storage) {
       if (r?.ok !== false && plan.status === '갔다' && was !== '갔다') stat('stats:plan-done'); // 다녀옴으로 마침 (once per plan: only on the change)
       return after(r);
     },
-    removePlan: (id) => after(removePlan(storage, id)),
+    removePlan: (id) => { const r = after(removePlan(storage, id)); if (r?.ok !== false) flash('지웠어요'); return r; }, // one line above the tab bar for 4 s (no undo)
     // not plan-related: only re-read storage
     savePartner: (p) => reloaded(savePartner(storage, p)),
     removePartner: (id) => reloaded(removePartner(storage, id)),
     saveMine: (m) => reloaded(saveMine(storage, m)),
     saveSettings: (patch) => reloaded(saveSettings(storage, patch)),
+    saveRouteNote: (note) => reloaded(saveRouteNote(storage, note)),
+    // typed routes of this crag that the route list now has: their notes and ascents take the routeId (a failed write is retried next open)
+    adoptRoutes: (cragId, routes) => {
+      const s = store.get();
+      const inCrag = (p) => { const c = resolveFor(p, s).crag; return Boolean(c) && wallPageId(c) === cragId; };
+      if (adoptAndSave(storage, cragId, routes, inCrag, { today: s.today }).saved) store.reload();
+    },
   };
 }
 
@@ -141,7 +151,12 @@ async function main() {
   const store = createPlannerState({ storage });
   const handlers = makeHandlers(store, storage);
   const stamp = document.getElementById('today');
-  const paint = (s) => { if (stamp) stamp.textContent = todayText(s.today); };
+  const paint = (s) => { // 11월은 좁은 화면에서 접힌다(.mo): 큰 글자 320px에서 날짜가 설정 아이콘에 닿지 않게
+    if (!stamp) return;
+    const [mo, ...rest] = todayText(s.today).split(' ');
+    const m = document.createElement('span'); m.className = 'mo'; m.textContent = mo + ' ';
+    stamp.replaceChildren(m, rest.join(' '));
+  };
   paint(store.get());
   store.subscribe(paint);
   const renderRecordExtra = (plan, o) => html`<${RecordExtra} plan=${plan} kind=${o.kind} resolved=${o.resolved} done=${o.done} store=${store} handlers=${handlers} />`;
@@ -151,6 +166,7 @@ async function main() {
     if (r.screen === 'plan' && !store.get().db.plans.some((p) => p.id === r.id)) { handlers.replace({ screen: 'home' }); handlers.flash('일정을 찾을 수 없어요'); return; }
     const prev = store.get().route.screen;
     store.setRoute(r);
+    if (r.screen === 'wall' && store.get().ice.length) store.loadWx(); // an ice venue's sheet asks for its own temperatures (before boot the list is empty: boot's own loadWx covers an address that opens a sheet)
     const h = location.hash;
     if (h && h !== '#' && h !== routeHref(r)) handlers.replace(r); // a broken or unknown address: the screen is home, so the bar says so too
     if (prev === 'settings' && r.screen !== 'settings') setTimeout(() => { if (document.activeElement === document.body || !document.activeElement) document.getElementById('settings')?.focus(); }, 0); // closed by 뒤로: the native close no longer returns focus to the gear

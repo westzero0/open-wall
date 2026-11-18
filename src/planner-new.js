@@ -3,17 +3,20 @@
 import { html, useState, useRef, usePlannerState } from './planner-ui.js';
 import { Sheet, NameAdd } from './planner-sheet.js';
 import { comingWeekend } from './trips.js';
-import { searchPlaces, resolvePlace } from './plan-place.js';
+import { searchPlaces, resolvePlace, listChoices } from './plan-place.js';
+import { activeKinds } from './season.js';
 import { draftReady, addMine } from './plan-draft.js';
 import { randomId } from './plan-model.js';
 import { offerFor, reportInput, dismiss, markReported } from './plan-report.js';
 import { sendNewWall, REPORT_OK, REPORT_LATER, OFFER_ASK, NAME_ONLY_NOTE } from './plan-report-api.js';
 import { config } from './config.js';
 import { findWall, openLabel, utilLinks } from './plan-wall.js';
-import { LinkButton } from './planner-parts.js';
+import { findIce } from './plan-ice-sheet.js';
+import { LinkButton, Note } from './planner-parts.js';
 import { minFromTime, timeFromMin, placeOf, planFromDraft, draftDirty, UNSAVED_NOTE, SAVE_FAIL } from './plan-sheet.js';
 
 const util = utilLinks(config.utilUrl);
+const KIND_LABEL = { wall: '외벽', crag: '자연암장', ice: '빙벽장' };
 const reportOn = () => /^https?:\/\//.test(config.reportEndpoint ?? '');
 
 function MineForm({ onAdd, onCancel }) {
@@ -39,13 +42,13 @@ function Offer({ saved, h, state, setState }) { // state (null | 'busy' | 'sent'
   };
   return html`<div class="f">
     ${state === 'sent' ? html`<p role="status">${REPORT_OK}</p>` : state === 'later' ? html`<p role="status">${REPORT_LATER}</p>`
-      : html`<p>${OFFER_ASK}</p>`}
+      : html`<${Note}>${OFFER_ASK}<//>`}
     ${state !== 'sent' && html`<div class="row2 foot"><button type="button" class="btn p" disabled=${state === 'busy'} onClick=${send}>알리기</button></div>`}
   </div>`;
 }
 
 function PlanForm({ s, plan, h }) {
-  const ctx = { walls: s.walls, crags: s.crags, mine: s.db.mine, aliases: s.aliases };
+  const ctx = { walls: s.walls, crags: s.crags, ice: s.ice, mine: s.db.mine, aliases: s.aliases };
   const r0 = plan ? resolvePlace(plan.place, { ...ctx, savedName: plan.placeName }) : null;
   const preset = plan ? null : s.preset; // a new plan may start from a bridge (?new&wall=) or the calendar
   const [date, setDate] = useState(plan?.date ?? preset?.date ?? comingWeekend(s.today).sat);
@@ -61,7 +64,11 @@ function PlanForm({ s, plan, h }) {
   const init = useRef({ date, time, query, partnerIds });
   const place = placeOf(picked, query, ctx);
   const draft = { date, min: minFromTime(time), place, partnerIds };
-  const rows = query.trim() && !picked ? searchPlaces(query, ctx).slice(0, 8) : [];
+  const [browse, setBrowse] = useState(null); // the 목록 chip picked ('wall' | 'crag' | 'ice')
+  const searching = !!query.trim();
+  const kinds = searching || picked ? [] : activeKinds(date, config.season).filter((k) => listChoices(ctx, [k]).length); // a kind with no places gets no chip
+  const open = kinds.includes(browse) ? browse : null; // a chip that went out of season with the date closes its list
+  const rows = searching && !picked ? searchPlaces(query, ctx).slice(0, 8) : open ? listChoices(ctx, [open]) : [];
 
   const pick = (row) => { setPicked(row.place); setQuery(row.place.kind === 'name' ? row.place.name : row.label); };
   const togglePartner = (id) => setPartnerIds(partnerIds.includes(id) ? partnerIds.filter((x) => x !== id) : [...partnerIds, id]);
@@ -81,7 +88,7 @@ function PlanForm({ s, plan, h }) {
     if (!next || h.savePlan(next)?.ok === false) { setErr(SAVE_FAIL); return; }
     setErr('');
     const cur = h.getState(); // savePlan reloaded: judge the offer on what is stored
-    const res = resolvePlace(next.place, { walls: cur.walls, crags: cur.crags, mine: cur.db.mine, aliases: cur.aliases, savedName: next.placeName });
+    const res = resolvePlace(next.place, { walls: cur.walls, crags: cur.crags, ice: cur.ice, mine: cur.db.mine, aliases: cur.aliases, savedName: next.placeName });
     const offer = reportOn() ? offerFor(next, res, cur.db.settings, cur.walls.length > 0) : null;
     if (offer) setSaved({ offer, resolved: res, settings: cur.db.settings });
     else h.onClose();
@@ -102,14 +109,17 @@ function PlanForm({ s, plan, h }) {
     </div>
     <div class="f"><label for="pl">장소</label>
       <input id="pl" class="in-t" value=${query} aria-label="장소 검색" autocomplete="off" autofocus=${!plan} onInput=${(e) => { setQuery(e.target.value); setPicked(null); }} /></div>
-    <div class="picks">${rows.map((row, i) => {
+    ${kinds.length > 0 && html`<div class="sel kinds" role="group" aria-label="분류별 목록">${kinds.map((k) => html`<button type="button" key=${k}
+      aria-pressed=${open === k ? 'true' : 'false'} onClick=${() => setBrowse(open === k ? null : k)}>${KIND_LABEL[k]}</button>`)}</div>`}
+    <div class=${open ? 'picks list' : 'picks'}>${rows.map((row, i) => {
       const w = row.place.kind === 'official' ? findWall(s.walls, row.place.id) : null; // a crag or a name has no hours: no open label, no 정보 button
+      const iw = !w && row.place.kind === 'official' ? findIce(s.ice, row.place.id) : null; // a 빙벽장 has a sheet too (no open hours)
       const open = w ? openLabel(w, date, minFromTime(time)) : '';
       const shut = /닫힘|쉼|휴관/.test(open); // closed on that day/time: bold, no colour
       const sub = row.key.startsWith('name:') ? NAME_ONLY_NOTE : html`${row.sub}${row.sub && open ? ' · ' : ''}${shut ? html`<span class="op-no">${open}</span>` : open}`;
       return html`<div class="pick-row" key=${row.key}>
-        <button type="button" class=${'pick' + (i === 0 ? ' first' : '')} onClick=${() => pick(row)}>${row.label}<small>${sub}</small></button>
-        ${w && html`<${LinkButton} aria-label=${row.label + ' 정보'} onClick=${() => h.openWall(row.place.id, { from: 'search', date, min: minFromTime(time) })}>정보<//>`}
+        <button type="button" class=${'pick' + (searching && i === 0 ? ' first' : '')} onClick=${() => pick(row)}>${row.label}<small>${sub}</small></button>
+        ${(w || iw) && html`<${LinkButton} aria-label=${row.label + ' 정보'} onClick=${() => h.openWall(row.place.id, { from: 'search', date, min: minFromTime(time) })}>정보<//>`}
       </div>`;
     })}</div>
     ${mineOpen ? html`<${MineForm} onAdd=${addMineWall} onCancel=${() => setMineOpen(false)} />`

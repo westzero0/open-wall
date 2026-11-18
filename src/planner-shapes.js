@@ -28,6 +28,7 @@ export const ICON_SHAPES = {
   check: () => [path('M5 12.5l4.5 4.5L19 7.5', W)],
   prev: () => [path('M15 5l-7 7 7 7', W)],
   next: () => [path('M9 5l7 7-7 7', W)],
+  help: () => [circle(12, 12, 9, W), path('M12 7.5v6', W), circle(12, 16.7, 0.9, { fill: 'currentColor' })],
   gear: () => [circle(12, 12, 3, W), circle(12, 12, 7, W), path('M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8', W)],
   shade: () => [path(PEAK, W), ...[10.5, 13, 15.5, 18].map((y) => path(`M12.8 ${y}H${f1(12 + (y - 5) * 0.6 - 1.2)}`, { stroke: 'currentColor', 'stroke-width': 1.4, 'stroke-linecap': 'round' }))],
 };
@@ -38,8 +39,8 @@ const person = (x, filled, dashed) => ({
   k: [circle(x + 4, 8, 2.6), path(`M${f1(x)} 19c0-4 8-4 8 0z`)],
 });
 
-/** crowdShapes(n) — n filled people of 3; n = 0 draws the dotted "no reports" people. */
-export const crowdShapes = (n = 0) => [0, 1, 2].map((i) => person(i * 7.4, i < n, n === 0));
+/** crowdShapes(n) — n filled people of 3; n = 0 draws the solid-outline "no reports" people. */
+export const crowdShapes = (n = 0) => [0, 1, 2].map((i) => person(i * 7.4, i < n, false));
 
 /** peopleShapes(n) — n (1..3, more draws 3) outlined people, centred: the promise card's 동행 row (the same person shape as crowdShapes). */
 export const peopleShapes = (n) => {

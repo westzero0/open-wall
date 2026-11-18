@@ -1,0 +1,31 @@
+/* 공용 디자인 토큰. 일정앱(planner.css)과 외벽(style.css)·관리자가 함께 쓴다. 색 값은 docs/system/planner-tokens.md 색 표와 같고, 모서리·글자·간격 토큰은 같은 문서의 각 표에 있다. */
+/* ===== 토큰 ===== */
+:root {
+  --pl-paper: #f4f6f6; --pl-ink: #1c1e21; --pl-muted: #59616a; --pl-line: #cbd1d4; --pl-edge: #7d8691;
+  --pl-today: #3f5a2d; --pl-on-today: #ffffff; --pl-cloud0: #d8dcde; --pl-cloud1: #b6bcc0; --pl-rcloud0: #878d92; --pl-rcloud1: #666c71; --pl-warn: #b3261e; --pl-past: #697078; --pl-scrim: rgb(23 25 27 / .45); --pl-surface: #fbfcfc;
+  --pl-scale: 1;
+  --pl-fs-date: calc(44px * min(var(--pl-scale), 1.3)); --pl-fs-title-now: calc(21px * var(--pl-scale)); --pl-fs-title: calc(17px * var(--pl-scale));
+  --pl-fs-body: calc(15px * var(--pl-scale)); --pl-fs-sub: calc(14px * var(--pl-scale)); --pl-fs-small: calc(12.5px * var(--pl-scale));
+  --pl-maxw: 480px; --pl-logo-h: calc(36px * var(--pl-scale)); --pl-av: calc(32px * var(--pl-scale)); --pl-rl-fs: 14px; /* 눈금자 글자: 장면 단위(360폭), 375px 화면에서 12.5px 이상 */
+  --pl-fs-hero: calc(96px * min(var(--pl-scale), 1.3)); --pl-fs-detail-date: calc(40px * min(var(--pl-scale), 1.3)); --pl-fs-row-date: calc(26px * min(var(--pl-scale), 1.3)); --pl-strip-d: calc(36px * min(var(--pl-scale), 1.3));
+  --pl-peak-w: calc(140px * min(var(--pl-scale), 1.3)); --pl-ic-cell: calc(30px * var(--pl-scale)); --pl-ic-row: calc(34px * var(--pl-scale)); --pl-ic-sm: calc(20px * var(--pl-scale)); --pl-ic-hero: calc(26px * var(--pl-scale));
+  --pl-lh: 1.55; --pl-lh-tight: 1.35;
+  --pl-sp-4: 4px; --pl-sp-8: 8px; --pl-sp-12: 12px; --pl-sp-16: 16px; --pl-sp-24: 24px; --pl-sp-32: 32px; --pl-sp-48: 48px; --pl-pad: 22px;
+  --pl-r-s: 2px; --pl-r-sheet: 2px; --pl-r-pill: 999px;
+  --pl-tap: 44px; --pl-hair: 1px; --pl-bar: 3px; --pl-ring: 2px; --pl-ring-gap: 2px;
+  --pl-dur-press: 80ms; --pl-dur-ui: 160ms; --pl-dur-sheet: 260ms;
+  --pl-font: Pretendard, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+:root[data-text="large"] { --pl-scale: 1.3; }
+:root[data-text="xlarge"] { --pl-scale: 1.6; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pl-paper: #121416; --pl-ink: #eceff1; --pl-muted: #a3abb4; --pl-line: #2b3035; --pl-edge: #6f7984;
+    --pl-today: #9ccf75; --pl-on-today: #121416; --pl-cloud0: #3a4046; --pl-cloud1: #2a2f34; --pl-rcloud0: #596069; --pl-rcloud1: #7e8892; --pl-warn: #ff7a85; --pl-past: #7d8791; --pl-scrim: rgb(0 0 0 / .6); --pl-surface: #1a1d20;
+  }
+}
+:root[data-theme="dark"] {
+  --pl-paper: #121416; --pl-ink: #eceff1; --pl-muted: #a3abb4; --pl-line: #2b3035; --pl-edge: #6f7984;
+  --pl-today: #9ccf75; --pl-on-today: #121416; --pl-cloud0: #3a4046; --pl-cloud1: #2a2f34; --pl-rcloud0: #596069; --pl-rcloud1: #7e8892; --pl-warn: #ff7a85; --pl-past: #7d8791; --pl-scrim: rgb(0 0 0 / .6); --pl-surface: #1a1d20;
+}
+@media (prefers-reduced-motion: reduce) { :root { --pl-dur-press: 0ms; --pl-dur-ui: 0ms; --pl-dur-sheet: 0ms; } }

@@ -25,8 +25,33 @@ function cleanRoute(v) {
   }
   if (pioneer) r.pioneer = pioneer;
   if (area) r.area = area;
+  const pitches = cleanPitches(v.pitches, v.id);
+  if (pitches) r.pitches = pitches;
   return r;
 }
+
+const MAX_PITCHES = 15;
+/** 피치 2~15개, no는 1~99 정수(문자열 숫자도), 빈칸은 괜찮고 번호순으로 정렬. 번호가 겹치거나 하나라도 어긋나면 null(루트는 남는다).
+ * id는 입력을 믿지 않고 `<루트id>-p<no>`: 번호가 겹치면 id가 겹쳐 피치 기록을 가를 수 없어서 막는다. */
+function cleanPitches(list, routeId) {
+  if (!Array.isArray(list) || list.length < 2 || list.length > MAX_PITCHES) return null;
+  const out = [];
+  for (const p of list) {
+    const no = isObj(p) ? int(typeof p.no === 'string' && /^\d+$/.test(p.no.trim()) ? Number(p.no.trim()) : p.no, 1, 99) : null;
+    if (no === null || out.some((x) => x.no === no)) return null;
+    const x = { id: `${routeId}-p${no}`, no };
+    const grade = str(p.grade, 16), len = int(p.length_m, 1, 400);
+    if (grade) x.grade = grade;
+    if (len !== null) x.length_m = len;
+    out.push(x);
+  }
+  return out.sort((a, b) => a.no - b.no);
+}
+
+/** pitchCount(route, multi) → '2피치' | null. 싱글 암장은 피치가 있는 루트만, 멀티 암장은 늘(피치 없으면 1피치). */
+export const pitchCount = (r, multi) => (r.pitches ? `${r.pitches.length}피치` : multi ? '1피치' : null);
+/** pitchLines(route) → ['1피치 5.9 · 25m', …]. 없는 값은 뺀다. */
+export const pitchLines = (r) => (r.pitches ?? []).map((p) => [`${p.no}피치`, p.grade].filter(Boolean).join(' ') + (p.length_m ? ` · ${p.length_m}m` : ''));
 
 function cleanTopo(v) {
   if (!isObj(v) || typeof v.image !== 'string' || !PHOTO_RE.test(v.image) || v.image.includes('..')) return null;

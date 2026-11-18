@@ -85,7 +85,7 @@ export function SunCard({ place, resolved, plan, s, now, kind }) {
     setMin(e.key === 'Home' || e.key === 'End' ? to : stepMin(min, to - min));
   };
   return html`<section class="sun" aria-label="해">
-    <div class="sun-h"><span class=${'pill' + (pill.lit ? '' : ' sh')}>${pill.title}</span><small>${pill.note}</small></div>
+    <div class="sun-h"><span class=${'pill' + (pill.lit ? '' : ' sh')}>${pill.title}</span>${pill.note && html`<small>${pill.note}</small>`}</div>
     <div class="sun-fig">
       <div class="sun-sc" ref=${box}></div>
       <svg class="sun-rl" ref=${ruler} viewBox=${`${VB.x} ${VB.y} ${VB.w} ${VB.h}`} focusable="false">
