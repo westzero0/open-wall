@@ -14,10 +14,11 @@ const groupsOf = (groups, h, { screen, folds, setFold }) => groups.map((g, i) =>
   const id = `places-${screen}-${i}`;
   return html`<h3 class="lbl" key=${g.label}><button type="button" class="rm-head" aria-expanded=${open} aria-controls=${id} onClick=${() => setFold(g.label, !open)}>${g.label} ${g.rows.length}</button></h3>${open && html`<div id=${id}>${rowsOf(g.rows, h)}</div>`}`;
 });
+const CRAG_KINDS = [[null, '전체'], ['single', '싱글피치'], ['multi', '멀티피치']]; // 자연암장 안의 종류 칩(분류는 자연암장 | 외벽 그대로)
 const bad = (word) => html`<span class="op-no">${word}</span>`; // 닫힘·휴관·비 예보: 색 없이 굵게
 
 /** The screen without any hook (so a test can read the vnode): screen 'crags' | 'walls', q/setQ = the wall search text, now = ms, folds = {heading: open?} the user's choices for this screen, setFold(heading, open). With a search: no headings, one list, every row says its state. */
-export function PlacesView({ s, h, screen, q, setQ, now, folds = {}, setFold = () => {} }) {
+export function PlacesView({ s, h, screen, q, setQ, now, folds = {}, setFold = () => {}, kind = null, setKind = () => {} }) {
   const at = new Date(now);
   const wx = s.rainWx?.crag ?? null;
   const cragAll = s.crags.length; // the chip counts stay the full totals whatever is typed
@@ -31,7 +32,7 @@ export function PlacesView({ s, h, screen, q, setQ, now, folds = {}, setFold = (
   let found;
   let merged = false; // the ready crag list puts 'N곳' into its 지금 기준 line
   if (screen === 'crags') {
-    const crags = cragRows(s.crags, wx, { at, now: at, q });
+    const crags = cragRows(s.crags, wx, { at, now: at, q, kind });
     found = crags.length;
     const ready = s.rainLoaded && !failed; // before the weather is in (or without it) the rows carry no condition and no headings: one line says so
     merged = ready;
@@ -41,7 +42,8 @@ export function PlacesView({ s, h, screen, q, setQ, now, folds = {}, setFold = (
       return { id: r.id, rank: r.rank, name: r.name, label: `${r.name}, ${[r.region, r.typeLabel, ready && r.text].filter(Boolean).join(' · ')}`,
         sub: html`${place}${place && word ? ' · ' : ''}${word && r.rank === 2 ? bad(word) : word}` };
     });
-    body = html`${failed && html`<p class="rm-state" role="status">날씨를 불러오지 못했어요</p>
+    body = html`${s.crags.length > 0 && html`<div class="sel" role="group" aria-label="등반 종류">${CRAG_KINDS.map(([k, label]) => html`<button type="button" key=${label} data-label=${label} aria-pressed=${kind === k} onClick=${() => setKind(k)}>${label}</button>`)}</div>`}
+      ${failed && html`<p class="rm-state" role="status">날씨를 불러오지 못했어요</p>
         <button type="button" class="p-link rm-retry" onClick=${() => h.loadRainMap()}>다시 받기</button>`}
       ${!s.rainLoaded && html`<p class="rm-state" role="status">날씨를 불러오는 중이에요</p>`}
       ${ready && items.length > 0 && (searching ? html`<p class="rm-state" role="status">${found}곳 · 지금 기준 · ${COND_NOTE}</p>` : html`<p class="rm-state">지금 기준 · ${COND_NOTE}</p>`)}
@@ -65,6 +67,7 @@ export function Places({ store, handlers }) {
   const s = usePlannerState(store);
   const [q, setQ] = useState('');
   const [folds, setFolds] = useState({}); // {screen: {heading: open?}}: kept per tab, never stored
+  const [kind, setKind] = useState(null); // 자연암장 종류 칩, never stored
   if (s.base.screen !== 'crags' && s.base.screen !== 'walls') return null;
-  return PlacesView({ s, h: handlers, screen: s.base.screen, q, setQ, now: Date.now(), folds: folds[s.base.screen], setFold: (label, open) => setFolds((f) => ({ ...f, [s.base.screen]: { ...f[s.base.screen], [label]: open } })) });
+  return PlacesView({ s, h: handlers, screen: s.base.screen, q, setQ, now: Date.now(), kind, setKind, folds: folds[s.base.screen], setFold: (label, open) => setFolds((f) => ({ ...f, [s.base.screen]: { ...f[s.base.screen], [label]: open } })) });
 }

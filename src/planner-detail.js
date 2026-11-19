@@ -91,7 +91,8 @@ export function DetailView({ plan, v, s, now, h, onBack, onAnswer, renderRecordE
   const facts = [v.changed && ['장소', v.changed], plan.record?.memo && ['메모', plan.record.memo]].filter(Boolean);
   const openNote = v.live && v.resolved.kind === 'wall' && v.resolved.wall ? openLabel(v.resolved.wall, plan.date, Number.isInteger(plan.min) ? plan.min : null) : '';
   const shut = /닫힘|쉼|휴관/.test(openNote) ? openNote : ''; // 그 시간 닫힘·그날 쉼·임시 휴관만 말한다(열림은 말하지 않음)
-  const [kindWord, ...regionWords] = (line || '').split(' · ');
+  const [kind0, ...rest] = (line || '').split(' · ');
+  const [mainWord, ...subWords] = rest.length > 0 ? [rest.join(' · '), kind0] : [kind0]; // 어디 = 곳: 지역을 굵게, 종류는 뒤에 작게
   const iceSheet = v.resolved.kind === 'ice' && findIce([v.resolved.ice], wallPageId(v.resolved.ice ?? {})) ? () => h.openWall(wallPageId(v.resolved.ice), { from: 'detail', planId: plan.id, date: plan.date }) : null; // a waterfall opens the 빙벽장 sheet (the mountain does not)
   const openAny = placeOpener(v, plan, h);
   const iceFacts = iceDetail(v.ice);
@@ -103,8 +104,8 @@ export function DetailView({ plan, v, s, now, h, onBack, onAnswer, renderRecordE
       <dl class="kv">
         <div><dt>언제</dt><dd><b class="n">${plan.date === s.today ? '오늘' : `${p.dow}요일`}${v.time ? ` ${v.time}` : ''}</b><span class="n">${p.month}월 ${p.d}일</span>${shut && html`<span class="op-no">${shut}</span>`}</dd></div>
         ${line && html`<div><dt>어디</dt><dd>${openAny
-          ? html`<button type="button" class="kv-go" aria-label=${`${v.title} ${iceSheet ? '빙벽장' : '암장'} 정보`} onClick=${openAny}><b>${kindWord}</b>${regionWords.length > 0 && html`<span>${regionWords.join(' · ')}</span>`}<${Icon} name="next" /></button>`
-          : html`<b>${kindWord}</b>${regionWords.length > 0 && html`<span>${regionWords.join(' · ')}</span>`}`}</dd></div>`}
+          ? html`<button type="button" class="kv-go" aria-label=${`${v.title} ${iceSheet ? '빙벽장' : '암장'} 정보`} onClick=${openAny}><b>${mainWord}</b>${subWords.length > 0 && html`<span>${subWords.join(' · ')}</span>`}<${Icon} name="next" /></button>`
+          : html`<b>${mainWord}</b>${subWords.length > 0 && html`<span>${subWords.join(' · ')}</span>`}`}</dd></div>`}
       </dl>
       ${phrase && html`<p class=${'wx n ' + (v.level === 'caution' || v.level === 'hard' ? v.level : '')}>${phrase}</p>`}
       ${v.flag && html`<p class="ice-flag">${ICE_FLAG_TEXT}</p>`}

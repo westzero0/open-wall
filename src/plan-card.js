@@ -1,4 +1,5 @@
 // src/plan-card.js — what the promise card says (no DOM). plan-card-draw.js paints it.
+import { TYPE_LABEL } from './crag-model.js';
 import { dayText, fmtMin } from './viewmodel.js';
 import { config } from './config.js';
 
@@ -10,9 +11,11 @@ export function symbolKind(resolved) {
 }
 
 /** `실내 · 서울` / `외벽 · 경기 양주시` / `자연암장 · 서울`; '' when nothing is known (a name-only place). */
+const CRAG_KIND = { single: '싱글피치', multi: '멀티피치' }; // 자연암장은 등반 종류로(종류 없음 = 싱글, 그 밖은 TYPE_LABEL)
+export const cragKind = (crag) => { const t = crag?.type ?? 'single'; return CRAG_KIND[t] ?? TYPE_LABEL[t] ?? '자연암장'; };
 export function placeLine(resolved) {
   const region = resolved.wall?.region ?? resolved.crag?.region ?? resolved.ice?.region ?? resolved.mineWall?.region ?? '';
-  const kind = resolved.kind === 'crag' ? '자연암장' : resolved.kind === 'mine' ? (resolved.venue === 'indoor' ? '실내' : resolved.venue === 'outdoor' ? '외벽' : '내 암장')
+  const kind = resolved.kind === 'crag' ? cragKind(resolved.crag) : resolved.kind === 'mine' ? (resolved.venue === 'indoor' ? '실내' : resolved.venue === 'outdoor' ? '외벽' : '내 암장')
     : resolved.kind === 'wall' ? (resolved.venue === 'indoor' ? '실내' : '외벽') : resolved.kind === 'ice' ? '빙벽장' : '';
   return [kind, region].filter(Boolean).join(' · ');
 }

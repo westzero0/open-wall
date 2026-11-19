@@ -478,3 +478,19 @@ button.ice-row .ic { position: absolute; right: var(--pl-sp-12); top: 50%; width
 .rm-pin:focus-visible { outline: var(--pl-ring) solid var(--pl-ink); outline-offset: var(--pl-ring-gap); }
 .rm-pin:active { opacity: .7; }
 .rm-pin .rm-ic { width: 1em; height: 1em; flex: none; }
+
+/* 자연암장 시트: 컨디션 문장은 시트에서 가장 큰 글자(라벨은 vh로 스크린리더용), 상세 시트(어프로치·루트) 목록과 사진 */
+.wsh .cond-now { font-size: var(--pl-fs-title-now); font-weight: 700; line-height: var(--pl-lh-tight); }
+.cd-pane { display: flex; flex-direction: column; gap: var(--pl-sp-16); }
+.wsh .cd-head { font-weight: 700; }
+.wsh ol.cd-steps { list-style: decimal; padding-left: 1.6em; display: flex; flex-direction: column; gap: var(--pl-sp-16); }
+.cd-steps b { font-weight: 800; }
+.wsh .cd-wrong { color: var(--pl-muted); font-size: var(--pl-fs-small); margin-top: var(--pl-sp-4); }
+.cd-img { display: block; width: 100%; height: auto; margin-top: var(--pl-sp-8); border-radius: var(--pl-r-s); }
+.cd-topo { margin: 0; } .cd-topo figcaption { margin-top: var(--pl-sp-4); color: var(--pl-muted); font-size: var(--pl-fs-small); }
+.wsh ul.cd-rows li { border-top: var(--pl-hair) solid var(--pl-line); padding: var(--pl-sp-8) 0; }
+.cd-rows .rg small { color: var(--pl-muted); font-size: var(--pl-fs-small); }
+.cd-tabs { margin-bottom: var(--pl-sp-4); }
+.wsh .p-row .btn.full { flex: 1; }
+.cd-steps .cd-img { margin-left: -1.6em; width: calc(100% + 1.6em); } /* 단계 사진도 주차 사진과 같은 폭으로(번호 들여쓰기만큼 당긴다) */
+.wl-top span { white-space: nowrap; }

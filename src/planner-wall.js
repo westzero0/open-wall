@@ -1,7 +1,7 @@
 // src/planner-wall.js — 암장 시트: one official wall (hours, fee, nearby walls, link to the utility page), opened from a plan's detail,
 // an alternative, a search result, or straight from #/wall/<id>. It is a sheet over the screen below (route.screen === 'wall'; base keeps the screen under it).
 // Model words come from plan-wall.js. No fetch, no storage here; the forecast is only what the plans already loaded (s.wx).
-import { html, usePlannerState } from './planner-ui.js';
+import { html, usePlannerState, useState, useEffect, useRef } from './planner-ui.js';
 import { Sheet } from './planner-sheet.js';
 import { LinkButton, ButtonRow, Note } from './planner-parts.js';
 import { Cells } from './planner-cells.js';
@@ -15,8 +15,10 @@ import { IceSheet } from './planner-ice.js';
 import { findIce } from './plan-ice-sheet.js';
 import { config } from './config.js';
 import { cragRow, COND_NOTE } from './crag-model.js';
-import { symbolKind } from './plan-card.js';
+import { symbolKind, cragKind } from './plan-card.js';
 import { wallPageId } from './share-id.js';
+import { cragSummaryBits } from './crag-detail-model.js';
+import { CragDetailSheet } from './planner-crag-detail.js';
 
 /** Which kind of place an id names: 외벽 first, then 빙벽장, then 자연암장 (a pending crag still opens, with whatever it has). */
 export function pickSheetPlace(s, id) {
@@ -43,7 +45,7 @@ export function cragSheetView(crag, { s, ctx = {}, now = new Date() }) {
   const cells = wx ? homeCells(resolved, { date, min, place }, { ...s, wx: { ...s.wx, crag: wx } }) : null;
   return {
     id, title: crag.name,
-    top: [crag.region, row.typeLabel].filter(Boolean).join(' · '),
+    top: [crag.region, cragKind(crag)].filter(Boolean).join(' · '),
     condText: wx ? row.cond.text : '컨디션 정보 없음',
     cells, quiet: cells ? cellsQuiet(cells) : null, resolved, place,
     showSun: !!wallPosition(crag),
@@ -58,16 +60,25 @@ function CragSheet({ crag, s, h }) {
   const plan = ctx.planId ? s.db.plans.find((p) => p.id === ctx.planId) : null;
   const swap = () => { if (plan && h.savePlan(changePlace(plan, v.place, crag.name))?.ok !== false) h.back(); };
   const create = () => { h.replace({ screen: 'home' }); h.onAdd({ place: v.place }); };
+  const [data, setData] = useState(null); // 루트 데이터: 윗줄의 루트 수용(상세 시트가 같은 약속을 다시 부른다)
+  const [detail, setDetail] = useState(false);
+  const btn = useRef(null);
+  const was = useRef(false);
+  useEffect(() => { let on = true; h.loadRoutes().then((d) => { if (on) setData(d); }); return () => { on = false; }; }, []);
+  useEffect(() => { if (was.current && !detail) btn.current?.focus(); was.current = detail; }, [detail]); // 상세가 닫히면 연 버튼으로
+  const top = [v.top, ...cragSummaryBits(crag, data?.[crag.name])].filter(Boolean); // 조각마다 줄바꿈 단위(구분점이 줄 끝에 남지 않게)
   return html`<${Sheet} key=${'w:' + id} title=${v.title} onClose=${h.back}>
     <div class="wsh">
-      ${v.top && html`<p class="wl-top">${v.top}</p>`}
-      <section aria-labelledby="cg-h"><h3 id="cg-h" class="lbl">컨디션</h3>
-        <p>${v.condText}</p><${Note}>${COND_NOTE}<//></section>
+      ${top.length > 0 && html`<p class="wl-top">${top.map((t, i) => html`${i > 0 && ' · '}<span key=${t}>${t}</span>`)}</p>`}
+      <section aria-labelledby="cg-h"><h3 id="cg-h" class="lbl vh">컨디션</h3>
+        <p class="cond-now">${v.condText}</p><${Note}>${COND_NOTE}<//></section>
       ${v.cells && (v.quiet ? html`<${Note} ruled class="n">${v.quiet}<//>` : html`<${Cells} c=${v.cells} />`)}
       ${v.showSun && html`<${SunCard} key=${'sun:' + id} place=${crag} resolved=${v.resolved} plan=${v.plan} s=${s} now=${Date.now()} kind=${symbolKind(v.resolved)} />`}
       ${ctx.from === 'alt' && plan ? html`<${ButtonRow}><button type="button" class="btn p" onClick=${swap}>이곳으로 바꾸기</button><//>`
         : !ctx.from && html`<${ButtonRow}><button type="button" class="btn p" onClick=${create}>이 암장으로 일정 잡기</button><//>`}
+      <${ButtonRow}><button type="button" class="btn full" ref=${btn} onClick=${() => setDetail(true)}>루트·어프로치 보기 ›</button><//>
     </div>
+    ${detail && html`<${CragDetailSheet} crag=${crag} h=${h} onClose=${() => setDetail(false)} />`}
   <//>`;
 }
 
@@ -78,6 +89,7 @@ export function WallSheet({ store, handlers: h }) {
   const ctx = s.wallCtx ?? {};
   const picked = pickSheetPlace(s, id);
   if (picked?.kind === 'ice') return html`<${IceSheet} key=${'w:' + id} place=${picked.place} s=${s} h=${h} />`; // a 빙벽장 (never the mountain entry) has its own sheet
+  if (picked?.kind === 'crag' && ctx.from === 'detail') return html`<${CragDetailSheet} key=${'w:' + id} crag=${picked.place} h=${h} onClose=${h.back} />`; // 일정 상세의 어디 줄: 날씨는 그 화면에 있으니 바로 루트·어프로치
   if (picked?.kind === 'crag') return html`<${CragSheet} key=${'w:' + id} crag=${picked.place} s=${s} h=${h} />`;
   const wall = picked?.place ?? null;
   if (!wall) {
@@ -98,11 +110,12 @@ export function WallSheet({ store, handlers: h }) {
   const plan = ctx.planId ? s.db.plans.find((p) => p.id === ctx.planId) : null;
   const swap = () => { if (plan && h.savePlan(changePlace(plan, place, wall.name))?.ok !== false) h.back(); };
   const create = () => { h.replace({ screen: 'home' }); h.onAdd({ place }); };
+  const dup = ctx.from === 'detail'; // 일정 상세에서 열면 날씨 칸·양달 카드는 그 화면에 이미 있다
   return html`<${Sheet} key=${'w:' + id} title=${m.name} onClose=${h.back}>
     <div class="wsh">
       ${(m.region || m.open) && html`<p class="wl-top">${[m.region, m.open].filter(Boolean).join(' · ')}</p>`}
-      ${cells && (quiet ? html`<${Note} ruled class="n">${quiet}<//>` : html`<${Cells} c=${cells} />`)}
-      ${wallPosition(wall) && kind === 'wall' && html`<${SunCard} key=${'sun:' + id} place=${wall} resolved=${resolved} plan=${{ id: 'wall:' + id, date, min }} s=${s} now=${Date.now()} kind=${kind} />`}
+      ${!dup && cells && (quiet ? html`<${Note} ruled class="n">${quiet}<//>` : html`<${Cells} c=${cells} />`)}
+      ${!dup && wallPosition(wall) && kind === 'wall' && html`<${SunCard} key=${'sun:' + id} place=${wall} resolved=${resolved} plan=${{ id: 'wall:' + id, date, min }} s=${s} now=${Date.now()} kind=${kind} />`}
       <section aria-labelledby="wl-h"><h3 id="wl-h" class="lbl">운영시간</h3>
         ${m.week ? html`<dl class="wl-week">${m.week.map((r, i) => html`<dt key=${'d' + i}>${r.days}</dt><dd key=${'t' + i}>${r.text}</dd>`)}</dl>` : html`<${Note}>운영시간 정보가 없어요<//>`}</section>
       ${m.fee && html`<section aria-labelledby="wl-f"><h3 id="wl-f" class="lbl">요금</h3><p>${m.fee}</p></section>`}

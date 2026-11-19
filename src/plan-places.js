@@ -1,4 +1,5 @@
 // src/plan-places.js — rows for the 암장 tab (walls + natural crags lists). No DOM.
+import { cragKind } from './plan-card.js';
 import { searchPicks, shortName } from './viewmodel.js';
 import { openLabel } from './plan-wall.js';
 import { cragRow } from './crag-model.js';
@@ -32,14 +33,14 @@ export function wallRows(walls, { date, min, q = '' } = {}) {
     .sort((a, b) => a.rank - b.rank || byName(a, b));
 }
 
-/** cragRows(crags, wx, {at, now, q}) (q: case-insensitive substring of name/region; empty = all) → [{id, name, region, typeLabel, short, text, state, rank}]; wx = {daily, hourly, wet} or null. */
-export function cragRows(crags, wx, { at, now, q = '' } = {}) {
+/** cragRows(crags, wx, {at, now, q, kind}) (q: case-insensitive substring of name/region; empty = all; kind 'single'|'multi'|null = 종류 칩) → [{id, name, region, type, typeLabel, short, text, state, rank}], typeLabel = `싱글피치`/`멀티피치`(cragKind); wx = {daily, hourly, wet} or null. */
+export function cragRows(crags, wx, { at, now, q = '', kind = null } = {}) {
   const k = q.trim().toLowerCase();
   return crags
     .map((c) => {
       const r = cragRow(c, at, { now, ...(wx ?? {}) });
-      return { id: wallPageId(c), name: r.name, region: r.region, typeLabel: r.typeLabel, short: r.cond.short, text: r.cond.text, state: r.cond.state, rank: COND_ORDER[r.cond.state] ?? 4 };
+      return { id: wallPageId(c), name: r.name, region: r.region, type: c.type ?? 'single', typeLabel: cragKind(c), short: r.cond.short, text: r.cond.text, state: r.cond.state, rank: COND_ORDER[r.cond.state] ?? 4 };
     })
-    .filter((r) => !k || `${r.name} ${r.region}`.toLowerCase().includes(k))
+    .filter((r) => (!kind || r.type === kind) && (!k || `${r.name} ${r.region}`.toLowerCase().includes(k)))
     .sort((a, b) => a.rank - b.rank || byName(a, b));
 }
