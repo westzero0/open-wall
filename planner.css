@@ -270,6 +270,8 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .sel { display: flex; flex-wrap: wrap; gap: var(--pl-sp-8); }
 .p-chip, .sel button { min-height: var(--pl-tap); padding: 0 var(--pl-sp-12); border-radius: var(--pl-r-s); border: var(--pl-hair) solid var(--pl-edge); background: var(--pl-paper); color: var(--pl-ink); font-size: var(--pl-fs-sub); cursor: pointer; }
 .p-chip[aria-pressed="true"], .sel button[aria-pressed="true"] { border-color: var(--pl-ink); box-shadow: inset 0 0 0 var(--pl-hair) var(--pl-ink); font-weight: 800; }
+.sel.prt button { white-space: nowrap; } .sel.prt .x { margin-left: var(--pl-sp-4); font-weight: 700; color: var(--pl-muted); } /* 일정 만들기 동행 칩: 눌린 칩은 이름 뒤 ×로 "다시 누르면 뺀다"를 보인다 */
+.f-hd { display: flex; align-items: baseline; justify-content: space-between; gap: var(--pl-sp-8); } .f-hd .lb { margin-bottom: 0; } /* 동행 라벨 + 관리 */
 
 /* 시트 */
 .sheet { margin: 0 calc(var(--pl-pad) * -1); padding: var(--pl-sp-8) var(--pl-pad) var(--pl-sp-24); border-top: var(--pl-hair) solid var(--pl-edge); border-radius: var(--pl-r-sheet) var(--pl-r-sheet) 0 0; background: var(--pl-paper); }

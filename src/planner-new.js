@@ -2,6 +2,7 @@
 // Storage writes go through handlers (planner.js); the optional new-wall report goes through plan-report-api (never partner names).
 import { html, useState, useRef, useEffect, usePlannerState } from './planner-ui.js';
 import { Sheet, NameAdd } from './planner-sheet.js';
+import { PartnerRow } from './planner-partners.js';
 import { comingWeekend } from './trips.js';
 import { searchPlaces, resolvePlace, listChoices } from './plan-place.js';
 import { activeKinds } from './season.js';
@@ -96,6 +97,8 @@ function PlanForm({ s, plan, h }) {
   const links = !mineOpen && (searching || open); // the helper links appear only while searching or with a chip's list open
 
   const pick = (row) => { if (row.place.kind === 'name') { setMineSeed(row.place.name); return; } focusBtn.current = true; setPicked(row.place); setQuery(row.label); };
+  const [manage, setManage] = useState(false);
+  const hm = { ...h, removePartner: (id) => { h.removePartner(id); setPartnerIds((ids) => ids.filter((x) => x !== id)); if (s.db.partners.length <= 1) setManage(false); } }; // a deleted name leaves this draft too
   const togglePartner = (id) => setPartnerIds(partnerIds.includes(id) ? partnerIds.filter((x) => x !== id) : [...partnerIds, id]);
   const addPartner = (name) => {
     const id = randomId();
@@ -151,8 +154,11 @@ function PlanForm({ s, plan, h }) {
     ${hint === 'pick' && html`<${Note} id="pl-hint" role="status">목록에서 골라 주세요<//>`}
     ${mineOpen && html`<${MineForm} initName=${mineSeed} onAdd=${addMineWall} onCancel=${() => { focusIn.current = true; setMineSeed(null); }} />`}
     ${!open && links && linkRow}`}
-    <div class="f"><span class="lb">동행 (선택)</span>
-      <div class="sel">${s.db.partners.map((p) => html`<button type="button" key=${p.id} aria-pressed=${partnerIds.includes(p.id) ? 'true' : 'false'} onClick=${() => togglePartner(p.id)}>${p.name}</button>`)}</div>
+    <div class="f"><div class="f-hd"><span class="lb">동행 (선택)</span>
+      ${s.db.partners.length > 0 && html`<button type="button" class="txt" aria-expanded=${manage ? 'true' : 'false'} onClick=${() => setManage(!manage)}>${manage ? '완료' : '관리'}</button>`}</div>
+      ${manage && s.db.partners.length > 0
+        ? html`<ul class="prs">${s.db.partners.map((p) => html`<${PartnerRow} key=${p.id} p=${p} h=${hm} fail=${() => setErr(SAVE_FAIL)} />`)}</ul>`
+        : html`<div class="sel prt">${s.db.partners.map((p) => { const on = partnerIds.includes(p.id); return html`<button type="button" key=${p.id} aria-pressed=${on ? 'true' : 'false'} onClick=${() => togglePartner(p.id)}>${p.name}${on && html`<span class="x" aria-hidden="true">×</span>`}</button>`; })}</div>`}
       <${NameAdd} onAdd=${addPartner} /></div>
     ${hint === 'empty' && html`<${Note} id="pl-hint" role="status">장소를 골라 주세요<//>`}
     <p class="err" role="alert">${err}</p>

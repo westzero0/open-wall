@@ -7,7 +7,7 @@ import { randomId } from './plan-model.js';
 import { SAVE_FAIL } from './plan-sheet.js';
 
 
-function PartnerRow({ p, h, fail }) {
+export function PartnerRow({ p, h, fail }) {
   const [edit, setEdit] = useState(null); // null | text being typed
   const [armed, setArmed] = useState(false);
   const input = useRef(null);
