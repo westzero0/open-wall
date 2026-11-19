@@ -3,10 +3,10 @@
 import { html } from './planner-ui.js';
 import { Icon } from './planner-icons.js';
 
-/** Bottom tabs: 일정 / 달력. current: 'home' | 'calendar'. */
+/** Bottom tabs: 일정 / 달력 / 암장. current: 'home' | 'calendar' | 'places'. 암장 is the in-app crags/walls lists (#/crags). */
 export function TabBar({ current }) {
   const tab = (key, href, label) => html`<a key=${key} href=${href} aria-current=${current === key ? 'page' : null}>${label}</a>`;
-  return html`<nav class="p-tabs" aria-label="화면">${tab('home', '#/', '일정')}${tab('calendar', '#/calendar', '달력')}</nav>`;
+  return html`<nav class="p-tabs" aria-label="화면">${tab('home', '#/', '일정')}${tab('calendar', '#/calendar', '달력')}${tab('places', '#/crags', '암장')}</nav>`;
 }
 
 /** A text link (href) or a text button (onClick). external → new tab with noopener. */

@@ -204,7 +204,7 @@ export function createLogView({
   let extraWall = null; // a wall picked by search: it joins the chips, selected
   let opener = null;
   let editing = null; // the record the sheet is changing (its time, memo and grades), or null when it adds one
-  // 한 줄 타임라인에도 공유: off by default, only with the board on. Only the nickname and the memo are posted; the record stays here.
+  // 한 줄 게시판에도 공유: off by default, only with the board on. Only the nickname and the memo are posted; the record stays here.
   const shareRow = dlg.querySelector('.la-share');
   const whenRow = dlg.querySelector('.la-when');
   const shareOn = $('la-share');
@@ -343,7 +343,7 @@ export function createLogView({
     timeNote.textContent = !wall ? '암장을 고르면 그날 운영시간이 보여요.'
       : !open ? '날짜를 고르면 그날 운영시간이 보여요.'
         : !hasHours(wall) ? '운영시간 정보가 없어요. 시각은 골라도 돼요.'
-          : !list.length ? '이 날은 휴무예요. 시각은 골라도 돼요.'
+          : !list.length ? '이날은 휴무예요. 시각은 골라도 돼요.'
             : `운영 ${formatRanges(list)}`;
   }
   // the question shows only while crowdAsk says so (set up, a time, the last 7 days, not later than now)
@@ -567,7 +567,7 @@ export function createLogView({
   }
   /**
    * openEdit(record, from): the same sheet for a record already saved: its wall and date stay (no way to change them here), the time bar, the memo and
-   * the grades are filled in; the 혼잡도 and 한 줄 타임라인 asks belong to a new record and are left out.
+   * the grades are filled in; the 혼잡도 and 한 줄 게시판 asks belong to a new record and are left out.
    */
   function openEdit(r, from) {
     openAdd({ wall: r.wall, date: r.date, from });
@@ -676,11 +676,11 @@ export function createLogView({
       }, '♥ 추가');
     } else {
       // the 공유 box was left off (the default): the record is on this device only. With the board on, one tap more can put a line on the wall's 타임라인 too (its form asks for the nickname when there is none)
-      const toBoard = boardOn() && !share ? { label: '타임라인에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
+      const toBoard = boardOn() && !share ? { label: '게시판에도 남기기', fn: () => document.dispatchEvent(new CustomEvent('wall:open-board', { detail: { name: wall } })) } : null;
       toast(saved, () => posterShare.open({ record: res.record, from: document.querySelector(`[data-focus="poster-${res.record.id}"]`) }), '오늘의 벽', toBoard ? 5000 : 0, toBoard);
     }
     // a failed share never undoes the record: it is already saved
-    if (share) shareToBoard(share).then((r) => toast(r.ok ? '한 줄 타임라인에도 올렸어요' : `기록은 저장했어요. 타임라인에는 올리지 못했어요 — ${r.error}.`, null, '', 4000));
+    if (share) shareToBoard(share).then((r) => toast(r.ok ? '한 줄 게시판에도 올렸어요' : `기록은 저장했어요. 게시판에는 올리지 못했어요 — ${r.error}.`, null, '', 4000));
     if (level) {
       sendCrowd(wall, level, res.record.date, time).then((ok) => (ok ? panel.contains(document.activeElement) || render() : toast('기록은 저장했어요. 혼잡도는 보내지 못했어요 — 연결을 확인해 주세요.'))); // render: 혼잡도 제보 count
     }

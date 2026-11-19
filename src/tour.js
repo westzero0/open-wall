@@ -22,7 +22,9 @@ const sampleSource = () => {
 // 날씨 배지 종류(칩 모서리의 원 하나, 가장 결정에 중요한 것: 비 > 돌풍 > 구름). 예시 줄은 지금 목록에 실제로 나오는 종류를 따른다
 const WX = ['wet', 'windy', 'veil'];
 const nowBadge = () => WX.find((k) => document.querySelector(`#panel-list .row.${k}`)) ?? 'veil';
-const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && (sampleSource()?.matches(s.sample) || sampleSource()?.querySelector(s.sample))); };
+// a sample card stands in for a list row only while the list is the screen: on the map (?tab=map) those steps are skipped
+const listShown = () => !document.getElementById('panel-list')?.hidden;
+const visible = (sel) => { const s = TOUR_STEPS.find((x) => x.target === sel); return (!s?.forceSample && find(sel) !== null) || Boolean(s?.sample && listShown() && (sampleSource()?.matches(s.sample) || sampleSource()?.querySelector(s.sample))); };
 
 /** startTour({ onClose }) → boolean: false (and nothing opens) when no step has a visible target.
  *  onClose({ completed }) runs once however the tour ends; completed = 마지막 단계에서 끝내기를 눌렀다. */

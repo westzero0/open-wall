@@ -56,11 +56,23 @@ function Alternatives(props) {
   return AlternativesView({ ...props, rainOpen, onRainOpen: setRainOpen });
 }
 
-/** props: plan, v (rowView), s, now, h, onBack, onRecord(plan) (reopen a record), onAnswer(plan, 'went'|'missed') (record a past plan right here) */
-export function DetailView({ plan, v, s, now, h, onBack, onRecord, onAnswer }) {
+/** props: plan, v (rowView), s, now, h, onBack, onAnswer(plan, 'went'|'missed') → true when saved, renderRecordExtra (the record fields, opened in place) */
+// The 어디 row's opener: wall / waterfall / natural crag sheet, or null (mountain).
+export function placeOpener(v, plan, h) {
+  const r = v.resolved;
+  const ctx = { from: 'detail', planId: plan.id, date: plan.date, min: plan.min };
+  if (r.kind === 'wall' && r.wall) return () => h.openWall(wallPageId(r.wall), ctx);
+  if (r.kind === 'ice' && findIce([r.ice], wallPageId(r.ice ?? {}))) return () => h.openWall(wallPageId(r.ice), { from: 'detail', planId: plan.id, date: plan.date }); // a waterfall opens the 빙벽장 sheet (the mountain does not)
+  if (r.kind === 'crag' && r.crag) return () => h.openWall(wallPageId(r.crag), ctx);
+  return null;
+}
+
+export function DetailView({ plan, v, s, now, h, onBack, onAnswer, renderRecordExtra }) {
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
   const [armed, setArmed] = useState(false); // delete needs a second press; no modal
+  const [recKind, setRecKind] = useState(null); // 'went' | 'missed' while the record fields are open right here (no jump to home)
+  const answer = (kind) => { if (onAnswer(plan, kind)) setRecKind(kind); };
   // `‹ 일정` lives in the header (index.html #hd-back) in place of the date: show it while a detail is open, focus it on entry
   useEffect(() => {
     const b = document.getElementById('hd-back'), t = document.getElementById('today');
@@ -80,9 +92,8 @@ export function DetailView({ plan, v, s, now, h, onBack, onRecord, onAnswer }) {
   const openNote = v.live && v.resolved.kind === 'wall' && v.resolved.wall ? openLabel(v.resolved.wall, plan.date, Number.isInteger(plan.min) ? plan.min : null) : '';
   const shut = /닫힘|쉼|휴관/.test(openNote) ? openNote : ''; // 그 시간 닫힘·그날 쉼·임시 휴관만 말한다(열림은 말하지 않음)
   const [kindWord, ...regionWords] = (line || '').split(' · ');
-  const openWall = v.resolved.kind === 'wall' && v.resolved.wall ? () => h.openWall(wallPageId(v.resolved.wall), { from: 'detail', planId: plan.id, date: plan.date, min: plan.min }) : null;
   const iceSheet = v.resolved.kind === 'ice' && findIce([v.resolved.ice], wallPageId(v.resolved.ice ?? {})) ? () => h.openWall(wallPageId(v.resolved.ice), { from: 'detail', planId: plan.id, date: plan.date }) : null; // a waterfall opens the 빙벽장 sheet (the mountain does not)
-  const openAny = openWall ?? iceSheet;
+  const openAny = placeOpener(v, plan, h);
   const iceFacts = iceDetail(v.ice);
   const phrase = iceFacts ? '' : (v.level !== 'ok' || cells?.weather.dim || !v.live) && v.phrase !== cells?.weather.label ? v.phrase : ''; // not twice when the weather cell already says it (실내) or the 결빙 조건 block lists it (빙벽)
   const toAnswer = v.past && !v.recorded && !v.rest && onAnswer;
@@ -106,22 +117,23 @@ export function DetailView({ plan, v, s, now, h, onBack, onRecord, onAnswer }) {
       <p class="wx">${iceFacts.closing}</p>
       ${iceSheet && html`<${LinkButton} onClick=${iceSheet}>기온 그래프 보기 ›<//>`}
     </section>`}
-    ${cells && (quiet ? html`<${Note} ruled class="n">${quiet}<//>` : html`<${Cells} c=${cells} />`)}
+    ${cells && (quiet ? !phrase && html`<${Note} ruled class="n">${quiet}<//>` : html`<${Cells} c=${cells} />`)}
     ${crowd && html`<${Note} ruled class="n">${crowd}<//>`}
     ${v.live && place && html`<${SunCard} key=${plan.id} place=${place} resolved=${v.resolved} plan=${plan} s=${s} now=${now} kind=${v.symbol} />`}
     ${v.who.length > 0 && html`<section class="people" aria-labelledby="pp-h"><h3 id="pp-h" class="lbl">동행</h3>
       <ul>${v.who.map((n, i) => html`<li key=${i}><span class="av" aria-hidden="true">${[...n][0]}</span><b>${n}</b></li>`)}</ul></section>`}
     ${facts.length > 0 && html`<dl class="facts">${facts.map(([k, val]) => html`<dt key=${'k' + k}>${k}</dt><dd key=${'v' + k} class=${k === '메모' ? 'memo' : ''}>${val}</dd>`)}</dl>`}
     ${v.atRisk && html`<${Alternatives} plan=${plan} v=${v} s=${s} now=${now} h=${h} />`}
-    ${toAnswer && html`<section class="rec-here"><h3 class="lbl">기록하기</h3>
-      <div class="row2"><button type="button" class="btn p" onClick=${() => onAnswer(plan, 'went')}>갔다</button><button type="button" class="btn" onClick=${() => onAnswer(plan, 'missed')}>못 갔다</button></div></section>`}
+    ${(toAnswer || recKind) && onAnswer && html`<section class="rec-here"><h3 class="lbl">기록하기</h3>
+      <div class="row2"><button type="button" class="btn p" aria-pressed=${recKind === 'went' ? 'true' : 'false'} onClick=${() => answer('went')}>다녀왔어요</button><button type="button" class="btn" aria-pressed=${recKind === 'missed' ? 'true' : 'false'} onClick=${() => answer('missed')}>못 갔어요</button></div>
+      ${recKind && renderRecordExtra && renderRecordExtra(plan, { kind: recKind, resolved: v.resolved, done: () => setRecKind(null) })}</section>`}
     <div class="dacts">
       ${v.atRisk && html`<button type="button" class="btn full" onClick=${() => h.savePlan(rest(plan))}>이날은 쉬기</button>`}
       ${v.live && !v.atRisk && html`<button type="button" class="btn p full" onClick=${() => h.onCard(plan.id)}>약속 카드 공유</button>`}
       <div class="acts">
         ${v.live && v.atRisk && html`<button type="button" class="txt" onClick=${() => h.onCard(plan.id)}>약속 카드 공유</button>`}
-        ${v.recorded && onRecord && html`<button type="button" class="txt" onClick=${() => onRecord(plan)}>기록 고치기</button>`}
-        <button type="button" class="txt" onClick=${() => h.onEdit(plan.id)}>${v.rest ? '다시 일정 잡기' : '편집'}</button>
+        ${v.recorded && onAnswer && !recKind && html`<button type="button" class="txt" onClick=${() => setRecKind(plan.status === '갔다' ? 'went' : 'missed')}>기록 고치기</button>`}
+        <button type="button" class="txt" onClick=${() => h.onEdit(plan.id)}>${v.rest ? '다시 일정 잡기' : '일정 고치기'}</button>
         <button type="button" class=${'txt del' + (armed ? '' : ' weak')} onBlur=${() => setArmed(false)} onClick=${() => (armed ? h.removePlan(plan.id) : setArmed(true))}>${armed ? '한 번 더 누르면 지워요' : '삭제'}</button>
       </div>
     </div>

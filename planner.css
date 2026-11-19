@@ -36,10 +36,12 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .txt.weak, .p-link.weak, .more { font-weight: 400; color: var(--pl-muted); }
 .row2 { display: flex; gap: var(--pl-sp-8); }
 .row2 > * { flex: 1; }
+.imp .btn { white-space: nowrap; } /* 피치 기록 가져오기: 버튼 라벨은 한 줄 */
 /* 굵은 윗선은 한 화면에 한 번까지(빈 상태 첫 요소, 이름만 쓰기 첫 줄) */
 .empty { padding: 0 0 var(--pl-sp-24); margin-top: var(--pl-sp-16); } /* 주간 스트립 아래 굵은 선 없음: 스트립은 가장자리까지 블리드라 안쪽 폭의 선과 어긋나 보였다. 굵은 선은 탭바 활성 표시 한 곳 */
 .empty .k { font-size: var(--pl-fs-small); font-weight: 700; color: var(--pl-muted); }
 .empty h2 { font-size: var(--pl-fs-title); line-height: var(--pl-lh-tight); }
+.empty h2 + .btn { margin-top: var(--pl-sp-16); } /* 보조 문장이 없을 때 제목과 버튼이 붙지 않게 */
 .pk { display: block; width: 100%; height: auto; }
 .pk.end { width: calc(var(--pl-peak-w) * 1.2); margin: var(--pl-sp-48) 0 0 auto; }
 
@@ -50,8 +52,8 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .dy button { display: block; width: 100%; min-height: var(--pl-tap); padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; } /* 날짜 칸 = 누르는 단추(필터) */
 .dy button[aria-pressed="true"] { color: var(--pl-ink); }
 .dy button[aria-pressed="true"] i { box-shadow: 0 0 0 var(--pl-ring) var(--pl-paper), 0 0 0 calc(var(--pl-ring) * 2) var(--pl-ink); font-weight: 800; } /* 고른 날: 숫자 둘레 이중 테두리(종이색 틈 + 먹선, 3:1 이상) */
-.pick { display: flex; align-items: center; justify-content: space-between; gap: var(--pl-sp-8); font-size: var(--pl-fs-sub); font-weight: 700; }
-.pick:empty { display: none; }
+.day-pick { display: flex; align-items: center; justify-content: space-between; gap: var(--pl-sp-8); font-size: var(--pl-fs-sub); font-weight: 700; }
+.day-pick:empty { display: none; }
 .dy.t i { background: var(--pl-today); color: var(--pl-on-today); font-weight: 800; }
 .dy u { display: block; width: var(--pl-sp-4); height: var(--pl-sp-4); margin: 0 auto; border-radius: var(--pl-r-pill); }
 .dy u.has { background: var(--pl-ink); }
@@ -250,6 +252,8 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .step b { min-width: 2ch; text-align: center; font-size: var(--pl-fs-title); font-weight: 300; }
 .sq { width: var(--pl-tap); height: var(--pl-tap); border-radius: var(--pl-r-s); border: var(--pl-hair) solid var(--pl-edge); background: var(--pl-paper); font-size: var(--pl-fs-title); line-height: 1; cursor: pointer; }
 .in-t { width: 100%; min-height: var(--pl-tap); padding: var(--pl-sp-8) var(--pl-sp-12); border: var(--pl-hair) solid var(--pl-edge); border-radius: var(--pl-r-s); background: var(--pl-paper); resize: vertical; }
+.places .in-t { margin-top: var(--pl-sp-8); }
+.places .sel button { white-space: nowrap; }
 .in-t::placeholder { color: var(--pl-muted); }
 /* 선택 버튼: 입력 컨트롤이라 허용된 예외(2px 반경, 테두리) */
 .sel { display: flex; flex-wrap: wrap; gap: var(--pl-sp-8); }
@@ -294,7 +298,7 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 #app:focus { outline: none; }
 .sheet .row2.foot { position: sticky; bottom: calc(var(--pl-sp-24) * -1); z-index: 1; padding: var(--pl-sp-12) 0 var(--pl-sp-24); background: var(--pl-paper); } /* 시트 아래 여백까지 덮어 글자가 비치지 않게 */
 .picks { max-height: calc(var(--pl-tap) * 4); overflow-y: auto; }
-.sel.kinds { margin-top: var(--pl-sp-8); } .sel.kinds button { white-space: nowrap; } /* 일정 만들기: 시즌에 맞는 분류 칩(외벽·자연암장·빙벽장) */ .picks.list { max-height: calc(var(--pl-tap) * 7.5); } /* 칩으로 연 전체 목록: 행(약 78px)이 4개 남짓 보이고 다음 행이 잘려 스크롤 단서가 된다 */
+.sel.kinds { margin-top: var(--pl-sp-8); } .sel.kinds button { white-space: nowrap; } /* 일정 만들기: 시즌에 맞는 분류 칩(외벽·자연암장·빙벽장) */ .picks.list { max-height: none; overflow-y: visible; } /* 칩으로 연 전체 목록: 시트 스크롤 하나로 내려 본다(2026-11-18 검수 P3: 시트 안 작은 상자가 이중 스크롤). 하나를 고르면 목록이 닫혀 아래 칸이 다시 올라온다 */
 /* 안내 한 줄: 14px 보조색, 구분이 필요한 곳만 위쪽 가는 선 */
 .p-note { margin: 0; padding: var(--pl-sp-12) 0; color: var(--pl-muted); font-size: var(--pl-fs-sub); }
 .p-note.ruled { margin-top: var(--pl-sp-12); border-top: var(--pl-hair) solid var(--pl-line); }

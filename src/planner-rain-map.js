@@ -90,7 +90,7 @@ export function RainMapView({ plan, v, s, now, h, open, onOpen, onClose, mode = 
     <div class="rm">
       ${view.far && html`<p class="note rm-far">${view.far}</p>`}
       ${view.kind === 'loading' && html`<p class="rm-state" role="status">${LOADING}</p>`}
-      ${view.kind === 'failed' && html`<p class="rm-state" role="status">예보를 불러오지 못했어요</p>
+      ${view.kind === 'failed' && html`<p class="rm-state" role="status">날씨를 불러오지 못했어요</p>
         <button type="button" class="p-link rm-retry" onClick=${() => h.loadRainMap()}>다시 받기</button>`}
       ${showMap && html`<div class="rm-modes" role="group" aria-label="지도에 보일 값">${MODES.map(([k, label]) => html`<button type="button" class="rm-mode" key=${k} aria-pressed=${mode === k} onClick=${() => onMode(k)}>${label}</button>`)}</div>`}
       ${showMap && html`<${RainMap} regions=${regions} allRain=${view.kind === 'all-rain'} mode=${mode} onPin=${(i) => { onOpen(i); }} />`}
@@ -111,9 +111,22 @@ export function RainMapSheet({ plan, v, s, now, h, onClose }) {
   const [open, setOpen] = useState(null);
   const [mode, setMode] = useState('dry');
   useEffect(() => { h.loadRainMap(); }, []);
+  // no address of its own: opening pushes a same-URL history entry so 뒤로 closes this sheet, not the plan (planner.js openSheet does the same for the flag sheets)
+  const mark = useRef(0);
+  useEffect(() => {
+    mark.current = Date.now();
+    history.pushState({ sheet: mark.current }, '');
+    const pop = () => { if (mark.current && history.state?.sheet !== mark.current) { mark.current = 0; onClose(); } };
+    addEventListener('popstate', pop);
+    return () => removeEventListener('popstate', pop);
+  }, []);
+  const close = () => { // ✕ / Esc / 바꾸기: drop the entry we pushed
+    if (mark.current && history.state?.sheet === mark.current) { mark.current = 0; history.back(); }
+    onClose();
+  };
   const toggle = (i) => {
     setOpen(i);
     if (i != null) requestAnimationFrame(() => document.getElementById(`rm-r-${i}`)?.scrollIntoView?.({ block: 'nearest' }));
   };
-  return RainMapView({ plan, v, s, now, h, open, onOpen: toggle, onClose, mode, onMode: setMode });
+  return RainMapView({ plan, v, s, now, h, open, onOpen: toggle, onClose: close, mode, onMode: setMode });
 }

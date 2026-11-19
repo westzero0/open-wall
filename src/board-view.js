@@ -1,4 +1,4 @@
-// src/board-view.js — 한 줄 타임라인: the latest posts on the wall card (preview) or all of them on the board page (full), a one-line form, 신고.
+// src/board-view.js — 한 줄 게시판: the latest posts on the wall card (preview) or all of them on the board page (full), a one-line form, 신고.
 // One state per wall (boardState) feeds both views, so a post written in one shows in the other and nothing is fetched twice.
 // DOM via el()/textContent only. The pure helpers and the state are unit-tested; boardBox is the only DOM part. No config.boardUrl = no box, no request.
 import { el } from './dom.js';
@@ -71,7 +71,7 @@ const rememberMine = (id, token) => { if (token) { getMine()[id] = token; saveMi
 const forgetMine = (id) => { delete getMine()[id]; saveMine(); };
 
 /**
- * 기록 저장 시트의 "한 줄 타임라인에도 공유": planShare({wall, nick, memo, lastTs, now}) → { ok, post } | { ok:false, error }.
+ * 기록 저장 시트의 "한 줄 게시판에도 공유": planShare({wall, nick, memo, lastTs, now}) → { ok, post } | { ok:false, error }.
  * Only the cleaned nickname and memo go out (validatePost); the record itself never does. Same 20 s cooldown as the board form.
  */
 export function planShare({ wall, nick, memo, lastTs, now }) {
@@ -100,7 +100,7 @@ export async function shareToBoard({ wall, nick, memo }) {
     boardState(wall).notify();
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err.code === 'bad_request' ? '타임라인이 받지 않았어요' : '연결을 확인해 주세요' };
+    return { ok: false, error: err.code === 'bad_request' ? '게시판이 받지 않았어요' : '연결을 확인해 주세요' };
   }
 }
 
@@ -201,7 +201,7 @@ export const boardState = (wallName) => states.get(wallName) || states.set(wallN
 
 const boxes = new Map(); // one view per wall and mode: re-renders of an open card reuse it instead of building again
 /**
- * The 한 줄 타임라인 of a wall, or null when the board is off.
+ * The 한 줄 게시판 of a wall, or null when the board is off.
  * mode 'preview' (default): the latest PREVIEW posts and a 전체 글 보기 button (calls onOpenAll(button)); 'full': every post, 더 보기.
  */
 export function boardBox(wallName, { mode = 'preview', onOpenAll } = {}) {
@@ -273,7 +273,7 @@ function build(wallName, mode, onOpenAll) {
     return form;
   }
   const mainForm = makeForm(null, status);
-  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 타임라인' }, mode === 'full' ? el('header', { class: 'bd-hero' }, el('i', { class: 'bd-sun' }), el('i', { class: 'bd-slab' }), el('h3', {}, '한 줄 타임라인'), el('p', {}, '오늘 이 벽에서 있었던 일, 한 줄로')) : el('h4', { class: 'bd-title' }, '한 줄 타임라인'), list, status, retryBtn, moreBtn, allBtn, mainForm);
+  const box = el('section', { class: `bd-box bd-${mode}`, tabindex: '-1', 'aria-label': '한 줄 게시판' }, mode === 'full' ? el('header', { class: 'bd-hero' }, el('i', { class: 'bd-sun' }), el('i', { class: 'bd-slab' }), el('h3', {}, '한 줄 게시판'), el('p', {}, '오늘 이 벽에서 있었던 일, 한 줄로')) : el('h4', { class: 'bd-title' }, '한 줄 게시판'), list, status, retryBtn, moreBtn, allBtn, mainForm);
 
   /** the author's own button: 삭제, then 정말 삭제 (press again within 4 s), then gone. `parent`: this is a reply under it. */
   function deleteButton(id, token, parent) {
@@ -385,6 +385,7 @@ function build(wallName, mode, onOpenAll) {
     allBtn.hidden = mode !== 'preview' || !showAll(s.total, s.posts.length);
     allBtn.textContent = allLabel(s.total);
     retryBtn.hidden = !(s.failed && !s.posts.length);
+    mainForm.hidden = s.failed && !s.posts.length; // nothing loaded: 다시 시도 is the one thing to press (a post could not be sent either)
     if (s.failed) say('지금은 불러올 수 없어요');
     else if (s.loaded && !s.posts.length) say('아직 글이 없어요. 오늘 본 한 줄만 남겨 보세요.');
     else say('');

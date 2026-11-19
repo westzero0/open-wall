@@ -7,9 +7,9 @@ export const SWIPE_CLOSE_PX = 80;
 export const swipeShouldClose = (dy) => dy >= SWIPE_CLOSE_PX;
 
 /** Modal <dialog>: Esc and unmount both close it natively (so focus returns to the opener). onClose runs only for a user close.
- *  Header = title left, ONE icon right: ✓ 저장 when onSave is given (the bottom 저장 button runs the same onSave), else X 닫기.
- *  A save sheet has no cancel button: Esc, a tap on the backdrop and a downward drag of the grab/header row (>= SWIPE_CLOSE_PX) close it without saving (no confirm modal). */
-export function Sheet({ title, onClose, onSave, saveDisabled = false, keepOnBackdrop = false, children }) {
+ *  Header = title left, X 닫기 right on every sheet (2026-11-18: the ✓ 저장 icon sat where the other sheets have X). A save sheet saves with its bottom 저장 button only.
+ *  X, Esc, a tap on the backdrop and a downward drag of the grab/header row (>= SWIPE_CLOSE_PX) close it without saving (no confirm modal). */
+export function Sheet({ title, onClose, keepOnBackdrop = false, children }) {
   const ref = useRef(null);
   const gone = useRef(false);
   useEffect(() => {
@@ -39,8 +39,7 @@ export function Sheet({ title, onClose, onSave, saveDisabled = false, keepOnBack
   return html`<dialog ref=${ref} class="sheet" aria-labelledby="sheet-h" onClose=${() => { if (!gone.current) onClose(); }} onClick=${away}>
     <div class="grab" aria-hidden="true" ...${grip}></div>
     <div class="sh-head" ...${grip}><h2 id="sheet-h" tabindex="-1">${title}</h2>
-      ${onSave ? html`<button type="button" class="p-ic" aria-label="저장" disabled=${saveDisabled} onClick=${onSave}><${Icon} name="check" /></button>`
-        : html`<button type="button" class="p-ic" aria-label="닫기" onClick=${() => ref.current?.close()}><${Icon} name="x" /></button>`}</div>
+      <button type="button" class="p-ic" aria-label="닫기" onClick=${() => ref.current?.close()}><${Icon} name="x" /></button></div>
     ${children}</dialog>`;
 }
 
@@ -53,7 +52,7 @@ export function NameAdd({ onAdd }) {
   const was = useRef(false);
   useEffect(() => { if (open) input.current?.focus(); else if (was.current) opener.current?.focus(); was.current = open; }, [open]);
   const add = () => { const n = name.trim(); if (!n) return; onAdd(n); setName(''); setOpen(false); };
-  if (!open) return html`<button type="button" class="txt nm-open" ref=${opener} onClick=${() => setOpen(true)}>＋ 새 이름</button>`;
+  if (!open) return html`<button type="button" class="txt nm-open" ref=${opener} onClick=${() => setOpen(true)}>＋ 같이 갈 사람 추가</button>`;
   return html`<div class="nm"><input class="in-t" aria-label="새 이름" maxlength="12" value=${name} ref=${input}
     onInput=${(e) => setName(e.target.value)} onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
     <button type="button" class="btn p" disabled=${!name.trim()} onClick=${add}>추가</button></div>`;

@@ -1,5 +1,5 @@
 // src/wall-sheet-model.js — what the wall sheet (src/wall-sheet.js) holds: its bottom tabs and the sections of the 시간 and 이용 tabs. No DOM.
-// `avail` says which blocks the page could draw for this wall: { hours, fees, sun, board } (board: the one-line board is on, or the wall has reviews).
+// `avail` says which blocks the page could draw for this wall: { hours, fees, sun, board, specsAsk } (board: the one-line board is on, or the wall has reviews; specsAsk: a 알려 주기 row for 높이 · 전화 · 공지 keeps 외벽 제원 even with no facts).
 // 시간 = when (the hours table and, with sun math, the seasonal sun on the same axis); 이용 = what and how (시설, 요금, 주차).
 
 // the report kinds each tab offers, so 정보 제보 lists only what that tab shows (a tab not listed offers all)
@@ -30,14 +30,14 @@ export function sheetModel(m, avail) {
     sun: false,
     specs: false,
     fees: !avail.fees,
-    // 주차 is an answer unless it is 확인 필요 with nothing else known (no fee, nearby lots, advice or own lot)
-    parking: m.parking.word === '확인 필요' && !m.parkingMore.length && !m.parkingWhere.onsite.length,
+    // 주차 is an answer unless it is 정보는 아직 몰라요 with nothing else known (no fee, nearby lots, advice or own lot)
+    parking: m.parking.word === '정보는 아직 몰라요' && !m.parkingMore.length && !m.parkingWhere.onsite.length,
   };
   const withEmpty = (s) => ({ ...s, empty: empty[s.key] });
   return {
-    tabs: [{ key: 'time', label: '시간' }, { key: 'use', label: '이용' }, { key: 'routes', label: '루트' }, ...(avail.board ? [{ key: 'board', label: '타임라인' }] : [])],
+    tabs: [{ key: 'time', label: '시간' }, { key: 'use', label: '이용' }, { key: 'routes', label: '루트' }, ...(avail.board ? [{ key: 'board', label: '게시판' }] : [])],
     time: TIME.filter((s) => s.key !== 'sun' || avail.sun).map(withEmpty),
-    use: USE.filter((s) => s.key !== 'specs' || m.specs?.length || m.facilityFacts?.length || m.facilityRest?.length || m.amenities?.length).map(withEmpty),
+    use: USE.filter((s) => s.key !== 'specs' || avail.specsAsk || m.specs?.length || m.facilityFacts?.length || m.facilityRest?.length || m.amenities?.length).map(withEmpty),
     checked: m.checked,
   };
 }

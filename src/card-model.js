@@ -142,7 +142,7 @@ const PARKING_TEXT = {
   none: ['주차 불가', 'warn'],
 };
 function parkingLabel(parking) {
-  const [text, tone] = PARKING_TEXT[parking?.status] ?? ['주차 확인 필요', 'muted'];
+  const [text, tone] = PARKING_TEXT[parking?.status] ?? ['주차 정보는 아직 몰라요', 'muted'];
   return { text, word: text.replace(/^주차 /, ''), tone, note: parking?.note ?? '', ...(parking?.fee ? { fee: parking.fee } : {}) };
 }
 // Parking names from the note ("외벽 앞 · 롯데몰 · 공영주차장").
@@ -488,7 +488,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   const mine = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
   const ask = r.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${r.m}m 이상`;
   const own = !mine ? null : mine >= r.need ? { text: `내 ${mine}m 충분`, tone: 'ok' } : { text: `내 ${mine}m 부족`, tone: 'short' };
-  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : `높이×2+${ROPE_MARGIN_M}m 기준 · 참고용` };
+  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : (Number.isFinite(heightM) ? `벽 높이 ${heightM}m 기준 · 참고용` : '벽 높이 기준 · 참고용') };
 }
 
 // ---- chips: the card's one line under the photo ----
@@ -557,7 +557,7 @@ export function agoText(last, now = Date.now()) {
   return `${Math.floor(min / 1440)}일 전`;
 }
 
-/** The words for a wall's 한 줄 타임라인 ({ kind: 'has' | 'new' | 'none', n, last } from board-summary.js), one set for the pill and the 게시판 row.
+/** The words for a wall's 한 줄 게시판 ({ kind: 'has' | 'new' | 'none', n, last } from board-summary.js), one set for the pill and the 게시판 row.
  *  A new post says when ("5분 전 새 글"); a blog review (`blog`: the card model's blog, the row passes it) is told beside the posts; nothing yet is an invitation ("새 글 쓰기").
  *  { kind, lead, fresh (the pill bolds 새 글 after the lead), text, label (for screen readers) } or null without a summary. */
 export function boardText(board, name = '', { blog = null, now = Date.now() } = {}) {
@@ -565,15 +565,15 @@ export function boardText(board, name = '', { blog = null, now = Date.now() } = 
   const reviews = blog ? '블로그 후기' : null;
   if (board.kind === 'new') {
     const lead = agoText(board.last, now);
-    return { kind: 'new', lead, fresh: true, text: `${lead} 새 글`, label: `${name} 한 줄 타임라인 ${countLabel(board.n)}개, ${lead} 새 글 있음` };
+    return { kind: 'new', lead, fresh: true, text: `${lead} 새 글`, label: `${name} 한 줄 게시판 ${countLabel(board.n)}개, ${lead} 새 글 있음` };
   }
   if (board.kind === 'none') {
-    const text = reviews ? `${reviews} ${blog.posts.length}개 · 타임라인에서 보기` : '새 글 쓰기'; // the row opens the timeline sheet, where the reviews are: say so
-    return { kind: 'none', lead: text, fresh: false, text, label: `${name} 한 줄 타임라인, ${reviews ? `${text}, 새 글 쓰기` : '새 글 쓰기'}` };
+    const text = reviews ? `${reviews} ${blog.posts.length}개 · 게시판에서 보기` : '새 글 쓰기'; // the row opens the timeline sheet, where the reviews are: say so
+    return { kind: 'none', lead: text, fresh: false, text, label: `${name} 한 줄 게시판, ${reviews ? `${text}, 새 글 쓰기` : '새 글 쓰기'}` };
   }
-  const lead = `타임라인 ${countLabel(board.n)}`;
+  const lead = `게시판 ${countLabel(board.n)}`;
   const text = reviews ? `${lead} · ${reviews}` : lead;
-  return { kind: 'has', lead, fresh: false, text, label: `${name} 한 줄 타임라인 ${countLabel(board.n)}개${reviews ? `, ${reviews} 있음` : ''}` };
+  return { kind: 'has', lead, fresh: false, text, label: `${name} 한 줄 게시판 ${countLabel(board.n)}개${reviews ? `, ${reviews} 있음` : ''}` };
 }
 
 // ---- the card's 휴무안내 line and the 운영 · 이용 rows ----

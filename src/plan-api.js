@@ -7,6 +7,7 @@ import { getJson } from './remote.js';
 import { config } from './config.js';
 import { WALL_ID_RE } from './store.js';
 import { cleanSent } from './crowd.js';
+import { parseRecord, planImport, planFromRecord, linkPatch } from './record-import.js';
 
 export const PLAN_KEY = 'open-wall:planner:v1';
 
@@ -68,6 +69,38 @@ export function adoptAndSave(storage, cragId, routes, inCrag, opts) {
   const db = loadAll(storage, opts);
   const next = adoptRoutes(db, { cragId, routes, inCrag });
   return { saved: next !== db && saveDb(storage, next, opts).ok };
+}
+
+export const MAX_IMPORT = 200;
+/**
+ * 피치 기록 가져오기 (spec 2026-11-18-record-format §6): file texts → new past plans / links, one write.
+ * places: { walls, crags, ice, aliases } from the planner state. opts.dryRun: count only. Files past MAX_IMPORT count as bad.
+ * → { ok, created, linked, statusChanged, same, bad, latestId } (latestId: the newest created plan, or null)
+ */
+export function importRecords(storage, texts, places, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const list = Array.isArray(texts) ? texts : [];
+  const parsed = list.slice(0, MAX_IMPORT).map(parseRecord);
+  const recs = parsed.filter((r) => r.ok).map((r) => r.rec);
+  const bad = parsed.length - recs.length + Math.max(0, list.length - MAX_IMPORT);
+  const state = loadAll(storage, opts);
+  const plan = planImport(recs, state.plans, places);
+  const counts = { created: plan.create.length, linked: plan.link.length, statusChanged: plan.link.filter((l) => l.statusChanged).length, same: plan.same.length, bad };
+  if (opts.dryRun || (!plan.create.length && !plan.link.length)) return { ok: true, ...counts, latestId: null };
+  const authorId = deviceId(storage);
+  for (const l of plan.link) {
+    const i = state.plans.findIndex((p) => p.id === l.planId);
+    const c = cleanPlan({ ...linkPatch(state.plans[i], l.rec), updatedAt: now }, opts);
+    if (c) state.plans[i] = c;
+  }
+  let latest = null;
+  for (const { rec, placeId } of plan.create) {
+    const c = cleanPlan(planFromRecord(rec, placeId, { id: randomId(), authorId, now }), opts);
+    if (!c) continue;
+    state.plans.push(c);
+    if (!latest || c.date > latest.date) latest = c;
+  }
+  return { ...write(storage, state), ...counts, latestId: latest?.id ?? null };
 }
 
 export function saveSettings(storage, patch) {

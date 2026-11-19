@@ -46,7 +46,7 @@ export function sunHeadOf(d, verdict, at, isNow) {
   const day = d.dayLabel === '오늘' ? '' : `${d.dayLabel} `;
   const time = fmtMin(at.getHours() * 60 + at.getMinutes());
   const key = verdict
-    ? (verdict.on.length ? { k: `${day}운영 중 양달`, ranges: verdict.on.map((w) => formatRanges([w])) } : { text: `${day}${verdict.text}` })
+    ? (verdict.on.length ? { k: `${day}운영 중 양달 구간`, ranges: verdict.on.map((w) => formatRanges([w])) } : { text: `${day}${verdict.text}` })
     : d.windows.length ? { k: `${day}양달`, ranges: d.windows.map((w) => formatRanges([w])) } : { text: `${day}하루 종일 응달` };
   return { chip: `${time} ${isNow ? '현재' : '기준'} ${d.lit ? '양달' : '응달'}`, tone: d.lit ? 'lit' : 'dark', key };
 }

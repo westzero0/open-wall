@@ -93,7 +93,9 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
 
   // 전국 비 예보 지도: every natural crag with a position, asked once per list (its own storage key, so the nearby copy is never overwritten). Only the sheet calls this.
   let rainKey = '';
-  async function loadRainMap() {
+  let rainBusy = null; // one request at a time: sync and the one-shot subscriber can both ask in the same tick
+  function loadRainMap() {
+    return rainBusy ??= (async () => {
     const crags = mapPlaces(state.crags, null, { kind: 'crag' });
     const key = crags.map((c) => c.name).sort().join('|');
     if (key && key === rainKey && state.rainWx) return state.rainWx;
@@ -104,6 +106,7 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
       update({ rainWx: { crag: r }, rainLoaded: true });
     } catch { update({ rainLoaded: true }); /* keep the old copy; the sheet says it could not load */ }
     return state.rainWx;
+    })().finally(() => { rainBusy = null; });
   }
 
   async function boot() {

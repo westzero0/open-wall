@@ -1,4 +1,4 @@
-// src/board-api.js — fetch adapter for the 한 줄 타임라인 Worker (worker/API.md). Empty url = feature off: no request is ever made.
+// src/board-api.js — fetch adapter for the 한 줄 게시판 Worker (worker/API.md). Empty url = feature off: no request is ever made.
 import { PAGE, parseBoard, parseReplies, parseToken, parseTotal } from './board.js';
 import { createCaller, fail } from './worker-call.js';
 

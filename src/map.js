@@ -36,6 +36,7 @@ export function createMap(container, { onSelect, onError = () => {}, onOk = () =
   if (!L) throw new Error('Leaflet not loaded');
   const map = L.map(container, { scrollWheelZoom: false }).setView(SEOUL, 10);
   map.attributionControl.setPosition('topright'); // the selected card covers the foot; the credit stays visible
+  map.attributionControl.setPrefix(false); // the OSM credit alone fits one line at 375px; "Leaflet |" made it two over the top pins (the library is credited in 앱 정보)
   let tilesOk = false;
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,

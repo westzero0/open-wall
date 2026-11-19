@@ -9,7 +9,7 @@ const TONE = { free: 'good', paid: 'good', roadside: 'warn' };
 function parkOf(p) {
   const kind = ['paid', 'free', 'roadside'].includes(p?.kind) ? p.kind : null;
   const paid = kind === 'paid' || (!kind && p?.fee);
-  const chip = CHIP[kind] ?? (paid ? '유료 · 요금' : p?.status === 'none' ? '주차 불가' : '주차 확인 필요'); // kind wins; the old status word stays when there is no kind
+  const chip = CHIP[kind] ?? (paid ? '유료 · 요금' : p?.status === 'none' ? '주차 불가' : '주차 정보는 아직 몰라요'); // kind wins; the old status word stays when there is no kind
   const tone = TONE[kind] ?? (paid ? 'good' : p?.status === 'none' ? 'warn' : 'muted');
   return { kind, chip, tone, line: [p?.fee, p?.note].map(flat).filter(Boolean).join(' · ') };
 }

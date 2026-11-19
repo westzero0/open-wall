@@ -1,4 +1,4 @@
-// src/board-summary.js — what the card knows about a wall's 한 줄 타임라인 without opening it: how many posts and whether one is new.
+// src/board-summary.js — what the card knows about a wall's 한 줄 게시판 without opening it: how many posts and whether one is new.
 // The Worker's GET /v1/summary (worker/API.md) answers { walls: { name: { n, last } }, wallsById: { id: { n, last } } } (top-level posts only, hidden ones left out). Pure, no DOM:
 // everything read back (the response, the saved "seen" times) is untrusted and goes through parseSummary / cleanSeen.
 export const NEW_DAYS = 3;                       // a wall never opened on this device counts as new only for this long after its last post

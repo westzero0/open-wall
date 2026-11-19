@@ -137,6 +137,7 @@ export function cleanPlan(v, opts) {
     updatedAt: stamp(v.updatedAt),
     discipline: DISCIPLINES.includes(v.discipline) ? v.discipline : null,
     reservedFor: cleanReservedFor(v.reservedFor, v.date, place),
+    recordId: typeof v.recordId === 'string' && AUTHOR_RE.test(v.recordId) ? v.recordId : null, // 연결된 피치 기록(record_id), spec 2026-11-18-record-format §4
   };
 }
 

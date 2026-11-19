@@ -193,8 +193,8 @@ export function RecordExtra({ plan, kind, resolved, done, store, handlers: h }) 
     ${key === 'wall' && html`<${WallFields} rec=${rec} patch=${patch} />`}
     ${key === 'crag' && html`<${CragFields} rec=${rec} resolved=${resolved} plans=${s.db.plans} notes=${s.db.routeNotes} planId=${cur.id} h=${h} patch=${patch} onErr=${setErr} />`}
     ${key === 'ice' && html`<${IceFields} ice=${rec.ice} id=${'ri-' + cur.id} patchIce=${patchIce} />`}
-    <${TextField} id=${'rm-' + cur.id} label="메모 (선택)" value=${rec.memo} max=${MEMO_MAX} placeholder=${key === 'ice' ? '얼음 말고, 오늘 어땠는지' : '오늘 어땠는지 한 줄'} onSave=${(memo) => patch({ memo })} />
+    <${TextField} id=${'rm-' + cur.id} label="메모 (선택)" value=${rec.memo} max=${MEMO_MAX} placeholder=${key === 'ice' ? '얼음 말고, 그날 어땠는지' : '그날 어땠는지 한 줄'} onSave=${(memo) => patch({ memo })} />
     <p class="err" role="alert">${err}</p>
-    <div class="row2"><button type="button" class="btn p" onClick=${() => { if (key === 'ice') patchIce({}); done(); }}>저장</button></div>
+    <div class="row2"><button type="button" class="btn p" onClick=${() => { if (key === 'ice') patchIce({}); done(); h.flash?.('기록했어요. 지난 일정에서 볼 수 있어요'); }}>저장</button></div>
   </div>`;
 }

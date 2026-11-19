@@ -8,7 +8,7 @@ const FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSeHoY2hxvyWLwhbZPejt0UTTQ
 // crowdCsvUrl — that sheet's tab published as CSV (제보시각, 암장, 단계, 방문시각; empty hides the chip).
 // 닉네임 (docs/superpowers/specs/2026-10-08-beta-form.md): reportNickEntry — the report form's 닉네임 entry (empty: no field, nothing sent);
 // nickRequired — true while the ranking event runs; set false after it (the field stays, a report no longer needs a nickname).
-// 한 줄 타임라인 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
+// 한 줄 게시판 (docs/superpowers/specs/2026-10-09-wall-board-design.md): boardUrl — the Worker origin; empty = the feature is off, no request is made.
 // 클라이머 유형 테스트: climberTest — 켜면 내 정보 시트에 진입 행·첫 방문 카드가 생긴다(docs/superpowers/specs/2026-10-14-climber-test-design.md).
 // 운동 스케줄 비 알림: scheduleAlert — 켜면 내 정보 시트에 '운동 스케줄' 줄·홈 알림 카드·어제 기록 묻기·기록 달력 점이 생긴다(docs/superpowers/specs/2026-10-27-schedule-rain-alert-design.md). 공개 단계(stage)와 별개: 베타 이용자 요청이라 먼저 연다. 새 외부 요청은 없다.
 // 토탈클라이머: totalClimber — 켜면 기록 추가 시트에 분야 선택이, 기록 탭에 "내 클라이밍" 카드가 생긴다(docs/superpowers/specs/2026-11-03-total-climber-levels-design.md). 서버 없음(기기 안).

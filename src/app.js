@@ -72,7 +72,7 @@ import { createBoardApi } from './board-api.js';
 import { agoText, warningOf } from './closure-warning.js';
 import { createFillApi } from './fill-api.js';
 import { applyFills } from './fill-fields.js';
-import { fillSection } from './fill-view.js';
+import { fillRows } from './fill-view.js';
 import { addFillSent } from './fill-store.js';
 import { NICK_KEY, loadNick } from './report.js';
 import { createBoardNotice } from './board-summary.js';
@@ -86,7 +86,7 @@ import { loadMyGrade } from './my-grade.js';
 import { openGallery } from './gallery-view.js';
 import { closeInApp, closeInstall, entryHref, externalOpenUrl, fromKakao, howtoDue, inAppClosed, installClosed, isKakaoInApp } from './inapp.js';
 import { currentInstallMode, promptInstall } from './install.js';
-import { arriveLabel } from './home-arrive.js';
+import { arriveLabel, openStateText } from './home-arrive.js';
 
 const $ = (id) => document.getElementById(id);
 let loadFailed = false;
@@ -348,8 +348,9 @@ function card(row, at) {
   btn.removeAttribute('aria-expanded');
   btn.addEventListener('click', (e) => { e.stopPropagation(); openWallSheet(m.name, btn); }); // not the list's open / close: the header leads to the sheet too
   const { dock: actions, chips } = cardActions(m, row.wall, true); // 길찾기 · 전화 · 공유, then the chips (plain here: only 암장 정보 자세히 leads on)
+  const said = openStateText(row.status, at); // the open state in the 홈 list's own words (열림 · 22시까지), first under the name
   return el('li', { class: `row ${cls} pin-row` }, btn, heart,
-    el('div', { class: 'expand' }, el('div', { class: 'expand-in' }, actions, chips, sheetRowOf(m))));
+    el('div', { class: 'expand' }, el('div', { class: 'expand-in' }, said ? el('p', { class: `ln-v pin-state${row.status?.state === 'open' ? ' open' : ''}` }, said) : null, actions, chips, sheetRowOf(m))));
 }
 
 function safeCard(row, at) {
@@ -683,7 +684,7 @@ function timeLegend(blocks) {
   const hatch = Boolean(blocks.hours?.querySelector('.g-brk, .g-off'));
   return el('ul', { class: 'g-key ws-legend' },
     el('li', {}, el('i', { class: 'k-bar' }), '운영'),
-    sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달') : null,
+    sun ? el('li', {}, el('i', { class: 'k-sunon' }), '운영 중 양달 구간') : null,
     hatch ? el('li', {}, el('i', { class: 'k-hatch' }), '휴게·휴무') : null);
 }
 
@@ -992,13 +993,14 @@ function veilText(m, wall, at) {
   return h && skyVeils(h.c) && forecastTrusted(at, new Date()) ? `흐려서 해가 거의 안 나요 (${String(at.getHours()).padStart(2, '0')}시 예보)` : null;
 }
 // The three pieces under a wall's photo on the list card: the dock (길찾기 · 다녀왔어요), the chips, the line into the wall sheet. (The map card is the simple one: it takes only the line, sheetRowOf.)
-// 한 줄 타임라인 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
+// 한 줄 게시판 on the line into the sheet: how many posts and whether one is new (src/board-summary.js; asked from the Worker once, off without config.boardUrl)
 const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }), idOf, nameOf, storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
 // 빈칸 채우기 제보 (src/fill-view.js): off (no request) unless config.fill and boardUrl are both set
 const fillApi = fillOn() ? createFillApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }) : null;
+// the 알려 주기 rows of the wall's blank facts, each drawn where that fact would be (specsList: 높이 · 전화 · 공지, sheetParking: 위치); {} when off
 function fillPane(m, wall) {
-  if (!fillApi) return null;
-  return fillSection({ wall, onSubmit: async ({ field, value }) => {
+  if (!fillApi) return {};
+  return fillRows({ wall, onSubmit: async ({ field, value }) => {
     const { fill } = await fillApi.submit({ wall: m.name, field, value, nick: loadNick(getStr(NICK_KEY)) });
     addFillSent({ get: getStr, set: setStr }, { wall_id: fill.wall_id, field, at: Date.now() });
     if (fill.status === 'pending' || fill.status === 'confirmed') { state.walls = applyFills(state.walls, [{ ...fill, nick: fill.nick ?? '' }]); render(); }
@@ -1007,7 +1009,7 @@ function fillPane(m, wall) {
 }
 const openBoardOf = (name) => (b) => openWallSheet(name, b, { tab: 'board' });
 boardNotice?.onChange(() => document.querySelectorAll('.irow[data-board]').forEach((row) => setBoardRow(row, boardNotice.notice(row.dataset.board))));
-const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b)); // no 한 줄 타임라인 pill on the map card: 암장 정보 자세히 is its one way into the sheet
+const sheetRowOf = (m) => sheetLine(m.name, (b) => openWallSheet(m.name, b)); // no 한 줄 게시판 pill on the map card: 암장 정보 자세히 is its one way into the sheet
 const reportFrom = (name, kind, kinds) => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind, kinds } }));
 const rainComing = (m) => Boolean(m.weather?.rain || m.weather?.ahead?.some((a) => a.rain)); // raining now, or rain forecast in the hours still ahead today
 // 운영 · 이용 · 게시판: each opens its tab of the wall sheet (the tab row shows below); a value not known asks for a report instead
@@ -1084,14 +1086,15 @@ function rowDetails(m, wall, at) {
 // a section with nothing to show asks for a report instead. 양달 tab = the seasonal sun (no tab for a wall without sun math).
 // an empty section's invitation: what is missing, and how little is enough (a low bar to answer)
 const EMPTY_ASK = { hours: ['운영시간을 아직 몰라요', '전화나 공지에서 본 시간 한 줄이면 충분해요.'], fees: ['입장 요금이 아직 비어 있어요', '아는 금액 하나만 알려 주셔도 돼요.'], parking: ['주차 정보가 아직 비어 있어요', '주차장 이름이나 요금 한 줄이면 충분해요.'] };
-function sheetSection(m, s, content) {
+function sheetSection(m, s, content, extra = null) { // extra: a 알려 주기 row (fillPane) that belongs to this section, drawn after its facts or its empty box
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
-  const ask = config.reportEndpoint && s.kind && s.empty // (a computed section such as 계절별 양달 has no report kind); a filled section is reported from the tab's 제보하기
+  const ask = config.reportEndpoint && s.kind && s.empty // (a computed section such as 계절별 양달 has no report kind); a filled section is reported from the head's 알려 주기
     ? el('button', { type: 'button', class: 'ws-ask', 'aria-label': `${s.title} 알려 주기` }, '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind, kinds: TAB_KINDS[s.kind === '운영시간' ? 'time' : 'use'] } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return sheetCard(s.title, [
     s.empty ? el('div', { class: 'ws-empty' }, el('p', {}, EMPTY_ASK[s.key]?.[0] ?? '아직 정보가 없어요'), el('p', { class: 'ws-empty-sub' }, EMPTY_ASK[s.key]?.[1] ?? '아는 것 한 줄이면 충분해요.'), ask) : content,
+    extra ? el('ul', { class: 'memo-list info fill-list' }, extra) : null,
     ...(s.empty || s.dated === false ? [] : s.key === 'parking' // the parking has its own date (or none): the hours' date says nothing about it
       ? [m.parkingStale ? el('p', { class: 'ws-stale' }, '요금과 주차 정보가 바뀌었을 수 있어요 · 6개월 넘게 확인하지 못했어요') : null, m.parkingChecked ? el('p', { class: 'ws-chk end' }, shortenDates(m.parkingChecked, ymd(new Date()))) : null]
       : [el('p', { class: 'ws-chk end' }, shortenDates(m.checked, ymd(new Date())), ...(s.key === 'hours' ? holidayAsk(m, content?.querySelector?.('.hgrid')?.dataset.holNone === '1') : []))]),
@@ -1101,10 +1104,10 @@ function sheetSection(m, s, content) {
 function holidayAsk(m, none) {
   if (!none) return [];
   const wall = state.walls.find((w) => w.name === m.name);
-  if (!config.reportEndpoint || !wall) return [' · 공휴일 운영 미확인'];
+  if (!config.reportEndpoint || !wall) return [' · 공휴일에 여는지는 아직 몰라요'];
   const b = el('button', { type: 'button', class: 'ws-chk-ask' }, '공휴일 제보');
   b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: '운영시간', kinds: TAB_KINDS.time } })));
-  return [' · 공휴일 운영 미확인', whyBubble('공휴일 운영시간 알리기', '공휴일에 여는 시간을 알고 계신가요? ', b)]; // the report is a button inside the ! bubble, as on the sun card
+  return [' · 공휴일에 여는지는 아직 몰라요', whyBubble('공휴일 운영시간 알리기', '공휴일에 여는 시간을 알고 계신가요? ', b)]; // the report is a button inside the ! bubble, as on the sun card
 }
 // 루트 tab: the newest route count as bars (a chip per wall section when the count is by section), dimmed and headed 세팅 이후 분포 미확인
 // once the wall was set after it; nothing recorded: a dotted box asking for a report.
@@ -1192,7 +1195,7 @@ function boardPane(m) {
   boardNotice?.markSeen(m.name); // the board is on screen: its newest post is seen (the card's pill goes back to its plain count)
   const box = boardBox(m.name, { mode: 'full' });
   // the title sits where the other tabs' section titles do (the banner inside the board is hidden under the sheet's sky)
-  return [box && el('section', { class: 'ws-sec', 'aria-label': '한 줄 타임라인' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '한 줄 타임라인')), el('p', { class: 'ws-chk' }, '오늘 이 벽에서 있었던 일, 한 줄로'), box), blogBox(m.blog)].filter(Boolean);
+  return [box && el('section', { class: 'ws-sec', 'aria-label': '한 줄 게시판' }, el('div', { class: 'ws-sec-h' }, el('h3', {}, '한 줄 게시판')), el('p', { class: 'ws-chk' }, '오늘 이 벽에서 있었던 일, 한 줄로'), box), blogBox(m.blog)].filter(Boolean);
 }
 // the sheet's head is the sun card's sky: its tone (양달/응달/밤), the sun on its arc by the viewed time, and the chip saying which.
 // Also drawn again while the hours axis is dragged (updateWallHead), so the picture follows the time under the finger.
@@ -1205,18 +1208,23 @@ function sheetHead(wall, at, d, isNow) {
 }
 // 외벽 제원 · 시설: every row has its label, in one fixed order so the same item sits at the same place on every wall:
 // the wall's numbers (규모 · 권장 로프 · 루트 수 · 난이도), 벽 구성, 편의시설, 이용 환경, the memo lines that carry their own label (찾아가는 길 …), and last the free lines under 안내 (they differ from wall to wall)
-function specsList(m) {
+function specsList(m, fills = {}) { // fills: fillPane's rows; 높이 goes right after 규모 (or first), 전화 · 공지 at the end, where the wall's contacts would be listed
   const row = (k, v, note) => el('li', {}, el('span', k ? { class: 'mk' } : { class: 'mk', 'aria-hidden': 'true' }, k), el('span', { class: 'mv' }, tightParens(v), note ? el('small', { class: 'sp-note' }, note) : null));
   const env = m.facilityRest.filter((l) => l.group === '이용환경');
   const rest = m.facilityRest.filter((l) => l.group !== '이용환경');
   const free = rest.filter((l) => !l.label);
+  const scale = m.specs.findIndex((x) => x.k === '규모') + 1;
   const rows = [
-    ...m.specs.map((x) => row(x.k, x.v, x.note)),
+    ...m.specs.slice(0, scale).map((x) => row(x.k, x.v, x.note)),
+    fills.height_m,
+    ...m.specs.slice(scale).map((x) => row(x.k, x.v, x.note)),
     m.facilityFacts.length && row('벽 구성', m.facilityFacts.join(' · ')),
     m.amenities.length && row('편의시설', m.amenities.map((l) => l.value).join(' · ')),
     env.length && row('이용 환경', env.map((l) => l.value).join(' · ')),
     ...rest.filter((l) => l.label).map((l) => row(l.label, l.value)),
     ...free.map((l, i) => row(i ? '' : '안내', l.value)),
+    fills.phone,
+    fills.notice_url,
   ].filter(Boolean);
   return rows.length ? el('div', { class: 'ws-info' }, el('ul', { class: 'memo-list info' }, ...rows)) : el('div', { class: 'ws-info' });
 }
@@ -1268,12 +1276,22 @@ function weatherSection(wall, m, at) {
   if (noWeather(wall) || !wallPosition(wall)) { wxSheet = null; return null; }
   const body = el('div', { class: 'ws-wx' });
   const sec = sheetCard(vs.live ? '날씨 · 지금' : '날씨', [body], { attrs: { 'data-sec': 'weather' } });
+  const head = sec.querySelector('.ws-sec-h');
   const fill = () => {
     const e = wx.byWall.get(wall.name);
+    const failed = Boolean(e && !e.hours && !e.current);
+    head.hidden = failed; // a failure is one quiet line with its 다시 시도, not a titled card above the hours
+    sec.classList.toggle('ws-wx-fail', failed);
+    if (failed) {
+      const again = el('button', { type: 'button', class: 'ws-chk-ask' }, '다시 시도'); // the 공휴일 제보 word button: a 44px target on a small line
+      again.addEventListener('click', () => { wx.byWall.delete(wall.name); fill(); loadWeather(wall); body.querySelector('p')?.focus(); });
+      body.replaceChildren(el('p', { class: 'ws-chk ws-wx-none', tabindex: '-1' }, '날씨를 불러오지 못했어요 · ', again));
+      return;
+    }
     const hrs = e?.hours ? hoursAhead(e.hours, at, 6) : [];
     const box = e ? weatherBox(m, wall, at) : [];
     const hour = (a) => el('li', {}, el('span', {}, a.label), el('b', {}, `${a.t}°`), a.r >= RAIN_MM ? el('small', {}, `${a.r < 10 ? Math.round(a.r * 10) / 10 : Math.round(a.r)}mm`) : null);
-    body.replaceChildren(...(box.length || hrs.length ? [...box, hrs.length ? el('ul', { class: 'wxb-hrs ws-wx-hrs', 'aria-label': '시간별 기온·강수' }, ...hrs.map(hour)) : null] : [el('p', { class: 'ws-chk ws-wx-none' }, !e ? '날씨를 불러오는 중이에요' : !e.hours && !e.current ? '날씨를 가져오지 못했어요. 잠시 뒤 다시 열어 보세요' : '이 시각의 예보가 아직 없어요')]).filter(Boolean));
+    body.replaceChildren(...(box.length || hrs.length ? [...box, hrs.length ? el('ul', { class: 'wxb-hrs ws-wx-hrs', 'aria-label': '시간별 기온·강수' }, ...hrs.map(hour)) : null] : [el('p', { class: 'ws-chk ws-wx-none', tabindex: '-1' }, !e ? '날씨를 불러오는 중이에요' : '이 시각의 예보가 아직 없어요')]).filter(Boolean));
   };
   fill();
   wxSheet = { name: wall.name, fill };
@@ -1290,14 +1308,15 @@ function buildWallSheet(wallName) {
   const d = dialModel(wall, at, { isNow: vs.live, dayLabel: m.dayLabel });
   const hoursG = hoursGrid(wall, at);
   const blocks = { hours: hoursG, fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d, Boolean(hoursG)) };
-  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: boardOn() || Boolean(m.blog) });
+  const fills = fillPane(m, wall); // 알려 주기 rows for the blanks, placed in 외벽 제원 (높이 · 전화 · 공지) and 주차 (위치)
+  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: boardOn() || Boolean(m.blog), specsAsk: Boolean(fills.height_m || fills.phone || fills.notice_url) });
   // what the card's chips cut or only name, told whole here: the closing rule under the hours
   const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
     hours: blocks.hours && el('div', { class: 'ws-hours' }, blocks.hours, ...m.closureNotes.map((n) => kv(n.k, n.v)), blocks.sun, timeLegend(blocks)), // one card (its legend at the foot): the hours, then the seasons' sun under the same axis
     fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
-    specs: specsList(m) };
+    specs: specsList(m, fills) };
   const pos = wallPosition(wall);
   const head = { ...sheetHead(wall, at, d, vs.live), contacts: contactPills(m) };
   return {
@@ -1307,7 +1326,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? weatherSection(wall, m, at) : null, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key]), s.key === 'hours' ? tapSection(wall, at) : null]), t.key === 'use' ? fillPane(m, wall) : null), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? weatherSection(wall, m, at) : null, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key], s.key === 'parking' ? fills.location : null), s.key === 'hours' ? tapSection(wall, at) : null])), // 시간 or 이용
     }))],
   };
 }
@@ -2058,7 +2077,7 @@ function drawHomeOpen(open, total) {
   const line = (r) => {
     const sun = r.wall.venue === 'indoor' ? '실내' : r.lit === true ? '양달' : r.lit === false ? '응달' : null;
     const sub = [Number.isFinite(r.distanceKm) ? `${Math.round(r.distanceKm)}km` : null, sun].filter(Boolean).join(' · ');
-    const end = r.status?.closeAt ? `열림 · ${new Date(r.status.closeAt).getHours()}시까지` : '열림';
+    const end = openStateText(r.status, shown.at ?? new Date()) ?? '열림'; // the map card's first line says it the same way (home-arrive.js)
     const lit = r.wall.venue === 'indoor' ? 'indoor' : r.lit === true ? 'sun' : r.lit === false ? 'shade' : 'route'; // 앞 칸은 줄마다 다른 정보: 양달·응달·실내
     const b = lineRow({ lead: el('span', { class: `ln-tile ln-${lit}`, 'aria-hidden': 'true' }, icon(lit)), title: shortName(r.wall), sub: sub || null, end: el('span', { class: 'ln-end' }, el('span', { class: 'ln-v open' }, end), arrow()), data: { 'data-wall': r.wall.name } });
     b.addEventListener('click', () => openWallSheet(r.wall.name, b));
@@ -2217,6 +2236,12 @@ document.querySelector('#group-open .empty').addEventListener('click', (e) => {
 // The 목록/지도 bar sticks right under that part (--ctl-h), and --stick-h covers both.
 const controls = $('search');
 const fitSticky = () => {
+  // the phone's map fills what is left under the controls at the top of the page (style.css #map --map-top), so its pin card is on screen without scrolling
+  const top = onMap() && !$('panel-map').hidden ? `${Math.round($('map').getBoundingClientRect().top + scrollY)}px` : '';
+  if (document.documentElement.style.getPropertyValue('--map-top') !== top) {
+    document.documentElement.style.setProperty('--map-top', top);
+    if (top) mapApi?.refresh();
+  }
   if (controls.hidden) { // 기록 tab: only the tab bar sticks
     controls.classList.remove('unstuck');
     const root = document.documentElement.style;

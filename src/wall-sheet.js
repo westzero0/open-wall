@@ -9,7 +9,7 @@ import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 
 // one builder per kind of place ('wall'; a 싱글피치 crag brings its own): (name) => { head: { tone, sunT, region, chip, ok, report }, tabs: [{ key, label, icon?, pane, kinds? }], onClose?, addr?, focusBack?, reportCrag? } | null
 // pane: an element, or a function made when the tab is first shown (the board loads only then); kinds: the report kinds that tab offers (else TAB_KINDS[key])
-// addr: { param, flag } the address keys of this kind (the wall's ?wall=&info, a crag's ?crag=&<tab>); flag may be a function of the tab's key. focusBack(): the button to focus when the opener is gone. reportCrag: 제보하기 sends a crag report
+// addr: { param, flag } the address keys of this kind (the wall's ?wall=&info, a crag's ?crag=&<tab>); flag may be a function of the tab's key. focusBack(): the button to focus when the opener is gone. reportCrag: 알려 주기 sends a crag report
 const builders = {};
 let built = null; // what the open sheet was built from (its report and address keys)
 let onClose = null;
@@ -36,6 +36,7 @@ function show(n) {
     panels[n].replaceChildren(...[made].flat().filter(Boolean));
   }
   cur = n;
+  if (panels[n].scrollTop < 8) sky.classList.remove('is-compact'); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
   tabEls.forEach((t, i) => {
     t.setAttribute('aria-selected', String(i === n));
     t.tabIndex = i === n ? 0 : -1;
@@ -59,7 +60,7 @@ function make() {
   contact = el('div', { class: 'sk-contact', role: 'group', 'aria-label': '연락' }); // 전화 / 공지 …: only the ones this wall has; empty = hidden
   ok = el('button', { type: 'button', class: 'sk-ok', 'aria-label': '닫기' });
   ok.addEventListener('click', () => dlg.close());
-  rep = el('button', { type: 'button', class: 'sk-rep' }, '제보하기'); // on the name line: the report sheet opens on the kinds of the tab in view
+  rep = el('button', { type: 'button', class: 'sk-rep' }, '알려 주기'); // the one word for telling a fact (the empty sections and the blank rows say it too). On the name line: the report sheet opens on the kinds of the tab in view
   rep.addEventListener('click', () => { const k = built?.tabs[cur]?.kinds ?? TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k, ...(built.reportCrag ? { crag: true } : {}) } })); });
   plan = el('a', { class: 'sk-plan' }, '일정 잡기'); // built.plan: the planner's new-plan address for this wall, opened in this tab (a move into the planner, not an outside page); none = hidden
   sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, plan, ok),
@@ -72,6 +73,14 @@ function make() {
     const near = Math.max(0, Math.min(panels.length - 1, Math.round(p)));
     if (near !== cur) show(near); // a swipe settled on another pane
   }, { passive: true });
+  // reading down a pane folds the sky to its words (the sun picture goes) so the pane gets the room; back at its top it unfolds.
+  // A pane only a little taller than its box is left alone: folding it would bring it back to the top and unfold it again.
+  body.addEventListener('scroll', (e) => {
+    const p = e.target;
+    if (p === body || !p.classList?.contains('ws-panel')) return;
+    if (p.scrollTop < 8) sky.classList.remove('is-compact');
+    else if (p.scrollTop > 48 && p.scrollHeight - p.clientHeight > 120) sky.classList.add('is-compact');
+  }, { capture: true, passive: true });
   window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
   dlg = el('dialog', { class: 'sheet board-page wall-sheet is-wall', 'aria-labelledby': 'ws-title' },
@@ -94,8 +103,9 @@ function make() {
   document.body.append(dlg);
 }
 
-const setSky = (h) => {
-  sky.className = `sh-sky ${h?.tone ?? 'k-none'}`;
+const setSky = (h, keepFold = true) => {
+  const folded = keepFold && sky.classList.contains('is-compact'); // a drag of the hours line repaints the sky, not its fold
+  sky.className = `sh-sky ${h?.tone ?? 'k-none'}${folded ? ' is-compact' : ''}`;
   sky.style.setProperty('--sun-t', String(h?.sunT ?? 0.5));
   sub.replaceChildren(...[h?.region, h?.chip && el('span', { class: 'sk-chip' }, h.chip)].filter(Boolean));
 };
@@ -108,7 +118,7 @@ export function updateWallHead(h) {
 }
 // the head: the sun card's sky for this wall at the viewed time, the name, one line (region + 양달/응달 chip) and the ✓; the sun climbs to its place once, unless motion is reduced
 function paintHead(h) {
-  setSky(h);
+  setSky(h, false); // every open starts unfolded
   ok.replaceChildren(...(h?.ok ? [h.ok] : []));
   rep.hidden = !h?.report;
   contact.replaceChildren(...(h?.contacts ?? []));
@@ -165,8 +175,6 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
   plan.hidden = !built.plan;
   if (built.plan) plan.setAttribute('href', built.plan); else plan.removeAttribute('href');
-  rep.textContent = '제보하기'; // measured with the full word first
-  rep.textContent = title.offsetHeight > parseFloat(getComputedStyle(title).lineHeight) * 1.5 ? '제보' : '제보하기'; // a name on two lines leaves the button less room: the short word
   title.focus();
   const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
   if (sec) {

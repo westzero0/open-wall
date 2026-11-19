@@ -1,4 +1,4 @@
-// src/board.js — 한 줄 타임라인 (per-wall board): validation shared by the browser and the Worker. Pure, no DOM.
+// src/board.js — 한 줄 게시판 (per-wall board): validation shared by the browser and the Worker. Pure, no DOM.
 // Imports only clean-line.js so the Worker bundle stays small. Everything read back from the server is untrusted.
 import { cleanLine } from './clean-line.js';
 

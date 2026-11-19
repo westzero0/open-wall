@@ -58,7 +58,7 @@ export const askText = (at, now, isNow) => {
 export const planWxLine = (at, { known, rain, windy }) => {
   if (!known) return null;
   if (!rain && !windy) return `${DAY_KO[at.getDay()]}요일 비 예보 없음`;
-  const wind = windy * 2 > known ? '강풍 많음' : windy && `강풍 ${windy}곳`; // most of the open walls gusty: a count is noise
+  const wind = windy * 2 > known ? '강풍 예보 많음' : windy && `강풍 예보 ${windy}곳`; // '예보' like 비 예보: a count of open walls whose forecast hour is gusty (their list rows wear the wind badge) // most of the open walls gusty: a count is noise
   return [rain && `비 예보 ${rain}곳`, wind].filter(Boolean).join(' · ');
 };
 
@@ -258,7 +258,7 @@ export function verdictOf(open, sun, format) {
   const on = sun.flatMap(([a, b]) => open.map(([s, e]) => [Math.max(a, s), Math.min(b, e)])).filter(([s, e]) => e > s);
   if (on.length) {
     const whole = sun.every(([a, b]) => open.some(([s, e]) => a >= s && b <= e)); // every sunny stretch lies inside the hours: the times above say it all
-    return { kind: 'on', text: whole ? '양달 시간 전부 운영 중' : `운영 중 양달 ${format(on)}`, on }; // on: the sunny minutes inside the hours
+    return { kind: 'on', text: whole ? '양달 시간 전부 운영 중' : `운영 중 양달 구간 ${format(on)}`, on }; // on: the sunny minutes inside the hours
   }
   return { kind: 'none', text: '운영 중 양달 없음', on: [] };
 }

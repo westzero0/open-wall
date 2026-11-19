@@ -1,5 +1,7 @@
-// src/fill-view.js — the "채워 주세요" section of a wall's 이용 tab (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md).
-// One row per blank (좌표 · 높이 · 공지 주소 · 전화); a blank somebody already filled shows who and whether it is confirmed. DOM via el()/textContent only.
+// src/fill-view.js — 알려 주기 rows for a wall's blank facts (docs/superpowers/specs/2026-10-30-contribution-fill-in-design.md).
+// One row per blank (좌표 · 높이 · 공지 주소 · 전화), drawn where that fact would be (app.js: 높이 · 전화 · 공지 in 외벽 제원, 위치 under 주차):
+// "아직 몰라요 · 알려 주기", and a tap opens the input in that row. A blank somebody already filled shows who and whether it is confirmed.
+// The word is 알려 주기 everywhere (the sheet head, the empty sections, these rows; GLOSSARY.md). DOM via el()/textContent only.
 import { el } from './dom.js';
 import { FILL_FIELDS, cleanFillValue, isEmptyField, isNearWall } from './fill-fields.js';
 import { openPinPicker } from './pin-picker.js';
@@ -10,25 +12,38 @@ const FIELD = {
   notice_url: { label: '공지 주소', ph: 'https://…', type: 'url', mode: 'url', bad: 'http로 시작하는 주소를 적어 주세요' },
   phone: { label: '전화', ph: '예: 031-123-4567', type: 'tel', mode: 'tel', bad: '전화번호 형식을 확인해 주세요' },
 };
-const OPT = ' (선택)'; // every blank is optional: a visitor may fill just the one they know (the report sheet marks its fields the same way)
-const SAY = { rate_limited: '잠시 뒤에 다시 남겨 주세요', bad_request: '형식을 확인해 주세요' };
+const SAY = { rate_limited: '잠시 뒤에 다시 알려 주세요', bad_request: '형식을 확인해 주세요' };
+const HOW = '서로 다른 두 분이 같은 값을 알려 주면 확정돼요. 내 정보에서 닉네임을 정해 두면 채운 사람으로 이름이 남아요.';
 const stateText = (m) => (m.status === 'confirmed' ? (m.nick ? `${m.nick} 님이 채움` : '채워진 정보') : `${m.nick ? `${m.nick} ` : ''}제보 · 확인 전`);
-const doneText = (s) => (s === 'confirmed' ? '확정됐어요' : s === 'pending' ? '남겼어요 · 확인 전' : '남겼어요 · 운영자가 확인해요');
+const doneText = (s) => (s === 'confirmed' ? '확정됐어요' : s === 'pending' ? '알려 주셨어요 · 확인 전' : '알려 주셨어요 · 운영자가 확인해요');
+const line = (field, ...v) => el('li', { class: 'fill-row', 'data-field': field }, el('span', { class: 'mk' }, FIELD[field].label), el('div', { class: 'mv' }, ...v));
 
-function row(field, onSubmit, { title, start, pick }) {
+function row(field, onSubmit, { title, start, pick, told }) {
   const f = FIELD[field];
-  const input = el('input', { class: 'fill-in', type: f.type, inputmode: f.mode, placeholder: f.ph, maxlength: '500', autocomplete: 'off', 'aria-label': f.label + OPT });
-  const btn = el('button', { type: 'button', class: 'ws-ask' }, '남기기');
+  const input = el('input', { class: 'fill-in', type: f.type, inputmode: f.mode, placeholder: f.ph, maxlength: '500', autocomplete: 'off', 'aria-label': f.label });
+  const btn = el('button', { type: 'button', class: 'ws-ask' }, '보내기'); // the send button: 알려 주기 opened the row, 보내기 sends it (2026-11-19)
   const msg = el('p', { class: 'fill-msg', role: 'status', id: `fill-msg-${field}` });
   const note = el('p', { class: 'fill-note', role: 'status' });
   const pickBtn = field === 'location' ? el('button', { type: 'button', class: 'ws-ask fill-pick' }, '지도에서 고르기') : null;
-  const box = el('div', { class: 'fill-row', 'data-field': field }, el('span', { class: 'fill-k' }, f.label + OPT), el('div', { class: 'fill-form' }, input, btn), pickBtn, note, msg);
+  const close = el('button', { type: 'button', class: 'ws-chk-ask fill-close' }, '취소');
+  const how = el('p', { class: 'fill-how', hidden: '' }, HOW);
+  const form = el('div', { class: 'fill-body', hidden: '' }, el('div', { class: 'fill-form' }, input, btn, close), pickBtn, note, msg, how);
+  const open = el('button', { type: 'button', class: 'ws-chk-ask fill-open', 'aria-label': `${f.label} 알려 주기` }, '알려 주기');
+  const ask = el('p', { class: 'fill-ask' }, el('span', { class: 'fill-none' }, '아직 몰라요'), ' · ', open);
+  const mv = el('div', { class: 'mv' }, ask, form);
+  const box = el('li', { class: 'fill-row', 'data-field': field }, el('span', { class: 'mk' }, f.label), mv);
+  open.addEventListener('click', () => { // the input opens in this row; the rule (두 분이 같은 값 …) is said on the sheet's first opened row only
+    if (!told.row) told.row = box;
+    how.hidden = told.row !== box;
+    ask.hidden = true; form.hidden = false; input.focus?.();
+  });
+  close.addEventListener('click', () => { form.hidden = true; ask.hidden = false; open.focus?.(); }); // 취소: back to the one line, nothing sent
   pickBtn?.addEventListener('click', () => pick({ title, start, onPick: (p) => {
     msg.textContent = '';
     input.removeAttribute('aria-invalid');
     if (!isNearWall(start, p)) { msg.textContent = '이 암장에서 너무 멀어요. 암장 가까이에서 골라 주세요.'; input.setAttribute('aria-invalid', 'true'); return; }
     input.value = `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
-    note.textContent = '지도에서 고른 위치예요. 맞으면 남기기를 눌러 주세요.'; // nothing is sent until 남기기
+    note.textContent = '지도에서 고른 위치예요. 맞으면 보내기를 눌러 주세요.'; // nothing is sent until 보내기
   } }));
   btn.addEventListener('click', async () => {
     msg.textContent = '';
@@ -40,7 +55,7 @@ function row(field, onSubmit, { title, start, pick }) {
     try {
       const res = await onSubmit({ field, value });
       const done = el('p', { class: 'fill-done', tabindex: '-1' }, doneText(res?.status));
-      box.replaceChildren(el('span', { class: 'fill-k' }, f.label), done);
+      mv.replaceChildren(done);
       done.focus?.(); // the button that had focus is gone: keep the place for the keyboard and read the answer
     } catch (e) {
       msg.textContent = e?.code === 'bad_request' && field === 'location' ? '위치를 확인해 주세요. 암장에서 너무 멀면 올릴 수 없어요.' : (SAY[e?.code] ?? '지금은 보낼 수 없어요');
@@ -51,21 +66,16 @@ function row(field, onSubmit, { title, start, pick }) {
 }
 
 /**
- * fillSection({ wall, nick, onSubmit }) → the section, or null when the wall has no blank and nothing was filled for it.
+ * fillRows({ wall, onSubmit, pick }) → { location, height_m, notice_url, phone }: a <li class="fill-row"> for each blank field (or one somebody filled), else null.
  * wall.fillMarks ({ field: { nick, status } }, set by applyFills) marks the fields filled from a report.
- * onSubmit({ field, value }) → Promise<{ status }>; a rejection's `code` picks the one-line answer. (`nick` is the name the sender used; the app sends it.)
+ * onSubmit({ field, value }) → Promise<{ status }>; a rejection's `code` picks the one-line answer.
  */
-export function fillSection({ wall, onSubmit, pick = openPinPicker }) {
+export function fillRows({ wall, onSubmit, pick = openPinPicker }) {
   const at = wall?.location ?? wall?.sun; // where the map opens: the wall's known point (a wall without a location has its sun point)
   const start = Number.isFinite(at?.lat) && Number.isFinite(at?.lng) ? { lat: at.lat, lng: at.lng } : null;
-  const ctx = { title: wall?.short_name || wall?.name || '암장', start, pick };
+  const ctx = { title: wall?.short_name || wall?.name || '암장', start, pick, told: { row: null } }; // told: shared by this sheet's rows
   const marks = wall?.fillMarks ?? {};
-  const rows = FILL_FIELDS.flatMap((field) => (marks[field]
-    ? [el('div', { class: 'fill-row', 'data-field': field }, el('span', { class: 'fill-k' }, FIELD[field].label), el('p', { class: 'fill-state' }, stateText(marks[field])))]
-    : isEmptyField(wall, field) ? [row(field, onSubmit, ctx)] : []));
-  if (!rows.length) return null;
-  return el('section', { class: 'ws-sec fill-sec', 'aria-label': '빈칸 채우기', 'data-sec': 'fill' },
-    el('div', { class: 'ws-sec-h' }, el('h3', {}, '빈칸 채우기')),
-    el('p', { class: 'ws-empty-sub' }, '아는 칸 하나만 남겨도 돼요. 서로 다른 두 분이 같은 값을 남기면 확정되고, 내 정보에서 닉네임을 정해 두면 채운 사람으로 이름이 남아요.'),
-    ...rows);
+  return Object.fromEntries(FILL_FIELDS.map((field) => [field, marks[field]
+    ? line(field, el('p', { class: 'fill-state' }, stateText(marks[field])))
+    : isEmptyField(wall, field) ? row(field, onSubmit, ctx) : null]));
 }

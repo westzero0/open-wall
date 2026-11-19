@@ -30,7 +30,7 @@ const out = (level, phrase, far = false, reason = null) => ({ level, phrase, rea
 
 function noForecast(at, now, span) {
   const from = new Date(at.getFullYear(), at.getMonth(), at.getDate() - span);
-  if (from <= day0(now)) return '예보를 불러오지 못했어요';
+  if (from <= day0(now)) return '날씨를 불러오지 못했어요';
   return `예보는 ${p2(from.getMonth() + 1)}/${p2(from.getDate())}부터 확인돼요`;
 }
 

@@ -137,7 +137,7 @@ export function infoRow(mk, row, { opens, open, ask, text = null }) {
   return goRow(mk, text ? [text] : rangesKept(row.text), opens, (e) => open(e.currentTarget), `${mk} ${row.text ?? ''}`.trim());
 }
 
-// 게시판 row: the wall's 한 줄 타임라인 (the same words as the pill, boardText). board: the summary or null (not here yet: a plain 한 줄 타임라인);
+// 게시판 row: the wall's 한 줄 게시판 (the same words as the pill, boardText). board: the summary or null (not here yet: a plain 한 줄 게시판);
 // open(button) opens the wall sheet on its board tab. setBoardRow repaints the row when the summary arrives.
 export function boardRow(board, { name, open, blog = null }) {
   const row = goRow('게시판', [], 'board', (e) => open(e.currentTarget), null);
@@ -150,9 +150,9 @@ export function setBoardRow(row, board) {
   const blog = row.blog;
   const t = boardText(board, row.dataset.board, { blog });
   const pt = row.querySelector('.pv-t');
-  pt.textContent = t?.text ?? (blog ? `블로그 후기 ${blog.posts.length}개 · 타임라인에서 보기` : '한 줄 타임라인');
+  pt.textContent = t?.text ?? (blog ? `블로그 후기 ${blog.posts.length}개 · 게시판에서 보기` : '한 줄 게시판');
   pt.classList.toggle('is-new', t?.kind === 'new'); // only a fresh post is accent; the other values are plain
-  row.querySelector('.pv-go').setAttribute('aria-label', t?.label ?? `${row.dataset.board} 한 줄 타임라인`);
+  row.querySelector('.pv-go').setAttribute('aria-label', t?.label ?? `${row.dataset.board} 한 줄 게시판`);
 }
 
 // 휴무안내: one line under the chips, only when the card has a closing to tell (card-model `notice`). 'sure' (an admin-entered closing) is red and final;
@@ -162,7 +162,7 @@ export function noticeLine(n, { lit = false, report = null, icon = null, mk = '�
   if (!n) return null;
   const on = n.tone === 'maybe' && n.rain && lit;
   const ask = n.tone === 'maybe' && report
-    ? el('button', { type: 'button', class: 'nt-go', 'aria-label': '오늘 휴무 제보하기' }, icon ? icon('megaphone') : null, '제보하기') : null;
+    ? el('button', { type: 'button', class: 'nt-go', 'aria-label': '오늘 휴무 알려 주기' }, icon ? icon('megaphone') : null, '알려 주기') : null;
   ask?.addEventListener('click', () => report(ask));
   return el('div', { class: `irow irow-s notice ${n.tone}${on ? ' rain' : ''}`, role: 'note' }, // 2-letter label in the 3em column: the value lines up with 운영·이용·게시판
     el('span', { class: 'mk' }, mk), el('span', { class: 'nt-t' }, on ? `${n.text} · 오늘 비 예보` : n.text), ask);
@@ -193,7 +193,7 @@ export function cameraBtn(name, { more = false, icon, noun = '외벽', onPress =
 // line, the dock over its foot), so the two cards read as one frame; only the height differs (style.css .ph-hero). camera / share may be null.
 export const placeholderHero = (m, camera, share) => el('div', { class: 'ph-hero' }, heroCap(m), camera, photoTools(share));
 
-// The line into the sheet, two parts: 암장 정보 자세히 › (the › right beside the words) and, at the right end, the wall's 한 줄 타임라인 as a pill (boardPill:
+// The line into the sheet, two parts: 암장 정보 자세히 › (the › right beside the words) and, at the right end, the wall's 한 줄 게시판 as a pill (boardPill:
 // how many posts, whether one is new, or an invitation to write the first). 48px; what is in the sheet is its tabs' business. onOpen(button) opens the wall
 // sheet. board: { kind: 'has' | 'new' | 'none', n } or null (no pill: the board is off or the summary has not come); onBoard(button) opens it on its tab.
 // setBoardPill repaints the pill when the summary arrives or the board was read; `icon` draws the chat glyph.

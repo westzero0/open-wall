@@ -3,6 +3,7 @@ import { cleanPlan } from './plan-model.js';
 import { draftToPlan } from './plan-draft.js';
 import { timeText } from './plan-view.js';
 import { searchPlaces } from './plan-place.js';
+import { DAY_KO } from './time.js';
 
 /** '14:30' → 870; '' or junk → null (time is optional). */
 export function minFromTime(t) {
@@ -10,6 +11,14 @@ export function minFromTime(t) {
   return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
 }
 export const timeFromMin = timeText;
+
+/** '2026-11-21' → '토요일' (shown beside the 날짜 label: the field itself shows digits only); a cleared or junk value → ''. */
+export function dowText(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date ?? ''));
+  if (!m) return '';
+  const at = new Date(+m[1], +m[2] - 1, +m[3]);
+  return at.getMonth() === +m[2] - 1 ? `${DAY_KO[at.getDay()]}요일` : '';
+}
 
 const norm = (v) => String(v ?? '').trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase();
 

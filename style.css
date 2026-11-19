@@ -254,7 +254,7 @@ html[data-text] .scrub-days.segs { flex-wrap: nowrap; } /* 큰 글씨에서 .seg
 .scrub-ans { display: flex; align-items: center; gap: var(--sp-4); } /* ‹ the answer › : the arrows change the number beside them */
 .scrub-ans #summary { flex: 1 1 0; min-width: 0; }
 .scrub-ans .step-btn { position: relative; flex: none; width: 40px; min-height: 32px; padding: 0; display: grid; place-items: center; margin-bottom: var(--sp-12); font-size: var(--fs-sm); } /* an arrow, not a word: the slider is the control, these are its two ends; margin-bottom puts them on the sentence middle (it has 12px of room below) */
-.scrub-ans .step-btn::after { content: ""; position: absolute; inset: -2px -4px -6px; } /* the tap area stays 44px; its top edge stops at the slider (it sits over the slider's last pixels and would lose them anyway) */
+.scrub-ans .step-btn::after { content: ""; position: absolute; inset: -2px -4px -10px; } /* the tap area stays 44px (2 + 32 + 10: the 10 stays inside its 12px margin below); its top edge stops at the slider (it sits over the slider's last pixels and would lose them anyway) */
 #nowBtn { position: relative; min-height: 32px; font-size: var(--fs-sm); white-space: nowrap; }
 #nowBtn::after { content: ""; position: absolute; inset: -6px -4px; } /* the tap area stays 44px */
 .scrub-hint { margin: 0; text-align: center; padding-bottom: var(--sp-4); font-size: var(--fs-xs); font-weight: 600; color: var(--muted); pointer-events: none; } /* first visit only (scrub-hint.js), between the slider and the answer; it stays with 지금으로 too: a weekday visit starts on the planned Saturday, so 지금으로 shows from the first look */
@@ -322,7 +322,7 @@ html { scroll-padding-bottom: calc(var(--tabbar-h, 0px) + 8px); }
 #panel-map { margin-top: var(--sp-16); display: grid; gap: var(--sp-12); }
 /* the map fills what is left under the sticky controls (minus a strip of page below it, so a finger can still scroll the
    page); opening the tab scrolls it into exactly that place (app.js), so it is never half off screen while it pans */
-#map { height: calc(100vh - var(--stick-h, 0px) - var(--tabbar-h, 0px) - 40px); height: calc(100dvh - var(--stick-h, 0px) - var(--tabbar-h, 0px) - 40px); min-height: 320px; border-radius: var(--r-base); border: 1px solid var(--line); background: var(--sunken); z-index: 0; }
+#map { height: calc(100vh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px) - 40px); height: calc(100dvh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px) - 40px); min-height: 320px; /* --map-top (app.js fitSticky): where the map starts on the page, so at the top of the page the whole map and its pin card are on screen */ border-radius: var(--r-base); border: 1px solid var(--line); background: var(--sunken); z-index: 0; }
 #map .leaflet-bar a { width: var(--tap); height: var(--tap); line-height: var(--tap); font-size: var(--fs-lg); }
 #map.leaflet-container, #map .leaflet-control-attribution { font-size: var(--fs-xs); }
 html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; } /* the credit is small print: 12px, not 19px over the pins */
@@ -406,6 +406,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 #pin-card :is(.pin-row, .expand), #pin-card .row-btn:not(:active) { background: var(--surface); } /* one surface: the list's header/body tones only hide the hour grid, which the map has none of */
 #pin-card .row-btn { padding-right: calc(var(--pad) + 36px); } /* room for the close button */
 #pin-card .row-go { display: none; }
+#pin-card .pin-state { margin: 0 0 var(--sp-8); white-space: normal; } /* 열림 · 22시까지: the 홈 list's end words (.ln-v), first under the name */
 #pin-card :is(.pin-row, .row-btn, .l1, .expand, .expand-in, .dock, .chip-bar, .sheet-row) { min-width: 0; max-width: 100%; } /* a narrow card (320px, big text) shrinks its rows instead of scrolling sideways */
 /* the map card's variation of the wall card: three groups (state · actions · info), 16px between them and 8px inside; the dock is the wall card's (길찾기·전화·공유 quiet squares, 다녀왔어요 the one filled button); the line into the sheet is a full-width row under a hairline */
 #pin-card .dock { margin-top: var(--sp-2); padding: 0; } /* no side inset: the buttons start on the same line as the ♥, the chips and 암장 정보 자세히 */
@@ -453,7 +454,7 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
   @keyframes pin-in { from { opacity: 0; transform: translateY(12px); } }
 }
 /* the map credit sits top right (map.js), clear of the card */
-#map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--r-base) 0 6px; max-width: calc(100% - var(--tap) - var(--sp-24)); } /* wraps in the room right of the zoom buttons (big text made it two lines over +) */
+#map .leaflet-top.leaflet-right .leaflet-control-attribution { border-radius: 0 var(--r-base) 0 6px; white-space: nowrap; } /* one line: with the "Leaflet |" prefix gone (map.js) the OSM credit fits beside the zoom buttons at 320px; a max-width in % of its shrink-to-fit corner had folded it in two over the top pins */
 .pin-close {
   position: absolute; top: 4px; right: 4px; z-index: 4; width: 44px; height: 44px; border: 0; border-radius: var(--r-md);
   background: transparent; color: var(--muted); font-size: var(--fs-lg); line-height: 1;
@@ -1627,7 +1628,8 @@ dialog::backdrop { background: var(--scrim); }
 
 /* ---- 내 정보 (header button + sheet) ---- */
 .top .wrap { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; } /* title | 종류 스위치 | 도움말 | 안전수칙 | 내 정보 */
-.top .wrap > :not(h1):not(.mode-switch):not(.me-btn):not(.safety-btn):not(.help-btn) { grid-column: 1 / -1; }
+.top .wrap > :not(h1):not(.mode-switch):not(.to-plan):not(.me-btn):not(.safety-btn):not(.help-btn) { grid-column: 1 / -1; }
+.top .wrap > .to-plan { grid-column: 2; justify-self: end; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--sp-8); color: var(--fg); font-size: var(--fs-sm); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; } /* 일정앱으로 돌아가는 길(일정앱 하단 탭 '암장'의 짝) */
 .top .wrap > h1 { grid-column: 1; } .top .wrap > .help-btn { grid-column: 3; } .top .wrap > .safety-btn { grid-column: 4; } .top .wrap > .me-btn { grid-column: 5; }
 .help-btn { color: var(--fg); }
 .me-btn { margin-right: -10px; color: var(--fg); }
@@ -2192,7 +2194,7 @@ div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere
 .bd-rep:disabled { cursor: default; opacity: .7; }
 .bd-rp { color: var(--accent); }
 .bd-more { display: block; width: 100%; margin-top: var(--sp-8); min-height: var(--tap); border: 1px solid var(--line); font-size: var(--fs-sm); }
-.bd-more[hidden], .bd-retry[hidden] { display: none; }
+.bd-more[hidden], .bd-retry[hidden], .bd-form[hidden] { display: none; } /* a board that failed to load shows only 다시 시도: no form to type into (board-view.js) */
 /* composer: the name above (small), then one rounded bar holding the text, its counter and a round send button */
 .bd-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); margin-top: var(--sp-12); }
 .bd-row { display: flex; gap: var(--sp-8); align-items: center; }
@@ -2250,6 +2252,9 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-chk { margin: calc(var(--sp-8) * -1) 0 var(--sp-12); color: var(--muted); font-size: var(--fs-xs); }
 .ws-chk-ask { position: relative; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; } /* a word in the check-date line, not a button of its own */
 .ws-chk-ask::after { content: ""; position: absolute; inset: -14px -8px; } /* taps like 44px */
+.fill-open, .fill-close { display: inline-flex; align-items: center; min-height: var(--tap); } /* the 알려 주기 rows sit one under another: a real 44px row, so the ±14px reach above does not take the next row's taps */
+.fill-open::after, .fill-close::after { inset: 0 -8px; }
+.fill-close { padding-inline: var(--sp-12); } /* 취소 is two letters: padded out to a 44px-wide target */
 .ws-chk.end { margin: var(--sp-12) 0 0; text-align: right; } /* a section's check date: bottom right of its card */
 .ws-stale { margin: var(--sp-8) 0 0; color: var(--warn); font-size: var(--fs-xs); }
 .ws-empty { margin-top: var(--sp-8); padding: var(--sp-12); border: 1px dashed var(--line-strong); border-radius: var(--r-base); text-align: center; color: var(--muted); }
@@ -2267,14 +2272,19 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .ws-ask { min-height: var(--tap); margin-top: var(--sp-4); padding: 0 var(--sp-16); border: 1px solid var(--accent); border-radius: var(--r-base); background: none; color: var(--accent); font: inherit; font-weight: 600; white-space: nowrap; }
 .ws-info { display: grid; gap: var(--sp-8); } /* 외벽 제원 · 시설: its lists in one card */
 .ws-empty-sub { color: var(--muted); font-size: var(--fs-sm); }
-/* 빈칸 채우기 (src/fill-view.js): the rows of the 이용 tab's last section; the inputs take the report sheet's field look */
-.fill-sec .ws-empty-sub { margin: var(--sp-4) 0 0; }
-.fill-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); padding: var(--sp-12) 0 0; margin-top: var(--sp-12); border-top: 1px solid var(--line); }
-.fill-k { font-weight: 600; }
+/* 알려 주기 rows (src/fill-view.js): a memo-list row where the fact would be ("아직 몰라요 · 알려 주기"); opened, the row takes the card's full width for its input. The inputs take the report sheet's field look */
 .fill-row p { margin: 0; }
-.fill-form { display: flex; gap: var(--sp-8); align-items: center; }
+.fill-row .mv { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
+.fill-none { color: var(--muted); }
+.memo-list li.fill-row:has(> .mv > .fill-body:not([hidden])) { grid-template-columns: minmax(0, 1fr); } /* label above, the input on the whole width (320px + 큰 글씨 kept it inside) */
+.fill-list { margin-top: var(--sp-8); } /* 위치 under 주차: one row of its own */
+.fill-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
+.fill-body[hidden] { display: none; }
+.fill-how { color: var(--muted); font-size: var(--fs-sm); }
+.fill-form { display: flex; flex-wrap: wrap; gap: var(--sp-8); align-items: center; }
 .fill-form .ws-ask { margin-top: 0; }
-.fill-in { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 var(--sp-12); font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg); }
+:is(.fill-row, .ws-empty) .ws-ask { max-width: 100%; white-space: normal; } /* a long label (루트 분포 알려 주기) wraps inside its button instead of running past a 320px screen */
+.fill-in { flex: 1 1 10em; min-width: 0; min-height: var(--tap); padding: 0 var(--sp-12); font: inherit; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--fg); }
 .fill-msg { color: var(--warn); font-size: var(--fs-sm); }
 .fill-msg:empty { display: none; }
 .fill-note { color: var(--muted); font-size: var(--fs-sm); }
@@ -2297,6 +2307,11 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
 .is-wall .sh-sky { --arc: 40px; --ground: 10px; --slab-h: 52px; --d-max: 24px; position: relative; isolation: isolate; flex: none; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: var(--sp-8); min-height: 140px;
   padding: calc(var(--sp-24) + env(safe-area-inset-top)) var(--sp-8) calc(var(--ground) + var(--arc) + var(--d-max) / 2 + var(--sp-8)) var(--sp-16); /* the words stop above the sun's highest point, so the band grows with 큰 글씨 instead of colliding */
   background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
+.is-wall .sh-sky.is-compact { min-height: 0; padding-top: calc(var(--sp-12) + env(safe-area-inset-top)); padding-bottom: var(--sp-12); } /* scrolled down a pane (wall-sheet.js): the words only, the sky's tone stays */
+.is-wall .sh-sky.is-compact .sk-scene { display: none; }
+.is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } /* folded: only ✕ stays, so it fits beside the name even in big text; back at the top both return (2026-11-19) */
+html[data-text] .is-wall .sh-sky.is-compact { grid-template-columns: minmax(0, 1fr) auto; }
+html[data-text] .is-wall .sh-sky.is-compact .sk-act { grid-row: auto; margin-top: 0; }
 .is-wall .sk-txt { min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
 .is-wall .sk-txt > .sk-title { flex: 0 0 100%; } /* leaves the slab its corner of the ground */
 /* 아주 크게(또는 좁은 폰의 크게): 제보하기 · 일정 잡기 · 닫기가 이름 옆에 있으면 끊을 수 없는 이름(…인공암벽등반장)이 버튼 위로 넘친다 → 버튼 줄을 이름 위 한 줄로 */
@@ -2320,7 +2335,7 @@ html[data-text="xlarge"] .is-wall .sk-act { grid-row: 1; justify-self: end; marg
 .is-wall .sk-act { display: flex; align-items: center; gap: var(--sp-4); margin-top: calc(-1 * var(--sp-12)); }
 .is-wall .sk-rep::after { content: ""; position: absolute; inset: 0 min(0px, calc((100% - 44px) / 2)); } /* a label under 44px wide (제보) is padded out to a 44px target without moving it; one rule for the wall sheet and the 싱글피치 sheet (wall-sheet.js builds both) */
 .is-wall .sk-rep { position: relative; min-height: var(--tap); margin-block: -6px; /* 44px tall target; the 12px extra is pulled back so the name line keeps its height */ padding: 0 var(--sp-8); border: 0; border-radius: var(--r-base); background: none; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.is-wall .sk-plan { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: -6px; padding: 0 var(--sp-8); border-radius: var(--r-base); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; } /* 일정 잡기: the 제보하기 word's look on a link into the planner (wall-sheet.js) */
+.is-wall .sk-plan { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: -6px; padding: 0 var(--sp-12); border-radius: var(--r-base); background: color-mix(in srgb, currentColor 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent); text-decoration: none; color: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; } .is-wall .sk-plan:active { background: color-mix(in srgb, currentColor 26%, transparent); } /* 일정 잡기: the 제보하기 word's look on a link into the planner (wall-sheet.js) */
 .is-wall .sk-plan[hidden] { display: none; }
 .is-wall .sk-ok { width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .is-wall .sk-ok svg { width: 22px; height: 22px; }

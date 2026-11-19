@@ -1,7 +1,7 @@
 // src/planner-home.js — the v3 home: week strip, today hero (date, place, weather/wind/crowd cells, sun line), upcoming rows, 기록하기 (oldest one),
 // `지난 일정 보기 ›`. A row opens the plan's detail (store.detailId); until batch E draws the detail screen it shows RowDetail. Words/flags come from plan-view.js.
 // Hook points: `renderRecordExtra(plan, { kind: 'went'|'missed', resolved, done })` (record fields) and handlers.onAdd/onEdit/onCard.
-import { html, useState, usePlannerState } from './planner-ui.js';
+import { html, useState, useEffect, useRef, usePlannerState } from './planner-ui.js';
 import { buildTimeline } from './plan-timeline.js';
 import { markWent, markMissed } from './plan-actions.js';
 import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, nextPlanText, filterByDay, dayFullText } from './plan-view.js';
@@ -10,23 +10,21 @@ import { Note } from './planner-parts.js';
 import { Cells } from './planner-cells.js';
 import { DetailView } from './planner-detail.js';
 import { Icon, DisciplineIcon } from './planner-icons.js';
-import { utilLinks } from './plan-wall.js';
 import { config } from './config.js';
 import { ICE_FLAG_TEXT } from './plan-ice.js';
 
-const util = utilLinks(config.utilUrl);
 const PEAKS = 'assets/planner-peaks.svg';
 const byTime = (a, b) => a.date.localeCompare(b.date) || (Number.isInteger(a.min) ? a.min : 1e9) - (Number.isInteger(b.min) ? b.min : 1e9);
 
 function RecordItem({ plan, v, kind, extra, onAnswer, onLater }) {
   const p = dayParts(plan.date);
-  const meta = [`${p.md}(${p.dow})${v.time ? ' ' + v.time : ''}`, v.resolved.kind === 'crag' ? '자연암장' : null].filter(Boolean).join(' · ');
+  const meta = [`${p.dow}요일${v.time ? ' ' + v.time : ''}`, v.resolved.kind === 'crag' ? '자연암장' : null].filter(Boolean).join(' · ');
   return html`<div class="ri">
     <h3>${p.month}월 ${p.day}일 ${v.title}, 다녀오셨나요?</h3>
     <p class="n">${meta}</p>
     <div class="row2">
-      <button type="button" class="btn p" aria-pressed=${kind === 'went' ? 'true' : 'false'} onClick=${() => onAnswer('went')}>갔다</button>
-      <button type="button" class="btn" aria-pressed=${kind === 'missed' ? 'true' : 'false'} onClick=${() => onAnswer('missed')}>못 갔다</button>
+      <button type="button" class="btn p" aria-pressed=${kind === 'went' ? 'true' : 'false'} onClick=${() => onAnswer('went')}>다녀왔어요</button>
+      <button type="button" class="btn" aria-pressed=${kind === 'missed' ? 'true' : 'false'} onClick=${() => onAnswer('missed')}>못 갔어요</button>
     </div>
     <div class="later"><button type="button" class="txt weak" onClick=${onLater}>나중에 할게요</button></div>
     ${extra}
@@ -76,6 +74,9 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const pick = picked && picked >= s.today ? picked : null; // a day that has passed (app left open overnight) is no filter
   const now = Date.now();
   const plans = s.db.plans;
+  // a plan saved for another day than the one the list is filtered to would be invisible: drop the filter so it shows
+  const count = useRef(plans.length);
+  useEffect(() => { if (plans.length > count.current && picked && !plans.some((p) => p.date === picked)) setPicked(null); count.current = plans.length; }, [plans.length]);
   const detail = s.detailId ? plans.find((p) => p.id === s.detailId) : null;
 
   const views = new Map();
@@ -87,18 +88,16 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
     setTimeout(() => document.querySelector(`[data-row="${id}"]`)?.focus(), 0);
   };
   // a recorded plan can be reopened to fill the same fields again (only where a record extra exists)
-  const toRecord = (p, kind) => { setAnswered((m) => new Map(m).set(p.id, kind)); h.replace({ screen: 'home' }); setTimeout(() => document.getElementById('app')?.focus(), 0); };
-  const reopen = renderRecordExtra ? (p) => toRecord(p, p.status === '갔다' ? 'went' : 'missed') : null;
   // a past plan with no record yet can be answered right from its detail (same save as the 기록하기 block)
-  const answerHere = renderRecordExtra ? (p, kind) => { if (h.savePlan(kind === 'went' ? markWent(p) : markMissed(p))?.ok !== false) toRecord(p, kind); } : null;
+  const answerHere = renderRecordExtra ? (p, kind) => p.status === (kind === 'went' ? '갔다' : '못 갔다') || h.savePlan(kind === 'went' ? markWent(p) : markMissed(p))?.ok !== false : null; // true = saved: the detail opens the record fields in place
 
-  if (s.base.screen === 'calendar') return null; // drawn by Calendar
-  if (detail) return html`<${DetailView} plan=${detail} v=${viewOf(detail)} s=${s} now=${now} h=${h} onBack=${close} onRecord=${reopen} onAnswer=${answerHere} />`;
+  if (['calendar', 'crags', 'walls'].includes(s.base.screen)) return null; // drawn by Calendar / Places
+  if (detail) return html`<${DetailView} plan=${detail} v=${viewOf(detail)} s=${s} now=${now} h=${h} onBack=${close} onAnswer=${answerHere} renderRecordExtra=${renderRecordExtra} />`;
 
   const strip = html`<${Strip} key="strip" picked=${pick} onPick=${setPicked} days=${weekStrip(plans, s.today, (p) => { const v = viewOf(p); return v.live && v.risk.level === 'hard'; })} />`;
-  const pickLine = html`<div class="pick" key="pick" role="status">${pick && html`<span>${dayFullText(pick)}만 보는 중</span><button type="button" class="txt" onClick=${() => setPicked(null)}>전체 보기</button>`}</div>`;
-  const addBtn = (cls, key) => html`<button type="button" key=${key} class=${cls} onClick=${() => h.onAdd()}>＋ 일정 추가</button>`;
-  const partnersBtn = html`<div key="partners" class="pl-foot"><button type="button" class="txt" onClick=${() => h.onPartners()}>동행인</button>${util && html`<a class="txt weak" href=${util.list}>지도·기록·암장 정보는 이전 화면에서 볼 수 있어요 ›</a>`}</div>`;
+  const pickLine = html`<div class="day-pick" key="pick" role="status">${pick && html`<span>${dayFullText(pick)}만 보는 중</span><button type="button" class="txt" onClick=${() => setPicked(null)}>전체 보기</button>`}</div>`;
+  const addBtn = (cls, key) => html`<button type="button" key=${key} class=${cls} onClick=${() => h.onAdd(pick ? { date: pick } : undefined)}>＋ 일정 추가</button>`;
+  const partnersBtn = html`<div key="partners" class="pl-foot"><button type="button" class="txt" onClick=${() => h.onPartners()}>동행인 관리</button></div>`;
   if (!plans.length && !pick) {
     return html`${strip}<section class="empty" key="empty"><div class="k">이번 주 · 일정 없음</div><h2>이번 주말은 비어 있어요</h2><${Note}>날짜와 장소만 정하면 날씨를 같이 봐 드려요<//>${addBtn('btn p full', 'add0')}</section>
       <img class="pk end" key="pk" src=${PEAKS} alt="" width="600" height="460" />${partnersBtn}`;
@@ -144,7 +143,7 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const nodes = [strip, pickLine];
   if (hero) nodes.push(html`<${Hero} key="hero" plan=${hero} v=${viewOf(hero)} s=${s} now=${now} onOpen=${open} />`);
   else if (pick && pick !== s.today) {
-    if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이 날은 일정이 없어요</h2>${addBtn('btn p full', 'add1')}</section>`);
+    if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이날은 일정이 없어요</h2>${addBtn('btn p full', 'add1')}</section>`);
   } else {
     const next = nextPlanText(plans, s.today);
     const p = dayParts(s.today);

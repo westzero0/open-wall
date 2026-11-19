@@ -13,7 +13,7 @@ import { config } from './config.js';
 import { findWall, openLabel, utilLinks } from './plan-wall.js';
 import { findIce } from './plan-ice-sheet.js';
 import { LinkButton, Note } from './planner-parts.js';
-import { minFromTime, timeFromMin, placeOf, planFromDraft, draftDirty, UNSAVED_NOTE, SAVE_FAIL } from './plan-sheet.js';
+import { minFromTime, timeFromMin, placeOf, planFromDraft, draftDirty, dowText, UNSAVED_NOTE, SAVE_FAIL } from './plan-sheet.js';
 
 const util = utilLinks(config.utilUrl);
 const KIND_LABEL = { wall: '외벽', crag: '자연암장', ice: '빙벽장' };
@@ -101,14 +101,14 @@ function PlanForm({ s, plan, h }) {
     h.onClose(!saved && dirty ? { notice: UNSAVED_NOTE } : undefined); // closed with typed values and no save: say so in one line
   };
 
-  return html`<${Sheet} title=${saved ? '저장했어요' : plan ? '일정 고치기' : '일정 만들기'} onClose=${close} onSave=${saved ? undefined : save} keepOnBackdrop=${dirty} saveDisabled=${!draftReady(draft)}>
+  return html`<${Sheet} title=${saved ? '저장했어요' : plan ? '일정 고치기' : '일정 만들기'} onClose=${close} keepOnBackdrop=${dirty}>
     ${saved ? html`<${Offer} saved=${saved} h=${h} state=${offerState} setState=${setOfferState} />` : html`
     <div class="row2 stack">
-      <div class="f"><label for="dt">날짜</label><input id="dt" class="in-t" type="date" value=${date} onInput=${(e) => setDate(e.target.value)} /></div>
+      <div class="f"><label for="dt">날짜${dowText(date) && ` · ${dowText(date)}`}</label><input id="dt" class="in-t" type="date" value=${date} onInput=${(e) => setDate(e.target.value)} /></div>
       <div class="f"><label for="tm">시각 (선택)</label><input id="tm" class="in-t" type="time" value=${time} onInput=${(e) => setTime(e.target.value)} /></div>
     </div>
     <div class="f"><label for="pl">장소</label>
-      <input id="pl" class="in-t" value=${query} aria-label="장소 검색" autocomplete="off" autofocus=${!plan} onInput=${(e) => { setQuery(e.target.value); setPicked(null); }} /></div>
+      <input id="pl" class="in-t" value=${query} aria-label="장소 검색" placeholder="암장 이름이나 지역" autocomplete="off" autofocus=${!plan} onInput=${(e) => { setQuery(e.target.value); setPicked(null); }} /></div>
     ${kinds.length > 0 && html`<div class="sel kinds" role="group" aria-label="분류별 목록">${kinds.map((k) => html`<button type="button" key=${k}
       aria-pressed=${open === k ? 'true' : 'false'} onClick=${() => setBrowse(open === k ? null : k)}>${KIND_LABEL[k]}</button>`)}</div>`}
     <div class=${open ? 'picks list' : 'picks'}>${rows.map((row, i) => {
@@ -119,12 +119,12 @@ function PlanForm({ s, plan, h }) {
       const sub = row.key.startsWith('name:') ? NAME_ONLY_NOTE : html`${row.sub}${row.sub && open ? ' · ' : ''}${shut ? html`<span class="op-no">${open}</span>` : open}`;
       return html`<div class="pick-row" key=${row.key}>
         <button type="button" class=${'pick' + (searching && i === 0 ? ' first' : '')} onClick=${() => pick(row)}>${row.label}<small>${sub}</small></button>
-        ${(w || iw) && html`<${LinkButton} aria-label=${row.label + ' 정보'} onClick=${() => h.openWall(row.place.id, { from: 'search', date, min: minFromTime(time) })}>정보<//>`}
+        ${(w || iw) && html`<${LinkButton} aria-label=${row.label + ' 암장 정보'} onClick=${() => h.openWall(row.place.id, { from: 'search', date, min: minFromTime(time) })}>암장 정보<//>`}
       </div>`;
     })}</div>
     ${mineOpen ? html`<${MineForm} onAdd=${addMineWall} onCancel=${() => setMineOpen(false)} />`
-      : html`<button type="button" class="txt" onClick=${() => setMineOpen(true)}>내 암장 추가</button>`}
-    ${util && html`<div class="p-row-links"><${LinkButton} href=${util.list} external>열린 암장 둘러보기 ›<//><${LinkButton} href=${util.map} external>지도로 보기 ›<//></div>`}
+      : html`<button type="button" class="txt" onClick=${() => setMineOpen(true)}>목록에 없는 곳 직접 넣기</button>`}
+    ${util && html`<div class="p-row-links"><${LinkButton} href=${util.list}>열린 암장 둘러보기 ›<//><${LinkButton} href=${util.map}>지도로 보기 ›<//></div>`}
     <div class="f"><span class="lb">동행 (선택)</span>
       <div class="sel">${s.db.partners.map((p) => html`<button type="button" key=${p.id} aria-pressed=${partnerIds.includes(p.id) ? 'true' : 'false'} onClick=${() => togglePartner(p.id)}>${p.name}</button>`)}</div>
       <${NameAdd} onAdd=${addPartner} /></div>
