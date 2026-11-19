@@ -23,6 +23,9 @@ export const patchAscent = (list, key, patch) => list.map((x) => (ascentKey(x) =
 /** What a chosen route row says: '✓ 온사이트' / '시도만 했어요'. */
 export const ascentLabel = (a) => (a.result === 'tried' ? '시도만 했어요' : `✓ ${STYLE_NAME[a.style] ?? ''}`.trim());
 
+/** The sub-line of a chosen route: ascentLabel, or '시도만 N번'. */
+export const ascentLine = (a) => (a.result === 'tried' ? `시도만 ${a.tries ?? 1}번` : ascentLabel(a));
+
 /** Earlier tries of each route on the OTHER plans that were 갔다 (this plan's own lines, and plans never gone to, must not turn a route into a project). */
 export function historyMap(plans, planId, routes) {
   const others = plans.filter((p) => p.id !== planId && p.status === '갔다'); // only trips that happened count as earlier tries

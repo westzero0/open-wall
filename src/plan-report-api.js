@@ -6,7 +6,6 @@ import { postForm } from './remote.js';
 export const REPORT_OK = '알렸어요, 고마워요';
 export const REPORT_LATER = '나중에 다시 알릴게요';
 export const OFFER_ASK = '이 암장을 운영자에게 알릴까요?';
-export const NAME_ONLY_NOTE = '목록에 없어도 일정은 잡혀요';
 
 /** → {state:'off'|'sent'|'later'}: one silent retry, then 'later' (the screen says it). */
 export async function sendNewWall(input, { fetchFn, buildLabel } = {}) {

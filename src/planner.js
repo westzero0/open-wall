@@ -6,7 +6,7 @@ import { legacyTarget } from './legacy-link.js';
 import { safeStorage, getStr } from './storage.js';
 import { UI_KEY, cleanTheme, cleanTextSize, loadUi, saveUi } from './ui-state.js';
 import { createPlannerState } from './planner-state.js';
-import { savePlan, removePlan, savePartner, removePartner, saveMine, saveSettings, loadSent, saveSent, saveRouteNote, adoptAndSave, importRecords } from './plan-api.js';
+import { savePlan, removePlan, savePartner, removePartner, saveMine, saveSettings, loadSent, saveSent, saveRouteNote, saveMyRoute, removeMyRoute, adoptAndSave, importRecords } from './plan-api.js';
 import { wallPageId } from './share-id.js';
 import { loadCragRoutes } from './crag-routes.js';
 import { loadCrowdReports } from './plan-crowd-api.js';
@@ -140,6 +140,8 @@ function makeHandlers(store, storage) {
     saveMine: (m) => reloaded(saveMine(storage, m)),
     saveSettings: (patch) => reloaded(saveSettings(storage, patch)),
     saveRouteNote: (note) => reloaded(saveRouteNote(storage, note)),
+    saveMyRoute: (r) => reloaded(saveMyRoute(storage, r)),
+    removeMyRoute: (id) => reloaded(removeMyRoute(storage, id)),
     importRecords: (texts, dryRun) => { // 피치 기록 파일: dryRun counts only; a save reloads (and asks weather for any new place)
       const s = store.get();
       const r = importRecords(storage, texts, { walls: s.walls, crags: s.crags, ice: s.ice, aliases: s.aliases }, { today: s.today, dryRun });

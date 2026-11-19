@@ -32,7 +32,7 @@ function tier(route, q, jamo) {
   return -1;
 }
 
-export function pickRoutes(routes, { query = '', area = null, sort = 'no', history = new Map(), chosen = new Map() } = {}) {
+export function pickRoutes(routes, { query = '', area = null, sort = 'no', history = new Map(), chosen = new Map(), mine = [], chosenByName = new Map() } = {}) {
   const all = Array.isArray(routes) ? routes : [];
   const areaSet = new Set(all.map((r) => r.area).filter(Boolean));
   const areas = areaSet.size >= 2 ? [...areaSet] : [];
@@ -41,6 +41,9 @@ export function pickRoutes(routes, { query = '', area = null, sort = 'no', histo
   const mk = (route, section) => ({
     route, section, project: isProject(route), chosen: chosen.get(route.id) ?? null,
   });
+  const officialNames = new Set(all.map((r) => norm(r.name)));
+  const myPool = area ? [] : (Array.isArray(mine) ? mine : []).filter((m) => !officialNames.has(norm(m.name)));
+  const mkMine = (m) => { const route = { id: null, name: m.name, grade: m.grade ?? null, mineId: m.id }; return { route, section: 'mine', project: false, chosen: chosenByName.get(norm(m.name)) ?? null }; };
   const isProject = (r) => { const h = history.get(r.id); return !!h && h.tried > 0 && !h.sent; };
 
   let rows;
@@ -48,16 +51,15 @@ export function pickRoutes(routes, { query = '', area = null, sort = 'no', histo
     const proj = pool.filter(isProject).sort((a, b) => history.get(b.id).tried - history.get(a.id).tried || (a.no ?? Infinity) - (b.no ?? Infinity));
     const rest = pool.filter((r) => !isProject(r));
     const sorted = sort === 'grade' ? sortRoutes(rest, 'grade', 1) : sort === 'gradeDesc' ? sortRoutes(rest, 'grade', -1) : sortRoutes(rest, 'no', 1);
-    rows = [...proj.map((r) => mk(r, 'project')), ...sorted.map((r) => mk(r, 'all'))];
+    rows = [...proj.map((r) => mk(r, 'project')), ...myPool.map(mkMine), ...sorted.map((r) => mk(r, 'all'))];
   } else {
     const jamo = JAMO_ONLY.test(q);
-    rows = pool
-      .map((r) => [tier(r, q, jamo), r])
+    rows = [...pool.map((r) => [tier(r, q, jamo), r, mk(r, 'all')]), ...myPool.map((m) => [tier(m, q, jamo), m, mkMine(m)])]
       .filter(([t]) => t >= 0)
       .sort((a, b) => a[0] - b[0] || (a[1].no ?? Infinity) - (b[1].no ?? Infinity))
-      .map(([, r]) => mk(r, 'all'));
+      .map(([, , row]) => row);
   }
   const raw = String(query ?? '').normalize('NFC').trim();
-  const custom = raw && !all.some((r) => norm(r.name) === q) ? raw : null;
+  const custom = raw && !all.some((r) => norm(r.name) === q) && !(Array.isArray(mine) ? mine : []).some((m) => norm(m.name) === q) ? raw : null;
   return { rows, areas, custom };
 }

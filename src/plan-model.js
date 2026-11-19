@@ -6,6 +6,8 @@ import { MAX_NAME, MAX_REGION, MAX_ADDRESS, WALL_ID_RE } from './store.js';
 import { GRADES } from './grades.js';
 import { AUTHOR_RE } from './author-id.js';
 import { noteKey, ROUTE_NOTE_KEEP } from './route-notes.js';
+import { norm } from './plan-routes.js';
+import { MY_ROUTE_NAME_MAX, MAX_MY_ROUTES } from './my-routes.js';
 
 export const STATUS = ['예정', '갔다', '못 갔다', '쉼'];
 export const PARTICIPANT = ['수락', '대기', '거절'];
@@ -184,6 +186,30 @@ function cleanRouteNotes(list) {
   return out;
 }
 
+/** 내 루트: { id, authorId, place: 'crag:<id>'|'mine:<id>', name, grade|null, createdAt, updatedAt } or null. */
+export function cleanMyRoute(v) {
+  if (!isObj(v)) return null;
+  const id = typeof v.id === 'string' && AUTHOR_RE.test(v.id) ? v.id : null; // 32 hex, like randomId()
+  const m = typeof v.place === 'string' ? /^(crag|mine):(.+)$/.exec(v.place) : null;
+  const place = m && (m[1] === 'crag' ? WALL_ID_RE : ID_RE).test(m[2]) ? v.place : null;
+  const name = cleanLine(v.name, MY_ROUTE_NAME_MAX);
+  if (!id || !place || !name) return null;
+  return { id, authorId: pickAuthor(v.authorId), place, name, grade: GRADES.includes(v.grade) ? v.grade : null, createdAt: stamp(v.createdAt), updatedAt: stamp(v.updatedAt) };
+}
+
+function cleanMyRoutes(list) {
+  const out = [], seen = new Set();
+  for (const x of Array.isArray(list) ? list : []) {
+    if (out.length >= MAX_MY_ROUTES) break;
+    const c = cleanMyRoute(x);
+    const key = c && `${c.place}|${norm(c.name)}`;
+    if (!c || seen.has(c.id) || seen.has(key)) continue;
+    seen.add(c.id); seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
 const keyList = (v) => (Array.isArray(v) ? [...new Set(v.map((k) => cleanLine(k, 100)).filter(Boolean))].slice(0, MAX_KEYS) : []);
 
 export function cleanSettings(v) {
@@ -216,6 +242,7 @@ export function cleanAll(raw, opts) {
     partners: cleanList(r.partners, cleanPartner, MAX_PARTNERS),
     mine: cleanList(r.mine, cleanMineWall, MAX_MINE),
     routeNotes: cleanRouteNotes(r.routeNotes),
+    myRoutes: cleanMyRoutes(r.myRoutes),
     settings: cleanSettings(r.settings),
   };
 }

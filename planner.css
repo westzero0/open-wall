@@ -248,6 +248,8 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 /* 기록 입력 */
 .f { padding: var(--pl-sp-16) 0; border-bottom: var(--pl-hair) solid var(--pl-line); }
 .f label, .f .lb, .p-field label, .p-field .lb { display: block; font-size: var(--pl-fs-small); font-weight: 700; color: var(--pl-muted); margin-bottom: var(--pl-sp-4); }
+.f h3 { font-size: var(--pl-fs-small); color: var(--pl-ink); margin-bottom: var(--pl-sp-8); } /* 폼 제목(새 장소 추가): 묶음 머리글(.places .lbl)과 같이 작은 글씨·잉크 색 */
+.f > .row2:not(.foot) { margin-top: var(--pl-sp-12); } /* 폼 맨 아래 단추 줄(추가·취소): .rec .row2와 같은 간격. Offer의 .row2.foot은 자체 padding이 있어 제외 */
 .step { display: flex; align-items: center; gap: var(--pl-sp-12); }
 .step b { min-width: 2ch; text-align: center; font-size: var(--pl-fs-title); font-weight: 300; }
 .sq { width: var(--pl-tap); height: var(--pl-tap); border-radius: var(--pl-r-s); border: var(--pl-hair) solid var(--pl-edge); background: var(--pl-paper); font-size: var(--pl-fs-title); line-height: 1; cursor: pointer; }
@@ -256,6 +258,8 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .places .in-t::-webkit-search-cancel-button { -webkit-appearance: none; width: 1em; height: 1em; background: var(--pl-ink); cursor: pointer; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; } /* 지우기 ×: 브라우저 기본 파랑 대신 잉크색 */
 .places .lbl { margin: var(--pl-sp-24) 0 var(--pl-sp-8); color: var(--pl-ink); } /* 묶음 머리글(지금 열림 37 …) */
 .places .lbl + .lbl { margin-top: 0; } /* two folded headings in a row */
+.places .lbl.srt-h { display: flex; align-items: center; margin-bottom: 0; } /* 머리글 줄 오른쪽 끝에 정렬 버튼(버튼이 누르는 높이를 가져 아래 간격은 0) */
+.srt { margin-left: auto; display: inline-flex; align-items: center; gap: var(--pl-sp-4); min-height: var(--pl-tap); padding: 0 var(--pl-sp-4); border: 0; background: none; color: var(--pl-ink); font-size: var(--pl-fs-small); font-weight: 600; white-space: nowrap; cursor: pointer; } /* 외벽 목록의 .sort-btn.sort-quiet을 일정앱 토큰으로 옮긴 것 */
 .places .lbl .rm-head { font: inherit; white-space: nowrap; }
 .places .lbl .rm-head::after { content: ""; flex: none; width: 0.5em; height: 0.5em; border: solid currentColor; border-width: 0 var(--pl-ring) var(--pl-ring) 0; transform: rotate(-45deg); } /* › folded (the checkmark's two-sides-and-rotate way, no motion) */
 .places .lbl .rm-head[aria-expanded="true"]::after { transform: translateY(-0.15em) rotate(45deg); } /* ⌄ open */ /* the heading's own look; .rm-head brings the tap height, ink and bold when open */
@@ -279,6 +283,7 @@ body > .hd { max-width: var(--pl-maxw); margin: 0 auto; padding-left: var(--pl-p
 .pick { display: flex; flex-direction: column; align-items: stretch; text-align: left; width: 100%; min-height: var(--pl-tap); padding: var(--pl-sp-12) 0; background: none; border: 0; cursor: pointer; white-space: normal; }
 .pick.first { font-weight: 700; }
 .pick small { font-size: var(--pl-fs-small); font-weight: 400; color: var(--pl-muted); }
+.pick-row .grade { color: var(--pl-ink); font-weight: 700; } /* 기록 화면의 고른 루트 줄: 등급은 잉크 색·굵게(시트 줄의 등급과 같게) */
 .pick small .op-no { font-weight: 800; color: var(--pl-ink); } /* 닫힘·휴관: 색 없이 굵게 */
 .rt { display: flex; justify-content: space-between; gap: var(--pl-sp-8); }
 .grade { font-size: var(--pl-fs-sub); color: var(--pl-muted); white-space: nowrap; }
@@ -310,8 +315,9 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 .p-note { margin: 0; padding: var(--pl-sp-12) 0; color: var(--pl-muted); font-size: var(--pl-fs-sub); }
 .p-note.ruled { margin-top: var(--pl-sp-12); border-top: var(--pl-hair) solid var(--pl-line); }
 @media (max-width: 340px) { .sheet .row2.stack { flex-direction: column; align-items: stretch; } } /* 일정 만들기 날짜·시각: 보통 폰은 한 줄, 320px에서 날짜가 잘리면 세로(기준값은 .hero와 같은 340px) */
-.rts { max-height: calc(var(--pl-tap) * 6); overflow-y: auto; }
-.rts .pl { margin: 4px 0 8px; padding-left: 1.6em; font-size: var(--pl-fs-small); color: var(--pl-muted); } /* 멀티피치 암장: 펼친 루트의 피치 줄 */
+.rg { display: grid; grid-template-columns: 2em 1fr auto; column-gap: var(--pl-sp-8); align-items: baseline; } /* 루트 시트 줄: 번호 · 이름 · 등급(번호 칸 2em은 시안 승인) */
+.rg small { grid-column: 2 / -1; } /* 아랫글(피치 수·고른 상태·메모)은 이름 칸부터 */
+.rrow .pl { margin: 4px 0 8px; padding-left: 1.6em; font-size: var(--pl-fs-small); color: var(--pl-muted); } /* 멀티피치 암장: 펼친 루트의 피치 줄 */
 
 /* 기록 입력 안쪽(.rec 안에서 열림), 오른 루트 줄, 카드 시트 */
 .rx { margin-top: var(--pl-sp-12); }
@@ -319,7 +325,12 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 .rx .f .sel { margin-top: var(--pl-sp-8); }
 .rx .f .in-t + .sel, .rx .f .sel + .sel { margin-top: var(--pl-sp-8); }
 .rx .acts { margin-top: var(--pl-sp-4); }
-.ac { padding: var(--pl-sp-8) 0; border-top: var(--pl-hair) solid var(--pl-line); }
+.rrow { border-top: var(--pl-hair) solid var(--pl-line); } /* 루트 시트의 줄: 위에 가는 선 */
+#rq + .rrow, #rq + .places > .rrow:first-child { margin-top: var(--pl-sp-8); } /* 구역 칩이 없을 때 첫 줄이 검색 칸에 붙지 않게(칩·묶음 머리글은 제 간격이 있다) */
+.rrow .sel + .lb { margin-top: var(--pl-sp-12); } /* 새 루트: 등급 묶음과 완등 방식 묶음 사이 */
+.rrow .acts { margin-top: var(--pl-sp-8); } /* 내 루트에서 지우기: 방식 버튼 아래 */
+.ac.open { padding-bottom: var(--pl-sp-8); } /* 펼친 줄과 다음 줄 사이 */
+.ac .step { margin-top: var(--pl-sp-8); } /* 펼친 고른 루트: 완등 방식 · 시도 횟수 · 메모 라벨 사이 */
 /* 루트 메모(나만 보는 루트별 한 줄): 이름 아래 흐린 한 줄, 지난 그날 메모는 읽기 전용 */
 .ac .nt, .ac .nt-day { margin: var(--pl-sp-4) 0 0; font-size: var(--pl-fs-small); color: var(--pl-muted); }
 .ac .nt-day { font-style: normal; }
@@ -345,7 +356,7 @@ body:has(.p-tabs) #app { padding-bottom: calc(var(--pl-tap) + var(--pl-sp-32) + 
 .p-row { display: flex; gap: var(--pl-sp-8); }
 .p-row > * { flex: 1; }
 .p-ic { flex: none; width: var(--pl-tap); height: var(--pl-tap); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--pl-r-s); background: none; color: var(--pl-ink); cursor: pointer; }
-.p-ic .ic { width: var(--pl-ic-sm); height: var(--pl-ic-sm); }
+.p-ic .ic, .srt .ic { width: var(--pl-ic-sm); height: var(--pl-ic-sm); }
 
 /* 달력 배치 (planner-calendar.js): 7칸 격자. 색·글자는 토큰만 */
 .cal-h { display: flex; align-items: center; gap: var(--pl-sp-8); padding-bottom: var(--pl-sp-8); }

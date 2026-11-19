@@ -27,7 +27,7 @@ function MineForm({ initName = '', onAdd, onCancel }) {
   const [f, setF] = useState({ name: initName, region: '', venue: '', address: '' });
   const set = (k) => (e) => { const v = e.target.value; setF((o) => ({ ...o, [k]: v })); };
   return html`<div class="f">
-    <span class="lb">새 장소 추가</span>
+    <h3>새 장소 추가</h3>
     <label for="mn">이름</label><input id="mn" class="in-t" ref=${nameEl} value=${f.name} onInput=${set('name')} />
     <label for="mr">지역 (선택)</label><input id="mr" class="in-t" ref=${regionEl} value=${f.region} onInput=${set('region')} />
     <span class="lb">구분 (선택)</span>
@@ -74,8 +74,9 @@ function PlanForm({ s, plan, h }) {
   const searching = !!query.trim();
   const kinds = searching || picked ? [] : activeKinds(date, config.season).filter((k) => listChoices(ctx, [k]).length); // a kind with no places gets no chip
   const open = kinds.includes(browse) ? browse : null; // a chip that went out of season with the date closes its list
+  const noDupAdd = (r) => (r[0]?.place.kind === 'name' ? r : r.filter((x) => x.place.kind !== 'name')); // an exact-name place is in the list (it sorts before the name row): then no 새 장소로 추가 row
   const toAdd = (r) => (r.place.kind === 'name' ? { ...r, label: `"${r.place.name}" 새 장소로 추가`, sub: '이름만 적어도 돼요' } : r); // the typed-name row opens the 새 장소 추가 form instead of making a name-only place
-  const rows = mineOpen ? [] : searching && !picked ? searchPlaces(query, ctx).slice(0, 8).map(toAdd) : open ? listChoices(ctx, [open]) : [];
+  const rows = mineOpen ? [] : searching && !picked ? noDupAdd(searchPlaces(query, ctx)).slice(0, 8).map(toAdd) : open ? listChoices(ctx, [open]) : [];
   const focusBtn = useRef(false); // after a pick / 추가 the box is gone: focus goes to 바꾸기
   const rowEl = useRef(null);
   useEffect(() => { if (focusBtn.current && picked) { focusBtn.current = false; rowEl.current?.querySelector('button[aria-label="장소 바꾸기"]')?.focus(); } });

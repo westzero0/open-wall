@@ -73,5 +73,10 @@ export function adoptRoutes(db, { cragId, routes, inCrag }) {
     return { ...p, record: { ...p.record, ascents: lines } };
   });
 
-  return changed ? { ...db, routeNotes: out, plans } : db;
+  // my routes the list now has under the same name: the listed route stands in for them
+  const myAll = db.myRoutes ?? [];
+  const myRoutes = myAll.filter((m) => !(m.place === `crag:${cragId}` && byName.has(norm(m.name))));
+  if (myRoutes.length !== myAll.length) changed = true;
+
+  return changed ? { ...db, routeNotes: out, plans, myRoutes } : db;
 }

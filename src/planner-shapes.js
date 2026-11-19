@@ -25,6 +25,7 @@ export const ICON_SHAPES = {
   wind: () => [path('M3 9h11a3 3 0 1 0-3-3', W), path('M3 14h15a3 3 0 1 1-3 3', W)],
   lit: () => [path(PEAK, W), circle(19, 6, 2.6, { fill: 'currentColor' })],
   x: () => [path('M6 6l12 12M18 6L6 18', W)],
+  sort: () => [path('M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4', W)], // ⇅ (the wall app's sort button icon)
   check: () => [path('M5 12.5l4.5 4.5L19 7.5', W)],
   prev: () => [path('M15 5l-7 7 7 7', W)],
   next: () => [path('M9 5l7 7-7 7', W)],

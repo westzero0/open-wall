@@ -23,6 +23,9 @@ export function cleanCounts(v, scale = GRADES) {
 /** How a grade reads: 10a as is, "8" is 5.8 and below, "9" is 5.9. */
 export const gradeLabel = (g) => (g === '8' ? '5.8 이하' : g === '9' ? '5.9' : g);
 
+/** A stored grade key as official crag routes spell it: '10a' -> "5.10a", '9' -> "5.9", '8' -> "5.8 이하". */
+export const routeGradeLabel = (g) => (g === '8' ? '5.8 이하' : `5.${g}`);
+
 /** "10a ×2 · 10c ×1", in grade order; '' for nothing. */
 export const gradeLine = (counts, scale = GRADES) => Object.entries(cleanCounts(counts, scale)).map(([g, n]) => `${gradeLabel(g)} ×${n}`).join(' · ');
 

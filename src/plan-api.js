@@ -1,7 +1,9 @@
 // src/plan-api.js — the one place the planner reads/writes storage (and the optional alias list). No DOM; storage is injected
 // ({ getItem, setItem }). Reads never throw (broken data -> empty); writes return { ok } instead of throwing.
-import { cleanAll, cleanPlan, cleanPartner, cleanMineWall, cleanSettings, cleanRouteNote, randomId } from './plan-model.js';
+import { cleanAll, cleanPlan, cleanPartner, cleanMineWall, cleanSettings, cleanRouteNote, cleanMyRoute, randomId } from './plan-model.js';
 import { noteKey, adoptRoutes } from './route-notes.js';
+import { norm } from './plan-routes.js';
+import { MAX_MY_ROUTES } from './my-routes.js';
 import { getAuthorId } from './author-id.js';
 import { getJson } from './remote.js';
 import { config } from './config.js';
@@ -60,6 +62,20 @@ export function saveRouteNote(storage, { cragId, routeId = null, routeName = '',
   } else if (i >= 0) state.routeNotes[i] = c; else state.routeNotes.push(c);
   return { ...write(storage, state), routeNotes: state.routeNotes };
 }
+
+/** 내 루트 one route: same place + same normalized name → overwritten (id, authorId, createdAt kept). → { ok, myRoutes } */
+export function saveMyRoute(storage, { place, name = '', grade = null }, opts) {
+  const state = loadAll(storage, opts);
+  const key = norm(name);
+  const i = key ? state.myRoutes.findIndex((r) => r.place === place && norm(r.name) === key) : -1;
+  const now = opts?.now ?? Date.now();
+  const old = i >= 0 ? state.myRoutes[i] : null;
+  const c = cleanMyRoute({ id: old?.id ?? randomId(), authorId: old?.authorId ?? deviceId(storage), place, name, grade, createdAt: old?.createdAt ?? now, updatedAt: now });
+  if (!c || (!old && state.myRoutes.length >= MAX_MY_ROUTES)) return { ok: false, myRoutes: state.myRoutes };
+  if (old) state.myRoutes[i] = c; else state.myRoutes.push(c);
+  return { ...write(storage, state), myRoutes: state.myRoutes };
+}
+export const removeMyRoute = (storage, id) => remove(storage, 'myRoutes', id);
 
 /** The whole db written at once (adoptRoutes' result), cleaned first. → { ok } */
 export const saveDb = (storage, db, opts) => write(storage, cleanAll(db, opts));

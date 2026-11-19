@@ -1732,6 +1732,76 @@
           "pioneer": "부산개인택시연합회 윤재환,우한길,오성규"
         }
       ]
+    },
+    "088q7lx8": {
+      "topos": [],
+      "routes": [
+        {
+          "id": "r667",
+          "no": 1,
+          "name": "춘클릿지",
+          "length_m": 203,
+          "pitches": [
+            {
+              "no": 1,
+              "grade": "5.9",
+              "length_m": 30
+            },
+            {
+              "no": 2,
+              "grade": "5.10c",
+              "length_m": 30
+            },
+            {
+              "no": 3,
+              "grade": "5.10a",
+              "length_m": 23
+            },
+            {
+              "no": 4,
+              "grade": "5.10b",
+              "length_m": 30
+            },
+            {
+              "no": 5,
+              "grade": "5.9",
+              "length_m": 30
+            },
+            {
+              "no": 6,
+              "grade": "5.9",
+              "length_m": 30
+            },
+            {
+              "no": 7,
+              "grade": "5.10a",
+              "length_m": 30
+            }
+          ]
+        }
+      ]
+    },
+    "kwl9frtv": {
+      "topos": [],
+      "routes": [
+        {
+          "id": "r668",
+          "no": 1,
+          "name": "춘클릿지B",
+          "pitches": [
+            {
+              "no": 1
+            },
+            {
+              "no": 2,
+              "grade": "5.10b"
+            },
+            {
+              "no": 3
+            }
+          ]
+        }
+      ]
     }
   }
 }
