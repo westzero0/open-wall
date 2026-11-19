@@ -2309,7 +2309,8 @@ html:has(.wall-sheet[open]) { overflow: hidden; } /* the page behind the sheet s
   background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
 .is-wall .sh-sky.is-compact { min-height: 0; padding-top: calc(var(--sp-12) + env(safe-area-inset-top)); padding-bottom: var(--sp-12); } /* scrolled down a pane (wall-sheet.js): the words only, the sky's tone stays */
 .is-wall .sh-sky.is-compact .sk-scene { display: none; }
-.is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } /* folded: only ✕ stays, so it fits beside the name even in big text; back at the top both return (2026-11-19) */
+html[data-text] .is-wall .sh-sky.is-compact .sk-act > :not(.sk-plan, .sk-ok) { display: none; } /* folded: 알려 주기·일정 잡기·✕ stay (the same row as unfolded); in big text only 알려 주기 steps aside so 일정 잡기 and ✕ fit beside the name. Back at the top it returns (2026-11-19) */
+@media (max-width: 359px) { .is-wall .sh-sky.is-compact .sk-act > :not(.sk-plan, .sk-ok) { display: none; } } /* a 320px phone: the same, so the name keeps room beside 일정 잡기 */
 html[data-text] .is-wall .sh-sky.is-compact { grid-template-columns: minmax(0, 1fr) auto; }
 html[data-text] .is-wall .sh-sky.is-compact .sk-act { grid-row: auto; margin-top: 0; }
 .is-wall .sk-txt { min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
@@ -2318,7 +2319,7 @@ html[data-text] .is-wall .sh-sky.is-compact .sk-act { grid-row: auto; margin-top
 html[data-text="xlarge"] .is-wall .sh-sky { grid-template-columns: minmax(0, 1fr); }
 html[data-text="xlarge"] .is-wall .sk-act { grid-row: 1; justify-self: end; margin-top: 0; }
 @media (max-width: 359px) { html[data-text="large"] .is-wall .sh-sky { grid-template-columns: minmax(0, 1fr); } html[data-text="large"] .is-wall .sk-act { grid-row: 1; justify-self: end; margin-top: 0; } }
-.is-wall .sk-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: break-word; }
+.is-wall .sk-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; } /* anywhere, not break-word: an unbreakable name (남원종합스포츠타운…) must shrink with its column instead of running under the buttons on a 320px phone */
 .is-wall .sk-title:focus { outline: none; }
 .is-wall .sk-contact { display: flex; flex-wrap: wrap; gap: var(--sp-8); flex: 0 0 100%; margin: calc(var(--sp-2) * -1) 0 0 -2px; } /* its own line under name and region, left-aligned (the disc's 2px inset is cancelled so it lines up with the text) */
 .is-wall .sk-ct { position: relative; isolation: isolate; display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; color: #fff; text-decoration: none; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
