@@ -309,7 +309,7 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 /* 안내 한 줄: 14px 보조색, 구분이 필요한 곳만 위쪽 가는 선 */
 .p-note { margin: 0; padding: var(--pl-sp-12) 0; color: var(--pl-muted); font-size: var(--pl-fs-sub); }
 .p-note.ruled { margin-top: var(--pl-sp-12); border-top: var(--pl-hair) solid var(--pl-line); }
-.sheet .row2.stack { flex-direction: column; align-items: stretch; }
+@media (max-width: 340px) { .sheet .row2.stack { flex-direction: column; align-items: stretch; } } /* 일정 만들기 날짜·시각: 보통 폰은 한 줄, 320px에서 날짜가 잘리면 세로(기준값은 .hero와 같은 340px) */
 .rts { max-height: calc(var(--pl-tap) * 6); overflow-y: auto; }
 .rts .pl { margin: 4px 0 8px; padding-left: 1.6em; font-size: var(--pl-fs-small); color: var(--pl-muted); } /* 멀티피치 암장: 펼친 루트의 피치 줄 */
 
@@ -392,6 +392,7 @@ button.ce { cursor: pointer; }
 .pick-row { display: flex; align-items: center; gap: var(--pl-sp-8); border-top: var(--pl-hair) solid var(--pl-line); } /* 구분선은 정보 링크 열까지 */
 .pick-row .pick { flex: 1; min-width: 0; font-size: var(--pl-fs-title); }
 .p-row-links { display: flex; flex-wrap: wrap; gap: var(--pl-sp-4) var(--pl-sp-16); }
+.p-row-links .p-link { white-space: nowrap; } .pick.static { cursor: default; } /* 고른 장소 줄: 누르는 게 아니라 보여 주는 줄(바꾸기 버튼이 따로 있다) */
 
 /* 머리 오른쪽: 날짜 + 설정 버튼 */
 .hd-r { display: flex; align-items: center; gap: var(--pl-sp-4); min-width: 0; }

@@ -20,20 +20,6 @@ export function dowText(date) {
   return at.getMonth() === +m[2] - 1 ? `${DAY_KO[at.getDay()]}요일` : '';
 }
 
-const norm = (v) => String(v ?? '').trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase();
-
-/** What the place box holds: a picked place, else the typed text as a name-only place (so typing a name is enough to save). */
-export function placeOf(picked, query, ctx) {
-  if (picked) return picked;
-  const name = String(query ?? '').trim();
-  if (!name) return null;
-  const k = norm(name);
-  const same = (e) => typeof e?.name === 'string' && (norm(e.name) === k || norm(e.short_name) === k);
-  const exact = ctx && [...(ctx.mine ?? []), ...(ctx.walls ?? []), ...(ctx.crags ?? [])].some(same); // only an EXACT name, never the fuzzy first hit
-  const top = exact ? searchPlaces(name, ctx)[0] : null; // an exact official/mine name is ranked first by searchPlaces
-  return top && top.place.kind !== 'name' ? top.place : { kind: 'name', name };
-}
-
 /** → a clean Plan or null. New: draftToPlan. Edit: keep everything else, only 쉼 goes back to 예정 (re-planned); 갔다/못 갔다 keep status, changedFrom only while the place is unchanged. */
 export function planFromDraft(existing, draft, { id, now, resolved }) {
   if (!existing) return draftToPlan(draft, { authorId: '', id, now, resolved });
@@ -46,6 +32,9 @@ export function planFromDraft(existing, draft, { id, now, resolved }) {
   });
 }
 
+/** Is the date before today? (YYYY-MM-DD strings compare in order; a cleared date is not past) The sheet only says so, never blocks. */
+export const isPastDate = (date, today) => /^\d{4}-\d{2}-\d{2}$/.test(date ?? '') && date < today;
+export const PAST_NOTE = '지난 날짜예요. 이대로 저장할 수 있어요';
 export const UNSAVED_NOTE = '저장하지 않았어요';
 /** Pure: has the person typed or picked anything beyond what the sheet opened with? (then a tap on the backdrop must not throw it away) */
 export function draftDirty(cur, init) {
