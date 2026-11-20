@@ -45,6 +45,7 @@
 .g-axis span { position: absolute; top: 0; line-height: 22px; transform: translateX(-50%); white-space: nowrap; }
 .g-axis .first { transform: none; }
 .g-axis .last { transform: translateX(-100%); }
+html[data-text="xlarge"] .g-axis .dp { display: none; } /* 320px: 저녁 and 24 collide; the numbers alone stay */
 .g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent); font-weight: 700; z-index: 4; }
 .g-body { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); }
 .g-plot { position: absolute; top: 0; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
@@ -135,6 +136,13 @@
 .ws-tabs[hidden] { display: none; }
 .ws-planbar { order: 1; flex: none; display: flex; padding: var(--sp-8) var(--sp-16); background: var(--surface); } /* 이 외벽으로 일정 잡기: one fixed row on every tab, right above the tab bar (whose top line is the only divider) */
 .ws-planbar[hidden] { display: none; }
+/* wide (≥1024px, the same edge as style.css; wall-sheet.js reads the same query): the panes are one column that scrolls as a whole, the tab bar sits under the head and a tab scrolls to its section */
+@media (min-width: 1024px) {
+  .wall-sheet .ws-tabs { order: 0; border-top: 0; border-bottom: 1px solid var(--line); padding-bottom: 0; position: sticky; top: 0; z-index: 2; }
+  .wall-sheet .ws-body { display: block; overflow-x: hidden; overflow-y: auto; scroll-snap-type: none; }
+  .wall-sheet .ws-panel { overflow: visible; scroll-snap-align: none; scroll-snap-stop: normal; }
+  .wall-sheet .ws-panel:last-child { min-height: 100%; } /* the last section can still be scrolled up to the top, so its tab and the scroll agree */
+}
 .ws-plan { flex: 1; justify-content: center; background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; white-space: nowrap; } /* the filled look of .ws-ask.pri on the shared .btn */
 .ws-plan:active { opacity: .85; }
 .ws-tabs [role="tab"] { flex: 1; min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-4) 0 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
@@ -171,8 +179,8 @@
 .fill-row:not([data-field=group]) .fill-label { display: none; } /* a one-blank row (위치): its own label already says it */
 .fill-field + .fill-field { margin-top: var(--sp-4); }
 :is(.fill-row, .ws-empty) .ws-ask { max-width: 100%; white-space: normal; }
-.is-wall .sh-sky { --arc: 40px; --ground: 10px; --slab-h: 52px; --d-max: 24px; position: relative; isolation: isolate; flex: none; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: var(--sp-8); min-height: 140px;
-  padding: calc(var(--sp-24) + env(safe-area-inset-top)) var(--sp-8) calc(var(--ground) + var(--arc) + var(--d-max) / 2 + var(--sp-8)) var(--sp-16); /* the words stop above the sun's highest point, so the band grows with 큰 글씨 instead of colliding */
+.is-wall .sh-sky { --arc: 40px; --ground: 10px; --slab-h: 52px; --d-max: 24px; position: relative; isolation: isolate; flex: none; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: var(--sp-12); min-height: 140px;
+  padding: calc(var(--sp-24) + env(safe-area-inset-top)) var(--sp-8) calc(var(--ground) + var(--arc) + var(--d-max) / 2 + var(--sp-8) + var(--sp-8)) var(--sp-16); /* the words stop above the sun's highest point, so the band grows with 큰 글씨 instead of colliding */
   background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
 .is-wall .sh-sky.is-compact { min-height: 0; padding-top: calc(var(--sp-12) + env(safe-area-inset-top)); padding-bottom: var(--sp-12); } /* scrolled down a pane (wall-sheet.js): the words only, the sky's tone stays */
 .is-wall .sh-sky.is-compact .sk-scene { display: none; }
@@ -180,15 +188,17 @@ html[data-text] .is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: no
 @media (max-width: 359px) { .is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } } /* a 320px phone: the same, so the name keeps its room */
 html[data-text] .is-wall .sh-sky.is-compact { grid-template-columns: minmax(0, 1fr) auto; }
 html[data-text] .is-wall .sh-sky.is-compact .sk-act { grid-row: auto; margin-top: 0; }
-.is-wall .sk-txt { min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-8); }
+.is-wall .sk-txt { min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); }
 .is-wall .sk-txt > .sk-title { flex: 0 0 100%; } /* leaves the slab its corner of the ground */
 /* 아주 크게(또는 좁은 폰의 크게): 제보하기 · 일정 잡기 · 닫기가 이름 옆에 있으면 끊을 수 없는 이름(…인공암벽등반장)이 버튼 위로 넘친다 → 버튼 줄을 이름 위 한 줄로 */
 html[data-text="xlarge"] .is-wall .sh-sky { grid-template-columns: minmax(0, 1fr); }
+html[data-text="xlarge"] .is-wall .sh-sky:not(.is-compact) { padding-bottom: var(--sp-16); } /* big text: the words fill the band, the sun picture goes */
+html[data-text="xlarge"] .is-wall .sk-scene { display: none; }
 html[data-text="xlarge"] .is-wall .sk-act { grid-row: 1; justify-self: end; margin-top: 0; }
 @media (max-width: 359px) { html[data-text="large"] .is-wall .sh-sky { grid-template-columns: minmax(0, 1fr); } html[data-text="large"] .is-wall .sk-act { grid-row: 1; justify-self: end; margin-top: 0; } }
 .is-wall .sk-title { margin: 0; font-size: var(--fs-lg); font-weight: 700; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; } /* anywhere, not break-word: an unbreakable name (남원종합스포츠타운…) must shrink with its column instead of running under the buttons on a 320px phone */
 .is-wall .sk-title:focus { outline: none; }
-.is-wall .sk-contact { display: flex; flex-wrap: wrap; gap: var(--sp-8); flex: 0 0 100%; margin: calc(var(--sp-2) * -1) 0 0 -2px; } /* its own line under name and region, left-aligned (the disc's 2px inset is cancelled so it lines up with the text) */
+.is-wall .sk-contact { display: flex; flex-wrap: wrap; gap: var(--sp-8); flex: 0 0 100%; margin: var(--sp-4) 0 0 -2px; } /* its own line under name and region, left-aligned (the disc's 2px inset is cancelled so it lines up with the text) */
 .is-wall .sk-ct { position: relative; isolation: isolate; display: inline-grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; color: #fff; text-decoration: none; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
 .is-wall .sk-ct::before { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 50%; background: rgb(20 22 24 / .32); border: 1px solid rgb(255 255 255 / .28); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); } /* the dark glass disc of the card's 카메라·공유 (40px inside the 44px target) */
 @media (prefers-reduced-transparency: reduce) { .is-wall .sk-ct::before { background: rgb(20 22 24 / .72); -webkit-backdrop-filter: none; backdrop-filter: none; } }
@@ -317,7 +327,8 @@ html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th
 }
 .g-seg button[aria-pressed="true"] { color: var(--fg); font-weight: 700; border-bottom-color: var(--accent); }
 .g-seg .sw-m { font-size: var(--fs-xs); font-weight: 500; opacity: .8; }
-.g-seg button.shut:not([aria-pressed="true"]) { color: var(--warn); }
+html[data-text="xlarge"] .g-seg button { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; } /* 큰 글씨: 기간(12~3월 · 휴무)을 둘째 줄로 내려 320px에서 오른쪽이 잘리지 않게 */
+html[data-text="xlarge"] .g-axis .nowtag { padding: 3px var(--sp-2); } /* 큰 글씨: 지금 시각 칩이 옆 눈금(18 등)을 덮지 않게 */.g-seg button.shut.now:not([aria-pressed="true"]) { color: var(--warn); } /* shut right now = warning; a closure that is not on now keeps the muted tab colour and says 휴무 in words */
 .g-seg button.shut:not([aria-pressed="true"]) .sw-m { font-weight: 700; opacity: 1; }
 .g-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .k-bar { background: var(--open-bar); }

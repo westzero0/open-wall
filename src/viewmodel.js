@@ -132,14 +132,8 @@ export function scopeRows(rows, { regions = [], venue = 'any', parkOnly = false,
     && (!rentalOnly || hasRental(wall)));
 }
 
-// Filters only reach the open group; closed/unknown stay as they are. A sun filter drops walls
-// whose facing is unknown (lit === null), but not indoor-only ones (no sun to judge; shown as 실내);
-// `short` (below the minimum stay) is dropped too.
-export function filterRows(rows, sun) {
-  const want = sun === 'sun' ? true : sun === 'shade' ? false : undefined;
-  return rows.filter((r) => r.status.state !== 'open'
-    || (!r.short && (want === undefined || r.lit === want || r.wall.venue === 'indoor')));
-}
+// Filters only reach the open group; closed/unknown stay as they are. `short` (below the minimum stay) is dropped.
+export const filterRows = (rows) => rows.filter((r) => r.status.state !== 'open' || !r.short);
 
 export function groupRows(rows) {
   return {
@@ -152,6 +146,10 @@ export function groupRows(rows) {
 
 export function sortRows(rows, mode) {
   const out = [...rows];
+  if (mode === 'sun') { // 양달 먼저: lit 0, unknown facing · indoor 1, shade 2; the incoming order (time left, name) holds within each
+    const rank = (r) => (r.wall.venue === 'indoor' || r.lit === null || r.lit === undefined ? 1 : r.lit ? 0 : 2);
+    return out.sort((a, b) => rank(a) - rank(b));
+  }
   if (mode !== 'distance') return out;
   const key = (r) => r.distanceKm ?? Infinity;
   return out.sort((a, b) => key(a) - key(b) || a.wall.name.localeCompare(b.wall.name, 'ko'));
@@ -247,8 +245,7 @@ export function dayBar(wall, at) {
   const sunKnown = isSunlit(wall, at).lit !== null;
   const sun = sunKnown ? sunIntervals(wall, at) : null;
   const nowMin = at.getHours() * 60 + at.getMinutes();
-  const sunText = sun ? `예상 양달 ${formatRanges(sun)}` : wall.venue === 'indoor' ? '실내' : '양달 정보 없음';
-  return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, ${sunText}, 현재 ${fmtMin(nowMin)}` };
+  return { open, sun, nowMin, label: `운영 ${formatRanges(open)}, 현재 ${fmtMin(nowMin)}` };
 }
 
 // 운영 중 양달: how a day's sun windows meet its open intervals (minutes). A sun that never comes into the open hours is just 운영 중 양달 없음 (one wording, so

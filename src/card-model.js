@@ -93,8 +93,7 @@ function rowBar(wall, status, at) {
   if (!next || ymd(next) === ymd(at)) return { ...dayBar(wall, at), ahead: null };
   const day = new Date(next.getFullYear(), next.getMonth(), next.getDate());
   const { open, sun } = dayBar(wall, day);
-  const sunText = sun ? `예상 양달 ${formatRanges(sun)}` : noSunText(wall);
-  return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}, ${sunText}` };
+  return { open, sun, nowMin: null, ahead: day, label: `${day.getMonth() + 1}/${day.getDate()} 운영 ${formatRanges(open)}` };
 }
 
 // segments: the list row's bar on the 06–24 axis ([a, b, past]); sunBands: its sun, only where the wall is open (sun before opening or

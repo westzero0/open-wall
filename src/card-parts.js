@@ -20,23 +20,18 @@ import { el } from './dom.js';
 import { AXIS, axisFrac, fmtMin } from './viewmodel.js';
 import { boardText } from './card-model.js';
 import { DAY_KO } from './time.js';
+import { WX_WORD, WX_ICON } from './wx-chip.js';
 
-// wxSet(chip, { wx: {t, kind}, sunWord, sunPic, icon }): the weather comes first. When a weather matters to the sun (비 · 눈 · 뇌우 · 강풍 · 한파 · 폭염, and 흐림 over a lit wall) the chip's picture
-// is that weather and the 양달/응달 picture moves to a 20px badge at the chip's top right; the chip keeps its sun / shade fill. The temperature (`14°`) hangs under the chip (always the ink colour; 흐림 over a lit wall is the cloud alone, no 양달 badge). One role=img with one label ("응달 · 비 · 11도"): the weather word is only in the label. No wx → the chip as it is.
-// The 외벽 row, the map card and the 싱글피치 row all draw their chip through this.
-export const WX_WORD = { rain: '비', snow: '눈', storm: '뇌우', wind: '강풍', cold: '한파', heat: '폭염', cloud: '흐림' };
-export const WX_ICON = { rain: 'sky-rain', snow: 'snow', storm: 'sky-storm', wind: 'wind', cold: 'thermo-cold', heat: 'thermo-hot', cloud: 'sky-cloud' };
+// wxSet(c, { icon }): c is wx-chip chipOf's {pic, warn, t, label}. The list row's front column: a neutral square picture (the weather; 맑음 = sun / moon, 흐림 = cloud,
+// 실내 = the house, no forecast = a plain –) with the temperature under it (`14°`; `–` for 실내). A weather worth a warning (비 · 눈 · 강풍 · 폭염 · 한파) takes --warn on the picture and the
+// temperature (.is-warn). One role=img with one label ("비 · 9도"); no 양달/응달 here (that lives in the wall sheet). The 외벽 row, the map card and the 싱글피치 row all draw their chip this way.
+export { WX_WORD, WX_ICON };
 export const wxLabel = (sunWord, wx) => [sunWord, WX_WORD[wx.kind], Number.isFinite(wx.t) ? `${wx.t}도` : null].filter(Boolean).join(' · ');
-export function wxSet(chip, { wx, sunWord = '', sunPic = 'sun', icon }) {
-  if (!chip || !wx) return chip;
-  const veiled = wx.kind === 'cloud'; // 흐림 over a lit wall: no sun is shining, so no 양달 word and no 양달 badge — the cloud alone
-  const label = wxLabel(veiled ? '' : sunWord, wx);
-  for (const a of ['role', 'aria-label', 'title']) chip.removeAttribute(a);
-  chip.setAttribute('aria-hidden', 'true');
-  if (wx.kind) { chip.classList.add(veiled ? 'scw-veil' : 'scw-on'); chip.replaceChildren(icon(WX_ICON[wx.kind])); }
-  return el('span', { class: `wxset${wx.kind ? ` is-${wx.kind}` : ''}`, role: 'img', 'aria-label': label, title: label }, chip,
-    wx.kind && !veiled ? el('span', { class: 'wx-dir', 'aria-hidden': 'true' }, icon(sunPic)) : null,
-    Number.isFinite(wx.t) ? el('span', { class: 'wx-temp', 'aria-hidden': 'true' }, `${wx.t}°`) : null);
+export function wxSet(c, { icon }) {
+  const pic = el('span', { class: 'sunnow pic scw-veil', 'aria-hidden': 'true' }, c.pic === 'none' ? '–' : icon(c.pic));
+  const temp = Number.isFinite(c.t) ? `${c.t}°` : c.pic === 'indoor' ? '–' : null;
+  return el('span', { class: `wxset${c.warn ? ' is-warn' : ''}`, role: 'img', 'aria-label': c.label, title: c.label }, pic,
+    temp ? el('span', { class: 'wx-temp', 'aria-hidden': 'true' }, temp) : null);
 }
 
 export const axisX = (min) => `${axisFrac(min) * 100}%`;
@@ -50,8 +45,7 @@ export const span = (cls, a, b) => {
 // inside the bar it stays square so two colours meet cleanly.
 export const capCls = (a, b, open) => `${open.some(([x]) => x === a) ? ' cap-l' : ''}${open.some(([, y]) => y === b) ? ' cap-r' : ''}`;
 
-// The one bar of a wall's day, drawn the same in the list row and on the map card: green where open (grey once gone in the open card),
-// orange where it is sunny inside those hours, the pin at the picked time. `ahead` (a later day) has no pin.
+// The one bar of a wall's day, drawn the same in the list row and on the map card: open stretches, the pin at the picked time (no sun band: the sun is in the wall sheet). `ahead` (a later day) has no pin.
 export function gaugeBar(bar) {
   const onAxis = bar.nowMin >= AXIS[0] && bar.nowMin <= AXIS[1]; // before 06:00 the pin would stand on the axis' left end like a stray mark: no pin
   const tick = bar.ahead || !onAxis ? null : el('span', { class: 'tick' });
@@ -59,9 +53,6 @@ export function gaugeBar(bar) {
   return el('span', { class: 'bar', role: 'img', 'aria-label': bar.label },
     // past and to-come are one tone in the list: the pin says "now"; the two halves of a split interval meet square
     ...bar.segments.map(([a, b, past], i, all) => span(`${past ? 'seg past' : 'seg'}${all[i + 1]?.[0] === b ? ' j-end' : ''}${all[i - 1]?.[1] === a ? ' j-start' : ''}`, a, b)),
-    // the part before the pin is already gone: its orange is paler, like the bar under it
-    ...bar.sunBands.flatMap(([a, b]) => (bar.nowMin == null || bar.nowMin <= a ? [[a, b, false]] : bar.nowMin >= b ? [[a, b, true]] : [[a, bar.nowMin, true], [bar.nowMin, b, false]]))
-      .map(([a, b, past]) => span(`${past ? 'sunband past' : 'sunband'}${capCls(a, b, bar.open)}`, a, b)),
     tick);
 }
 

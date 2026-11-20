@@ -28,7 +28,7 @@ export const config = {
   planner: { on: true },
   appUrl: '',
   utilUrl: 'walls.html', // 외벽 유틸리티 페이지 주소(옛 앱). 빈 값 = 링크 없음.
-  plannerUrl: './', // 일정앱 주소(외벽 시트의 일정 잡기 → ?new&wall=<id>). 빈 값 = 버튼 없음.
+  plannerUrl: '', // 일정앱 주소(외벽 시트의 일정 잡기 → ?new&wall=<id>). 빈 값 = 버튼 없음. 2026-11-20 일정앱 정리 전까지 숨김(되살릴 때 './').
   scrubHint: true,
   showOutdoorCount: false,
   stage: 'beta',

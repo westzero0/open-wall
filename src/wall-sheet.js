@@ -4,6 +4,8 @@
 // (the hours grid, seasonal sun and fee table live there, next to the view state they read). DOM via el()/textContent only.
 // The panes sit side by side in one scroll-snapped row: swiping sideways or tapping a tab moves between them; each pane scrolls
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
+// From 1024px up (`wide`) the panes are stacked in one column that scrolls as a whole: the tab bar sits under the head, a tab scrolls to
+// its section, and scrolling marks the tab of the section in view. A change of width keeps the section in view.
 import { el } from './dom.js';
 import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 import { segStep } from './seg-nav.js';
@@ -27,28 +29,52 @@ let cur = 0; // the tab in view
 export const registerWallSheet = (fn, kind = 'wall') => { builders[kind] = fn; };
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wide = matchMedia('(min-width: 1024px)'); // the one width test (the same edge as style.css's wide layout)
+let spyHold = 0; // a tab press scrolls smoothly: the tab marks stay on the pressed one until it arrives
 
 // the tab in view: its button, the focus order, and the pane (built now if it is a lazy one); the other panes are inert, so
 // focus and screen readers stay in the one on screen
+function build(n) {
+  if (!lazy[n]) return;
+  const made = lazy[n](); // built the first time the tab is shown (wide: all at once when the sheet opens, so the column's height is known)
+  lazy[n] = null;
+  panels[n].replaceChildren(...[made].flat().filter(Boolean));
+}
 function show(n) {
-  if (lazy[n]) { // built the first time the tab is shown
-    const made = lazy[n]();
-    lazy[n] = null;
-    panels[n].replaceChildren(...[made].flat().filter(Boolean));
-  }
+  build(n);
   cur = n;
-  if (panels[n].scrollTop < 8) sky.classList.remove('is-compact'); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
+  if (!wide.matches && panels[n].scrollTop < 8) sky.classList.remove('is-compact'); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
   tabEls.forEach((t, i) => {
     t.setAttribute('aria-selected', String(i === n));
     t.tabIndex = i === n ? 0 : -1;
-    panels[i].inert = i !== n;
+    panels[i].inert = !wide.matches && i !== n; // wide: every pane is on screen
   });
+}
+
+// wide: where pane n starts in the column's scroll; the pane in view is the last one that has reached the top
+const topOf = (n) => panels[n].getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+function spy() {
+  if (spyHold || !panels.length) return;
+  let n = 0;
+  panels.forEach((_, i) => { if (topOf(i) <= body.scrollTop + 8) n = i; });
+  if (n !== cur) { show(n); paint(n); }
 }
 
 // each tab button's highlight follows the scroll: p is the position in panes (1.3 = a third of the way from tab 1 to tab 2)
 const paint = (p) => tabEls.forEach((t, j) => t.style.setProperty('--on', String(Math.max(0, 1 - Math.abs(p - j)))));
 
 function goTo(n, { focus = false, instant = false } = {}) {
+  if (wide.matches) { // one column: scroll to the section; a press moves focus to its heading, the arrow keys keep it on the tabs
+    const smooth = !instant && !reduced();
+    clearTimeout(spyHold);
+    if (smooth) spyHold = setTimeout(() => { spyHold = 0; spy(); }, 600); else spyHold = 0;
+    show(n);
+    paint(n);
+    body.scrollTo({ top: topOf(n), behavior: smooth ? 'smooth' : 'instant' });
+    if (focus) tabEls[n].focus();
+    else if (!instant) { const h = panels[n].querySelector('h2, h3, h4') ?? panels[n]; h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    return;
+  }
   if (n !== cur) panels[n].scrollTop = 0; // each tab starts at its top (tapping the tab already in view leaves its scroll alone)
   show(n);
   body.scrollTo({ left: n * body.clientWidth, behavior: instant || reduced() ? 'instant' : 'smooth' });
@@ -69,6 +95,7 @@ function make() {
     el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
+    if (wide.matches) { spy(); return; }
     if (!body.clientWidth) return;
     const p = body.scrollLeft / body.clientWidth;
     paint(p);
@@ -79,11 +106,28 @@ function make() {
   // A pane only a little taller than its box is left alone: folding it would bring it back to the top and unfold it again.
   body.addEventListener('scroll', (e) => {
     const p = e.target;
-    if (p === body || !p.classList?.contains('ws-panel')) return;
+    if (wide.matches || p === body || !p.classList?.contains('ws-panel')) return;
     if (p.scrollTop < 8) sky.classList.remove('is-compact');
     else if (p.scrollTop > 48 && p.scrollHeight - p.clientHeight > 120) sky.classList.add('is-compact');
   }, { capture: true, passive: true });
-  window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
+  window.addEventListener('resize', () => { if (dlg.open && !wide.matches) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
+  wide.addEventListener('change', () => { // the window crossed 1024px: the same section stays in view in the other layout
+    if (!dlg.open) return;
+    const n = cur;
+    clearTimeout(spyHold); spyHold = 0;
+    if (wide.matches) {
+      sky.classList.remove('is-compact');
+      body.scrollLeft = 0;
+      panels.forEach((p) => { p.scrollTop = 0; });
+      panels.forEach((_, i) => build(i));
+    } else {
+      body.scrollTop = 0;
+    }
+    show(n);
+    paint(n);
+    if (wide.matches) body.scrollTo({ top: topOf(n), behavior: 'instant' });
+    else body.scrollTo({ left: n * body.clientWidth, behavior: 'instant' });
+  });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
   dlg = el('dialog', { class: 'sheet board-page wall-sheet is-wall', 'aria-labelledby': 'ws-title' },
     sky, planbar, bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them (and the plan row above them) at the foot
@@ -172,9 +216,12 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
     pushed = true;
   }
   dlg.showModal();
+  body.scrollTop = 0;
+  if (wide.matches) panels.forEach((_, i) => build(i));
   show(first);
   paint(first);
-  body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
+  if (wide.matches) body.scrollTo({ top: topOf(first), behavior: 'instant' });
+  else body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
   planbar.hidden = !built.plan;
   if (built.plan) plan.setAttribute('href', built.plan); else plan.removeAttribute('href');
   title.focus();
@@ -182,10 +229,11 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   if (sec) {
     const hid = sec.closest('.sx-panel[hidden]'); // it sits in a part of the tab that is not showing: open that part first
     hid?.parentElement.querySelector(`[role="tab"][aria-controls="${hid.id}"]`)?.click();
-    const p = panels[first]; // only the panel scrolls: scrollIntoView would also move the overflow:hidden dialog and body, pushing the head off screen
-    p.scrollTop = sec.offsetTop - p.offsetTop - 8 - (p.querySelector('.sx-seg')?.offsetHeight ?? 0); // less the segment row that stays on top
+    const p = panels[first]; // only the panel scrolls (wide: the column): scrollIntoView would also move the overflow:hidden dialog, pushing the head off screen
+    const sc = wide.matches ? body : p;
+    sc.scrollTop += sec.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8 - (p.querySelector('.sx-seg')?.offsetHeight ?? 0); // less the segment row that stays on top
     dlg.scrollTop = 0;
-    body.scrollTop = 0;
+    if (!wide.matches) body.scrollTop = 0;
     sec.classList.add('flash');
     clearTimeout(flashTimer); // a reopen within the 1.6 s must not have its mark wiped by the earlier timer
     flashTimer = setTimeout(() => sec.classList.remove('flash'), 1600);
@@ -217,14 +265,18 @@ export function segmentPane(name, label, items) {
     });
     if (focus) tabs[keys.indexOf(key)].focus();
   };
+  let touched = false; // the reader chose a part in this pane: prefer() leaves it alone
   tabs.forEach((t, i) => {
-    t.addEventListener('click', () => pick(keys[i]));
+    t.addEventListener('click', () => { touched = true; pick(keys[i]); });
     t.addEventListener('keydown', (e) => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
       e.preventDefault();
+      touched = true;
       pick(segStep(keys, cur, e.key), true);
     });
   });
   pick(cur);
-  return el('div', { class: 'sx-pane' }, el('div', { class: 'sx-seg', role: 'tablist', 'aria-label': label }, ...tabs), ...panes);
+  const pane = el('div', { class: 'sx-pane' }, el('div', { class: 'sx-seg', role: 'tablist', 'aria-label': label }, ...tabs), ...panes);
+  pane.prefer = (key) => { if (!touched && keys.includes(key) && key !== cur) { cur = key; panes.forEach((p, i) => { tabs[i].setAttribute('aria-selected', String(keys[i] === key)); tabs[i].tabIndex = keys[i] === key ? 0 : -1; p.hidden = keys[i] !== key; }); } }; // a part with nothing to show (날씨 실패) gives way, without being remembered as the reader's pick
+  return pane;
 }

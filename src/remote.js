@@ -1,9 +1,10 @@
 // src/remote.js — the plain network calls DOM modules used to make inline: a JSON GET, a text GET, a form POST.
 // No DOM. fetchFn is injected so tests don't touch the network; the app's own Worker has its own adapter (board-api.js).
 
-/** getJson(url, {fetchFn, timeoutMs}) → parsed JSON, or null when the server answered not-ok. Throws on a network failure or bad JSON. */
-export async function getJson(url, { fetchFn = (...a) => fetch(...a), timeoutMs = 8000 } = {}) {
+/** getJson(url, {fetchFn, timeoutMs, onStatus}) → parsed JSON, or null when the server answered not-ok (onStatus(status) is told first). Throws on a network failure or bad JSON. */
+export async function getJson(url, { fetchFn = (...a) => fetch(...a), timeoutMs = 8000, onStatus } = {}) {
   const res = await fetchFn(url, { credentials: 'omit', signal: AbortSignal.timeout?.(timeoutMs) });
+  if (!res.ok) onStatus?.(res.status);
   return res.ok ? res.json() : null;
 }
 

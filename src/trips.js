@@ -81,13 +81,16 @@ export function comingWeekend(today) {
 }
 
 /**
- * homeDays(today, trips = []) → [{ label, date, plan?: true, add?: true }]: 홈의 날짜 칩 오늘·내일·모레(고정) + 일정이 잡힌 날짜(plan: true, 날짜순, 같은 날은 칩 하나, 이미 있는 칩과 같은 날이면 그 칩에 plan만)
+ * homeDays(today, trips = []) → [{ label, date, plan?: true, add?: true }]: 홈의 날짜 칩 오늘·내일·주말(고정; 오늘·내일이 토·일이면 다음 주 토요일 '다음 주말') + 일정이 잡힌 날짜(plan: true, 날짜순, 같은 날은 칩 하나, 이미 있는 칩과 같은 날이면 그 칩에 plan만)
  * + 끝의 '+ 일정 잡기'(add: true). 앞으로의 일정(plan)과 진행 중인 일정(day: 오늘 칩)만 센다. Weekdays are not assumed: 요일은 일정이 있는 날의 이름으로만 나온다.
  */
 export function homeDays(today, trips = []) {
   const [y, m, d] = today.split('-').map(Number);
   const at = (o) => ymd(new Date(y, m - 1, d + o));
-  const chips = [{ label: '오늘', date: today }, { label: '내일', date: at(1) }, { label: '모레', date: at(2) }];
+  const w = comingWeekend(today);
+  const shift = w.sat <= at(1); // 오늘·내일이 토·일이면 이번 주말이라 한 주 뒤 토요일로 (일요일은 다가오는 토요일이 이미 그 날짜)
+  const next = shift || new Date(y, m - 1, d).getDay() === 0;
+  const chips = [{ label: '오늘', date: today }, { label: '내일', date: at(1) }, { label: next ? '다음 주말' : '주말', date: shift ? comingWeekend(w.sun).sat : w.sat }];
   const dates = trips.map((t) => [tripState(t, today, false), t]).filter(([s]) => s === 'plan' || s === 'day')
     .map(([s, t]) => (s === 'day' ? today : t.from)).sort();
   for (const date of dates) {
