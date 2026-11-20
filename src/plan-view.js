@@ -27,6 +27,23 @@ export function dayParts(date) {
   return { d: String(day), dow: DAY_KO[at.getDay()], md: `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`, month, day };
 }
 
+/** nextWeekendFor(planDate, today) → the first Sat/Sun strictly after max(planDate, today): the plan's weekday if it is Sat/Sun, else Saturday ('다음 주말로 다시 잡기'). */
+export function nextWeekendFor(planDate, today) {
+  const from = dateOf(planDate > today ? planDate : today);
+  const want = dateOf(planDate).getDay() === 0 ? 0 : 6;
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1 + ((want - from.getDay() - 1 + 7) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** weekendChips(date, today) → { sat, sun }: the weekend `date` falls in (a weekday → the coming one). Never before today: a Saturday already gone (date = today's Sunday) falls back to the next weekend, so that day has no pressed chip. */
+export function weekendChips(date, today) {
+  const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const b = dateOf(date >= today ? date : today);
+  const sat = new Date(b.getFullYear(), b.getMonth(), b.getDate() + (b.getDay() === 0 ? -1 : (6 - b.getDay())));
+  const r = { sat: f(sat), sun: f(new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + 1)) };
+  return r.sat < today ? weekendChips(f(new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + 7)), today) : r;
+}
+
 /** header time: '11월 10일 화' */
 export function todayText(today) { const p = dayParts(today); return `${p.month}월 ${p.day}일 ${p.dow}`; }
 
@@ -72,7 +89,7 @@ export function rowView(plan, { s, now = Date.now() }) {
   const flag = live && !loading && !!risk.flag; // 빙벽: a condition is met (facts only, no colour level)
   const aria = `${p.month}월 ${p.day}일 ${p.dow}요일 ${title}${plan.min != null ? ` ${timeText(plan.min)}` : ""}. ${verdict}${phrase}${flag ? `. ${ICE_FLAG_TEXT}` : ''}${reserve?.tag ? `. ${reserve.tag}` : ''}`;
   return {
-    id: plan.id, resolved, risk, level, title, time: timeText(plan.min), phrase, symbol: plan.discipline ?? symbolKind(resolved) ?? (resolved.kind === 'ice' ? 'ice' : null), rest, recorded, live, aria,
+    id: plan.id, resolved, risk, level, name, title, time: timeText(plan.min), phrase, symbol: plan.discipline ?? symbolKind(resolved) ?? (resolved.kind === 'ice' ? 'ice' : null), rest, recorded, live, aria,
     past: plan.date < s.today,
     changed: plan.changedFrom ? changedPhrase(plan) : null,
     who: partnerNames(plan, s.db.partners),
@@ -193,8 +210,14 @@ export function weekStrip(plans, today, hardOf = () => false) {
 }
 
 /** Month calendar: weeks Monday..Sunday covering (year, month 1..12). Cell: { date, d, inMonth, today, past, count, marks:{planned,went,missed,rest,hard} }. Broken plan dates are ignored. */
-const MARK_OF = { '예정': 'planned', '갔다': 'went', '못 갔다': 'missed', '쉼': 'rest' };
+export const MARK_OF = { '예정': 'planned', '갔다': 'went', '못 갔다': 'missed', '쉼': 'rest' };
 const ymd = (at) => `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
+const SUFFIXES = ['인공암벽등반장', '인공암벽공원', '스포츠클라이밍경기장', '스포츠클라이밍센터', '스포츠클라이밍장', '국제클라이밍센터', '클라이밍경기장', '클라이밍센터', '클라이밍파크', '클라이밍장', '인공암벽센터', '인공암벽장', '인공암장', '인공암벽', '암벽공원', '해벽공원', '해벽암장', '암벽장', '빙벽장', '암장'].sort((a, b) => b.length - a.length);
+export function shortPlaceName(name) { // 달력 칸용 짧은 이름: 괄호 부분과 끝의 시설 접미사 하나를 뗀다(남는 글자가 없으면 원래 이름)
+  const t = String(name ?? '').replace(/\([^)]*\)/g, '').trim();
+  const suf = SUFFIXES.find((x) => t.endsWith(x) && t.slice(0, -x.length).trim());
+  return suf ? t.slice(0, -suf.length).trim() : t;
+}
 export function monthGrid(plans, year, month, today, hardOf = () => false) { // hardOf(plan) → true for a plan whose weather is 어려움 (the cell gets marks.hard, same as the week strip's red dot)
   const by = new Map();
   for (const p of Array.isArray(plans) ? plans : []) {

@@ -2,6 +2,8 @@
 // Storage writes go through handlers (planner.js); the optional new-wall report goes through plan-report-api (never partner names).
 import { html, useState, useRef, useEffect, usePlannerState } from './planner-ui.js';
 import { Sheet, NameAdd } from './planner-sheet.js';
+import { weekendChips } from './plan-view.js';
+import { Chip } from './planner-parts.js';
 import { PartnerRow } from './planner-partners.js';
 import { comingWeekend } from './trips.js';
 import { searchPlaces, resolvePlace, listChoices } from './plan-place.js';
@@ -58,11 +60,11 @@ function PlanForm({ s, plan, h }) {
   const r0 = plan ? resolvePlace(plan.place, { ...ctx, savedName: plan.placeName }) : null;
   const preset = plan ? null : s.preset; // a new plan may start from a bridge (?new&wall=) or the calendar
   const [date, setDate] = useState(plan?.date ?? preset?.date ?? comingWeekend(s.today).sat);
-  const [time, setTime] = useState(plan ? timeFromMin(plan.min) : '');
+  const [time, setTime] = useState(plan ? timeFromMin(plan.min) : Number.isInteger(preset?.min) ? timeFromMin(preset.min) : '');
   const p0 = preset?.place ? resolvePlace(preset.place, ctx) : null;
   const [query, setQuery] = useState(r0?.name ?? p0?.name ?? '');
   const [picked, setPicked] = useState(plan?.place ?? (p0 ? preset.place : null));
-  const [partnerIds, setPartnerIds] = useState(plan?.partnerIds ?? []);
+  const [partnerIds, setPartnerIds] = useState(plan?.partnerIds ?? (Array.isArray(preset?.partnerIds) ? preset.partnerIds : []));
   const [mineSeed, setMineSeed] = useState(null); // 새 장소 추가 form: null = closed, else the name it opens with
   const mineOpen = mineSeed !== null;
   const [err, setErr] = useState('');
@@ -135,6 +137,7 @@ function PlanForm({ s, plan, h }) {
       <div class="f"><label for="dt">날짜${dowText(date) && ` · ${dowText(date)}`}</label><input id="dt" class="in-t" type="date" value=${date} onInput=${(e) => setDate(e.target.value)} /></div>
       <div class="f"><label for="tm">시각 (선택)</label><input id="tm" class="in-t" type="time" value=${time} onInput=${(e) => setTime(e.target.value)} /></div>
     </div>
+    <div class="sel" role="group" aria-label="주말 고르기">${(({ sat, sun }) => [['토', sat], ['일', sun]])(weekendChips(date, s.today)).map(([d, v]) => html`<${Chip} key=${d} pressed=${date === v} onClick=${() => setDate(v)}>${d} ${+v.slice(5, 7)}/${+v.slice(8)}<//>`)}</div>
     ${isPastDate(date, s.today) && html`<${Note} role="status">${PAST_NOTE}<//>`}
     ${prow ? html`<div class="f"><span class="lb">장소</span>
       <div class="pick-row" role="group" aria-label="고른 장소" ref=${rowEl}><div class="pick static">${prow.label}<small>${infoOf(prow, true).sub}</small></div>

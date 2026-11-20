@@ -4,7 +4,7 @@ import { html, useState, useEffect, useRef } from './planner-ui.js';
 import { alternatives, rockAlternatives } from './plan-alt.js';
 import { rest, changePlace } from './plan-actions.js';
 import { crowdHint } from './plan-crowd.js';
-import { dayParts, homeCells, placeLine, altRow, rockRow, cellsQuiet } from './plan-view.js';
+import { dayParts, homeCells, placeLine, altRow, rockRow, cellsQuiet, nextWeekendFor } from './plan-view.js';
 import { Icon, DisciplineIcon } from './planner-icons.js';
 import { openLabel } from './plan-wall.js';
 import { Cells } from './planner-cells.js';
@@ -134,6 +134,7 @@ export function DetailView({ plan, v, s, now, h, onBack, onAnswer, renderRecordE
       <div class="acts">
         ${v.live && v.atRisk && html`<button type="button" class="txt" onClick=${() => h.onCard(plan.id)}>약속 카드 공유</button>`}
         ${v.recorded && onAnswer && !recKind && html`<button type="button" class="txt" onClick=${() => setRecKind(plan.status === '갔다' ? 'went' : 'missed')}>기록 고치기</button>`}
+        ${(v.rest || plan.status === '못 갔다') && html`<button type="button" class="txt" onClick=${() => h.onAdd({ date: nextWeekendFor(plan.date, s.today), place: plan.place, min: plan.min, partnerIds: plan.partnerIds })}>다음 주말에 같은 곳 잡기</button>`}
         <button type="button" class="txt" onClick=${() => h.onEdit(plan.id)}>${v.rest ? '다시 일정 잡기' : '일정 고치기'}</button>
         <button type="button" class=${'txt del' + (armed ? '' : ' weak')} onBlur=${() => setArmed(false)} onClick=${() => (armed ? h.removePlan(plan.id) : setArmed(true))}>${armed ? '한 번 더 누르면 지워요' : '삭제'}</button>
       </div>

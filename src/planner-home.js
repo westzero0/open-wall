@@ -4,7 +4,7 @@
 import { html, useState, useEffect, useRef, usePlannerState } from './planner-ui.js';
 import { buildTimeline } from './plan-timeline.js';
 import { markWent, markMissed } from './plan-actions.js';
-import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, nextPlanText, filterByDay, dayFullText } from './plan-view.js';
+import { rowView, verdictOf, pastBlocks, dayParts, homeCells, sunNow, weekStrip, filterByDay, dayFullText } from './plan-view.js';
 import { Row } from './planner-row.js';
 import { Note } from './planner-parts.js';
 import { Cells } from './planner-cells.js';
@@ -40,13 +40,14 @@ function Strip({ days, picked, onPick }) {
 
 function Hero({ plan, v, s, now, onOpen }) {
   const p = dayParts(plan.date);
+  const isToday = plan.date === s.today; // a later day: cells follow the plan's own hour; the verdict words ('오늘은 …') and the sun-now line are today-only
   const c = homeCells(v.resolved, plan, s, { now });
-  const sun = v.live ? sunNow(v.resolved, { now }) : null;
-  const verdict = verdictOf(v.risk.level);
+  const sun = v.live && isToday ? sunNow(v.resolved, { now }) : null;
+  const verdict = isToday ? verdictOf(v.risk.level) : null;
   const aria = `${verdict ? verdict + '. ' : ''}${v.aria}`;
   return html`<section class="hero" key="hero">
       <div class="hero-t">
-        <div class="k">오늘</div>
+        <div class="k">${isToday ? '오늘' : '다음 일정'}</div>
         <div class="big n" aria-hidden="true">${p.d}<small>${p.dow}</small></div>
         <h2><button type="button" class="hl" data-row=${plan.id} aria-label=${aria} onClick=${() => onOpen(plan.id)}>
           <${DisciplineIcon} kind=${v.symbol} cls="sy" />
@@ -107,7 +108,7 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const pendingIds = new Set(tl.record.map((p) => p.id));
   const recorded = (p) => p.status === '갔다' || p.status === '못 갔다';
   const upcoming = plans.filter((p) => p.date >= s.today && !recorded(p) && !pendingIds.has(p.id)).sort(byTime);
-  const hero = (!pick || pick === s.today) ? upcoming.find((p) => p.date === s.today && p.status === '예정') ?? null : null;
+  const hero = !pick || pick === s.today ? (upcoming.find((p) => p.date === s.today && p.status === '예정') ?? (!pick ? upcoming.find((p) => p.status === '예정') : null) ?? null) : null; // no plan today and no day picked: the nearest one ahead
   const rows = filterByDay(upcoming.filter((p) => p !== hero), pick);
 
   // 기록하기: the oldest pending plan only (newest-first list → last) + the ones just answered whose extra is still open
@@ -141,16 +142,15 @@ export function Home({ store, handlers: h, renderRecordExtra = null }) {
   const row = (p) => html`<li key=${p.id}><${Row} plan=${p} v=${viewOf(p)} onOpen=${open} s=${s} now=${now} /></li>`;
 
   const nodes = [strip, pickLine];
+  if (items.length) nodes.push(html`<section class="rec" key="rec"><div class="k">기록하기</div>${items}</section>`);
   if (hero) nodes.push(html`<${Hero} key="hero" plan=${hero} v=${viewOf(hero)} s=${s} now=${now} onOpen=${open} />`);
   else if (pick && pick !== s.today) {
     if (!rows.length) nodes.push(html`<section class="empty" key="td"><h2>이날은 일정이 없어요</h2>${addBtn('btn p full', 'add1')}</section>`);
   } else {
-    const next = nextPlanText(plans, s.today);
     const p = dayParts(s.today);
-    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${!pick && next && html`<${Note}>${next}<//>`}${addBtn('btn p full', 'add1')}</section>`);
+    nodes.push(html`<section class="empty" key="td"><div class="k">오늘 · ${p.dow}</div><h2>오늘은 비어 있어요</h2>${addBtn('btn p full', 'add1')}</section>`);
   }
   if (rows.length) nodes.push(html`<ul class="rows" key="rows">${rows.map(row)}</ul>`);
-  if (items.length) nodes.push(html`<section class="rec" key="rec"><div class="k">기록하기</div>${items}</section>`);
   if (days.length) {
     nodes.push(html`<button type="button" class="more" key="more" aria-expanded=${showPast ? 'true' : 'false'} onClick=${() => setShowPast(!showPast)}>${showPast ? '지난 일정 접기' : '지난 일정 보기 ›'}</button>`);
     if (showPast) {

@@ -299,6 +299,7 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 .sheet .row2 .f { padding-top: 0; border-bottom: 0; }
 .sheet .row2 { align-items: flex-end; }
 .sheet .row2 > * { min-width: 0; }
+.sheet .row2.stack + .sel { margin-top: var(--pl-sp-8); }
 .sheet .in-t { min-width: 0; }
 .nm { display: flex; gap: var(--pl-sp-8); align-items: center; margin-top: var(--pl-sp-8); }
 .nm .in-t { flex: 1; }
@@ -368,12 +369,15 @@ body:has(.p-tabs) #app { padding-bottom: calc(var(--pl-tap) + var(--pl-sp-32) + 
 .cal { width: calc(100% + var(--pl-pad) * 2); margin-inline: calc(var(--pl-pad) * -1); table-layout: fixed; border-collapse: collapse; }
 .cal th { padding: var(--pl-sp-4) 0; font-size: var(--pl-fs-small); font-weight: 400; color: var(--pl-muted); }
 .cal td { padding: 0; border-top: var(--pl-hair) solid var(--pl-line); }
-.cd { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--pl-sp-4); width: 100%; min-height: calc(var(--pl-tap) + var(--pl-sp-8)); padding: var(--pl-sp-4) 0; border: 0; background: none; font: inherit; color: var(--pl-ink); cursor: pointer; }
+.cd { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--pl-sp-4); width: 100%; min-height: calc(var(--pl-tap) + var(--pl-sp-16)); padding: var(--pl-sp-4) 0; border: 0; background: none; font: inherit; color: var(--pl-ink); cursor: pointer; }
 .cd.out { color: var(--pl-muted); }
-.cd .dn { --d: min(var(--pl-strip-d), calc(var(--pl-tap) - var(--pl-sp-8))); display: block; width: var(--d); height: var(--d); line-height: var(--d); padding: 0; text-align: center; border-radius: var(--pl-r-s); font-size: var(--pl-fs-sub); } /* 홈 스트립과 같은 네모 칸 */
+.cd .dn { --d: max(var(--pl-sp-24), calc(var(--pl-fs-small) * 2)); display: block; width: var(--d); height: var(--d); line-height: var(--d); padding: 0; text-align: center; border-radius: var(--pl-r-s); font-size: var(--pl-fs-small); } /* 홈 스트립과 같은 네모 칸, 숫자는 한 단계 작게 */
 .cd.t .dn { background: var(--pl-today); color: var(--pl-on-today); font-weight: 800; } /* 오늘 = 이끼 채움(홈 스트립과 같음) */
 .cd[aria-pressed="true"] .dn { box-shadow: 0 0 0 var(--pl-ring) var(--pl-paper), 0 0 0 calc(var(--pl-ring) * 2) var(--pl-ink); font-weight: 800; } /* 고른 날 = 이중 링(홈 스트립과 같음) */
-.cd .mk { display: flex; align-items: center; justify-content: center; gap: var(--pl-sp-4); min-height: var(--pl-sp-12); font-size: var(--pl-fs-small); }
+.cd .nm { display: block; margin: 0; gap: 0; width: 100%; padding: 0 var(--pl-sp-4); box-sizing: border-box; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--pl-fs-small); font-weight: 700; line-height: var(--pl-lh-tight); color: var(--pl-ink); }
+:root[data-text="xlarge"] .cd .nm { display: none; } /* 더 크게: 이름은 한 글자만 남아 숨김, 전체 이름은 버튼 aria-label */
+.cd .nm.dim { color: var(--pl-muted); font-weight: 400; } /* 쉼·못 감: 흐리게만(표시 점 없음 규칙 유지) */
+.cd .mk { display: flex; align-items: center; justify-content: center; gap: var(--pl-sp-4); min-height: var(--pl-sp-8); font-size: var(--pl-fs-small); }
 .cd .mk i { display: block; box-sizing: border-box; width: var(--pl-sp-8); height: var(--pl-sp-8); }
 .cd .mk .m-plan, .cd .mk .m-hard { width: var(--pl-sp-4); height: var(--pl-sp-4); border-radius: var(--pl-r-pill); } /* 홈 스트립과 같은 점: 일정 = 먹, 어려움 예보 = 붉은 점 */
 .cd .mk .m-plan { background: var(--pl-ink); }
