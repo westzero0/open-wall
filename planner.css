@@ -357,6 +357,8 @@ body:has(.p-tabs) #app { padding-bottom: calc(var(--pl-tap) + var(--pl-sp-32) + 
 .p-field { display: flex; flex-direction: column; gap: var(--pl-sp-4); }
 .p-row { display: flex; gap: var(--pl-sp-8); }
 .p-row > * { flex: 1; }
+.sheet .p-field.pr { align-items: stretch; }
+.sheet .pr ~ .pr { margin-top: var(--pl-sp-12); } /* 암장 알려 주기 시트: 칩 줄·내용·보내기 사이 */
 .p-ic { flex: none; width: var(--pl-tap); height: var(--pl-tap); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--pl-r-s); background: none; color: var(--pl-ink); cursor: pointer; }
 .p-ic .ic, .srt .ic { width: var(--pl-ic-sm); height: var(--pl-ic-sm); }
 
@@ -394,6 +396,10 @@ button.ce { cursor: pointer; }
 .wsh { display: flex; flex-direction: column; gap: var(--pl-sp-16); padding-bottom: var(--pl-sp-24); }
 .wsh p, .wsh dl, .wsh ul { margin: 0; padding: 0; list-style: none; }
 .wsh .lbl { margin: 0 0 var(--pl-sp-4); }
+/* 시트 안 .places 머리글은 위 규칙보다 특이도를 올려 259~261행 간격(위 24·아래 8)과 예외를 지킨다 */
+.wsh .places .lbl { margin: var(--pl-sp-24) 0 var(--pl-sp-8); }
+.wsh .places .lbl + .lbl { margin-top: 0; }
+.wsh .places .lbl.srt-h { margin-bottom: 0; }
 .wl-top { color: var(--pl-muted); font-size: var(--pl-fs-sub); }
 .wl-week { display: grid; grid-template-columns: max-content 1fr; gap: var(--pl-sp-4) var(--pl-sp-16); font-size: var(--pl-fs-sub); }
 .wl-week dd { margin: 0; }
@@ -404,6 +410,7 @@ button.ce { cursor: pointer; }
 .wl-near .nr small { display: block; font-size: var(--pl-fs-small); font-weight: 400; color: var(--pl-muted); }
 .pick-row { display: flex; align-items: center; gap: var(--pl-sp-8); border-top: var(--pl-hair) solid var(--pl-line); } /* 구분선은 정보 링크 열까지 */
 .pick-row .pick { flex: 1; min-width: 0; font-size: var(--pl-fs-title); }
+.ac .pick-row .pick { font-size: inherit; } /* 고른 루트 줄: 이름 글자는 아래 목록 줄(.rrow .pick)과 같은 크기 */
 .p-row-links { display: flex; flex-wrap: wrap; gap: var(--pl-sp-4) var(--pl-sp-16); }
 .p-row-links .p-link { white-space: nowrap; } .pick.static { cursor: default; } /* 고른 장소 줄: 누르는 게 아니라 보여 주는 줄(바꾸기 버튼이 따로 있다) */
 
@@ -482,6 +489,7 @@ button.ice-row .ic { position: absolute; right: var(--pl-sp-12); top: 50%; width
 /* 자연암장 시트: 컨디션 문장은 시트에서 가장 큰 글자(라벨은 vh로 스크린리더용), 상세 시트(어프로치·루트) 목록과 사진 */
 .wsh .cond-now { font-size: var(--pl-fs-title-now); font-weight: 700; line-height: var(--pl-lh-tight); }
 .cd-pane { display: flex; flex-direction: column; gap: var(--pl-sp-16); }
+.cd-pane > .p-link, .fill-row .p-link { align-self: flex-start; justify-self: start; padding-left: 0; } .fill-row { align-items: center; } /* 알려 주기 링크는 옆 글자 시작선에 맞춘다(점선 빈 칸 안은 글자가 가운데라 그대로) */
 .wsh .cd-head { font-weight: 700; }
 .wsh ol.cd-steps { list-style: decimal; padding-left: 1.6em; display: flex; flex-direction: column; gap: var(--pl-sp-16); }
 .cd-steps b { font-weight: 800; }
@@ -494,3 +502,22 @@ button.ice-row .ic { position: absolute; right: var(--pl-sp-12); top: 50%; width
 .wsh .p-row .btn.full { flex: 1; }
 .cd-steps .cd-img { margin-left: -1.6em; width: calc(100% + 1.6em); } /* 단계 사진도 주차 사진과 같은 폭으로(번호 들여쓰기만큼 당긴다) */
 .wl-top span { white-space: nowrap; }
+
+/* ===== 암장 페이지 (src/planner-page.js): 전체 화면 <dialog>, 머리·몸·일정 잡기 줄·아래 탭. 머리·탭·세그먼트 모양은 sheet.css ===== */
+.pp-page { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; overflow: hidden; background: var(--pl-paper); color: var(--pl-ink); }
+.pp-page[open] { display: flex; flex-direction: column; }
+.pp-page { --hair: var(--pl-line); --open-bar: var(--pl-today); --sun-ui: var(--sun); --dur-ui: var(--pl-dur-ui); } /* names sheet.css reads that only style.css defines: mapped to the planner's own values */
+.pp-page::backdrop { background: transparent; }
+.pp-body { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.pp-body::-webkit-scrollbar { display: none; }
+.pp-panel { flex: none; width: 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; overflow-y: auto; overscroll-behavior-y: contain; padding: var(--pl-sp-12) var(--pl-pad) var(--pl-sp-16); }
+.pp-note { flex: none; position: relative; height: 0; } /* 0 높이 닻: 알림이 일정 잡기 줄·아래 탭 바로 위에 뜬다 */
+.pp-note .notice { position: absolute; bottom: var(--pl-sp-8); z-index: 3; }
+.pp-plan { flex: none; display: flex; padding: var(--pl-sp-8) var(--pl-pad); background: var(--pl-surface); }
+.pp-plan .btn { white-space: nowrap; }
+.pp-page .ws-tabs [role="tab"] { white-space: nowrap; font-size: var(--pl-fs-sub); }
+.pp-page .ws-tabs [aria-selected="true"] { font-weight: 800; color: var(--pl-ink); box-shadow: inset 0 calc(var(--pl-bar) * -1) 0 var(--pl-ink); } /* 고른 탭: 일정앱 탭 바(.p-tabs)와 같은 밑줄 */
+.pp-panel .sel, .pp-panel .ice-chart, .pp-panel .cd-topo { touch-action: pan-y; } /* 옆으로 끄는 부품 위에서 시작한 끌기는 탭을 넘기지 않는다 */
+@media (prefers-reduced-motion: reduce) { .pp-body { scroll-behavior: auto; } }
+.pp-panel .ws-use > .wsh { margin-top: var(--pl-sp-16); } /* 근처 암장: 앞 카드와 띄운다(자연암장·빙벽장의 .wsh 칸 자체에는 안 붙는다) */
+.pp-panel .ws-sec.empty { padding: var(--pl-sp-16); } /* 위의 .empty(패딩 0)가 빈 카드의 안쪽 여백을 지우지 않게 */

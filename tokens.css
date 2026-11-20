@@ -29,3 +29,59 @@
   --pl-today: #9ccf75; --pl-on-today: #121416; --pl-cloud0: #3a4046; --pl-cloud1: #2a2f34; --pl-rcloud0: #596069; --pl-rcloud1: #7e8892; --pl-warn: #ff7a85; --pl-past: #7d8791; --pl-scrim: rgb(0 0 0 / .6); --pl-surface: #1a1d20;
 }
 @media (prefers-reduced-motion: reduce) { :root { --pl-dur-press: 0ms; --pl-dur-ui: 0ms; --pl-dur-sheet: 0ms; } }
+/* 외벽 앱(style.css)과 같은 이름·같은 값: 공용 시트 CSS(sheet.css)가 두 앱에서 같은 변수를 쓰게 올려 둔 것. 값을 바꾸려면 style.css :root와 함께(test/token-alias.test.js가 같은 값인지 지킨다). */
+:root {
+  --r-sm: var(--pl-r-s);
+  --warn: var(--soon);
+  --fs-xs: .8125rem;
+  --muted: var(--pl-muted);
+  --fs-md: 1rem;
+  --fg: var(--pl-ink);
+  --fs-sm: .875rem;
+  --sp-8: var(--pl-sp-8);
+  --sp-4: var(--pl-sp-4);
+  --line: var(--pl-line);
+  --sp-12: var(--pl-sp-12);
+  --tap: var(--pl-tap);
+  --accent: var(--pl-ink);
+  --on-accent: #fff;
+  --now: var(--accent);
+  --surface: var(--pl-surface);
+  --open: var(--pl-today);
+  --open-past: #cddacd;
+  --hatch: color-mix(in srgb, var(--fg) 40%, transparent);
+  --line-strong: var(--pl-edge);
+  --r-xs: var(--pl-r-s);
+  --sun-bar: var(--sun);
+  --fs-base: 1rem;
+  --sp-16: var(--pl-sp-16);
+  --sp-24: var(--pl-sp-24);
+  --sp-2: 2px;
+  --r-base: var(--pl-r-s);
+  --accent-soft: rgba(118, 118, 128, .16);
+  --fs-lg: 1.25rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --panel: #e2e6e8;
+  --on-olive: var(--pl-on-today);
+  --soon: var(--pl-warn);
+  --sun: #ff9f0a;
+  --sunken: rgba(118, 118, 128, .16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --on-accent: #17191c;
+    --open-past: #2b4231;
+    --accent-soft: var(--sunken);
+    --panel: #262a2f;
+    --sun: #f2b25c;
+    --sunken: #262a2f;
+  }
+}
+:root[data-theme="dark"] {
+  --on-accent: #17191c;
+  --open-past: #2b4231;
+  --accent-soft: var(--sunken);
+  --panel: #262a2f;
+  --sun: #f2b25c;
+  --sunken: #262a2f;
+}

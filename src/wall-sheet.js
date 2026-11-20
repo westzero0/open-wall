@@ -6,6 +6,7 @@
 // up and down by itself. A part that needs sideways drags (the hours line) sets touch-action: pan-y, so a swipe there is not a tab change.
 import { el } from './dom.js';
 import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
+import { segStep } from './seg-nav.js';
 
 // one builder per kind of place ('wall'; a 싱글피치 crag brings its own): (name) => { head: { tone, sunT, region, chip, ok, report }, tabs: [{ key, label, icon?, pane, kinds? }], onClose?, addr?, focusBack?, reportCrag? } | null
 // pane: an element, or a function made when the tab is first shown (the board loads only then); kinds: the report kinds that tab offers (else TAB_KINDS[key])
@@ -13,7 +14,7 @@ import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 const builders = {};
 let built = null; // what the open sheet was built from (its report and address keys)
 let onClose = null;
-let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null, plan = null;
+let dlg = null, title = null, body = null, bar = null, sky = null, sub = null, contact = null, ok = null, rep = null, plan = null, planbar = null;
 let opener = null; // the button that opened it: focus goes back there
 let focusBack = null; // built.focusBack of the open sheet
 let wall = '';
@@ -62,8 +63,9 @@ function make() {
   ok.addEventListener('click', () => dlg.close());
   rep = el('button', { type: 'button', class: 'sk-rep' }, '알려 주기'); // the one word for telling a fact (the empty sections and the blank rows say it too). On the name line: the report sheet opens on the kinds of the tab in view
   rep.addEventListener('click', () => { const k = built?.tabs[cur]?.kinds ?? TAB_KINDS[tabKeys[cur]]; if (k) document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: wall, kind: k[0], kinds: k, ...(built.reportCrag ? { crag: true } : {}) } })); });
-  plan = el('a', { class: 'sk-plan' }, '일정 잡기'); // built.plan: the planner's new-plan address for this wall, opened in this tab (a move into the planner, not an outside page); none = hidden
-  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, plan, ok),
+  plan = el('a', { class: 'btn ws-plan' }, '이 외벽으로 일정 잡기'); // built.plan: the planner's new-plan address for this wall, opened in this tab (a move into the planner, not an outside page); none = no row. Sits in the .ws-planbar row above the tabs
+  planbar = el('div', { class: 'ws-planbar' }, plan);
+  sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, ok),
     el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
@@ -84,7 +86,7 @@ function make() {
   window.addEventListener('resize', () => { if (dlg.open) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
   bar = el('div', { class: 'ws-tabs', role: 'tablist', 'aria-label': '암장 정보 보기' });
   dlg = el('dialog', { class: 'sheet board-page wall-sheet is-wall', 'aria-labelledby': 'ws-title' },
-    sky, bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them at the foot
+    sky, planbar, bar, body); // the tabs come before their panes for the keyboard and screen readers; CSS (order) puts them (and the plan row above them) at the foot
   dlg.addEventListener('close', () => { // 뒤로, Esc or popstate
     if (pushed) { pushed = false; history.back(); }
     onClose?.();
@@ -173,13 +175,15 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   show(first);
   paint(first);
   body.scrollTo({ left: first * body.clientWidth, behavior: 'instant' }); // the width is known only once the dialog is open
-  plan.hidden = !built.plan;
+  planbar.hidden = !built.plan;
   if (built.plan) plan.setAttribute('href', built.plan); else plan.removeAttribute('href');
   title.focus();
   const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
   if (sec) {
+    const hid = sec.closest('.sx-panel[hidden]'); // it sits in a part of the tab that is not showing: open that part first
+    hid?.parentElement.querySelector(`[role="tab"][aria-controls="${hid.id}"]`)?.click();
     const p = panels[first]; // only the panel scrolls: scrollIntoView would also move the overflow:hidden dialog and body, pushing the head off screen
-    p.scrollTop = sec.offsetTop - p.offsetTop - 8;
+    p.scrollTop = sec.offsetTop - p.offsetTop - 8 - (p.querySelector('.sx-seg')?.offsetHeight ?? 0); // less the segment row that stays on top
     dlg.scrollTop = 0;
     body.scrollTop = 0;
     sec.classList.add('flash');
@@ -187,4 +191,40 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
     flashTimer = setTimeout(() => sec.classList.remove('flash'), 1600);
   }
   return true;
+}
+
+// segmentPane(name, label, items) → the part of a tab that is long, cut into parts shown one at a time (items: [{ key, label, nodes }]).
+// A row of text buttons (.sx-seg, sheet.css; tablist: ←/→/Home/End move, only the chosen one is in the tab order) over one panel per part.
+// A part with nothing in it is left out, and one part alone needs no row. The part in view is remembered per `name` while the page lives
+// (not in the address). A section asked for by ?section= opens its part (see openWallSheet).
+const segPicked = new Map();
+let segCount = 0;
+export function segmentPane(name, label, items) {
+  const parts = items.map((i) => ({ ...i, nodes: i.nodes.filter(Boolean) })).filter((i) => i.nodes.length);
+  if (parts.length < 2) return el('div', { class: 'sx-pane' }, ...parts.flatMap((p) => p.nodes));
+  const id = ++segCount;
+  const keys = parts.map((p) => p.key);
+  let cur = keys.includes(segPicked.get(name)) ? segPicked.get(name) : keys[0];
+  const tabs = parts.map((p) => el('button', { type: 'button', role: 'tab', id: `sx${id}-${p.key}`, 'aria-controls': `sx${id}-${p.key}-p`, 'data-label': p.label }, p.label));
+  const panes = parts.map((p) => el('div', { role: 'tabpanel', id: `sx${id}-${p.key}-p`, 'aria-labelledby': `sx${id}-${p.key}`, class: 'sx-panel' }, ...p.nodes));
+  const pick = (key, focus = false) => {
+    cur = key;
+    segPicked.set(name, key);
+    keys.forEach((k, i) => {
+      tabs[i].setAttribute('aria-selected', String(k === key));
+      tabs[i].tabIndex = k === key ? 0 : -1;
+      panes[i].hidden = k !== key;
+    });
+    if (focus) tabs[keys.indexOf(key)].focus();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => pick(keys[i]));
+    t.addEventListener('keydown', (e) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      pick(segStep(keys, cur, e.key), true);
+    });
+  });
+  pick(cur);
+  return el('div', { class: 'sx-pane' }, el('div', { class: 'sx-seg', role: 'tablist', 'aria-label': label }, ...tabs), ...panes);
 }

@@ -76,7 +76,8 @@ import { fillRows } from './fill-view.js';
 import { addFillSent } from './fill-store.js';
 import { NICK_KEY, loadNick } from './report.js';
 import { createBoardNotice } from './board-summary.js';
-import { openWallSheet, registerWallSheet, updateWallHead } from './wall-sheet.js';
+import { openWallSheet, registerWallSheet, updateWallHead, segmentPane } from './wall-sheet.js';
+import { tagGapMin, estimatePlotPx } from './axis-gap.js';
 import { sheetModel, TAB_KINDS } from './wall-sheet-model.js';
 import { overviewSection } from './overview-view.js';
 import { loadPartners, nearGear, gearLine } from './gear.js';
@@ -448,9 +449,11 @@ function rowPhoto(m, li, { canAdd = true, noun = '외벽', onFail = null, corner
 
 // ---- '더 보기' pictures (mockup 2026-10-08): hours grid, seasonal sun, month strip, memo, parking ----
 // 06–24 axis; with nowMin a time tag replaces the hour numbers next to it.
-function gridAxis(nowMin) {
+function gridAxis(nowMin, plotPx = null) {
   const ax = el('div', { class: 'g-axis', 'aria-hidden': 'true' });
-  const gap = 110 * (parseFloat(getComputedStyle(document.documentElement).fontSize) / 16); // the tag widens with the text size
+  const scale = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16; // the tag widens with the text size
+  const px = plotPx ?? estimatePlotPx(document.querySelector('.wall-sheet')?.clientWidth || Math.min(window.innerWidth, 720), scale); // the strip, measured once it is on screen
+  const gap = tagGapMin(px, scale, 8); // the labels the tag would cover (or touch) are left out
   for (const h of AXIS_LABELS) {
     if (nowMin != null && Math.abs(h * 60 - nowMin) < gap) continue;
     const t = el('span', { class: h === 6 ? 'first' : h === 24 ? 'last' : null }, String(h).padStart(2, '0'));
@@ -459,7 +462,7 @@ function gridAxis(nowMin) {
   }
   for (const d of DAYPARTS) { // 오전 · 오후 · 저녁 between the numbers (the time tag hides the one it sits on)
     const mid = (d.from + d.to) * 30;
-    if (nowMin != null && Math.abs(mid - nowMin) < gap * 1.2) continue;
+    if (nowMin != null && Math.abs(mid - nowMin) < tagGapMin(px, scale, 14)) continue;
     const w = el('span', { class: 'dp' }, d.text);
     w.style.left = axisX(mid);
     ax.append(w);
@@ -594,7 +597,7 @@ function hoursGrid(wall, at) {
       const mm = scrubHead(wall, at, raw, nowMin); // the sky and the sun follow the finger minute by minute; the axis tag keeps to the hour
       if (mm && verdict && mm.state !== 'unknown') { verdict.className = `g-verdict ${mm.state}`; verdict.replaceChildren(...verdictKids(mm, m), verdictWhy); }
       nl.style.left = axisX(m);
-      const next = gridAxis(m);
+      const next = gridAxis(m, plot.getBoundingClientRect().width || null);
       axis.replaceWith(next);
       axis = next;
       range.value = String(m);
@@ -997,7 +1000,7 @@ function veilText(m, wall, at) {
 const boardNotice = boardOn() ? createBoardNotice({ api: createBoardApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }), idOf, nameOf, storage: { get: (k) => storage.getItem(k), set: (k, v) => storage.setItem(k, v) } }) : null;
 // 빈칸 채우기 제보 (src/fill-view.js): off (no request) unless config.fill and boardUrl are both set
 const fillApi = fillOn() ? createFillApi({ url: config.boardUrl, idOf, getAuthorId: () => getAuthorId({ get: getStr, set: setStr }) }) : null;
-// the 알려 주기 rows of the wall's blank facts, each drawn where that fact would be (specsList: 높이 · 전화 · 공지, sheetParking: 위치); {} when off
+// the 알려 주기 rows: one per section for its blanks (ask.specs in specsList: 높이 · 전화 · 공지, ask.parking under 주차: 위치), a filled fact keeps its own row; {} when off
 function fillPane(m, wall) {
   if (!fillApi) return {};
   return fillRows({ wall, onSubmit: async ({ field, value }) => {
@@ -1089,7 +1092,7 @@ const EMPTY_ASK = { hours: ['운영시간을 아직 몰라요', '전화나 공�
 function sheetSection(m, s, content, extra = null) { // extra: a 알려 주기 row (fillPane) that belongs to this section, drawn after its facts or its empty box
   // a filled section ends in a quiet 수정 요청 link; an empty one holds a 알려 주기 button in its dotted box (the gap is the invitation)
   const ask = config.reportEndpoint && s.kind && s.empty // (a computed section such as 계절별 양달 has no report kind); a filled section is reported from the head's 알려 주기
-    ? el('button', { type: 'button', class: 'ws-ask', 'aria-label': `${s.title} 알려 주기` }, '알려 주기') : null;
+    ? el('button', { type: 'button', class: 'ws-chk-ask', 'aria-label': `${s.title} 알려 주기` }, '알려 주기') : null;
   ask?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind: s.kind, kinds: TAB_KINDS[s.kind === '운영시간' ? 'time' : 'use'] } })));
   // the title row carries 수정 요청 (a filled section), the facts follow, and the check date is a quiet line at the card's bottom right
   return sheetCard(s.title, [
@@ -1121,7 +1124,7 @@ function routePane(m, wall) {
 function routeEmpty(m, wall, withPhoto = false) {
   const report = (kind, label) => {
     if (!config.reportEndpoint && kind === '루트 분포') return null;
-    const b = el('button', { type: 'button', class: kind === '루트 분포' ? 'ws-ask pri' : 'ws-ask sub' }, label); // the count is the main ask, the picture the lesser one
+    const b = el('button', { type: 'button', class: kind === '루트 분포' ? 'ws-chk-ask' : 'ws-chk-ask sub' }, label); // the count is the main ask, the picture the lesser one
     b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name: m.name, kind, kinds: TAB_KINDS.routes } })));
     return b;
   };
@@ -1225,6 +1228,7 @@ function specsList(m, fills = {}) { // fills: fillPane's rows; 높이 goes right
     ...free.map((l, i) => row(i ? '' : '안내', l.value)),
     fills.phone,
     fills.notice_url,
+    fills.ask?.specs, // the blanks above that nobody filled: one row, 높이 · 전화 · 공지 (names from fill-fields.js)
   ].filter(Boolean);
   return rows.length ? el('div', { class: 'ws-info' }, el('ul', { class: 'memo-list info' }, ...rows)) : el('div', { class: 'ws-info' });
 }
@@ -1298,6 +1302,7 @@ function weatherSection(wall, m, at) {
   loadWeather(wall);
   return sec;
 }
+const USE_SEG = { specs: '시설', fees: '요금', parking: '주차' }; // the 이용 tab's parts
 function buildWallSheet(wallName) {
   const at = shown.at ?? new Date();
   // a wall the last render did not list (a link before the first draw): its one row is built now
@@ -1309,7 +1314,7 @@ function buildWallSheet(wallName) {
   const hoursG = hoursGrid(wall, at);
   const blocks = { hours: hoursG, fees: feesBlock(wall), sun: seasonSunBlock(wall, at, d, Boolean(hoursG)) };
   const fills = fillPane(m, wall); // 알려 주기 rows for the blanks, placed in 외벽 제원 (높이 · 전화 · 공지) and 주차 (위치)
-  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: boardOn() || Boolean(m.blog), specsAsk: Boolean(fills.height_m || fills.phone || fills.notice_url) });
+  const sheet = sheetModel(m, { hours: Boolean(blocks.hours), fees: Boolean(blocks.fees), sun: Boolean(blocks.sun), board: boardOn() || Boolean(m.blog), specsAsk: Boolean(fills.height_m || fills.phone || fills.notice_url || fills.ask?.specs) });
   // what the card's chips cut or only name, told whole here: the closing rule under the hours
   const kv = (k, v) => el('p', { class: 'pnear' }, el('span', { class: 'pn-k' }, k), tightParens(v));
   const content = { ...blocks,
@@ -1317,6 +1322,10 @@ function buildWallSheet(wallName) {
     fees: blocks.fees, // the rental is one of the table's own rows (rentalOf reads wall.fees): no second 장비 대여 line above it
     parking: sheetParking(m),
     specs: specsList(m, fills) };
+  const secNodes = (key) => sheet[key].filter((s) => !(s.key === 'sun' && blocks.hours)).map((s) => ({ key: s.key, nodes: [sheetSection(m, s, content[s.key], s.key === 'parking' ? (fills.location ?? fills.ask?.parking) : null), s.key === 'hours' ? tapSection(wall, at) : null] }));
+  const tabPane = (key) => el('div', { class: 'ws-use' }, key === 'time'
+    ? segmentPane('time', '시간 보기', [{ key: 'weather', label: '날씨', nodes: [weatherSection(wall, m, at)] }, { key: 'hours', label: '운영시간', nodes: [!blocks.hours ? timeLegend(blocks) : null, ...secNodes('time').flatMap((x) => x.nodes)] }])
+    : segmentPane('use', '이용 보기', secNodes('use').map((x) => ({ ...x, label: USE_SEG[x.key] ?? x.key }))));
   const pos = wallPosition(wall);
   const head = { ...sheetHead(wall, at, d, vs.live), contacts: contactPills(m) };
   return {
@@ -1326,7 +1335,7 @@ function buildWallSheet(wallName) {
     tabs: [...sheet.tabs.map((t) => ({
       ...t,
       icon: icon({ time: 'clock', use: 'ticket', routes: 'route', board: 'chat' }[t.key] ?? 'info'),
-      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : el('div', { class: 'ws-use' }, t.key === 'time' ? weatherSection(wall, m, at) : null, t.key === 'time' && !blocks.hours ? timeLegend(blocks) : null, ...sheet[t.key].filter((s) => !(s.key === 'sun' && blocks.hours)).flatMap((s) => [sheetSection(m, s, content[s.key], s.key === 'parking' ? fills.location : null), s.key === 'hours' ? tapSection(wall, at) : null])), // 시간 or 이용
+      pane: t.key === 'routes' ? routePane(m, wall) : t.key === 'board' ? () => boardPane(m) : tabPane(t.key), // 시간 or 이용: cut into parts (날씨 · 운영시간 / 시설 · 요금 · 주차)
     }))],
   };
 }

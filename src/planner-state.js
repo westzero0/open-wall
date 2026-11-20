@@ -50,7 +50,7 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
   /** The address changed: route follows it; detailId always comes from the base route (a plan's detail is a screen, not a flag).
    *  route = what the address shows; base = the last non-wall route (a wall sheet floats over it); preset = { place?, date? } seeds the new-plan sheet. */
   const setRoute = (r) => {
-    const route = { screen: r?.screen ?? 'home', id: r?.id ?? null };
+    const route = { screen: r?.screen ?? 'home', id: r?.id ?? null, tab: r?.tab ?? null };
     const base = route.screen === 'wall' || route.screen === 'settings' ? state.base : route;
     update({ route, base, detailId: base.screen === 'plan' ? base.id : null });
   };

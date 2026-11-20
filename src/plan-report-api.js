@@ -7,10 +7,12 @@ export const REPORT_OK = '알렸어요, 고마워요';
 export const REPORT_LATER = '나중에 다시 알릴게요';
 export const OFFER_ASK = '이 암장을 운영자에게 알릴까요?';
 
+export const reportOn = () => /^https?:\/\//.test(config.reportEndpoint ?? '');
+
 /** → {state:'off'|'sent'|'later'}: one silent retry, then 'later' (the screen says it). */
-export async function sendNewWall(input, { fetchFn, buildLabel } = {}) {
-  if (!/^https?:\/\//.test(config.reportEndpoint ?? '')) return { state: 'off' };
-  const v = validateReport(input, new Date(), { nick: 'off' });
+async function send(input, { crag, fetchFn, buildLabel } = {}) {
+  if (!reportOn()) return { state: 'off' };
+  const v = validateReport(input, new Date(), { nick: 'off', ...(crag ? { crag: true } : {}) });
   if (!v.ok) return { state: 'later' };
   const body = buildPayload(v.report, '', typeof buildLabel === 'function' ? buildLabel() : '');
   for (let i = 0; i < 2; i++) {
@@ -18,3 +20,7 @@ export async function sendNewWall(input, { fetchFn, buildLabel } = {}) {
   }
   return { state: 'later' };
 }
+
+export const sendNewWall = (input, opts) => send(input, { ...opts, crag: false });
+/** input {name, kind, body} like validateReport; crag:true → only CRAG_KINDS. */
+export const sendPlaceReport = send;

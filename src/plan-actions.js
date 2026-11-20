@@ -5,6 +5,8 @@ import { iceTempWords } from './plan-ice.js';
 
 export const markWent = (plan) => ({ ...plan, status: '갔다' });
 export const markMissed = (plan, reason = null) => ({ ...plan, status: '못 갔다', record: { ...plan.record, missReason: MISS_REASONS.includes(reason) ? reason : null } });
+/** 못 갔어요 후 "지울까요?" → 지우기: only the route lines go, the rest of the record stays. */
+export const dropAscents = (plan) => ({ ...plan, record: { ...plan.record, ascents: [] } });
 export const rest = (plan) => ({ ...plan, status: '쉼', restReason: '날씨' });
 export const changePlace = (plan, place, placeName) => ({ ...plan, place, placeName, changedFrom: { placeName: plan.placeName }, status: plan.status });
 

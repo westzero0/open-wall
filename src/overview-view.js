@@ -16,7 +16,7 @@ export function overviewSection(name, overview, kinds) {
   const list = listOf(overview);
   const canSend = boardOn();
   if (!list.length && !canSend) return null;
-  const send = (label, cls = 'ws-ask sub') => {
+  const send = (label, cls = 'ws-chk-ask sub') => {
     const b = el('button', { type: 'button', class: cls }, label);
     b.addEventListener('click', () => document.dispatchEvent(new CustomEvent('wall:report', { detail: { name, kind: KIND, kinds } })));
     return b;

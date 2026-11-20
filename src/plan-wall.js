@@ -3,6 +3,10 @@ import { hasHours, openIntervals } from './hours.js';
 import { fmtMin, distanceKm, wallPosition, weeklyHours, groupWeekRows, shortName } from './viewmodel.js';
 import { feeWord } from './card-model.js';
 import { wallPageId } from './share-id.js';
+import { entryFee, feeTable, shortenDates } from './card-model.js';
+import { dialModel } from './dial.js';
+import { dayWindow } from './sun.js';
+import { sceneTone } from './sun-scene.js';
 
 const dateOf = (s) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s ?? ''));
@@ -64,4 +68,30 @@ export function wallSheetModel(wall, { date, min = null, walls = [] } = {}) {
 export function utilLinks(utilUrl, wallName) {
   if (!utilUrl) return null;
   return { list: utilUrl, map: `${utilUrl}?tab=map`, wall: wallName ? `${utilUrl}?wall=${encodeURIComponent(wallName)}` : null };
+}
+
+/** The page head's sky for a wall at `at`: { tone, sunT (0..1 along the day), chip } — the 외벽 app's sheetHead, without DOM. */
+export function wallSky(wall, at, isNow) {
+  const d = dialModel(wall, at, { isNow, dayLabel: isNow ? '오늘' : '' });
+  const tone = sceneTone(d, at);
+  const day = tone ? dayWindow(wall, at) : null;
+  const sunT = day ? (at.getHours() * 60 + at.getMinutes() - day.sunrise) / (day.sunset - day.sunrise) : 0.5;
+  return { tone: tone || 'k-none', sunT, chip: !tone ? '' : tone.startsWith('k-night') ? '해 진 뒤' : `${isNow ? '지금' : '그 시각'} ${d.lit ? '양달' : '응달'}` };
+}
+
+/** The 요금 part of a wall: null (nothing to say) or { table, free, until, unsure } — the 외벽 app's feesBlock decisions. `today` = YYYY-MM-DD for the short dates. */
+export function wallFees(wall, today) {
+  const table = feeTable(wall);
+  const free = entryFee(wall) === '무료';
+  const until = free && wall.free_until ? shortenDates(wall.free_until, today) : null;
+  if (table) return { table, free, until, unsure: false };
+  if (!free) return entryFee(wall) === '유료' ? { table: null, free: false, until: null, unsure: true } : null;
+  return { table: null, free: true, until, unsure: false };
+}
+
+/** Which of the 외벽 tabs have nothing to show: { use, routes }. fees = wallFees(), routes = routeView(), model = cardModel() (for 제원 · 시설 · 주차). */
+export function wallTabEmpty(wall, { fees = null, routes = null, model = null } = {}) {
+  const facts = Boolean(model && (model.specs?.length || model.facilityFacts?.length || model.facilityRest?.length || model.amenities?.length));
+  const parking = Boolean(model && !(model.parking?.word === '정보는 아직 몰라요' && !model.parkingMore?.length && !model.parkingWhere?.onsite?.length));
+  return { use: !fees && !facts && !parking, routes: !routes };
 }

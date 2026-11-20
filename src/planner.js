@@ -17,7 +17,8 @@ import { TabBar } from './planner-parts.js';
 import { Home } from './planner-home.js';
 import { Calendar } from './planner-calendar.js';
 import { Places } from './planner-places.js';
-import { WallSheet } from './planner-wall.js';
+import { WallPage, pickSheetPlace } from './planner-wall.js';
+import { startTab } from './place-page-model.js';
 import { SettingsSheet } from './planner-settings.js';
 import { Icon } from './planner-icons.js';
 import { PlanSheet } from './planner-new.js';
@@ -57,7 +58,8 @@ function applyPrefs(ui = null) {
 // onAdd/onEdit/onCard only set a state flag; the sheets that read it (new / edit / card) are separate screens.
 function makeHandlers(store, storage) {
   let navigated = false; // true once the visitor moved inside the app in this session: then back() can use history
-  const flash = (notice) => { store.update({ notice }); setTimeout(() => store.update({ notice: '' }), 4000); };
+  let flashTimer = 0; // a newer note restarts the 4 s, so an older timer never clears it early
+  const flash = (notice) => { store.update({ notice }); clearTimeout(flashTimer); flashTimer = setTimeout(() => store.update({ notice: '' }), 4000); };
   let crowdKey = '';
   async function loadCrowd() { // once per set of wall names (cache per boot)
     const s = store.get();
@@ -77,10 +79,10 @@ function makeHandlers(store, storage) {
   const reloaded = (r) => { store.reload(); return r; };
   // The flag sheets (new / edit / partners / card) have no address: opening one pushes a same-URL history entry, so 뒤로 closes the sheet
   // instead of leaving the app (settings and the wall sheet use their #/ address for the same). The mark tells our entry from a stale one after a reload.
-  let sheetMark = 0;
-  const openSheet = (patch) => { if (!store.get().sheet) { sheetMark = Date.now(); history.pushState({ sheet: sheetMark }, ''); } store.update(patch); };
+  let sheetMark = 0, sheetHash = ''; // sheetHash = the address the sheet opened on
+  const openSheet = (patch) => { if (!store.get().sheet) { sheetMark = Date.now(); sheetHash = location.hash; history.pushState({ sheet: sheetMark }, ''); } store.update(patch); };
   window.addEventListener('popstate', () => {
-    if (!store.get().sheet || history.state?.sheet === sheetMark) return; // back from a wall sheet opened inside the sheet lands on our entry: keep it
+    if (!store.get().sheet || history.state?.sheet === sheetMark || location.hash !== sheetHash) return; // a place page opened over the sheet (another address) and back from it (our entry): keep the sheet
     sheetMark = 0;
     const d = [...document.querySelectorAll('dialog.sheet[open]')].pop(); // the sheet's own close path (its "저장하지 않았어요" note) → onClose
     if (d) d.close(); else store.update({ sheet: null, editId: null, preset: null });
@@ -96,7 +98,7 @@ function makeHandlers(store, storage) {
     go: (route) => { navigated = true; location.hash = routeHref(route); },
     replace: (route) => location.replace(routeHref(route)),
     back: () => { if (navigated) history.back(); else location.replace(routeHref({ screen: 'home' })); },
-    openWall: (id, ctx) => { store.update({ wallCtx: { from: ctx?.from ?? null, planId: ctx?.planId ?? null, date: ctx?.date ?? null, min: Number.isFinite(ctx?.min) ? ctx.min : null } }); navigated = true; location.hash = routeHref({ screen: 'wall', id }); },
+    openWall: (id, ctx) => { store.update({ wallCtx: { from: ctx?.from ?? null, planId: ctx?.planId ?? null, date: ctx?.date ?? null, min: Number.isFinite(ctx?.min) ? ctx.min : null } }); navigated = true; const kind = pickSheetPlace(store.get(), id)?.kind; location.hash = routeHref({ screen: 'wall', id, tab: kind ? startTab(kind, ctx?.from) : null }); },
     retryWx: () => store.loadWx(),
     loadRainMap: () => store.loadRainMap(),
     swapWall: (id) => location.replace(routeHref({ screen: 'wall', id })), // nearby → nearby: one entry, so 뒤로 leaves the sheet at once
@@ -207,7 +209,7 @@ async function main() {
   store.subscribe((s) => {
     if (s.base.screen === 'plan' && !s.db.plans.some((p) => p.id === s.base.id)) { handlers.replace({ screen: 'home' }); setTimeout(() => app.focus(), 0); }
   });
-  render(html`<${Notice} store=${store} /><${Tabs} store=${store} /><${Home} store=${store} handlers=${handlers} renderRecordExtra=${renderRecordExtra} /><${Calendar} store=${store} handlers=${handlers} /><${Places} store=${store} handlers=${handlers} /><${PlanSheet} store=${store} handlers=${handlers} /><${WallSheet} store=${store} handlers=${handlers} /><${SettingsSheet} store=${store} handlers=${handlers} /><${PartnersSheet} store=${store} handlers=${handlers} /><${CardSheet} store=${store} handlers=${handlers} />`, app);
+  render(html`<${Notice} store=${store} /><${Tabs} store=${store} /><${Home} store=${store} handlers=${handlers} renderRecordExtra=${renderRecordExtra} /><${Calendar} store=${store} handlers=${handlers} /><${Places} store=${store} handlers=${handlers} /><${PlanSheet} store=${store} handlers=${handlers} /><${WallPage} store=${store} handlers=${handlers} /><${SettingsSheet} store=${store} handlers=${handlers} /><${PartnersSheet} store=${store} handlers=${handlers} /><${CardSheet} store=${store} handlers=${handlers} />`, app);
   const gear = document.getElementById('settings'); // header button: static in index.html, icon and click are attached here (no inline handler under the CSP)
   if (gear) { render(html`<${Icon} name="gear" />`, gear); gear.addEventListener('click', handlers.onSettings); }
   store.boot().then(() => {

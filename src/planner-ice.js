@@ -1,8 +1,9 @@
-// src/planner-ice.js — 빙벽장 시트: the 14-day temperature chart, the conditions it met, the `!` help, reservation and place facts.
+// src/planner-ice.js — 빙벽장 페이지의 결빙·이용 칸 (틀은 planner-page.js, 조립은 planner-wall.js): the 14-day temperature chart, the conditions it met, the `!` help, reservation and place facts.
 // Draws what plan-ice-sheet.js made (words and 0~1 coordinates); nothing is worked out here. No fetch, no storage.
 import { html, useState } from './planner-ui.js';
-import { Sheet } from './planner-sheet.js';
-import { Chip, IconButton, LinkButton, ButtonRow, Note } from './planner-parts.js';
+import { Segments } from './planner-page.js';
+import { Card, Empty } from './planner-wall-parts.js';
+import { Chip, IconButton, LinkButton, Note } from './planner-parts.js';
 import { iceSheetModel, ICE_HELP, ICE_SOURCES, ICE_HELP_DAILY_NOTE, ICE_HELP_CLOSING, exampleDays, iceChart } from './plan-ice-sheet.js';
 import { wallPageId } from './share-id.js';
 import { Icon } from './planner-icons.js';
@@ -64,30 +65,28 @@ export function IceHelp({ dots }) {
 
 const noon = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d ?? ''); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : null; };
 
-/** place: an ice venue (not the mountain). s: planner state. h: handlers. */
-export function IceSheet({ place, s, h }) {
+/** iceModelOf(place, s, mark) → iceSheetModel for an ice venue and the planner state (the page head, 결빙 and 이용 all read it). */
+export function iceModelOf(place, s, mark = []) {
+  const ctx = s.wallCtx ?? {};
+  const byId = (x) => [s.ice, s.crags, s.walls].flatMap((l) => l ?? []).find((w) => w && wallPageId(w) === x) ?? null;
+  return iceSheetModel(place, { date: ctx.date ?? null, today: s.today, wx: s.wx, wxLoaded: s.wxLoaded, byId, at: noon(ctx.date ?? s.today), mark });
+}
+
+/** 결빙 · 날씨 (the 결빙 tab). place: an ice venue (not the mountain). s: planner state. h: handlers. */
+export function IceCond({ place, s, h }) {
   const [mark, setMark] = useState([]);
   const [help, setHelp] = useState(false);
-  const id = wallPageId(place);
-  const ctx = s.wallCtx ?? {};
-  const base = ctx.date ?? s.today;
-  const byId = (x) => [s.ice, s.crags, s.walls].flatMap((l) => l ?? []).find((w) => w && wallPageId(w) === x) ?? null;
-  const m = iceSheetModel(place, { date: ctx.date ?? null, today: s.today, wx: s.wx, wxLoaded: s.wxLoaded, byId, at: noon(base), mark });
+  const [seg, setSeg] = useState('ice');
+  const m = iceModelOf(place, s, mark);
   const c = m.cond;
-  const top = [m.kind, m.region, m.season?.line].filter(Boolean).join(' · ');
   const pick = (dates) => setMark((cur) => (cur.length === dates.length && dates.every((d, i) => cur[i] === d) ? [] : dates));
   const met = c.rows.some((r) => r.dates.length > 0);
-  const create = () => { h.replace({ screen: 'home' }); h.onAdd({ place: { kind: 'official', id } }); };
-  return html`<${Sheet} key=${'w:' + id} title=${m.name} onClose=${h.back}>
-    <div class="wsh">
-      ${top && html`<p class="wl-top">${top}</p>`}
+  const parts = [{ key: 'ice', label: '결빙' }, { key: 'weather', label: '날씨' }];
+  return html`<div class="ws-use">
+    <${Segments} items=${parts} cur=${seg} onPick=${setSeg} label="결빙 보기" idPrefix="pp-ic" />
+    <div role="tabpanel" id="pp-ic-ice-p" aria-labelledby="pp-ic-ice" class="sx-panel" hidden=${seg !== 'ice'}><div class="wsh">
       ${m.season?.notice && html`<div class="ice-notice"><${Note}>${m.season.notice.line}${m.season.notice.checked ? ` · ${m.season.notice.checked}` : ''}<//>${m.season.notice.url && html`<${LinkButton} href=${m.season.notice.url} external aria-label=${`${m.season.notice.linkText} (새 창)`}>${m.season.notice.linkText} ↗<//>`}</div>`}
       ${m.season?.past.length > 0 && html`<ul class="ice-past">${m.season.past.map((t, i) => html`<li key=${i}>${t}</li>`)}</ul>`}
-      ${m.reserve && html`<section class="rsv" aria-labelledby="is-rsv"><h3 id="is-rsv" class="lbl">예약</h3>
-        <p class="rsv-line">${m.reserve.line}</p>
-        ${m.reserve.note && html`<${Note} class="rsv-at n">${m.reserve.note}<//>`}
-        ${m.reserve.checked && html`<${Note} class="rsv-at n">${m.reserve.checked}<//>`}
-        <div class="rsv-acts"><${LinkButton} href=${m.reserve.url} external aria-label=${`${m.reserve.name ?? '예약 사이트'} (새 창)`}>${m.reserve.name ?? '예약 사이트'} ↗<//></div></section>`}
       <section class="ice-facts" aria-labelledby="is-cond">
         <div class="ice-head"><h3 id="is-cond" class="lbl">결빙 조건</h3>
           <${IconButton} name="help" label="결빙 조건 도움말" aria-expanded=${help ? 'true' : 'false'} onClick=${() => setHelp(!help)} /></div>
@@ -104,9 +103,23 @@ export function IceSheet({ place, s, h }) {
             : html`<div class="ice-row"><b>${r.k}</b><span class="n">${r.v}</span></div>`}</li>`)}</ul>`}
           ${c.trendText && html`<p class="wx n"><b>일 최저</b> ${c.trendText}</p>`}
           <p class="wx">${c.closing}</p>`}
-      </section>
-      ${m.facts.length > 0 && html`<section aria-labelledby="is-fact"><h3 id="is-fact" class="lbl">장소 정보</h3><dl class="facts">${m.facts.map((f) => html`<dt key=${'k' + f.k}>${f.k}</dt><dd key=${'v' + f.k}>${f.v}</dd>`)}</dl></section>`}
-      ${!ctx.from && html`<${ButtonRow}><button type="button" class="btn p" onClick=${create}>이 빙벽장으로 일정 잡기</button><//>`}
+      </section></div></div>
+    <div role="tabpanel" id="pp-ic-weather-p" aria-labelledby="pp-ic-weather" class="sx-panel" hidden=${seg !== 'weather'}>
+      <${Card} title="날씨" sec="weather"><${Note}>날씨 예보 준비 중이에요<//><//>
     </div>
-  <//>`;
+  </div>`;
+}
+
+/** 이용 (the 이용 tab): 예약 · 장소 정보, or an empty invitation (ask = the 알려 주기 button vnode or null). */
+export function IceUse({ place, s, ask = null }) {
+  const m = iceModelOf(place, s);
+  if (!m.reserve && m.facts.length === 0) return html`<div class="ws-use"><${Card} title="이용" sec="use" empty=${true}><${Empty} title="이용 정보가 아직 비어 있어요" sub="예약 방법이나 장소 정보 한 줄이면 충분해요." ask=${ask} /><//></div>`;
+  return html`<div class="wsh">
+    ${m.reserve && html`<section class="rsv" aria-labelledby="is-rsv"><h3 id="is-rsv" class="lbl">예약</h3>
+      <p class="rsv-line">${m.reserve.line}</p>
+      ${m.reserve.note && html`<${Note} class="rsv-at n">${m.reserve.note}<//>`}
+      ${m.reserve.checked && html`<${Note} class="rsv-at n">${m.reserve.checked}<//>`}
+      <div class="rsv-acts"><${LinkButton} href=${m.reserve.url} external aria-label=${`${m.reserve.name ?? '예약 사이트'} (새 창)`}>${m.reserve.name ?? '예약 사이트'} ↗<//></div></section>`}
+    ${m.facts.length > 0 && html`<section aria-labelledby="is-fact"><h3 id="is-fact" class="lbl">장소 정보</h3><dl class="facts">${m.facts.map((f) => html`<dt key=${'k' + f.k}>${f.k}</dt><dd key=${'v' + f.k}>${f.v}</dd>`)}</dl></section>`}
+  </div>`;
 }

@@ -4,6 +4,14 @@ import { normalizeWall } from './store.js';
 
 export const FILL_FIELDS = ['location', 'height_m', 'notice_url', 'phone'];
 
+// the short names a section's one 알려 주기 row lists (외벽 제원: 높이 · 전화 · 공지, 주차: 위치), shared by the 외벽 app and the planner
+export const FILL_NAMES = { height_m: '높이', phone: '전화', notice_url: '공지', location: '위치' };
+export const FILL_SECTIONS = { specs: ['height_m', 'phone', 'notice_url'], parking: ['location'] };
+/** the blank fields of a section, in order: [{ field, name }] */
+export const blanksOf = (wall, section) => FILL_SECTIONS[section].filter((f) => isEmptyField(wall, f)).map((field) => ({ field, name: FILL_NAMES[field] }));
+/** the one row's label: the blank names joined ' · ' (e.g. '높이 · 공지'), '' when nothing is blank */
+export const blanksLabel = (wall, section) => blanksOf(wall, section).map((b) => b.name).join(' · ');
+
 const LAT = [33, 39];
 const LNG = [124, 132];
 const between = (v, [lo, hi]) => v >= lo && v <= hi;
@@ -47,9 +55,17 @@ export function cleanFillValue(field, raw) {
   return null;
 }
 
+// a number the sheet already shows: '문의 …  031-123-4567' in the memo or a fee note (the 전화 pill reads contact.phone only)
+const INQUIRY_PHONE = /문의[^\n\d]{0,30}0\d{1,3}-\d{3,4}/;
+export function hasInquiryPhone(wall) {
+  const texts = [wall?.memo, ...(Array.isArray(wall?.fees) ? wall.fees.flatMap((f) => [f?.item, f?.note]) : [])];
+  return texts.some((t) => typeof t === 'string' && INQUIRY_PHONE.test(t));
+}
+
 export function isEmptyField(wall, field) {
   if (field === 'location') return !wall?.location;
   if (field === 'height_m') return !(typeof wall?.height_m === 'number' && Number.isFinite(wall.height_m));
+  if (field === 'phone' && hasInquiryPhone(wall)) return false;
   if (field === 'notice_url' || field === 'phone') return !String(wall?.contact?.[field] ?? '').trim();
   return false;
 }
