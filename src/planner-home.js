@@ -56,6 +56,7 @@ function Hero({ plan, v, s, now, onOpen }) {
             ${verdict && html`<span class="vd">${verdict}</span>`}
             ${(v.level === 'caution' || v.level === 'hard') && html`<span class=${'wx n ' + v.level}>${v.phrase}</span>`}
             ${v.resolved.kind === 'ice' && html`<span class="wx n">${v.phrase}</span>`}
+            ${v.change && html`<span class="rsv-tag">${v.change.line}</span>`}
             ${v.flag && html`<span class="ice-flag">${ICE_FLAG_TEXT}</span>`}
           </span>
         </button></h2>

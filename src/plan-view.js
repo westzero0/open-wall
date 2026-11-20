@@ -15,6 +15,7 @@ import { shortName } from './viewmodel.js';
 import { sidoOf } from './rain-map.js';
 import { crowdLevel } from './plan-crowd.js';
 import { nextShadeMin, sunTitle, HOME_SHADE_NOTE } from './plan-sun.js';
+import { changeLine, changeAria } from './plan-seen.js';
 import { reserveOf, reserveState, reserveDeadline, reserveCopy, isReserved } from './reserve.js';
 
 export const LOADING = '날씨를 불러오는 중이에요';
@@ -87,7 +88,9 @@ export function rowView(plan, { s, now = Date.now() }) {
   const verdict = level === 'hard' ? '어려움, ' : '';
   const reserve = rest || recorded ? null : reserveView(plan, resolved, s);
   const flag = live && !loading && !!risk.flag; // 빙벽: a condition is met (facts only, no colour level)
-  const aria = `${p.month}월 ${p.day}일 ${p.dow}요일 ${title}${plan.min != null ? ` ${timeText(plan.min)}` : ""}. ${verdict}${phrase}${flag ? `. ${ICE_FLAG_TEXT}` : ''}${reserve?.tag ? `. ${reserve.tag}` : ''}`;
+  const ch = live && s.wxChanged?.get(plan.id);
+  const change = ch ? { line: changeLine(ch.from, ch.to), aria: changeAria(ch.from, ch.to) } : null;
+  const aria = `${p.month}월 ${p.day}일 ${p.dow}요일 ${title}${plan.min != null ? ` ${timeText(plan.min)}` : ""}. ${verdict}${phrase}${flag ? `. ${ICE_FLAG_TEXT}` : ''}${reserve?.tag ? `. ${reserve.tag}` : ''}${change ? `. ${change.aria}` : ''}`;
   return {
     id: plan.id, resolved, risk, level, name, title, time: timeText(plan.min), phrase, symbol: plan.discipline ?? symbolKind(resolved) ?? (resolved.kind === 'ice' ? 'ice' : null), rest, recorded, live, aria,
     past: plan.date < s.today,
@@ -97,6 +100,7 @@ export function rowView(plan, { s, now = Date.now() }) {
     flag,
     ice: live && !loading ? risk.ice ?? null : null,
     reserve,
+    change,
   };
 }
 

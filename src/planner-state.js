@@ -1,6 +1,8 @@
 // src/planner-state.js — framework-agnostic boot/state for the planner. No DOM, no framework: the view layer (Preact, Task 12b+)
 // subscribes and renders. storage and every fetch function are injected; nothing here touches fetch/localStorage directly.
-import { loadAll, loadAliases as realLoadAliases } from './plan-api.js';
+import { loadAll, loadAliases as realLoadAliases, loadSeen, saveSeen } from './plan-api.js';
+import { seenKey, diffSeen } from './plan-seen.js';
+import { rowView } from './plan-view.js';
 import { fetchNational as realFetchNational, fetchCrags as realFetchCrags, fetchPendingCrags as realFetchPendingCrags, fetchIce as realFetchIce } from './store.js';
 import { loadPlanWeather as realLoadPlanWeather } from './plan-weather.js';
 import { resolvePlace } from './plan-place.js';
@@ -31,7 +33,7 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
   };
   const clock = () => { const d = now(); return { today: ymd(d), nowMin: d.getHours() * 60 + d.getMinutes() }; };
   let state = {
-    db: loadAll(storage, { today: clock().today }), walls: [], crags: [], ice: [], aliases: new Map(), wx: EMPTY_WX, ...clock(), expandedId: null, dismissedAuto: new Set(), detailId: null, wxLoaded: false, rainWx: null, rainLoaded: false, route: HOME, base: HOME, preset: null, wallCtx: null,
+    db: loadAll(storage, { today: clock().today }), walls: [], crags: [], ice: [], aliases: new Map(), wx: EMPTY_WX, ...clock(), expandedId: null, dismissedAuto: new Set(), detailId: null, wxLoaded: false, wxChanged: new Map(), rainWx: null, rainLoaded: false, route: HOME, base: HOME, preset: null, wallCtx: null,
   };
   const subs = new Set();
   const notify = () => { for (const fn of [...subs]) fn(state); };
@@ -57,6 +59,22 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
 
   /** Re-read storage (after a save through plan-api) without touching the network. */
   const reload = () => update({ db: loadAll(storage, { today: state.today }) });
+
+  // 예보 바뀜 (plan-seen.js): compare each target plan's level (live, D-0..D-3, ok/caution/hard) with the last one shown; store the new ones.
+  function markChanges() {
+    const s = state; const now_ = now().getTime();
+    const last = ymd(new Date(now_ + 3 * 864e5));
+    const items = []; const keepIds = new Set();
+    for (const plan of s.db.plans) {
+      const v = rowView(plan, { s, now: now_ });
+      if (!v.live) continue;
+      keepIds.add(plan.id);
+      if (['ok', 'caution', 'hard'].includes(v.risk.level) && plan.date >= s.today && plan.date <= last) items.push({ id: plan.id, k: seenKey(plan), level: v.risk.level, date: plan.date });
+    }
+    const { seen, changed } = diffSeen(loadSeen(storage), items, s.wxChanged, s.today, keepIds);
+    saveSeen(storage, seen);
+    update({ wxChanged: changed });
+  }
 
   // weather for the places plans use; re-run after plans change (same places = no new request)
   let wxKey = '';
@@ -85,9 +103,9 @@ export function createPlannerState({ storage, fetchFns = {}, now = () => new Dat
     for (const c of cragsNear(soonCrags, crags)) if (!usedCrags.includes(c)) usedCrags.push(c);
     for (const w of wallsNear(soonPlaces, walls)) if (!usedWalls.includes(w)) usedWalls.push(w);
     const key = [...usedWalls.map((w) => 'w:' + w.name), ...usedCrags.map((c) => 'c:' + c.name), ...usedIce.map((v) => 'i:' + v.id)].sort().join('|');
-    if (!key || key === wxKey) { if (!state.wxLoaded) update({ wxLoaded: true }); return state.wx; }
+    if (!key || key === wxKey) { if (!state.wxLoaded) { update({ wxLoaded: true }); markChanges(); } return state.wx; }
     if (state.wxLoaded) update({ wxLoaded: false }); // a new place: its forecast is on its way
-    try { const wx = await f.loadPlanWeather({ walls: usedWalls, crags: usedCrags, ice: usedIce }, { fetchFn: f.fetchFn, storage }); if (wx.ice?.ok !== false) wxKey = key; /* a failed ice answer is asked again next time (다시 시도) */ update({ wx: { ...wx, ice: wx.ice ?? EMPTY_WX.ice }, wxLoaded: true }); } catch { update({ wxLoaded: true }); /* keep the old wx; the row says it could not load */ }
+    try { const wx = await f.loadPlanWeather({ walls: usedWalls, crags: usedCrags, ice: usedIce }, { fetchFn: f.fetchFn, storage }); if (wx.ice?.ok !== false) wxKey = key; /* a failed ice answer is asked again next time (다시 시도) */ update({ wx: { ...wx, ice: wx.ice ?? EMPTY_WX.ice }, wxLoaded: true }); markChanges(); } catch { update({ wxLoaded: true }); /* keep the old wx; the row says it could not load */ }
     return state.wx;
   }
 

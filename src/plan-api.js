@@ -9,6 +9,7 @@ import { getJson } from './remote.js';
 import { config } from './config.js';
 import { WALL_ID_RE } from './store.js';
 import { cleanSent } from './crowd.js';
+import { cleanSeen } from './plan-seen.js';
 import { parseRecord, planImport, planFromRecord, linkPatch } from './record-import.js';
 
 export const PLAN_KEY = 'open-wall:planner:v1';
@@ -146,6 +147,11 @@ export function resolveAlias(aliases, place) {
 }
 
 // The crowd form's send log (limits per wall/day/visit) is shared with the main app's key, so both screens count the same reports.
+// 예보 바뀜: the level the app last showed per plan (src/plan-seen.js). Device-only; failures are ignored.
+export const SEEN_KEY = 'open-wall:planner:seen';
+export function loadSeen(storage) { try { return cleanSeen(JSON.parse(storage.getItem(SEEN_KEY) ?? 'null')); } catch { return {}; } }
+export function saveSeen(storage, seen) { try { storage.setItem(SEEN_KEY, JSON.stringify(seen)); return { ok: true }; } catch { return { ok: false }; } }
+
 export const SENT_KEY = 'open-wall:crowd-sent';
 export function loadSent(storage) { try { return cleanSent(JSON.parse(storage.getItem(SENT_KEY) ?? 'null')); } catch { return {}; } }
 export function saveSent(storage, sent) { try { storage.setItem(SENT_KEY, JSON.stringify(sent)); return { ok: true }; } catch { return { ok: false }; } }

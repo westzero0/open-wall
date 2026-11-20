@@ -19,6 +19,7 @@ export function Row({ plan, v, onOpen, s, now }) {
         <span class="b">
           <span class="t">${v.title}${' '}${v.time && html`<span class="tm n">${v.time}</span>`}</span>
           ${showPhrase && html`<span class=${'wx n ' + (v.level === 'caution' || v.level === 'hard' ? v.level : '')}>${v.phrase}</span>`}
+          ${v.change && html`<span class="rsv-tag">${v.change.line}</span>`}
           ${v.flag && html`<span class="ice-flag">${ICE_FLAG_TEXT}</span>`}
           ${v.reserve?.tag && html`<span class=${'rsv-tag' + (v.reserve.state === 'late' ? ' late' : '')}>${v.reserve.tag}</span>`}
         </span>
