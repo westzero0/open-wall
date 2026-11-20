@@ -575,7 +575,7 @@ html[data-text="xlarge"] .board > .band { flex-wrap: wrap; row-gap: var(--sp-4);
 .left .lf-pre { display: none; } /* 가능: only on the open card's pill */
 .row.is-open .left .lf-pre { display: inline; } /* "4시간 가능" / "12시간 가능" fill it: the weather before it lines up row to row */
 .l1 .rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 400px) { .l1 .rname { min-width: 4em; flex: 1 1 4em; } .l1 { flex-wrap: wrap; } .l1 .left { margin-left: auto; } html[data-text="xlarge"] .l1 .rname { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; } html[data-text="xlarge"] .row.unknown .l1 .left { display: none; } } /* a narrow phone: the name keeps four characters and the time-left pill drops to the next line before it squeezes the name; xlarge may also wrap the name to two lines */ /* 운영시간을 아직 몰라요 is the group's own title above: the row gives the width to the name */ /* the biggest text on a narrow phone: the name may take two lines before it is cut */
+@media (max-width: 400px) { .l1 .rname { min-width: 4em; flex: 1 1 4em; } .l1 { flex-wrap: wrap; } .l1 .left { margin-left: auto; } html[data-text="xlarge"] .l1 .rname { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; } html[data-text="xlarge"] .row.unknown .l1 .left { display: none; } } /* a narrow phone: the name keeps four characters and the time-left pill drops to the next line before it squeezes the name; xlarge: the name is one line with an ellipsis (see the wall-row override below) */ /* 운영시간을 아직 몰라요 is the group's own title above: the row gives the width to the name */ /* the biggest text on a narrow phone: the name is cut to one line (wall rows; crag rows likewise) */
 @media (max-width: 400px) { html[data-text="xlarge"] .crag-row .l1 .rname { -webkit-line-clamp: 1; line-clamp: 1; } } /* 싱글피치 카드: 가장 큰 글씨의 좁은 폰에서는 이름을 한 줄로 말줄임(전체 이름은 title과 시트 머리에) */
 .rmeta { font-size: var(--fs-xs); color: var(--muted); height: 1.125rem; line-height: 1.125rem; overflow: hidden; } /* wraps at spaces inside its one-line box: "서울 광진구" shows "서울" before it would show half a word */
 .left { flex: none; margin-left: auto; font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; color: var(--open); } /* the value is the same on most rows: light; .few (3 hours or less) is bold */
@@ -2266,6 +2266,7 @@ body .controls { box-shadow: none; }
 .rows :is(.row, .crag-row):not(.has-photo.is-open) .wxset > .sunnow.pic svg { width: var(--glyph); height: var(--glyph); }
 /* 가장 큰 글씨의 좁은 폰: 지역명을 먼저 숨기고, 그래도 넘치면 이름이 두 줄까지(사용자 결정 2026-11-05) */
 @media (max-width: 400px) { html[data-text="xlarge"] .rows .row-btn .l1 .rsub { display: none; } }
+@media (max-width: 400px) { html[data-text="xlarge"] .rows .row-btn .l1 .rname, html[data-text="xlarge"] #rows-open .rname { font-size: var(--fs-sm); -webkit-line-clamp: 1; line-clamp: 1; } } /* 외벽 줄도 한 줄 말줄임: 글자를 한 단계(--fs-md → --fs-sm) 줄이고 578의 두 줄 허용을 한 줄로 되돌린다 */
 .rows .row-btn:has(.wxset) ~ .row-fav { top: 3px; } /* ♥ 중심을 이름 글자 중심에 맞춘다 */
 .rows .row-btn .wx-temp { left: 20px; transform: translateX(-50%); } /* 칩 폭 40 / 칸 폭 44: 기온을 칩 중심 아래로 */ /* 칩 폭 40 / 칸 폭 44: 기온을 칩 중심 아래로 */
 /* 실내·방향 모름 줄: 날씨 칩이 없어도 같은 칩 열(40, 옅은 회색 면)에 둬서 이름 줄이 외벽 줄과 맞는다 */

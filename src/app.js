@@ -2229,11 +2229,13 @@ fitSticky();
 // list up by the box's height, so the scroll is moved with it (the list stays where the eye is): fold at scrollY > box height,
 // leaves scrollY > the folded line, far above the unfold point (8px), so the two never chase each other.
 const scrubBox = controls.querySelector('.scrub');
-let foldHeld = false, foldFrame = 0;
+let foldHeld = false, foldFrame = 0, heldAt = 0;
 function foldScrub(on, keep) {
   if (!scrubBox || scrubBox.classList.contains('is-folded') === on) return;
   const y0 = document.querySelector('.board').getBoundingClientRect().top;
+  const hadFocus = on && scrubBox.contains(document.activeElement);
   scrubBox.classList.toggle('is-folded', on);
+  if (hadFocus) $('scrubFold').focus({ preventScroll: true });
   $('scrubFold').setAttribute('aria-expanded', String(!on));
   if (keep) scrollBy(0, document.querySelector('.board').getBoundingClientRect().top - y0);
 }
@@ -2241,10 +2243,13 @@ function syncFold() {
   foldFrame = 0;
   if (!scrubBox || controls.hidden || onMap()) return foldScrub(false);
   if (scrollY <= 8) { foldHeld = false; foldScrub(false); }
-  else if (!foldHeld && !controls.classList.contains('unstuck') && scrollY > scrubBox.offsetHeight) foldScrub(true, true);
+  else {
+    if (foldHeld && scrollY > heldAt + 48) foldHeld = false; // scrolled the list down past where it was opened: fold again
+    if (!foldHeld && !controls.classList.contains('unstuck') && scrollY > scrubBox.offsetHeight) foldScrub(true, true);
+  }
 }
 addEventListener('scroll', () => { if (!foldFrame) foldFrame = requestAnimationFrame(syncFold); }, { passive: true });
-$('scrubFold')?.addEventListener('click', () => { foldHeld = true; foldScrub(false, true); $('time').focus({ preventScroll: true }); });
+$('scrubFold')?.addEventListener('click', () => { foldHeld = true; foldScrub(false, true); heldAt = scrollY; $('time').focus({ preventScroll: true }); });
 sheet.addEventListener('change', (e) => {
   if (e.target.name === 'minHours') setUi('minHours', e.target.value);
   if (e.target.name === 'venue') setUi('venue', cleanVenue(e.target.value));
