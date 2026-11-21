@@ -77,7 +77,7 @@ export const weatherFresh = (entry, now) => !!entry && now - entry.at < (entry.h
 
 export const windy = (h) => h.g >= GUST_STRONG;
 
-export const COLD_MAX = 0; // °C (rounded): at or below this is 한파
+export const COLD_MAX = -5; // °C (rounded): at or below −5 is 한파
 export const HEAT_MIN = 33; // °C (rounded): at or above this is 폭염
 
 /**

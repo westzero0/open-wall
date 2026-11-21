@@ -46,7 +46,8 @@
 .g-axis .first { transform: none; }
 .g-axis .last { transform: translateX(-100%); }
 html[data-text="xlarge"] .g-axis .dp { display: none; } /* 320px: 저녁 and 24 collide; the numbers alone stay */
-.g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent); font-weight: 700; z-index: 4; }
+.g-zone .nowtag { display: inline-flex; align-items: center; } /* the draggable axis' tag carries the list tag's ‹ › marks (style.css) */
+.g-axis .nowtag { line-height: 1; top: 2px; padding: 3px 5px; border-radius: var(--r-sm); background: var(--point, var(--accent)); color: var(--on-accent); font-weight: 700; z-index: 4; }
 .g-body { position: relative; isolation: isolate; border-bottom: 1px solid var(--hair); }
 .g-plot { position: absolute; top: 0; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
 .g-plot .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--hair) 55%, transparent); z-index: 1; } /* the hour lines stay in the back */
@@ -181,13 +182,17 @@ html[data-text="xlarge"] .g-axis .dp { display: none; } /* 320px: 저녁 and 24 
 :is(.fill-row, .ws-empty) .ws-ask { max-width: 100%; white-space: normal; }
 .is-wall .sh-sky { --arc: 40px; --ground: 10px; --slab-h: 52px; --d-max: 24px; position: relative; isolation: isolate; flex: none; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: var(--sp-12); min-height: 140px;
   padding: calc(var(--sp-24) + env(safe-area-inset-top)) var(--sp-8) calc(var(--ground) + var(--arc) + var(--d-max) / 2 + var(--sp-8) + var(--sp-8)) var(--sp-16); /* the words stop above the sun's highest point, so the band grows with 큰 글씨 instead of colliding */
-  background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text); }
+  background: linear-gradient(180deg, var(--sc-sky0), var(--sc-sky1)); color: var(--sc-text);
+  padding-top: calc(var(--sp-24) + (var(--sp-12) - var(--sp-24)) * var(--fold, 0) + env(safe-area-inset-top)); } /* --fold 0..1 (wall-sheet.js) follows the pane's scroll: the title settles to the folded padding as the sky shrinks, so it does not jump at the end */
+.is-wall .sh-sky:not(.is-compact) .sk-scene { opacity: calc(1 - var(--fold, 0)); transform: translateY(calc(var(--fold, 0) * -12px)); } /* the sun picture fades and lifts while the sky folds (no transition: it tracks the finger) */
 .is-wall .sh-sky.is-compact { min-height: 0; padding-top: calc(var(--sp-12) + env(safe-area-inset-top)); padding-bottom: var(--sp-12); } /* scrolled down a pane (wall-sheet.js): the words only, the sky's tone stays */
 .is-wall .sh-sky.is-compact .sk-scene { display: none; }
-html[data-text] .is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } /* folded in big text: only ✕ stays beside the name; 알려 주기 returns at the top (일정 잡기 lives in the .ws-planbar row above the tabs) */
+html[data-text] .is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } /* folded in big text: only ✕ stays; 알려 주기 returns at the top (일정 잡기 lives in the .ws-planbar row above the tabs) */
 @media (max-width: 359px) { .is-wall .sh-sky.is-compact .sk-act > :not(.sk-ok) { display: none; } } /* a 320px phone: the same, so the name keeps its room */
-html[data-text] .is-wall .sh-sky.is-compact { grid-template-columns: minmax(0, 1fr) auto; }
-html[data-text] .is-wall .sh-sky.is-compact .sk-act { grid-row: auto; margin-top: 0; }
+/* big text: folded keeps the unfolded layout (a stacked head stays stacked), so the title does not move at the last step; what folded hides fades out with the fold first */
+html[data-text] .is-wall .sh-sky.is-compact .sk-contact { display: none; }
+html[data-text] .is-wall .sh-sky:not(.is-compact) .sk-contact { opacity: max(0, calc(1 - var(--fold, 0) * 2.5)); } /* gone before the shrinking band reaches it */
+html[data-text] .is-wall .sh-sky:not(.is-compact) .sk-act > :not(.sk-ok) { opacity: calc(1 - var(--fold, 0)); }
 .is-wall .sk-txt { min-width: 0; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-8); }
 .is-wall .sk-txt > .sk-title { flex: 0 0 100%; } /* leaves the slab its corner of the ground */
 /* 아주 크게(또는 좁은 폰의 크게): 제보하기 · 일정 잡기 · 닫기가 이름 옆에 있으면 끊을 수 없는 이름(…인공암벽등반장)이 버튼 위로 넘친다 → 버튼 줄을 이름 위 한 줄로 */
@@ -217,6 +222,10 @@ html[data-text="xlarge"] .is-wall .sk-act { grid-row: 1; justify-self: end; marg
 .is-wall .sk-ok:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 .is-wall .sh-sky :focus-visible { outline-color: currentColor; } /* the page's green ring would vanish on the sky: the band's own ink */
 .is-wall .sk-scene { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.is-wall .sk-climber { position: absolute; z-index: 1; right: calc(18% + var(--slab-h) * .357 + 2px); bottom: calc(var(--ground) - 1px); width: 24px; height: 24px; overflow: visible; } /* the sun card's climber (sun-scene.js) left of the slab (slab width = its height x 80/224); it takes the sky's --sc-body / --sc-helmet */
+.is-wall .sk-climber .sc-lamp { display: none; }
+.is-wall .sh-sky.k-night .sk-climber .sc-lamp { display: inline; } /* the headlamp comes on with the night sky, which the hours axis already toggles */
+.is-wall .k-none .sk-climber { display: none; }
 .is-wall .sk-ground { position: absolute; left: 0; right: 0; bottom: 0; height: var(--ground); background: var(--sc-ground); z-index: 2; }
 .is-wall .sk-slab { position: absolute; right: 18%; bottom: calc(var(--ground) - 1px); height: var(--slab-h); aspect-ratio: 80 / 224; background: var(--sc-wall); clip-path: polygon(0 0, 100% 0, 100% 100%, 57.5% 100%); z-index: 1; } /* the logo's slab */
 /* the sun: on a shallow arc by the viewed time (--sun-t: 0 = sunrise at the left, 1 = sunset at the right; past either end it sinks under the ground) */
@@ -263,6 +272,9 @@ html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th
 .sx-seg button[aria-selected="true"] { color: var(--pl-ink); font-weight: 800; }
 .sx-seg button:focus-visible { outline: var(--pl-ring) solid var(--pl-ink); outline-offset: calc(var(--pl-ring) * -1); }
 .sx-panel[hidden] { display: none; }
+.ws-sunnote { margin: 0 0 var(--sp-8); color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; } /* the wall's sun_note, one muted line under the hours card's status line */
+
+.sx-panel { isolation: isolate; } /* its own stacking context: an inner z-index (the hours card's .nowtag) can no longer paint over the sticky .sx-seg above */
 /* 세그먼트가 있는 탭의 상자 제목은 화면에서만 숨긴다(h3는 남아 읽힌다). 제목뿐인 머리 줄은 자리도 차지하지 않는다 */
 .sx-panel .ws-sec-h h3, .sx-panel .ws-sec-h:not(:has(> :not(h3))) { position: absolute; width: 1px; height: 1px; min-height: 0; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* 제목이 숨겨진 상자의 첫 목록은 위 여백·선을 거둔다(빈 줄처럼 보이던 자리) */

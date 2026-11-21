@@ -9,6 +9,7 @@
 import { el } from './dom.js';
 import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
 import { segStep } from './seg-nav.js';
+import { climber } from './sun-scene.js';
 
 // one builder per kind of place ('wall'; a 싱글피치 crag brings its own): (name) => { head: { tone, sunT, region, chip, ok, report }, tabs: [{ key, label, icon?, pane, kinds? }], onClose?, addr?, focusBack?, reportCrag? } | null
 // pane: an element, or a function made when the tab is first shown (the board loads only then); kinds: the report kinds that tab offers (else TAB_KINDS[key])
@@ -43,12 +44,49 @@ function build(n) {
 function show(n) {
   build(n);
   cur = n;
-  if (!wide.matches && panels[n].scrollTop < 8) sky.classList.remove('is-compact'); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
+  foldNow(); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
   tabEls.forEach((t, i) => {
     t.setAttribute('aria-selected', String(i === n));
     t.tabIndex = i === n ? 0 : -1;
     panels[i].inert = !wide.matches && i !== n; // wide: every pane is on screen
   });
+}
+
+// Phone: reading down a pane folds the sky to its words in step with the scroll (f = 0..1; the sun picture fades, the band shrinks by skyR px).
+// skyFull / skyR = the band's height unfolded / the room folding frees (measured, see measureSky); foldF = the fold now.
+let skyFull = 0, skyR = 0, foldF = 0, foldRaf = 0, foldHeld = false;
+function applyFold(f) {
+  foldF = f;
+  const mid = f > 0 && f < 1 && skyFull > 0;
+  sky.classList.toggle('is-compact', f >= 1); // fully folded: the CSS compact rules (big text, 320px) take over
+  sky.style.setProperty('--fold', String(f));
+  sky.style.height = mid ? `${skyFull - f * skyR}px` : '';
+  sky.style.minHeight = mid ? '0' : ''; // else the band's own min-height would stop the shrink
+}
+// the band's two heights, taken in one synchronous block (no paint between): on open, resize and a text-size change
+function measureSky() {
+  if (!dlg?.open || wide.matches) return;
+  const f = foldF;
+  applyFold(0);
+  const full = sky.offsetHeight;
+  applyFold(1);
+  skyFull = full;
+  skyR = Math.max(0, full - sky.offsetHeight);
+  applyFold(f);
+}
+// the fold the pane in view asks for. A pane is left alone unless it has room: its scroll range, measured as if unfolded, must exceed R + 48.
+// The fold is spread over D = min(R, range - R) px of scroll, so folding (the pane grows by R) never shrinks the range below the scroll position (no clamp, no jitter at the bottom).
+function foldNow() {
+  foldRaf = 0;
+  if (wide.matches || !dlg?.open || foldHeld) return; // a drag of the hours axis keeps the head as it is (the pane may scroll a little under the finger)
+  const p = panels[cur];
+  let f = 0;
+  if (p && skyFull) {
+    const range = p.scrollHeight - p.clientHeight + (skyFull - sky.offsetHeight);
+    const d = Math.min(Math.max(skyR, 48), range - skyR);
+    if (d >= 48) f = Math.min(1, Math.max(0, p.scrollTop / d));
+  }
+  if (f !== foldF) applyFold(f);
 }
 
 // wide: where pane n starts in the column's scroll; the pane in view is the last one that has reached the top
@@ -81,6 +119,15 @@ function goTo(n, { focus = false, instant = false } = {}) {
   if (focus) tabEls[n].focus();
 }
 
+// the climber of the sun card's picture (sun-scene.js), small, standing in front of the slab; its headlamp shows only under .k-night (sheet.css), so the time axis needs no extra call
+function person() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'sk-climber');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.append(climber({ x: 10, y: 23, u: 20 }, true));
+  return svg;
+}
+
 function make() {
   title = el('h2', { id: 'ws-title', class: 'sk-title ws-title', tabindex: '-1' });
   sub = el('p', { class: 'sk-sub' });
@@ -92,7 +139,7 @@ function make() {
   plan = el('a', { class: 'btn ws-plan' }, '이 외벽으로 일정 잡기'); // built.plan: the planner's new-plan address for this wall, opened in this tab (a move into the planner, not an outside page); none = no row. Sits in the .ws-planbar row above the tabs
   planbar = el('div', { class: 'ws-planbar' }, plan);
   sky = el('header', { class: 'sh-sky' }, el('div', { class: 'sk-txt' }, title, sub, contact), el('div', { class: 'sk-act' }, rep, ok),
-    el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), el('span', { class: 'sk-ground' })));
+    el('div', { class: 'sk-scene', 'aria-hidden': 'true' }, el('span', { class: 'sk-disc' }), el('span', { class: 'sk-slab' }), person(), el('span', { class: 'sk-ground' })));
   body = el('div', { class: 'ws-body' });
   body.addEventListener('scroll', () => {
     if (wide.matches) { spy(); return; }
@@ -102,26 +149,30 @@ function make() {
     const near = Math.max(0, Math.min(panels.length - 1, Math.round(p)));
     if (near !== cur) show(near); // a swipe settled on another pane
   }, { passive: true });
-  // reading down a pane folds the sky to its words (the sun picture goes) so the pane gets the room; back at its top it unfolds.
-  // A pane only a little taller than its box is left alone: folding it would bring it back to the top and unfold it again.
+  // reading down a pane folds the sky to its words (the sun picture goes) so the pane gets the room; back at its top it unfolds (foldNow, once per frame)
   body.addEventListener('scroll', (e) => {
     const p = e.target;
-    if (wide.matches || p === body || !p.classList?.contains('ws-panel')) return;
-    if (p.scrollTop < 8) sky.classList.remove('is-compact');
-    else if (p.scrollTop > 48 && p.scrollHeight - p.clientHeight > 120) sky.classList.add('is-compact');
+    if (wide.matches || p !== panels[cur] || foldRaf) return;
+    foldRaf = requestAnimationFrame(foldNow);
   }, { capture: true, passive: true });
-  window.addEventListener('resize', () => { if (dlg.open && !wide.matches) body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); });
+  body.addEventListener('pointerdown', (e) => { if (e.target.closest?.('[data-hold-fold]')) foldHeld = true; }, { passive: true }); // app.js marks the hours axis
+  const release = () => { if (foldHeld) { foldHeld = false; foldRaf ||= requestAnimationFrame(foldNow); } };
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  window.addEventListener('resize', () => { if (dlg.open && !wide.matches) { body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); measureSky(); foldNow(); } });
+  if (typeof MutationObserver === 'function') new MutationObserver(() => { measureSky(); foldNow(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-text'] }); // text size changed: the band's heights changed
   wide.addEventListener('change', () => { // the window crossed 1024px: the same section stays in view in the other layout
     if (!dlg.open) return;
     const n = cur;
     clearTimeout(spyHold); spyHold = 0;
     if (wide.matches) {
-      sky.classList.remove('is-compact');
+      applyFold(0);
       body.scrollLeft = 0;
       panels.forEach((p) => { p.scrollTop = 0; });
       panels.forEach((_, i) => build(i));
     } else {
       body.scrollTop = 0;
+      measureSky();
     }
     show(n);
     paint(n);
@@ -150,8 +201,9 @@ function make() {
 }
 
 const setSky = (h, keepFold = true) => {
-  const folded = keepFold && sky.classList.contains('is-compact'); // a drag of the hours line repaints the sky, not its fold
-  sky.className = `sh-sky ${h?.tone ?? 'k-none'}${folded ? ' is-compact' : ''}`;
+  const f = keepFold ? foldF : 0; // a drag of the hours line repaints the sky, not its fold (the inline --fold / height stay; the class is re-set)
+  sky.className = `sh-sky ${h?.tone ?? 'k-none'}`;
+  applyFold(f);
   sky.style.setProperty('--sun-t', String(h?.sunT ?? 0.5));
   sub.replaceChildren(...[h?.region, h?.chip && el('span', { class: 'sk-chip' }, h.chip)].filter(Boolean));
 };
@@ -217,6 +269,7 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   }
   dlg.showModal();
   body.scrollTop = 0;
+  measureSky(); // the band is laid out now (title, text size): its unfolded and folded heights
   if (wide.matches) panels.forEach((_, i) => build(i));
   show(first);
   paint(first);

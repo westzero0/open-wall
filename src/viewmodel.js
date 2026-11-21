@@ -267,6 +267,11 @@ export function sunVerdict(wall, at) {
 // The timetable axis runs 06:00–24:00.
 export const AXIS = [360, 1440];
 export const axisFrac = (m) => (Math.min(Math.max(m, AXIS[0]), AXIS[1]) - AXIS[0]) / (AXIS[1] - AXIS[0]);
+// The inverse of axisFrac for a pointer: x px from the axis' left edge, the axis `width` px wide with `pad` px of room at each end (where the ticks sit) → the nearest whole hour, 06:00–23:00 (the slider's own range; 24 is not a start time)
+export const axisHourAt = (x, width, pad = 0) => {
+  const m = AXIS[0] + ((x - pad) / Math.max(1, width - 2 * pad)) * (AXIS[1] - AXIS[0]);
+  return Math.min(1380, Math.max(AXIS[0], Math.round(m / 60) * 60));
+};
 
 export const AXIS_LABELS = [6, 12, 18, 24]; // the axis' numbers: the day in four (6-hour steps), read with the day-part words between them
 export const DAYPARTS = [{ from: 6, to: 12, text: '오전' }, { from: 12, to: 18, text: '오후' }, { from: 18, to: 24, text: '저녁' }];

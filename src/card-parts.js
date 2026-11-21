@@ -255,16 +255,21 @@ export function heroCap(m) {
 
 // the 날씨 상자 (the first line of the sun box's sky, withWeather): the temperature (big), the pills (등반 어려움 · 바람 셈 · 기온 낮음) beside it, the words under both, the observation / forecast time.
 // One markup for every kind of place (외벽 now and forecast, 싱글피치): `data-hard` is what withWeather reads to let the sun picture step back. `label` is the one line a screen reader gets (the box is aria-hidden inside).
-// temp: '10°'. words: 'sky · wind' (already joined, '' for none). hard: the 등반 어려움 pill's text or null. obs: '14:20 관측' / '14시 예보' or null.
-export function wxBox({ temp, label, words = '', hard = null, strong = false, cold = false, obs = null }) {
+// temp: '10°'. sky: the sky word ('맑음', bold, after the temperature) or null. words: the line under (wind / rain, '' for none; it takes its own second line). hard: the 등반 어려움 pill's text or null. obs: '14:20 관측' / '14시 예보' or null.
+// pic: the weather picture's svg node (the list chip's markup, first in the box; null = none), picWarn: it takes --warn like a warning chip.
+export function wxBox({ temp, label, words = '', hard = null, strong = false, cold = false, warn = null, obs = null, pic = null, picWarn = false, sky = null }) {
+  if (warn && (hard ?? '').includes(warn)) warn = null; // the 등반 어려움 pill already says it
   return el('section', { class: 'wx-box', ...(hard ? { 'data-hard': '1' } : {}), 'aria-label': label },
+    pic ? el('span', { class: `wxset wxb-pic${picWarn ? ' is-warn' : ''}`, 'aria-hidden': 'true' }, el('span', { class: 'sunnow pic scw-veil' }, pic)) : null,
     el('div', { class: 'wxb-top', 'aria-hidden': 'true' },
       el('span', { class: 'wxb-t' }, temp),
+      sky ? el('span', { class: 'wxb-sky' }, sky) : null,
+      warn ? el('span', { class: warn === WX_WORD.cold ? 'wx-pill cold' : 'wx-pill hard' }, warn) : null, // the list chip's warning word, right after the temperature
       hard ? el('span', { class: 'wx-pill hard' }, hard) : null,
-      strong && !/강풍|바람/.test(hard ?? '') ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // 등반 어려움 · 강풍 already says it: one pill, not two
-      cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
-      el('span', { class: 'wxb-d' }, words),
-      obs ? el('span', { class: 'wxb-obs' }, obs) : null));
+      strong && !/강풍|바람/.test(hard ?? '') && warn !== WX_WORD.wind ? el('span', { class: 'wx-pill' }, '바람 셈') : null, // 등반 어려움 · 강풍 already says it: one pill, not two
+      cold && warn !== WX_WORD.cold ? el('span', { class: 'wx-pill cold' }, '기온 낮음') : null, // beside the temperature; the words wrap under both
+      obs ? el('span', { class: 'wxb-obs' }, obs) : null,
+      el('span', { class: 'wxb-d' }, words)));
 }
 
 // the card's ! (13px ring) with its bubble, the same .sun-why / .sun-limit as the sun box; `.inl` sits in a line of text instead of the picture's corner.

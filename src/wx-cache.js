@@ -30,14 +30,14 @@ export function wxCache(storage, now = () => Date.now()) {
         .sort((a, b) => b[1].at - a[1].at).slice(0, WALL_MAX);
       write(slot, Object.fromEntries(keep));
     },
-    /** setLimited() — a 429 came back: nothing is asked until local midnight. */
+    /** setLimited() — a 429 came back: nothing is asked until UTC midnight (Open-Meteo's daily reset; KST 09:00). */
     setLimited() { write(WX_LIMIT_KEY, now()); },
-    /** limited() → true from a 429 until the next local midnight. */
+    /** limited() → true from a 429 until the next UTC midnight (KST 09:00). */
     limited() {
       let at = 0;
       try { at = Number(JSON.parse(storage.getItem(WX_LIMIT_KEY))); } catch { /* broken: not limited */ }
       if (!Number.isFinite(at) || at <= 0) return false;
-      const d = new Date(at); d.setHours(24, 0, 0, 0);
+      const d = new Date(at); d.setUTCHours(24, 0, 0, 0);
       return now() < d.getTime();
     },
   };

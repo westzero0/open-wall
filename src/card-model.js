@@ -34,6 +34,13 @@ function statusText(status, at, wall, { dropClose = false } = {}) {
   return `${left} · ${whenText(status.closeAt, at)} ${status.endKind === 'break' ? '휴게 시작' : '마감'}`;
 }
 
+// The wall sheet's one status line, no time prefix and no remaining time: open "운영 중 · 22:00 마감" (a break ahead: "운영 중 · 15:00 휴게 시작");
+// every other state keeps statusText's words ("닫힘 · 다음 오픈 11/22 08:00", "휴게 중 · 14:00 재개", "임시 휴관 중").
+export function statusLineText(status, at, wall) {
+  if (status.suspended || status.state !== 'open') return statusText(status, at, wall);
+  return `운영 중 · ${whenText(status.closeAt, at)} ${status.endKind === 'break' ? '휴게 시작' : '마감'}`;
+}
+
 // "2시간 가능" / "곧 마감 · 20분 남음" / "10/8 10:00 오픈" (list row)
 const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 function rowLeft(status, at, wall) {
@@ -467,10 +474,10 @@ export function settingText(setting, today) {
 // The chip on a photo: '사진 · 이름 · 라이선스' (a crag's photo uses it too, crag-model.js). null for no credit.
 export const photoCredit = (c) => (c ? { text: `사진 · ${c.text}${c.license ? ` · ${c.license}` : ''}`, url: c.url || null } : null);
 
-// ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 3m, rounded up to a length people carry) ----
+// ---- 로프: how long a rope the wall's height asks for (벽 높이 × 2 + 여유 5m, rounded up to a length people carry) ----
 // The one number behind every card's rope pill: the rope has to cover the wall twice (up and back down) plus this margin (knots, stretch, the anchor above the top).
 // Conservative on purpose; change it here and every card follows.
-export const ROPE_MARGIN_M = 3;
+export const ROPE_MARGIN_M = 5;
 export function ropeNeeded(heightM) {
   if (!(heightM > 0)) return null; // no height known: say nothing
   const need = heightM * 2 + ROPE_MARGIN_M;
@@ -657,7 +664,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const regionShown = wall.region && !facts.address?.startsWith(wall.region) ? wall.region : null;
   const where = [regionShown, basis].filter(Boolean).join(' · ');
   const place = regionShown || null; // the open card's line under the name; 실외 시간 기준 rides on the 오늘 운영 line there
-  const notes = [winterNote && { value: winterNote, key: true, quiet: true }, rainNote && { value: rainNote, key: true, quiet: true }, approxNote && { value: approxNote, key: true }].filter(Boolean); // a guessed position can send you to the wrong place: the face shows it
+  const notes = [winterNote && { value: winterNote, key: true, quiet: true }, approxNote && { value: approxNote, key: true }].filter(Boolean); // a guessed position can send you to the wrong place: the face shows it
   const info = splitInfo([...notes, ...facts.rest]);
   const rope = ropeLine(wall.height_m, ropeM, wall.rope_m);
   const parkingModel = parkingView(wall.parking, stayHours);
@@ -685,7 +692,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     ? list.length ? [...list.filter((p) => p.main), ...list.filter((p) => !p.main).reverse()].map((p) => ({ src: `data/${p.src}`, credit: photoCredit(p.credit), date: p.date ?? null }))
       : [{ src: photo, credit, date: null }]
     : [];
-  const notice = closureNotice({ suspended: suspendedModel, day, dayLabel, cond: winterOut ? [] : closing.cond, winterOut: wall.seasonIndoor ?? (winterOut && wall.winter.from_month && wall.winter.to_month ? `${wall.winter.from_month}~${wall.winter.to_month}월` : null) });
+  const notice = closureNotice({ suspended: suspendedModel, day, dayLabel, cond: winterOut ? [] : rainNote && !closing.cond.some((l) => RAIN_RE.test(l.value)) ? [...closing.cond, { label: NOTICE_LABEL, value: rainNote }] : closing.cond, winterOut: wall.seasonIndoor ?? (winterOut && wall.winter.from_month && wall.winter.to_month ? `${wall.winter.from_month}~${wall.winter.to_month}월` : null) });
   const nextOpen = status.nextOpenAt ? `다음 오픈 ${whenText(status.nextOpenAt, at)}` : null; // the 휴무 line names the closing: the 운영 row tells the next opening instead of saying it again
   return {
     name: wall.name,
@@ -702,6 +709,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     soon: !warning && endingSoon(row),
     short: Boolean(row.short),
     statusText: text,
+    statusLine: statusLineText(status, at, wall),
     left: warning ? '확인 전' : rowLeft(status, at, wall),
     leftCard: warning ? null : leftCard(status),
     hoursOnGauge: Boolean(bar?.open.length), // the gauge's ends say the hours: the photo does not repeat them
@@ -720,7 +728,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
     setting: settingText(wall.setting, ymd(now)),
     settingBadge: settingAfterVisit(wall.setting, visits) ? '방문 뒤 새 세팅' : settingNew && wall.setting?.last ? '세팅일이 바뀌었어요' : null,
     settingBadgeShort: settingAfterVisit(wall.setting, visits) ? '새 세팅' : null, // the list row has little room: the short word (the full one is its title)
-    notes: [winterNote, rainNote, sunNote(row)].filter(Boolean), // card
+    notes: [winterNote, sunNote(row)].filter(Boolean), // card
     info, // expanded row's 안내 (face) and 시설 (wall sheet)
     infoFace: info.shown.filter((l) => l !== chipLine.closure && !closesOnWord(l)), // the 안내 lines on the card: the closing lines are the 운영 row, the 휴무안내 line and the sheet's 시간 tab
     notice,

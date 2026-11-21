@@ -51,6 +51,16 @@ export function sunHeadOf(d, verdict, at, isNow) {
   return { chip: `${time} ${isNow ? '현재' : '기준'} ${d.lit ? '양달' : '응달'}`, tone: d.lit ? 'lit' : 'dark', key };
 }
 
+/**
+ * sunWordOf(d, closedDay, min) → '양달' | '응달' | '해 진 뒤' | '해 뜨기 전' | null: the word the wall sheet's status line ends with (no time).
+ * No sun (state 'night'): '해 뜨기 전' before noon (min < 720), else '해 진 뒤'. null for an unknown / typed-in sun and for a closed day. The caller leaves indoor walls out.
+ */
+export function sunWordOf(d, closedDay = false, min = null) {
+  if (closedDay || d.state === 'unknown' || d.state === 'override') return null;
+  if (d.state === 'night') return min !== null && min < 720 ? '해 뜨기 전' : '해 진 뒤';
+  return d.lit ? '양달' : '응달';
+}
+
 // pick: { isNow, dayLabel } describes the picked moment for wording ('지금/오늘' only when it really is).
 export function dialModel(wall, at, { isNow = true, dayLabel = '오늘' } = {}) {
   const lit = isSunlit(wall, at);
