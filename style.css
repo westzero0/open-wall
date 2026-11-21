@@ -2525,6 +2525,8 @@ html.on-map .filters { display: none; }
 html.on-map .controls { padding-block: 0; box-shadow: none; } /* 위 8px도 뺀다: 머리 바로 아래 빈 띠·이중선 방지(목록 보기의 .filters 줄 위 여백 몫이었다) */
 html.on-map .scrub { border-bottom: 0; }
 html.on-map .foot { display: none; }
+html.on-map main { padding-bottom: var(--tabbar-h, 0px); } /* 지도 보기는 지도가 화면 끝까지 채운다: 목록 끝 여백 48px를 빼 페이지가 스크롤되지 않게(2026-11-21 사용자 요청) */
+html.on-map, html.on-map body { overflow: hidden; overscroll-behavior: none; } /* 남는 몇 px로도 페이지가 끌리지 않게: 지도 안 끌기는 Leaflet이 받는다 */
 .g-verdict .g-vtail { white-space: nowrap; }
 html.on-map #panel-map { margin-top: var(--sp-8); }
 html.on-map #map { height: calc(100vh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); height: calc(100dvh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); } /* 바닥글은 지도 보기에서 숨긴다(.foot) */
