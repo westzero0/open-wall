@@ -1663,6 +1663,24 @@ function setBand(summary, label, n) {
 }
 
 let fadeNext = false; // set by the time slider for one render (crossfadeRows)
+// The open card stays open when the time moves it to another group (view-state 'shown'). The rebuilt list would move it away
+// from under the eye, or into the folded 닫힌 곳 group: so the group it lands in is unfolded (folded back once it leaves) and
+// the page is moved by however far the card moved.
+let autoBand = null; // the group unfolded for the open card
+const openRowBtn = () => (vs.openName && !$('panel-list').hidden
+  ? [...document.querySelectorAll('#panel-list .row')].find((r) => r.wallName === vs.openName)?.querySelector('.row-btn') : null);
+function keepOpenRowInPlace(oldTop, oldY) {
+  const btn = openRowBtn();
+  const band = btn?.closest('details') ?? null;
+  if (autoBand && autoBand !== band) { autoBand.open = false; autoBand = null; }
+  if (band && !band.open) { band.open = true; autoBand = band; }
+  if (oldTop == null || !btn) return;
+  const dy = btn.getBoundingClientRect().top - oldTop;
+  if (dy) scrollBy(0, dy);
+  // the time box unfolded for the slider stays unfolded: the page moved, not the user. By what it really moved since before the
+  // rebuild: the browser's own scroll anchoring moves it too, and the page end clips a scroll
+  if (foldHeld) heldAt += scrollY - oldY;
+}
 function render() {
   const now = new Date(); // one clock reading per render
   syncSeen();
@@ -1793,6 +1811,7 @@ function render() {
     fv.national ? el('button', { type: 'button', class: 'clear-filters to-national' }, '전국으로 보기') : null,
     fv.clear ? el('button', { type: 'button', class: 'clear-filters' }, '조건 지우기') : null,
     soonestRow && !openTotal ? el('button', { type: 'button', class: 'soonest-go', 'data-date': ymd(soonest), 'data-min': String(soonest.getHours() * 60 + soonest.getMinutes()) }, `가장 빠른 곳 · ${shortName(soonestRow.wall)} ${whenText(soonest, at, now)} ›`) : null].filter(Boolean)); // nothing is open: the earliest wall is one tap away (it moves the slider to its opening)
+  const openTop = openRowBtn()?.getBoundingClientRect().top ?? null, openY = scrollY; // keepOpenRowInPlace, after the groups are rebuilt
   rowSeq = 0;
   const prevRows = fadeNext ? new Map([...$('rows-open').children].map((li) => [li.wallName, li])) : new Map(); // the slider moved: the rows it rebuilds fade from the old ones
   $('rows-open').replaceChildren(...open.map((r) => safeRow(r, at)));
@@ -1812,6 +1831,7 @@ function render() {
     setBand($('group-suspended').querySelector('summary'), '일반 이용이 어려운 곳', groups.suspended.length);
     $('rows-suspended').replaceChildren(...groups.suspended.map((r) => safeRow(r, at)));
   }
+  keepOpenRowInPlace(openTop, openY);
 
   const msg = vs.locateNote || (needOrigin ? '내 위치를 먼저 확인해 주세요.' : '');
   $('findLoc').setAttribute('aria-pressed', String(ui.sortMode === 'distance' && !!vs.origin));

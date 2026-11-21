@@ -23,9 +23,6 @@ export function startView(now) {
   return { ...initialView(), live: false, date: ymd(weekendDays(now)[0].date), min: PLAN_MIN };
 }
 
-// The open row is kept across a re-render only while a row of that wall is still shown in the same group.
-export const keepOpenRow = (rows, name, state) => rows.some((r) => r.wall.name === name && r.status.state === state);
-
 // The live minute tick skips a re-render that would pull something from under the user: not live, a hidden
 // page, the map card's "자세히" open, or focus on a control the re-render can't give back (map card, 조건 지우기).
 export const skipTick = ({ live, hidden, detailsOpen, focusHeld }) => !live || hidden || detailsOpen || focusHeld;
@@ -71,7 +68,14 @@ export function step(vs, ev, now) {
     case 'tick': return { vs, fx: skipTick({ live: vs.live, ...ev }) ? [] : ['crowd', 'render'] };
     case 'toggle': return { vs: { ...vs, ...CLOSED, ...(vs.openName === ev.name ? {} : { openName: ev.name, openState: ev.state }) }, fx: [] };
     case 'reveal': return { vs: { ...vs, ...CLOSED, openName: ev.name, openState: ev.state }, fx: ['render'] };
-    case 'shown': return { vs: !vs.openName || keepOpenRow(ev.rows, vs.openName, vs.openState) ? vs : { ...vs, ...CLOSED }, fx: [] };
+    // The open row stays while that wall is still shown, in any group: moving the time to see when it opens should not close
+    // the card the moment the answer changes (app.js unfolds the group it lands in and keeps it in place). Filtered out: forgotten.
+    case 'shown': {
+      if (!vs.openName) return { vs, fx: [] };
+      const row = ev.rows.find((r) => r.wall.name === vs.openName);
+      if (!row) return { vs: { ...vs, ...CLOSED }, fx: [] };
+      return { vs: row.status.state === vs.openState ? vs : { ...vs, openState: row.status.state }, fx: [] };
+    }
     case 'season': { // tapping the picked day's own season ends the preview
       const season = { ...vs.season };
       if (ev.pick === ev.current) delete season[ev.name];

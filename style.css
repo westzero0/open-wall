@@ -485,6 +485,8 @@ html[data-text="xlarge"] #map .leaflet-control-attribution { font-size: .5rem; }
 .plot { position: absolute; left: var(--pad); right: var(--pad); top: 1.625rem; bottom: 0; pointer-events: none; display: none; } /* the hour grid behind the rows is off: the axis labels and each row's own bar say the time */
 .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--hair); }
 .tgroup { position: relative; }
+/* the open card keeps its own place when the time re-sorts the list (app.js keepOpenRowInPlace); the browser's scroll anchoring would move the page again after it (Safari has none) */
+#panel-list { overflow-anchor: none; }
 /* 연결 세로선: the picked time (the axis chip, app.js sets --x on .board) carried down to every row's pin; drawn as the list's own background, so it runs behind the row words */
 #rows-open { background: linear-gradient(color-mix(in srgb, var(--point) 45%, transparent), color-mix(in srgb, var(--point) 45%, transparent)) no-repeat; background-size: 1px 100%; background-position: calc(var(--pad) + (100% - 2 * var(--pad)) * var(--x, -1)) 0; }
 .band {
