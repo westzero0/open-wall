@@ -653,7 +653,7 @@ export function cardModel(row, at, { now = new Date(), visits = null, crowd = nu
   const winterOut = !!wall.seasonIndoor || (day.closed && day.text === '외벽 휴무' && wall.winter?.type === 'closed'); // viewOf read the wall as indoor for the season, or it is still read on its outdoor hours
   const indoorDay = wall.seasonIndoor ? day : winterOut && wall.venue === 'both' && Object.keys(wall.indoor_hours ?? {}).length ? dayLine(viewOf(wall, 'indoor'), at) : null;
   const winterNote = status.winterNote && !indoorDay ? (status.winterNote.startsWith('동절기') ? status.winterNote : `동절기 · ${status.winterNote}`) : null; // the note may already say 동절기
-  const rainNote = wall.exceptions?.rain_rule && !winterOut ? '우천 시 운영 여부는 비 온 뒤 확인하세요' : null;
+  const rainNote = wall.exceptions?.rain_rule && !winterOut ? '우천 시 휴무 확인 필요' : null;
   // a wall with a fee table keeps its prices in the 요금 tab only: no 이용료 line in the card's text
   // a line that starts with a date ("2026-10-17(토)은 …") is a notice: the face keeps it until that day has passed
   const today = ymd(at);
