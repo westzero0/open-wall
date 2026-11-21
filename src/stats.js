@@ -1,5 +1,6 @@
 // 방문 통계(PostHog Cloud, 쿠키 없음): 외부 스크립트 없이 수집 주소로 fetch(POST) 하나만 보낸다(posthog-js 안 씀).
 // config.posthogKey(프로젝트 키)가 비어 있거나 localhost·Do Not Track이면 아무것도 보내지 않는다. 이벤트에는 이름·익명 기기 ID(localStorage open-wall:stats-id)·beta 여부·(페이지뷰만) 경로와 리퍼러만 싣고 쿼리는 싣지 않는다.
+// $pageview는 주소의 ?src=<출처>(우리가 링크에 붙인 고정 이름, 예: blog)를 src 속성으로 보낸다(없으면 생략, 읽은 뒤 주소에서 지운다).
 // 이벤트: $pageview(페이지뷰), share-open(공유 링크로 들어옴), return(하루 이상 지나 다시 옴), click-tel/insta/route/chat/link(링크 종류만; 근처 외벽 시트의 data-near-map 지도 링크는 세지 않는다),
 // climber-done(클라이머 유형 테스트를 끝냄: 횟수만, 유형·점수는 보내지 않는다),
 // card-open(목록에서 카드를 엶), log-add(방문 기록을 저장함), share-send(링크 복사로 공유함), weather-shown(날씨 상자를 처음 봄), fav-add(즐겨찾기를 켬),
@@ -44,6 +45,9 @@ export function visitorFlag(search, stored, hadVisit = false) {
   return hadVisit ? { flag: 'beta', store: 'beta' } : { flag: null, store: 'none' };
 }
 
+/** srcOf(search) → the ?src= link-source name (lowercase, [a-z0-9-]{1,24}) or null */
+export const srcOf = (search) => { const v = new URLSearchParams(search).get('src')?.toLowerCase(); return v && /^[a-z0-9-]{1,24}$/.test(v) ? v : null; };
+
 // 근처 장비점 sheet partner link: `gear-<id>` for a well-formed id (the id pattern is src/gear.js's ID_RE; kept here so counting never imports the wall code), else null
 export const gearEventName = (id) => (typeof id === 'string' && /^[a-z0-9-]{1,24}$/.test(id) ? `gear-${id}` : null);
 
@@ -77,8 +81,8 @@ function readVisitor(win) {
   const { flag, store } = visitorFlag(search, stored, hadVisit);
   if (store !== undefined) { try { win.localStorage.setItem(VISITOR_KEY, store); } catch { /* 저장 불가 */ } }
   const q = new URLSearchParams(search);
-  if (q.has('me') || q.has('beta')) {
-    q.delete('me'); q.delete('beta');
+  if (q.has('me') || q.has('beta') || q.has('src')) {
+    q.delete('me'); q.delete('beta'); q.delete('src');
     const rest = q.toString();
     try { win.history?.replaceState(null, '', pathname + (rest ? `?${rest}` : '') + (hash || '')); } catch { /* 주소는 그대로 둬도 된다 */ }
   }
@@ -98,12 +102,13 @@ function anonId(win) {
 
 export function initStats(win = globalThis.window, key = config.posthogKey, host = config.posthogHost) {
   if (!win) return false;
+  const src = srcOf(win.location.search); // before readVisitor takes ?src out of the address
   const flag = readVisitor(win);
   if (flag === 'me' || !shouldTrack(key, win.location.hostname, win.navigator.doNotTrack === '1')) return false;
   const id = anonId(win), url = captureUrl(host), once = new Set();
   const post = (event, props) => { try { win.fetch(url, { method: 'POST', body: captureBody(key, id, event, { ...props, ...(flag === 'beta' ? { beta: true } : {}) }), keepalive: true, credentials: 'omit' })?.catch?.(() => {}); } catch { /* 통계는 앱을 막지 않는다 */ } };
   const send = (name) => { if (ONCE.has(name)) { if (once.has(name)) return; once.add(name); } post(name); };
-  post('$pageview', { $current_url: `${win.location.origin ?? ''}${win.location.pathname || '/'}`, $pathname: win.location.pathname || '/', $referrer: win.document.referrer || '' });
+  post('$pageview', { $current_url: `${win.location.origin ?? ''}${win.location.pathname || '/'}`, $pathname: win.location.pathname || '/', $referrer: win.document.referrer || '', ...(src ? { src } : {}) });
   const q = new URLSearchParams(win.location.search);
   if (q.has('wall')) send('share-open');
   try {
