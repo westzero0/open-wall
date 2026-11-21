@@ -161,8 +161,7 @@ html[data-text="large"] { font-size: 125%; --tap: 52px; } /* 글자 크기 (내 
 html[data-text="xlarge"] { font-size: 150%; --tap: 60px; }
 /* 아주 크게: 늘 화면에 붙어 있는 상단(제목·필터·시간)만 '크게' 수준으로 두어 목록이 첫 화면에 보이게 한다(토큰 값 = 기본 × 1.25 ÷ 1.5) */
 html[data-text="xlarge"] .filters .pill { padding: 0 var(--sp-8); }
-html[data-text="xlarge"] .filters { flex-wrap: wrap; row-gap: var(--sp-4); } /* 가장 큰 글씨: 검색창이 첫 줄 전폭, 양달·응달 칸과 조건은 그 아래 줄(한 줄이면 검색창 문구가 한 글자만 보인다) */
-html[data-text="xlarge"] .filters .find { order: -1; flex: 1 1 100%; }
+html[data-text="xlarge"] .filters .find { flex: 1 1 0; min-width: 0; } /* 2026-11-21: 아주 크게도 검색칸과 지도 버튼(그림만)이 한 줄. 양달·응달 칸·조건은 이 줄을 떠나 줄바꿈 규칙이 필요 없다 */
 html[data-text="xlarge"] .top, html[data-text="xlarge"] .controls, html[data-text="xlarge"] .tabbar { --tap: 52px; --fs-xs: .6771rem; --fs-sm: .7292rem; --fs-md: .7813rem; --fs-base: .8333rem; --fs-lg: 1.0417rem; --fs-xl: 1.25rem; }
 html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--stick-h, 0px) + 8px); } /* focus/anchor scrolls land below the sticky controls */
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.5 var(--font); font-variant-numeric: tabular-nums; overflow-x: hidden; word-break: keep-all; overflow-wrap: break-word; }
@@ -1493,6 +1492,7 @@ div.la-when { row-gap: 0; }
 /* 2026-11-21: 찾기·범례 버튼은 app.js openMap이 Leaflet .leaflet-top.leaflet-left 안 줌 막대 뒤로 옮겨(.leaflet-control) 흐름으로 쌓인다(간격은 Leaflet 기본 10px). 폭 = 줌 막대 바깥 폭(tap + 테두리 2×2) */
 .map-find-btn, .map-legend-btn { display: grid; place-items: center; width: calc(var(--tap) + 4px); height: calc(var(--tap) + 4px); padding: 0; border: 2px solid rgba(0,0,0,.2); border-radius: var(--r-base); background: var(--surface); color: var(--fg); cursor: pointer; }
 .map-find-btn svg, .map-legend-btn svg { width: 22px; height: 22px; }
+@media (max-width: 1023px) { html[data-text="xlarge"] #map .leaflet-control-zoom { display: none; } } /* 2026-11-21 사용자 결정: 아주 크게 폰 지도는 줌 막대를 숨겨(두 손가락으로 확대) 찾기·범례만 왼쪽 위에 둔다 */
 /* 핀 설명: a popover over the map (the ⓘ button opens it), not a block under it, so it is on screen with the pins it explains */
 .map-legend { position: absolute; left: var(--sp-8); right: var(--sp-8); top: var(--sp-8); z-index: 3; max-height: calc(100% - var(--sp-16)); overflow-y: auto; border-radius: var(--r-base); background: #2a2d32; }
 .map-legend-head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-4) 0 var(--sp-16); color: var(--paper-fixed); }
@@ -1921,7 +1921,7 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .inv-why[hidden] { display: none; }
 .inv-why + .inv-actions { margin-top: var(--sp-8); }
 .inv-link-hint { margin-top: var(--sp-8); font-size: var(--fs-sm); }
-:is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .ib-close, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(.inv-kind button, .inv-alt, .inv-send, .inv-copy, .inv-image, .ib-close, .ib-go, .ib-again, .inv-field input, .inv-field select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .invite-banner { margin: var(--sp-12) 0 0; padding: var(--sp-12) var(--sp-16) var(--sp-4); border: 1px solid var(--accent); border-radius: var(--r-base); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .invite-banner[hidden] { display: none; }
 .ib-title { margin: 0; font-weight: 700; color: var(--accent); }
@@ -1942,6 +1942,8 @@ td[aria-selected="true"] > .cal-day { background: color-mix(in srgb, var(--open)
 .ib-cap { display: flex; font-size: var(--fs-xs); color: var(--muted); } .ib-cap > span { flex: 1 1 50%; text-align: center; }
 .ib-again { min-height: var(--tap); margin: var(--sp-4) var(--sp-12) 0 0; padding: 0 var(--sp-16); border: 1px solid var(--line-strong); border-radius: var(--r-base); background: var(--surface); color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; }
 .ib-again[hidden] { display: none; }
+.ib-go { min-height: var(--tap); margin-left: -2px; margin-right: var(--sp-12); padding: 0 var(--sp-2); border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; }
+.ib-go[hidden] { display: none; }
 .ib-close { min-height: var(--tap); margin-left: -2px; padding: 0 var(--sp-2); border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 div.sh-row.inv-prev { display: block; } /* (a div.sh-row is a flex row elsewhere; this one stacks the label, the text and the hint) */
 .inv-spin { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.2em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
@@ -2472,6 +2474,7 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 #panel-sched { margin-top: var(--sp-16); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-16); }
 .sched-tg { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-4); flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 var(--sp-8); border: 0; border-radius: var(--r-md); background: none; color: var(--fg); font: inherit; font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: pointer; } /* 44px: 목록 ⇄ 달력 (그림 + 글자) */
 .filters > #homeView { margin-left: auto; } /* 폰 지도: 검색칸이 숨고 조건도 옮겨 가 목록 버튼만 남으니 머리줄 오른쪽 끝에 세운다(목록 보기는 검색칸이 남는 폭을 차지해 변화 없음) */
+html[data-text="xlarge"] .filters > #homeView > span { display: none; } /* 2026-11-21 사용자 결정: 아주 크게 목록에서는 '지도' 글자를 빼고 그림만 남겨 찾기 칸 옆에 둔다(이름은 aria-label '지도로 보기') */
 .sched-tg svg { width: 22px; height: 22px; }
 .sched-tg:active { background: var(--sunken); }
 .sched-tg:focus-visible, .sched-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2521,8 +2524,10 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 html.on-map .filters { display: none; }
 html.on-map .controls { padding-block: 0; box-shadow: none; } /* 위 8px도 뺀다: 머리 바로 아래 빈 띠·이중선 방지(목록 보기의 .filters 줄 위 여백 몫이었다) */
 html.on-map .scrub { border-bottom: 0; }
+html.on-map .foot { display: none; }
+.g-verdict .g-vtail { white-space: nowrap; }
 html.on-map #panel-map { margin-top: var(--sp-8); }
-html.on-map #map { height: calc(100vh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); height: calc(100dvh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); } /* 바닥글 몫 40px을 뺀다: 지도가 화면 끝까지 차고 바닥글은 스크롤해야 보인다 */
+html.on-map #map { height: calc(100vh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); height: calc(100dvh - var(--map-top, var(--stick-h, 0px)) - var(--tabbar-h, 0px)); } /* 바닥글은 지도 보기에서 숨긴다(.foot) */
 /* 스크롤하면 시각 상자는 한 줄로 접힌다(app.js foldScrub): 날짜 칩·질문·슬라이더·답은 숨고, 줄을 누르면 펼친다 */
 .scrub-fold { display: none; }
 .scrub.is-folded > :not(.scrub-fold) { display: none; }

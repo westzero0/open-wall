@@ -321,6 +321,7 @@ dialog.sheet::backdrop { background: var(--pl-scrim); }
 .rg { display: grid; grid-template-columns: 2em 1fr auto; column-gap: var(--pl-sp-8); align-items: baseline; } /* 루트 시트 줄: 번호 · 이름 · 등급(번호 칸 2em은 시안 승인) */
 .rg small { grid-column: 2 / -1; } /* 아랫글(피치 수·고른 상태·메모)은 이름 칸부터 */
 .rrow .pl { margin: 4px 0 8px; padding-left: 1.6em; font-size: var(--pl-fs-small); color: var(--pl-muted); } /* 멀티피치 암장: 펼친 루트의 피치 줄 */
+.rrow .pl .pl-note { display: block; font-size: var(--pl-fs-small); color: var(--pl-muted); }
 
 /* 기록 입력 안쪽(.rec 안에서 열림), 오른 루트 줄, 카드 시트 */
 .rx { margin-top: var(--pl-sp-12); }

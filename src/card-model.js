@@ -494,7 +494,7 @@ export function ropeLine(heightM, ownM = 0, officialM = 0) {
   const mine = ROPE_LENGTHS.includes(ownM) ? ownM : 0;
   const ask = r.over ? `로프 ${ROPE_LENGTHS.at(-1)}m 초과` : `로프 ${r.m}m 이상`;
   const own = !mine ? null : mine >= r.need ? { text: `내 ${mine}m 충분`, tone: 'ok' } : { text: `내 ${mine}m 부족`, tone: 'short' };
-  return { ask, own, basis: official ? '암장 공식 안내 기준 · 참고용' : (Number.isFinite(heightM) ? `벽 높이 ${heightM}m 기준 · 참고용` : '벽 높이 기준 · 참고용') };
+  return { ask, own, need: r.need, basis: official ? '암장 공식 안내 기준 · 참고용' : (Number.isFinite(heightM) ? `벽 높이 ${heightM}m 기준 · 참고용` : '벽 높이 기준 · 참고용') };
 }
 
 // ---- chips: the card's one line under the photo ----
@@ -514,9 +514,9 @@ const closedDays = (wall, line) => {
   if (words.length) return words;
   return line.value.split(/\s*·\s*/).filter((t) => /^[월화수목금토일]$/.test(t));
 };
-const ROPE_CHIP_MIN_M = 17; // the card's rope chip shows from this wall height up
+const ROPE_CHIP_OVER_M = 40; // the card's rope chip shows only when the rope needed is longer than this (a 40m rope is the common one)
 const chipsOf = ({ wall, rope, parking, info, rental, fee }) => {
-  const size = rope && wall.height_m >= ROPE_CHIP_MIN_M // the height is told in the sheet (시설) only; a low wall needs no rope talk on the card (the sheet's 권장 로프 row stays)
+  const size = rope && rope.need > ROPE_CHIP_OVER_M // the height is told in the sheet (시설) only; a wall a 40m rope covers needs no rope talk on the card (the sheet's 권장 로프 row stays)
     ? { kind: 'size', icon: rope?.own?.tone === 'short' ? 'alert' : 'route', tone: rope?.own?.tone === 'short' ? 'warn' : 'plain', to: { tab: 'use', section: 'specs' }, // the sheet's 외벽 제원 list always has the height / rope rows (specsOf)
       note: [rope?.own?.tone === 'short' ? rope.own.text : null, rope?.basis].filter(Boolean).join(' · ') || null,
       text: rope.ask.replace(/ 이상$/, '+') } // 로프 40m+

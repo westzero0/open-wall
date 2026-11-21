@@ -95,7 +95,7 @@ export function RoutePicker({ routes, multi = false, rec, history, patchList, cr
           ${pc && html`<small>${pc}</small>`}
           ${r.chosen && html`<small><b class="op-no">${ascentLine(r.chosen)}</b></small>`}
           ${t && html`<small class="nt">${t}</small>`}</span></button>
-      ${open && multi && r.route.pitches && html`<ol class="pl">${pitchLines(r.route).map((l) => html`<li key=${l}>${l}</li>`)}</ol>`}
+      ${open && multi && r.route.pitches && html`<ol class="pl">${pitchLines(r.route).map((l, i) => html`<li key=${l}>${l}${r.route.pitches[i]?.note && html`<span class="pl-note">${r.route.pitches[i].note}</span>`}</li>`)}</ol>`}
       ${open && html`<${StyleButtons} hist=${history.get(r.route.id)} cur=${curOf(r.route)} full=${full} onPick=${(st, on) => mark(r.route, st, on)} />`}
       ${open && isMine && html`<div class="acts"><button type="button" class="txt" onClick=${() => { if (h.removeMyRoute(r.route.mineId)?.ok === false) onErr(SAVE_FAIL); else { setOpenKey(null); document.getElementById('rq')?.focus(); } }}>내 루트에서 지우기</button></div>`}</div>`;
   };

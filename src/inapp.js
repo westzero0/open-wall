@@ -1,4 +1,4 @@
-// src/inapp.js — 카카오톡 인앱브라우저 안내. 그 안의 저장소는 크롬·사파리와 따로라서 닉네임·필터가 다른 브라우저에선 안 보인다.
+// src/inapp.js — 카카오톡 인앱브라우저 안내. 그 안의 저장소는 크롬·사파리와 따로라서 즐겨찾기·설정이 다른 브라우저에선 안 보인다.
 import { getStr, setStr } from './storage.js';
 // 카카오톡이 열어 주는 외부 브라우저 주소(kakaotalk://web/openExternal)는 iOS·Android 모두 된다.
 export const isKakaoInApp = (ua = '') => /KAKAOTALK/i.test(ua);

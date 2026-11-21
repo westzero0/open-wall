@@ -10,7 +10,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   HTMLDialogElement.prototype.showModal = function showModal(...args) {
     const was = this.open;
     open.apply(this, args);
-    enhanceSheet(this); // backdrop tap and the pull-down grab bar on every bottom sheet
+    enhanceSheet(this); // pull-down gesture on every bottom sheet (wall sheet too); backdrop tap and grab bar on the normal ones
     if (was || this.classList.contains('wall-sheet') || stack.includes(this)) return;
     stack.push(this);
     history.pushState({ dialogBack: true }, '');

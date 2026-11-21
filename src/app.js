@@ -198,7 +198,26 @@ settingsForm.addEventListener('change', (e) => {
 });
 let settingsOpener = null;
 settingsSheet.addEventListener('close', () => settingsOpener?.focus());
-const openSettings = (from) => { settingsOpener = from; settingsForm.elements.theme.value = ui.theme; settingsForm.elements.textSize.value = ui.textSize; settingsSheet.showModal(); };
+// 홈 화면에 추가 row: re-read the install mode each time the sheet opens (hidden when already installed / not possible)
+let setInstallMode = 'none';
+$('set-install-go')?.addEventListener('click', async () => {
+  if (setInstallMode === 'inapp') { location.href = externalOpenUrl(entryHref); return; }
+  if (setInstallMode === 'prompt' && await promptInstall()) {
+    $('set-install').hidden = true; closeInstall();
+    const bn = $('install-banner'); if (bn) bn.hidden = true;
+  }
+});
+const fillInstallRow = () => {
+  const row = $('set-install'); if (!row) return;
+  setInstallMode = currentInstallMode();
+  const go = $('set-install-go');
+  const copy = { prompt: ['앱처럼 바로 열려요.', '홈 화면에 추가'], ios: ['공유 버튼 ▸ ‘홈 화면에 추가’를 누르세요.', ''], inapp: ['카카오톡 안에서는 추가할 수 없어요.', '기본 브라우저로 열기'] }[setInstallMode];
+  row.hidden = !copy;
+  if (!copy) return;
+  $('set-install-text').textContent = copy[0];
+  go.textContent = copy[1]; go.hidden = !copy[1];
+};
+const openSettings = (from) => { settingsOpener = from; settingsForm.elements.theme.value = ui.theme; settingsForm.elements.textSize.value = ui.textSize; fillInstallRow(); settingsSheet.showModal(); };
 $('settingsBtn')?.addEventListener('click', (e) => openSettings(e.currentTarget));
 // 앱 정보 sheet: opened from the footer (and 내 정보); focus returns to whatever opened it
 const about = $('about-sheet');
@@ -487,7 +506,7 @@ function scrubHead(wall, at, min, nowMin) {
   const d = dialModel(wall, there, { isNow, dayLabel: mm.dayLabel });
   updateWallHead(sheetHead(wall, there, d, isNow));
 }
-// The 운영시간 card's one status line for the minute the axis tag shows: "운영 중 · 22:00 마감 · 양달" ({ state, kids }; no time prefix, the tag has it).
+// The 운영시간 card's one status line for the minute the axis tag shows: "운영 중 · 22:00 마감 · 양달" ({ state, head, tail }; no time prefix, the tag has it).
 function verdictOf(wall, at, min, nowMin) {
   const row = allRows.find((r) => r.wall.name === wall.name);
   if (!row) return null;
@@ -502,8 +521,10 @@ function verdictOf(wall, at, min, nowMin) {
       sky = ['rain', 'snow', 'storm'].includes(k) ? WX_WORD[k] : skyVeils(h.c) ? '흐림' : null;
     }
   }
-  return { state: mm.state, kids: [mm.statusLine, word ? ` · ${word.replace(/ /g, ' ')}` : null, sky ? ` · ${sky}` : null].filter(Boolean) };
+  return { state: mm.state, head: mm.statusLine, tail: [word ? word.replace(/ /g, ' ') : null, sky].filter(Boolean) };
 }
+// head + one unbreakable " · 양달 · 흐림 ⓘ" tail, so a wrapped line never strands the sky word or the ⓘ alone.
+const verdictKids = (v, why) => (v.tail.length ? [v.head, ' · ', el('span', { class: 'g-vtail' }, v.tail.join(' · '), why)] : [v.head, why]);
 
 // Hours grid: Mon–Sun + 공휴일 on 06–24. Today's row: highlighted, the time line, today's sun over it (solid where
 // it meets the real open hours of the day). 휴게·휴무 hatched. Previewing the other season hides the time line.
@@ -608,7 +629,7 @@ function hoursGrid(wall, at) {
     const showAt = (m, raw = m) => {
       scrubHead(wall, at, raw, nowMin); // the sky and the sun follow the finger minute by minute; the axis tag and the status line keep to the hour
       const v = verdict && verdictOf(wall, at, m, nowMin);
-      if (v && v.state !== 'unknown') { verdict.className = `g-verdict ${v.state}`; verdict.replaceChildren(...v.kids, verdictWhy); }
+      if (v && v.state !== 'unknown') { verdict.className = `g-verdict ${v.state}`; verdict.replaceChildren(...verdictKids(v, verdictWhy)); }
       nl.style.left = axisX(m);
       const next = gridAxis(m, plot.getBoundingClientRect().width || null);
       axis.replaceWith(next);
@@ -649,7 +670,7 @@ function hoursGrid(wall, at) {
   const m = live && !susp && row ? modelOf({ ...row, status: getStatus(row.wall, at) }, at) : null;
   const verdictWhy = whyBubble('눈금 사용법', '눈금을 좌우로 끌어 시각을 바꿔요. 위 그림과 요약도 그 시각으로 바뀌어요.');
   const v0 = m && verdictOf(wall, at, nowMin, nowMin);
-  const verdict = v0 && v0.state !== 'unknown' ? el('p', { class: `g-verdict ${v0.state}` }, ...v0.kids, verdictWhy) : null;
+  const verdict = v0 && v0.state !== 'unknown' ? el('p', { class: `g-verdict ${v0.state}` }, ...verdictKids(v0, verdictWhy)) : null;
   // one legend only: the hatch is explained here; the sun colours are explained once, under 계절별 양달 (same colours)
   sec.dataset.holNone = holNone ? '1' : '';
   sec.append(...[segRow, susp, verdict, sunNoteEl(wall), susp ? null : lead, ...zone,
@@ -1447,7 +1468,7 @@ function weatherBox(m, wall, at) {
   const pos = wallPosition(wall), when = vs.live ? new Date() : at;
   const c = chipOf({ trusted: true, h: { t: cur.t, c: cur.c, g: cur.g }, night: !!pos && sunPosition(when, pos.lat, pos.lng).altitude < 0, noWet: wall.venue === 'both' || !!wall.tags?.includes('지붕'), noWind: wall.venue === 'both' });
   const hard = m.weather?.hardText ?? null;
-  const warn = allRows.find((r) => r.wall.name === wall.name)?.wx?.word ?? null; // the list chip's warning word (한파 · 강풍 …): the sheet names the same
+  const warn = shown.rows.find((r) => r.wall.name === wall.name)?.wx?.word ?? null; // the list chip's warning word (한파 · 강풍 …): the sheet names the same. Reads the drawn rows (shown.rows, where r.wx lives); allRows are the pre-withDistance originals without it
   return [wxBox({ temp: `${Math.round(cur.t)}°`, sky, words: wind, hard, strong, cold, warn, obs, pic: icon(c.pic), picWarn: !!(warn || hard),
     label: `날씨, ${obs}, 기온 ${Math.round(cur.t)}도, ${words.join(', ')}${warn && !(hard ?? '').includes(warn) ? `, ${warn}` : ''}${strong && warn !== WX_WORD.wind ? ', 바람 셈' : ''}${cold && warn !== WX_WORD.cold ? ', 기온 낮음' : ''}${hard ? `, ${hard}` : ''}` })];
 }
@@ -1570,12 +1591,25 @@ function toggleRow(li) {
   li.querySelectorAll('.blog-more[aria-expanded="true"]').forEach((b) => b.click()); // 후기 목록은 접힌 채로 시작
   setRowOpen(li, true);
   // always bring the opened row up: collapsing the previous one shifts the list, so it may no longer be where it was clicked
-  li.querySelector('.row-btn').scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  scrollRowTop(li.querySelector('.row-btn'));
+}
+
+// Brings a row's title to the top. Folding the time box during a smooth scroll moved the page (foldScrub keeps the list in
+// place with scrollBy), which cancelled the scroll halfway: a search pick stopped ~130px down. So fold first, then scroll.
+function scrollRowTop(btn, smooth = true) {
+  if (!btn) return;
+  const target = btn.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(btn).scrollMarginTop) || 0);
+  if (scrubBox && !controls.classList.contains('unstuck') && !onMap() && target > scrubBox.offsetHeight) {
+    foldHeld = false;
+    foldScrub(true);
+    fitSticky(); // the pinned height (--stick-h, the rows' scroll-margin) follows the fold now, not on the next ResizeObserver tick
+  }
+  btn.scrollIntoView({ block: 'start', behavior: smooth && !reduceMotion() ? 'smooth' : 'auto' });
 }
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
 // Used by a share link and by the map card's 자세히 보기.
-function revealRow(name, { focus = false } = {}) {
+function revealRow(name, { focus = false, smooth = true } = {}) {
   const row = shown.rows.find((r) => r.wall.name === name);
   if (!row) return false;
   go({ type: 'reveal', name, state: row.status.state }); // renders: the open row is built filled, so no transition plays
@@ -1586,7 +1620,7 @@ function revealRow(name, { focus = false } = {}) {
   // the title row, as toggleRow does: it carries the scroll-margin that clears the pinned time axis (the <li> does not, so a
   // card opened from search / the map / a share link had its first line under the axis)
   const btn = li?.querySelector('.row-btn');
-  btn?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  scrollRowTop(btn, smooth);
   if (focus && !$('panel-list').hidden) btn?.focus({ preventScroll: true }); // a picked card (search, 기록): keyboard and screen-reader users land on it
   return true;
 }
@@ -2426,15 +2460,15 @@ loadTapSummary();
 // 빈칸 채우기: the shown reports go over the blank fields once, after the first draw; a failure leaves the list as it is (no retry, no cache)
 if (fillApi) fillApi.list().then((fills) => { if (fills.length) { state.walls = applyFills(state.walls, fills); render(); } }).catch(() => {});
 if (sharedWall) {
-  revealRow(sharedWall.name); // its group is only known after the first render
+  revealRow(sharedWall.name, { smooth: false }); // instant: the sheet opening next locks the page scroll (html overflow hidden), which would stop a smooth scroll at the top. Its group is only known after the first render
   const u = new URL(location.href);
   // ?wall=<name>&info opens the info sheet; &board opens it on the 게시판 tab (no board url and no reviews: the sheet just starts on its first tab)
-  const sheetTab = boardRequested(location.search) ? 'board' : null; // &board: the 타임라인 tab; any other wall link (a share page, &info) opens the sheet too: the list itself sits in the 외벽 더 찾기 sheet, so an opened row alone shows nothing
+  const sheetTab = boardRequested(location.search) ? 'board' : null; // &board: the 타임라인 tab; any other wall link (a share page, &info) opens the sheet too: the wall link opens the wall sheet over the clean app address
   for (const k of ['wall', 'at', 'n', 'k', 'tags', 'note', 'board', 'info']) u.searchParams.delete(k);
   history.replaceState(null, '', u); // the entry under the sheet is the clean app address
   { openWallSheet(sharedWall.name, null, { tab: sheetTab }); history.replaceState(null, '', u); } // the sheet pushes its own entry, so 뒤로 closes only the sheet and not the app (a link opening it left nothing to go back to); the address stays clean
 }
-// 화면 읽는 법 sheet: the header ? opens it. On a first visit the 투어 (tour.js, 4 spotlight steps) opens by itself once the list is
+// 화면 읽는 법 sheet: the header ? opens it. On a first visit the 투어 (tour.js, up to 6 spotlight steps) opens by itself once the list is
 // drawn, after the KakaoTalk notice inside KakaoTalk (that one is this sheet); a share link skips the tour but keeps the notice (inapp.js howtoDue).
 if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page has none of it
   const howto = $('howto');
@@ -2481,7 +2515,7 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
     const how = currentInstallMode();
     if (!b || installClosed() || (how !== 'prompt' && how !== 'ios')) return;
     $('install-go').hidden = how !== 'prompt';
-    if (how === 'ios') $('install-text').textContent = '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요. 닉네임을 정하기 전에 해 두면 좋아요.';
+    if (how === 'ios') $('install-text').textContent = '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요.';
     b.hidden = false;
   };
   if ((handed || again) && b) {

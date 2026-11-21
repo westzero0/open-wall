@@ -43,6 +43,8 @@ function cleanPitches(list, routeId) {
     const grade = str(p.grade, 16), len = int(p.length_m, 1, 400);
     if (grade) x.grade = grade;
     if (len !== null) x.length_m = len;
+    const note = str(p.note, 60);
+    if (note) x.note = note;
     out.push(x);
   }
   return out.sort((a, b) => a.no - b.no);
