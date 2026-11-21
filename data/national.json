@@ -204,7 +204,7 @@
         "유료",
         "스피드월"
       ],
-      "memo": "정기휴무 화\n시설 샤워실·화장실·사물함\n만 13세 미만 이용 제한",
+      "memo": "실외·실내 중 한 곳만 운영(실외 운영 중에는 실내 운영 안 함)\n정기휴무 화\n시설 샤워실·화장실·사물함\n만 13세 미만 이용 제한",
       "address": "경기 고양시 일산서구 중앙로 1601 (대화동 2325-3)",
       "sun": {
         "facing": "E",
@@ -316,7 +316,7 @@
         ],
         "checked_at": "2026-10-22"
       },
-      "checked_at": "2026-10-22",
+      "checked_at": "2026-11-21",
       "contact": {
         "notice_url": "https://www.gys.or.kr/subpage/index/45",
         "instagram": "goyang_gys",
@@ -4493,7 +4493,7 @@
       "tags": [
         "유료"
       ],
-      "memo": "정기휴무 월·화, 법정공휴일 휴관(2026년 7월부터)\n센터 홈페이지에서만 예약 가능(현장 접수·네이버 예약 불가, 회원가입 필수)\n실내·외 운영\n난지창작미술관 입구로 오셔야 센터 입구 및 주차장이 보임(노을공원주차장 입구 아님)\n안내 안내 데스크에서 노란 팔찌 받아 착용\n안내 8세 이하 이용 불가, 12세 미만은 보호자 동반",
+      "memo": "정기휴무 월·화, 법정공휴일 휴관(2026년 7월부터)\n센터 홈페이지에서만 예약 가능(현장 접수·네이버 예약 불가, 회원가입 필수)\n실내·외 운영\n난지창작미술관 입구로 오셔야 센터 입구 및 주차장이 보임(노을공원주차장 입구 아님)\n안내 데스크에서 노란 팔찌 받아 착용\n안내 8세 이하 이용 불가, 12세 미만은 보호자 동반",
       "address": "서울 마포구 하늘공원로 112",
       "sun": {
         "facing": "NE",
@@ -4720,6 +4720,20 @@
             "text": "직접 촬영"
           },
           "date": "2026-11-03"
+        },
+        {
+          "src": "photos/seoulsan-outdoor.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-07-04"
+        },
+        {
+          "src": "photos/seoulsan-indoor.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-07-04"
         }
       ],
       "photo": "photos/seoulsan-wall.webp",
@@ -12726,7 +12740,7 @@
         "스피드월",
         "무료"
       ],
-      "memo": "10월 일반 이용객은 실외 리드월만 사용 가능\n실내: 자연암벽, LED 볼더링월, 트레이닝 보드\n시설 샤워실·화장실·휴게실(실내암벽 건물)\n숲나들e에서 온라인 예약 필수(사전 예약 없이 이용 불가)\n정기휴무 월·화·설날·추석 연휴·신정 등 국가지정 공휴일(대체공휴일 포함)",
+      "memo": "실외·실내 중 한 곳만 운영(실외 운영 중에는 실내 운영 안 함)\n실내: 장군봉을 본뜬 자연암벽, LED 볼더링월, 트레이닝 보드\n시설 샤워실·화장실·휴게실·사물함(실내암벽 건물)\n이용신청서·면책동의서 작성 필수(현장 QR)\n정기휴무 월·화·설날·추석 연휴·신정 등 국가지정 공휴일(대체공휴일 포함)",
       "hours": {
         "mon": null,
         "tue": null,
@@ -12767,7 +12781,7 @@
         },
         "notice_url": "https://www.komount.or.kr/nationalmschool/nboard/list.do?boardCode=M01"
       },
-      "checked_at": "2026-10-22",
+      "checked_at": "2026-11-21",
       "photo": "photos/nationalmt.jpg",
       "photo_credit": {
         "text": "국립등산학교 인공암벽장 공식 홈페이지",
@@ -12873,7 +12887,125 @@
           "step_m": 30,
           "observer_height_m": 5
         }
-      }
+      },
+      "fees": [
+        {
+          "item": "일일 이용",
+          "adult": {
+            "all": 0
+          },
+          "note": "무료"
+        }
+      ],
+      "route_sets": [
+        {
+          "checked": "2026-11-21",
+          "walls": [
+            {
+              "name": "실내벽",
+              "counts": {
+                "8": 1,
+                "9": 2,
+                "10a": 1,
+                "10b": 1,
+                "10c": 1,
+                "11a": 1,
+                "11b": 2
+              },
+              "venue": "indoor"
+            }
+          ]
+        }
+      ],
+      "photos": [
+        {
+          "src": "photos/nationalmt.jpg",
+          "credit": {
+            "text": "국립등산학교 인공암벽장 공식 홈페이지",
+            "license": "공공누리 제1유형"
+          },
+          "main": true
+        },
+        {
+          "src": "photos/komount-outdoor-wall.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-outdoor-side.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-outdoor-face.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-building.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-info-board.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-indoor-wide.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-20"
+        },
+        {
+          "src": "photos/komount-indoor-janggun.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-20"
+        },
+        {
+          "src": "photos/komount-indoor-lead.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-20"
+        },
+        {
+          "src": "photos/komount-indoor-led.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-20"
+        }
+      ],
+      "overview": [
+        {
+          "src": "photos/komount-outdoor-wall.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-15"
+        },
+        {
+          "src": "photos/komount-indoor-wide.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-11-20"
+        }
+      ]
     },
     {
       "name": "통영산양스포츠파크인공암벽장",
