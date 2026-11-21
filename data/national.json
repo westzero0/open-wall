@@ -3556,7 +3556,7 @@
           "인공암벽장 앞 주차장"
         ]
       },
-      "checked_at": "2026-07-10",
+      "checked_at": "2026-11-21",
       "venue": "outdoor",
       "shadow": {
         "step_deg": 5,
@@ -3658,6 +3658,27 @@
             "12d": 1,
             "13b": 1
           }
+        }
+      ],
+      "fees": [
+        {
+          "item": "일일 이용",
+          "adult": {
+            "all": 0
+          }
+        }
+      ],
+      "photo": "photos/seolbong.jpg",
+      "photo_credit": {
+        "text": "신해"
+      },
+      "photos": [
+        {
+          "src": "photos/seolbong.jpg",
+          "credit": {
+            "text": "신해"
+          },
+          "main": true
         }
       ]
     },
