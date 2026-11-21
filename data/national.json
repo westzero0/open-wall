@@ -3680,6 +3680,15 @@
           },
           "main": true
         }
+      ],
+      "overview": [
+        {
+          "src": "photos/seolbong.jpg",
+          "credit": {
+            "text": "신해"
+          },
+          "date": "2026-11-21"
+        }
       ]
     },
     {
@@ -3903,7 +3912,35 @@
         "from_day": 14,
         "to_month": 3,
         "indoor_note": "외벽은 휴장하고 실내 리드월만 예약 2부제로 운영해요"
-      }
+      },
+      "photo": "photos/bukhansan-outdoor.webp",
+      "photo_credit": {
+        "text": "직접 촬영"
+      },
+      "photos": [
+        {
+          "src": "photos/bukhansan-outdoor.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-07-23",
+          "main": true
+        },
+        {
+          "src": "photos/bukhansan-building.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-07-23"
+        },
+        {
+          "src": "photos/bukhansan-indoor.webp",
+          "credit": {
+            "text": "직접 촬영"
+          },
+          "date": "2026-07-23"
+        }
+      ]
     },
     {
       "name": "당고개인공암벽장",

@@ -1598,13 +1598,28 @@ function toggleRow(li) {
 // place with scrollBy), which cancelled the scroll halfway: a search pick stopped ~130px down. So fold first, then scroll.
 function scrollRowTop(btn, smooth = true) {
   if (!btn) return;
-  const target = btn.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(btn).scrollMarginTop) || 0);
-  if (scrubBox && !controls.classList.contains('unstuck') && !onMap() && target > scrubBox.offsetHeight) {
-    foldHeld = false;
-    foldScrub(true);
-    fitSticky(); // the pinned height (--stick-h, the rows' scroll-margin) follows the fold now, not on the next ResizeObserver tick
-  }
-  btn.scrollIntoView({ block: 'start', behavior: smooth && !reduceMotion() ? 'smooth' : 'auto' });
+  const aim = () => {
+    if (!btn.isConnected) return;
+    const target = btn.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(btn).scrollMarginTop) || 0);
+    if (scrubBox && !controls.classList.contains('unstuck') && !onMap() && target > scrubBox.offsetHeight) {
+      foldHeld = false;
+      foldScrub(true);
+      fitSticky(); // the pinned height (--stick-h, the rows' scroll-margin) follows the fold now, not on the next ResizeObserver tick
+    }
+    btn.scrollIntoView({ block: 'start', behavior: smooth && !reduceMotion() ? 'smooth' : 'auto' });
+  };
+  aim();
+  // Phone: a search pick moves focus off the field, so the keyboard closes after the scroll has started. While it was open the
+  // short screen left the controls unstuck (no fold above); the taller screen pins them again, the fold then happens mid-scroll
+  // and its scrollBy cancels the scroll halfway. So aim once more when the screen has settled. A touch hands the page back.
+  const vv = window.visualViewport;
+  if (!vv || !smooth) return;
+  let t = 0;
+  const stop = () => { clearTimeout(t); vv.removeEventListener('resize', settle); removeEventListener('touchstart', stop); };
+  const settle = () => { clearTimeout(t); t = setTimeout(() => { stop(); fitSticky(); aim(); }, 150); };
+  vv.addEventListener('resize', settle);
+  addEventListener('touchstart', stop, { passive: true });
+  setTimeout(() => { if (!t) stop(); }, 1000); // no keyboard closed: nothing to wait for
 }
 
 // Opens a wall's card in the list (its group unfolded) and brings it to the top; false when the filters hide it.
