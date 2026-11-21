@@ -118,6 +118,8 @@ export function filterView(ui, { canPark, canRent = false, openTotal, isNow }) {
     // the quiet line at the end of the open list: `서울만 보는 중` (+ the 전국 보기 link); three or more regions are counted
     regionLine: !ui.regions.length ? '' : `${ui.regions.length > 2 ? `${ui.regions.length}곳` : ui.regions.join(', ')}만 보는 중`,
     regionChipLabel: `${label} 해제, 전국 보기`,
+    // the home list's 권역 chip row (G3): offered only while no region is picked
+    regionPick: !ui.regions.length,
     // the sheet button counts what only the sheet shows: 최소 이용 시간, 가까운 순, parking, 휴게 합산 while a minimum stay is on, 구분, 내 지역 (one), 즐겨찾기만, 기온, 내 로프 길이 (a setting: it hides no wall)
     sheetCount: Number(ui.minHours !== '0') + Number(ui.sortMode === 'distance') + Number(parkOnly) + Number(rentalOnly) + Number(ui.withBreaks && ui.minHours !== '0') + Number(ui.venue !== 'any') + Number(ui.regions.length > 0) + Number(Boolean(ui.favOnly)) + Number(Number(ui.tempMin) > 0),
     // why the open group is empty: nothing open at all, or the active filters hid the open ones

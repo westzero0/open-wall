@@ -34,7 +34,7 @@ const holdIcon = ({ pin, approx }, lit) => L.divIcon({
 export function createMap(container, { onSelect, onError = () => {}, onOk = () => {}, covered = () => 0, coveredTop = () => 0 }) {
   const { L } = window;
   if (!L) throw new Error('Leaflet not loaded');
-  const map = L.map(container, { scrollWheelZoom: false }).setView(SEOUL, 10);
+  const map = L.map(container, { scrollWheelZoom: false, zoomSnap: 0.25 }).setView(SEOUL, 10); // zoomSnap: the first fit lands between whole zooms, so a short wide map (PC, 320px tall) is filled by the walls instead of dropping a whole level to East Asia
   map.attributionControl.setPosition('topright'); // the selected card covers the foot; the credit stays visible
   map.attributionControl.setPrefix(false); // the OSM credit alone fits one line at 375px; "Leaflet |" made it two over the top pins (the library is credited in 앱 정보)
   let tilesOk = false;

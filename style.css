@@ -1401,6 +1401,9 @@ dialog::backdrop { background: var(--scrim); }
 }
 .rg-list input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .rg-list label::after { content: ""; position: absolute; inset: -6px 0; } /* 32px chip, 44px touch target */
+.rg-pick { padding: var(--sp-8) 0; overflow-x: auto; scrollbar-width: none; } /* G3: 지역을 고르지 않았을 때 목록 머리 아래 권역 칩 한 줄. 좁으면 줄바꿈 대신 가로로 민다 */
+.rg-pick::-webkit-scrollbar { display: none; }
+.rg-pick .rg-list { flex-wrap: nowrap; clear: none; width: max-content; padding: 0 var(--pad, 16px); } /* the side padding rides inside the scroller: the last chip and its focus ring keep 16px from the edge */
 /* on = fill + a check mark, not only the colour */
 .rg-list label:has(:checked) { background: var(--surface); border-color: var(--fg); color: var(--fg); font-weight: 700; } /* 선택 칩 = 흰 알약 + 1px 먹색 윤곽 + 굵은 글자 (채움 아님) */
 .rg-list label:has(:checked)::before { content: "✓"; content: "✓" / ""; margin-right: var(--sp-4); }

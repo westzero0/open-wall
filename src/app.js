@@ -1764,6 +1764,8 @@ function render() {
   for (const [id, on] of Object.entries(fv.pressed)) $(id).setAttribute('aria-pressed', String(on));
   const rc = $('regionChip');
   rc.hidden = !ui.regions.length;
+  const rp = $('regionPick'); // 지역을 고르지 않았을 때만 권역 칩 한 줄 (G3); no 권역 drawn = no row
+  if (rp) rp.hidden = !fv.regionPick || !rp.firstChild?.childElementCount;
   rc.firstChild.textContent = fv.regionLine;
   rc.setAttribute('aria-label', fv.regionChipLabel);
   for (const box of regionBoxes()) box.checked = ui.regions.includes(box.value);
@@ -2209,7 +2211,7 @@ $('regionChip').addEventListener('click', () => {
 // 내 지역: one checkbox pill per 권역 the walls are in (areas.js, at most 5), in both the 조건 sheet and 내 정보 (the same choice);
 // rebuilt only when that list changes, so a tick keeps focus. The saved choice is pruned to 권역 that exist (not while the list
 // failed to load).
-const regionBoxes = () => document.querySelectorAll('#regionOptsC input[name="region"]');
+const regionBoxes = () => document.querySelectorAll('#regionOptsC input[name="region"], #regionPick input[name="region"]');
 let regionKey = null;
 function syncRegions() {
   if (!state.walls.length) return;
@@ -2219,7 +2221,7 @@ function syncRegions() {
   const key = areas.map((a) => `${a.name}:${a.total}`).join('|');
   if (regionKey === key) return;
   regionKey = key;
-  for (const id of ['regionOptsC']) {
+  for (const id of ['regionOptsC', 'regionPick']) {
     $(id)?.replaceChildren(el('div', { class: 'rg-list' }, ...areas.map((a) => el('label', {},
       el('input', { type: 'checkbox', name: 'region', value: a.name }), a.name, el('span', { class: 'rg-n' }, `${a.total}`)))));
   }
@@ -2342,9 +2344,10 @@ sheet.addEventListener('change', (e) => {
   if (e.target.name === 'tempMin') setUi('tempMin', cleanTemp(e.target.value));
 });
 // 내 지역 is chosen in the 조건 sheet; 내 정보 shows it as a line (profile-view.js wires the rest of it)
-for (const id of ['regionOptsC']) {
+for (const id of ['regionOptsC', 'regionPick']) {
   $(id)?.addEventListener('change', (e) => {
     setUi('regions', [...e.currentTarget.querySelectorAll('input[name="region"]:checked')].map((b) => b.value));
+    if (id === 'regionPick') $('moreFilters').focus({ preventScroll: true }); // the row hides itself once a region is picked: focus goes to the 조건 button, which then names it
     if (e.target.checked) document.dispatchEvent(new CustomEvent('stats:region-set')); // stats.js counts it (no region name in it)
   });
 }
