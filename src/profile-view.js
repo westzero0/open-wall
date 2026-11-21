@@ -145,7 +145,7 @@ export function createProfileView({ getTheme, setTheme, getTextSize, setTextSize
     $('pfPoints').hidden = !config.points || !pts;
     $('pfPoints').textContent = pts ? `쌓은 포인트 ${pts}점` : '';
     const how = currentInstallMode();
-    $('pfInstallRow').hidden = how === 'none';
+    $('pfInstallRow').hidden = how === 'none' || how === 'android'; // this sheet has no android line
     $('pfInstall').hidden = how !== 'prompt';
     $('pfInstallIos').hidden = how !== 'ios';
     $('pfInstallOpen').hidden = how !== 'inapp';

@@ -211,7 +211,7 @@ const fillInstallRow = () => {
   const row = $('set-install'); if (!row) return;
   setInstallMode = currentInstallMode();
   const go = $('set-install-go');
-  const copy = { prompt: ['앱처럼 바로 열려요.', '홈 화면에 추가'], ios: ['공유 버튼 ▸ ‘홈 화면에 추가’를 누르세요.', ''], inapp: ['카카오톡 안에서는 추가할 수 없어요.', '기본 브라우저로 열기'] }[setInstallMode];
+  const copy = { prompt: ['앱처럼 바로 열려요.', '홈 화면에 추가'], ios: ['공유 버튼 ▸ ‘홈 화면에 추가’를 누르세요.', ''], android: ['⋮ 메뉴 ▸ ‘홈 화면에 추가’를 누르세요.', ''], inapp: ['카카오톡 안에서는 추가할 수 없어요.', '기본 브라우저로 열기'] }[setInstallMode];
   row.hidden = !copy;
   if (!copy) return;
   $('set-install-text').textContent = copy[0];
@@ -2551,9 +2551,10 @@ if ($('howto') && $('helpBtn') && $('howto-guide')) { // an older cached page ha
   const b = $('install-banner');
   const show = () => {
     const how = currentInstallMode();
-    if (!b || installClosed() || (how !== 'prompt' && how !== 'ios')) return;
+    const text = { prompt: '앱처럼 한 번에 열려요.', ios: '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요.', android: '⋮ 메뉴 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요.' }[how];
+    if (!b || installClosed() || !text) return;
     $('install-go').hidden = how !== 'prompt';
-    if (how === 'ios') $('install-text').textContent = '공유 버튼 ▸ ‘홈 화면에 추가’를 누르면 앱처럼 열려요.';
+    $('install-text').textContent = text; // set every time: a late Chrome prompt turns the android steps into the button
     b.hidden = false;
   };
   if ((handed || again) && b) {
