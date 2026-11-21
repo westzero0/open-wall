@@ -8,7 +8,6 @@
 // its section, and scrolling marks the tab of the section in view. A change of width keeps the section in view.
 import { el } from './dom.js';
 import { nameBreak, TAB_KINDS } from './wall-sheet-model.js';
-import { segStep } from './seg-nav.js';
 import { climber } from './sun-scene.js';
 
 // one builder per kind of place ('wall'; a 싱글피치 crag brings its own): (name) => { head: { tone, sunT, region, chip, ok, report }, tabs: [{ key, label, icon?, pane, kinds? }], onClose?, addr?, focusBack?, reportCrag? } | null
@@ -44,6 +43,7 @@ function build(n) {
 function show(n) {
   build(n);
   cur = n;
+  (wide.matches ? body : panels[n]).querySelectorAll('.sx-pane').forEach((p) => p.fit?.()); // its segment rows: shown only when the parts are longer than a screen
   foldNow(); // a tab shown at its top unfolds the sky (only the pane's own scroll did, so a fold carried over)
   tabEls.forEach((t, i) => {
     t.setAttribute('aria-selected', String(i === n));
@@ -150,6 +150,8 @@ function make() {
     if (near !== cur) show(near); // a swipe settled on another pane
   }, { passive: true });
   // reading down a pane folds the sky to its words (the sun picture goes) so the pane gets the room; back at its top it unfolds (foldNow, once per frame)
+  let segRaf = 0; // the segment rows' marks follow any scroll in the sheet (a panel's, or the wide column's), once per frame
+  body.addEventListener('scroll', () => { segRaf ||= requestAnimationFrame(() => { segRaf = 0; body.querySelectorAll('.sx-pane').forEach((p) => p.spy?.()); }); }, { capture: true, passive: true });
   body.addEventListener('scroll', (e) => {
     const p = e.target;
     if (wide.matches || p !== panels[cur] || foldRaf) return;
@@ -159,6 +161,7 @@ function make() {
   const release = () => { if (foldHeld) { foldHeld = false; foldRaf ||= requestAnimationFrame(foldNow); } };
   window.addEventListener('pointerup', release);
   window.addEventListener('pointercancel', release);
+  window.addEventListener('resize', () => { if (dlg.open) body.querySelectorAll('.sx-pane').forEach((p) => p.fit?.()); });
   window.addEventListener('resize', () => { if (dlg.open && !wide.matches) { body.scrollTo({ left: cur * body.clientWidth, behavior: 'instant' }); measureSky(); foldNow(); } });
   if (typeof MutationObserver === 'function') new MutationObserver(() => { measureSky(); foldNow(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-text'] }); // text size changed: the band's heights changed
   wide.addEventListener('change', () => { // the window crossed 1024px: the same section stays in view in the other layout
@@ -174,6 +177,7 @@ function make() {
       body.scrollTop = 0;
       measureSky();
     }
+    body.querySelectorAll('.sx-pane').forEach((p) => p.fit?.()); // the scroller changed (the panel or the column)
     show(n);
     paint(n);
     if (wide.matches) body.scrollTo({ top: topOf(n), behavior: 'instant' });
@@ -224,6 +228,13 @@ function paintHead(h) {
   sky.classList.remove('is-opening');
   void sky.offsetWidth; // restart the rise on every open, even when another wall replaces the one in view
   if (!reduced()) sky.classList.add('is-opening');
+}
+// what scrolls a pane's content: the column (wide) or the tab's own panel
+const scroller = (node) => (wide.matches ? body : node.closest('.ws-panel') ?? body);
+// scroll sc so that node sits just under the sticky segment row (segH px)
+function scrollUnder(sc, node, segH, smooth = false) {
+  const top = sc.scrollTop + node.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8 - segH;
+  sc.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'instant' });
 }
 /** Open the sheet for a wall. `from` is the button to give focus back to. `push: false` = the address is already right (a link opened it). `kind`: which registered builder ('wall', or a crag's). `tab`: the key of the tab to start on (an unknown key = the first). `section`: a section key of that tab to scroll to and mark. Returns true when it opened. */
 export function openWallSheet(wallName, from = null, { push = true, tab = null, section = null, kind = 'wall' } = {}) {
@@ -280,11 +291,9 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   title.focus();
   const sec = section && panels[first]?.querySelector(`[data-sec="${section}"]`); // a section asked for (the card's 주차 line): scrolled into view and marked for a moment
   if (sec) {
-    const hid = sec.closest('.sx-panel[hidden]'); // it sits in a part of the tab that is not showing: open that part first
-    hid?.parentElement.querySelector(`[role="tab"][aria-controls="${hid.id}"]`)?.click();
     const p = panels[first]; // only the panel scrolls (wide: the column): scrollIntoView would also move the overflow:hidden dialog, pushing the head off screen
-    const sc = wide.matches ? body : p;
-    sc.scrollTop += sec.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8 - (p.querySelector('.sx-seg')?.offsetHeight ?? 0); // less the segment row that stays on top
+    scrollUnder(wide.matches ? body : p, sec, p.querySelector('.sx-seg')?.offsetHeight ?? 0); // less the segment row that stays on top
+    sec.closest('.sx-pane')?.spy?.(); // its segment button is marked now, not a frame later
     dlg.scrollTop = 0;
     if (!wide.matches) body.scrollTop = 0;
     sec.classList.add('flash');
@@ -294,42 +303,46 @@ export function openWallSheet(wallName, from = null, { push = true, tab = null, 
   return true;
 }
 
-// segmentPane(name, label, items) → the part of a tab that is long, cut into parts shown one at a time (items: [{ key, label, nodes }]).
-// A row of text buttons (.sx-seg, sheet.css; tablist: ←/→/Home/End move, only the chosen one is in the tab order) over one panel per part.
-// A part with nothing in it is left out, and one part alone needs no row. The part in view is remembered per `name` while the page lives
-// (not in the address). A section asked for by ?section= opens its part (see openWallSheet).
-const segPicked = new Map();
-let segCount = 0;
+// segmentPane(name, label, items) → the part of a tab that is long, cut into parts laid one under another (items: [{ key, label, nodes }]).
+// A row of text buttons (.sx-seg, sheet.css) stays on top: a press scrolls to that part (focus goes to its heading), and scrolling marks the
+// button of the part in view (aria-current). A part with nothing in it is left out, and one part alone needs no row; nor do parts that fit on one screen (fit). `name` only names the row.
 export function segmentPane(name, label, items) {
   const parts = items.map((i) => ({ ...i, nodes: i.nodes.filter(Boolean) })).filter((i) => i.nodes.length);
   if (parts.length < 2) return el('div', { class: 'sx-pane' }, ...parts.flatMap((p) => p.nodes));
-  const id = ++segCount;
-  const keys = parts.map((p) => p.key);
-  let cur = keys.includes(segPicked.get(name)) ? segPicked.get(name) : keys[0];
-  const tabs = parts.map((p) => el('button', { type: 'button', role: 'tab', id: `sx${id}-${p.key}`, 'aria-controls': `sx${id}-${p.key}-p`, 'data-label': p.label }, p.label));
-  const panes = parts.map((p) => el('div', { role: 'tabpanel', id: `sx${id}-${p.key}-p`, 'aria-labelledby': `sx${id}-${p.key}`, class: 'sx-panel' }, ...p.nodes));
-  const pick = (key, focus = false) => {
-    cur = key;
-    segPicked.set(name, key);
-    keys.forEach((k, i) => {
-      tabs[i].setAttribute('aria-selected', String(k === key));
-      tabs[i].tabIndex = k === key ? 0 : -1;
-      panes[i].hidden = k !== key;
-    });
-    if (focus) tabs[keys.indexOf(key)].focus();
+  const btns = parts.map((p) => el('button', { type: 'button', 'data-label': p.label }, p.label));
+  const boxes = parts.map((p) => el('div', { class: 'sx-part', 'data-part': p.key }, ...p.nodes));
+  const seg = el('div', { class: 'sx-seg', role: 'group', 'aria-label': label }, ...btns);
+  const pane = el('div', { class: 'sx-pane', 'data-seg': name }, seg, ...boxes);
+  let at = -1, hold = 0, rest = -1; // the part marked; a press holds its mark while its scroll runs, and after it until the reader scrolls (rest: where it stopped)
+  const mark = (n) => { if (n === at) return; at = n; btns.forEach((b, i) => (i === n ? b.setAttribute('aria-current', 'true') : b.removeAttribute('aria-current'))); };
+  pane.spy = () => {
+    if (hold || !pane.isConnected) return;
+    const sc = scroller(pane);
+    if (sc.scrollTop === rest) return; // a short pane stopped short of the pressed part: it stays marked
+    rest = -1;
+    const line = seg.getBoundingClientRect().bottom + 8;
+    let n = 0;
+    boxes.forEach((b, i) => { if (b.getBoundingClientRect().top <= line) n = i; });
+    if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2 && pane.getBoundingClientRect().bottom <= sc.getBoundingClientRect().bottom + 2) n = boxes.length - 1; // at the very end: a short last part never reaches the top
+    mark(n);
   };
-  let touched = false; // the reader chose a part in this pane: prefer() leaves it alone
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => { touched = true; pick(keys[i]); });
-    t.addEventListener('keydown', (e) => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-      e.preventDefault();
-      touched = true;
-      pick(segStep(keys, cur, e.key), true);
-    });
-  });
-  pick(cur);
-  const pane = el('div', { class: 'sx-pane' }, el('div', { class: 'sx-seg', role: 'tablist', 'aria-label': label }, ...tabs), ...panes);
-  pane.prefer = (key) => { if (!touched && keys.includes(key) && key !== cur) { cur = key; panes.forEach((p, i) => { tabs[i].setAttribute('aria-selected', String(keys[i] === key)); tabs[i].tabIndex = keys[i] === key ? 0 : -1; p.hidden = keys[i] !== key; }); } }; // a part with nothing to show (날씨 실패) gives way, without being remembered as the reader's pick
+  btns.forEach((b, i) => b.addEventListener('click', () => {
+    const smooth = !reduced();
+    clearTimeout(hold);
+    hold = setTimeout(() => { hold = 0; rest = scroller(pane).scrollTop; }, smooth ? 600 : 100); // the scroll this press makes keeps the pressed mark (a short pane may stop short of the part, or at its very end)
+    mark(i);
+    scrollUnder(scroller(pane), boxes[i], seg.offsetHeight, smooth);
+    const h = boxes[i].querySelector('h2, h3, h4') ?? boxes[i];
+    h.tabIndex = -1;
+    h.focus({ preventScroll: true });
+  }));
+  // the row only when the parts are longer than one screen of the scroller (measured without the row, so hiding it cannot flip the answer)
+  pane.fit = () => {
+    const sc = pane.isConnected && scroller(pane);
+    if (!sc?.clientHeight) return; // not laid out yet (the dialog is closed)
+    seg.hidden = pane.offsetHeight - (seg.hidden ? 0 : seg.offsetHeight + 8) <= sc.clientHeight;
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => pane.fit()).observe(pane); // put on screen, built, text size, width
+  mark(0);
   return pane;
 }

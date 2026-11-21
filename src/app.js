@@ -1283,7 +1283,6 @@ function weatherSection(wall, m, at) {
     const failed = Boolean(e && !e.hours && !e.current);
     head.hidden = failed; // a failure is one quiet line with its 다시 시도, not a titled card above the hours
     sec.classList.toggle('ws-wx-fail', failed);
-    if (failed) queueMicrotask(() => sec.closest('.sx-pane')?.prefer?.('hours')); // no weather: the 시간 tab opens on 운영시간 (the pane is put around this section right after)
     if (failed && wxc.limited()) { // 429: the daily limit, nothing to retry until midnight
       body.replaceChildren(el('p', { class: 'ws-chk ws-wx-none', tabindex: '-1' }, '오늘은 날씨 요청이 많아 잠시 쉬고 있어요'));
       return;

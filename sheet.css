@@ -263,18 +263,19 @@ html[data-text="xlarge"] .fees tbody th, html[data-text="xlarge"] .fees thead th
 /* 제원 카드의 알려 주기 줄: 단어 버튼(.ws-chk-ask)이 전역 버튼 높이(44px)를 받아 줄을 늘리고 값이 이름보다 아래로 내려갔다. 누르는 면은 ::after 가 이미 44px 이상 */
 .fill-ask .fill-open { min-height: 0; }
 
-/* 세그먼트(.sx-seg): 탭 안의 긴 부분을 나눈다. 글자 + 세로 구분선(상자 없음), 누르면 그 부분만 보인다. 두 앱 공용(docs/superpowers/specs/2026-11-19-place-page-design.md) */
+/* 세그먼트(.sx-seg): 탭 안의 긴 부분을 나눈다. 글자 + 세로 구분선(상자 없음), 일정앱은 누르면 그 부분만 보이고, 외벽 시트는 부분을 세로로 이어 두고 누르면 그 자리로 스크롤한다(.sx-part). 두 앱 공용(docs/superpowers/specs/2026-11-19-place-page-design.md) */
 .sx-seg { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; background: var(--pl-paper); }
 .sx-seg button { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: var(--pl-tap); min-height: var(--pl-tap); margin: 0; padding: 0 var(--pl-sp-12); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--pl-muted); font: inherit; font-size: var(--pl-fs-sub); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .sx-seg button:first-child { align-items: flex-start; padding-left: 0; } /* 첫 칸은 글자만 왼쪽 가장자리에 */
 .sx-seg button::after { content: attr(data-label); font-weight: 800; height: 0; visibility: hidden; overflow: hidden; } /* 굵은 글자 폭을 미리 잡아 둬 고른 칸이 이웃을 밀지 않는다 */
 .sx-seg button + button::before { content: ""; position: absolute; left: 0; top: 50%; height: 1em; transform: translateY(-50%); border-left: var(--pl-hair) solid var(--pl-line); }
-.sx-seg button[aria-selected="true"] { color: var(--pl-ink); font-weight: 800; }
+.sx-seg button:is([aria-selected="true"], [aria-current="true"]) { color: var(--pl-ink); font-weight: 800; }
 .sx-seg button:focus-visible { outline: var(--pl-ring) solid var(--pl-ink); outline-offset: calc(var(--pl-ring) * -1); }
-.sx-panel[hidden] { display: none; }
+.sx-panel[hidden], .sx-seg[hidden] { display: none; }
 .ws-sunnote { margin: 0 0 var(--sp-8); color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; } /* the wall's sun_note, one muted line under the hours card's status line */
 
-.sx-panel { isolation: isolate; } /* its own stacking context: an inner z-index (the hours card's .nowtag) can no longer paint over the sticky .sx-seg above */
+.sx-panel, .sx-part { isolation: isolate; }
+.sx-pane > .sx-seg:has(+ .sx-part) { margin-bottom: var(--pl-sp-8); } /* 외벽 시트: 첫 부분도 줄 아래 8px에서 시작한다(누른 부분이 서는 자리와 같다) */ /* its own stacking context: an inner z-index (the hours card's .nowtag) can no longer paint over the sticky .sx-seg above */
 /* 세그먼트가 있는 탭의 상자 제목은 화면에서만 숨긴다(h3는 남아 읽힌다). 제목뿐인 머리 줄은 자리도 차지하지 않는다 */
 .sx-panel .ws-sec-h h3, .sx-panel .ws-sec-h:not(:has(> :not(h3))) { position: absolute; width: 1px; height: 1px; min-height: 0; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* 제목이 숨겨진 상자의 첫 목록은 위 여백·선을 거둔다(빈 줄처럼 보이던 자리) */
