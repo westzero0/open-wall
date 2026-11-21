@@ -84,6 +84,8 @@ export function comingWeekend(today) {
  * homeDays(today, trips = []) → [{ label, date, plan?: true, add?: true }]: 홈의 날짜 칩 오늘·내일·주말(고정; 오늘·내일이 토·일이면 다음 주 토요일 '다음 주말') + 일정이 잡힌 날짜(plan: true, 날짜순, 같은 날은 칩 하나, 이미 있는 칩과 같은 날이면 그 칩에 plan만)
  * + 끝의 '+ 일정 잡기'(add: true). 앞으로의 일정(plan)과 진행 중인 일정(day: 오늘 칩)만 센다. Weekdays are not assumed: 요일은 일정이 있는 날의 이름으로만 나온다.
  */
+/** dayLabel('2026-11-26') → '목 11/26': a day that is not 오늘·내일·주말, on a chip (a planned day, or one picked in the calendar). */
+export const dayLabel = (date) => { const p = dayParts(date); return `${p.dow} ${p.month}/${p.day}`; };
 export function homeDays(today, trips = []) {
   const [y, m, d] = today.split('-').map(Number);
   const at = (o) => ymd(new Date(y, m - 1, d + o));
@@ -96,7 +98,7 @@ export function homeDays(today, trips = []) {
   for (const date of dates) {
     const hit = chips.find((c) => c.date === date);
     if (hit) hit.plan = true;
-    else { const p = dayParts(date); chips.push({ label: `${p.dow} ${p.month}/${p.day}`, date, plan: true }); }
+    else chips.push({ label: dayLabel(date), date, plan: true });
   }
   return [...chips, { label: '+ 일정 잡기', date: '', add: true }];
 }

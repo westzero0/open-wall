@@ -34,7 +34,8 @@ import { clockView, startView, step } from './view-state.js';
 import { areaList } from './areas.js';
 import { mountScrubHint } from './scrub-hint.js';
 import { crossfadeRows, el, tightParens } from './dom.js';
-import { homeDays } from './trips.js';
+import { homeDays, dayLabel } from './trips.js';
+import { validDate } from './log.js';
 
 // the picked day is shown by the day chips (drawDays) in the time box's first line; there is no separate date text
 function setSub(at) {
@@ -55,9 +56,25 @@ function drawDays(at) {
       const b = el('button', { type: 'button', 'data-date': date, 'aria-label': `${label} ${m}월 ${d}일` }, label);
       b.addEventListener('click', () => go({ type: 'pick', date, min: Math.min(Number($('time').value), 1380) })); // the same time on that day
       return b;
-    }));
+    }), dayPicker(today));
   }
-  for (const b of box.children) b.setAttribute('aria-pressed', String(b.dataset.date === ymd(at)));
+  const date = ymd(at);
+  let hit = false;
+  for (const b of box.querySelectorAll('button[data-date]')) { const on = b.dataset.date === date; hit ||= on; b.setAttribute('aria-pressed', String(on)); }
+  const pick = box.querySelector('.day-pick');
+  if (!pick) return;
+  const other = !hit && validDate(date); // a day the chips do not name: the 날짜 chip shows it, pressed
+  pick.firstChild.textContent = other ? dayLabel(date) : '날짜 고르기';
+  pick.firstChild.setAttribute('aria-pressed', String(other));
+  pick.lastChild.value = other ? date : '';
+}
+// the 날짜 고르기 chip: only the look; the transparent native date input over it takes the tap and opens the calendar (the log sheet's way, style.css .la-date)
+function dayPicker(today) {
+  const look = el('button', { type: 'button', tabindex: '-1', 'aria-hidden': 'true' }, '날짜 고르기');
+  const input = el('input', { type: 'date', class: 'la-date', min: today, 'aria-label': '날짜 고르기' });
+  input.addEventListener('click', () => { try { input.showPicker?.(); } catch { /* already open, or no support: the native tap does it */ } }); // desktop
+  input.addEventListener('change', () => { if (validDate(input.value)) go({ type: 'pick', date: input.value, min: Math.min(Number($('time').value), 1380) }); }); // iOS 지우기 leaves it empty: nothing changes
+  return el('span', { class: 'day-pick' }, look, input);
 }
 import { arrow, wxBox, axisX, boardRow, cameraBtn, goRow, infoRow, noticeLine, setBoardRow, telButton, capCls, chipBar, dock, gaugeBar, gaugeEnds, heroCap, placeholderHero, remainPill, reserveBand, sheetCard, sheetLine, span, warnNote, warnPill, whyBubble, wxSet } from './card-parts.js';
 import { startTour } from './tour.js';
@@ -1788,8 +1805,8 @@ function render() {
     const parts = summaryParts(at, now, isNow, n, '외벽');
     drawSummary(wxLine ? [...parts, [wxLine, false, true]] : parts);
   }
+  setSub(at); // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now (before drawFold, which reads the pressed day chip)
   drawFold(n);
-  setSub(at); // the date field and "지금으로" are folded away by default, so this line says the day and that it is not now
 
   // the order is not alphabetical: say what it is (most time left first). 가까운 순 needs a known origin
   const sortText = { time: '남은 시간 순', distance: '가까운 순', sun: '양달 먼저' }[needOrigin ? 'time' : ui.sortMode] ?? '남은 시간 순';
